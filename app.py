@@ -6,7 +6,6 @@ from collections import defaultdict
 app = Flask(__name__)
 app.secret_key = os.urandom(10).hex() 
 
-
 @app.route("/login", methods = ["GET","POST"])
 def login():
     if request.method == "POST":
