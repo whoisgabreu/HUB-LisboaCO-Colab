@@ -141,6 +141,13 @@ def hub_projetos(): # Página transferida do primeiro Omni
 
 @app.route("/hub-remuneracao", methods = ["GET"])
 def hub_remuneracao():
+
+    url = "https://n8n.v4lisboatech.com.br/webhook/disgraça"
+
+    response = req.get(url, headers={"x-api-key": "4815162342"}, timeout=10)
+
+
+
     mock_investors = [
         {
             "id": "inv_1",
@@ -191,7 +198,7 @@ def hub_remuneracao():
     roles = sorted(list(set(inv["role"] for inv in mock_investors)))
     
     return render_template("hub-remuneracao.html", 
-                         investors=mock_investors, 
+                         investors=response.json(), 
                          squads=squads, 
                          roles=roles)
 

@@ -28,9 +28,9 @@ const shortcuts = [
 
 document.addEventListener('DOMContentLoaded', () => {
     // Fill User Info
-    document.getElementById('headerUserName').innerText = sessionUser.name;
-    document.getElementById('headerUserRole').innerText = sessionUser.role;
-    document.getElementById('welcomeTitle').innerText = `Olá, ${sessionUser.name.split(' ')[0]}`;
+    // document.getElementById('headerUserName').innerText = sessionUser.name;
+    // document.getElementById('headerUserRole').innerText = sessionUser.role;
+    // document.getElementById('welcomeTitle').innerText = `Olá, ${sessionUser.name.split(' ')[0]}`;
 
     // Fill Operational Data
     document.getElementById('mrrValue').innerText = Utils.formatBRL(operationalData.mrr);
