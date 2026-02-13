@@ -1,0 +1,34 @@
+{% include "components/loader.html" %}
+
+{% include "components/up-button.html" %}
+
+<header class="header">
+    <div class="header-left">
+        <button class="burger-menu">
+            <i class="fas fa-bars"></i>
+        </button>
+        <img class="logo" src="/static/images/v4-logo.png" alt="V4">
+        <div class="header-title">
+            <h1>Hub de Projetos</h1>
+            <div class="header-subtitle">Lisboa&CO TechOps</div>
+        </div>
+    </div>
+
+    <div class="user-info">
+        <div class="user-details">
+            <div class="user-name" id="headerUserName">{{ session.nome or 'Usuário' }}</div>
+            <div class="user-role" id="headerUserRole">{{ session.funcao or 'Colaborador' }}</div>
+        </div>
+        <button class="user-menu-btn">
+            <i class="fas fa-ellipsis-v"></i>
+        </button>
+        <!-- Dropdown Reutilizável -->
+        <div class="user-dropdown">
+            <a href="#" class="dropdown-item"><i class="fas fa-user-circle"></i> Perfil</a>
+            <a href="https://omni.v4lisboatech.com.br/" class="dropdown-item"><i class="fas fa-cog"></i>
+                Configurações</a>
+            <div class="dropdown-divider"></div>
+            <a href="#" class="dropdown-item logout-item"><i class="fas fa-sign-out-alt"></i> Sair</a>
+        </div>
+    </div>
+</header>

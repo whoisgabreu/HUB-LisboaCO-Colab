@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="/static/images/v4-logo.png" type="image/png">
+  <title>Login</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style/login.css') }}">
+  <script src="{{ url_for('static', filename='js/login.min.js') }}" defer></script>
+  {% include "components/loader.html" %}
+</head>
+
+<body>
+
+
+  <div class="container">
+    <!-- LADO ESQUERDO -->
+    <div class="form-section">
+      <img id="logo1" src="/static/images/v4-logo.png" alt="Logo">
+      <p class="logo-title">Lisboa&<span style="font-weight: bold;">CO</span></p>
+      <h2></h2>
+      <h2></h2>
+
+      <form method="POST" name="login-form">
+        <div class="login-field">
+          <i class="fa-solid fa-envelope"></i>
+          <input type="email" name="email" placeholder="E-mail" required>
+        </div>
+
+        <div class="password-field">
+          <i class="fa-solid fa-lock"></i>
+          <input type="password" name="senha" id="senha" placeholder="Senha" required>
+          <i class="fa-solid fa-eye toggle-eye" id="toggleSenha"></i>
+        </div>
+
+        {% if error %}
+        <div class="error-message">
+          <i class="fa-solid fa-circle-exclamation"></i>
+          <p>{{ error }}</p>
+        </div>
+        {% endif %}
+
+        <button type="submit">ENTRAR</button>
+      </form>
+    </div>
+
+    <!-- LADO DIREITO -->
+    <div class="info-section">
+      <div class="info-content">
+        <img id="banner" src="/static/images/V4.png" alt="V4">
+        <h3 id="unidade">Lisboa&CO</h3>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <p>© 2025 TechOps — Time de Tecnologia da Lisboa&amp;CO.
+      Transformando ideias em inovação.</p>
+  </footer>
+
+  <!-- <script>
+      const senhaInput = document.getElementById("senha");
+      const toggleIcon = document.getElementById("toggleSenha");
+
+      toggleIcon.addEventListener("click", () => {
+          const isPassword = senhaInput.type === "password";
+          senhaInput.type = isPassword ? "text" : "password";
+          toggleIcon.classList.toggle("fa-eye");
+          toggleIcon.classList.toggle("fa-eye-slash");
+      });
+  </script> -->
+
+</body>
+
+</html>

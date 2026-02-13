@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hub de Remuneração | Lisboa&CO TechOps</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="static/style/styles.css">
+</head>
+
+<body>
+
+    {% include "components/header.html" %}
+
+    {% include "components/sidebar.html" %}
+
+    <div class="app-shell">
+        <div class="sidebar-overlay"></div>
+
+        <div class="main-content">
+            <main class="main-container">
+                <section class="welcome-section">
+                    <h2>Hub de Remuneração</h2>
+                    <p>Acompanhe indicadores e histórico por investidor.</p>
+                </section>
+
+                <!-- FILTROS REDESENHADOS -->
+                <div class="filters">
+                    <div class="search-box">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input type="text" id="remuSearchInput" placeholder="Buscar por investidor..."
+                            onkeyup="filterInvestors()">
+                    </div>
+
+                    <div class="filter-group">
+                        <div class="filter-item">
+                            <i class="fa-solid fa-sitemap"></i>
+                            <select id="squadFilter" onchange="filterInvestors()">
+                                <option value="">Todas as Squads</option>
+                                {% for squad in squads %}
+                                <option value="{{ squad|lower }}">{{ squad }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="filter-item">
+                            <i class="fa-solid fa-user-tag"></i>
+                            <select id="roleFilter" onchange="filterInvestors()">
+                                <option value="">Todos os Cargos</option>
+                                {% for role in roles %}
+                                <option value="{{ role|lower }}">{{ role }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Grid de Investidores -->
+                <div class="projects-grid" id="investorsGrid">
+                    {% if investors %}
+                    {% for inv in investors %}
+                    <div class="project-card" data-id="{{ inv.id }}" data-name="{{ inv.name|lower }}"
+                        data-role="{{ inv.role|lower }}" data-squad="{{ inv.squad|lower }}" data-step="{{ inv.step }}"
+                        data-clients="{{ inv.clients_count }}" data-fixed="{{ inv.fixed_fee }}" data-mrr="{{ inv.mrr }}"
+                        data-roi="{{ inv.roi }}" onclick="openRemunerationModal(this)">
+                        <div class="project-header">
+                            <div class="project-icon">
+                                <i class="fa-solid fa-user-tie"></i>
+                            </div>
+                            <span class="project-status status-ativo">Step: {{ inv.step }}</span>
+                        </div>
+                        <h3 class="project-title">{{ inv.name }}</h3>
+                        <p class="project-description">
+                            <strong>Cargo:</strong> {{ inv.role }} | <strong>Squad:</strong> {{ inv.squad }}
+                        </p>
+                        <div class="project-meta">
+                            <span>
+                                <i class="fa-solid fa-users"></i>
+                                {{ inv.clients_count }} Clientes
+                            </span>
+                        </div>
+
+                        <!-- Template de dados da tabela -->
+                        <template id="tmpl-{{ inv.id }}">
+                            {% if inv.rows %}
+                            {% for row in inv.rows %}
+                            <tr>
+                                <td>{{ row.month_year }}</td>
+                                <td>R$ {{ row.mrr | round(2) }}</td>
+                                <td class="{{ 'remu-value-negative' if row.churn > 0 else '' }}">
+                                    {% if row.churn is number %}
+                                    {{ (row.churn * 100) | round(2) }}%
+                                    {% else %}
+                                    {{ row.churn }}
+                                    {% endif %}
+                                </td>
+                                <td>R$ {{ row.variable_brl | round(2) }}</td>
+                                <td style="font-weight: 600;">R$ {{ row.total_brl | round(2) }}</td>
+                            </tr>
+                            {% endfor %}
+                            {% else %}
+                            <tr>
+                                <td colspan="5" style="text-align: center; padding: 2rem;">
+                                    Nenhum registro encontrado.
+                                </td>
+                            </tr>
+                            {% endif %}
+                        </template>
+                    </div>
+                    {% endfor %}
+                    {% else %}
+                    <div class="empty-state">
+                        <i class="fa-solid fa-inbox"></i>
+                        <h3>Nenhum investidor encontrado</h3>
+                        <p>Não há dados de remuneração disponíveis no momento.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- MODAL DE DETALHES DE REMUNERAÇÃO -->
+    <div id="remunerationModal" class="modal">
+        <div class="modal-content modal-remu">
+            <div class="modal-header">
+                <h2 id="modalTitle">Detalhes de Remuneração</h2>
+                <button class="close-btn" onclick="closeRemunerationModal()">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="modal-body">
+                <!-- Card de Identificação no Modal -->
+                <section class="remu-investor-card">
+                    <div class="remu-investor-info">
+                        <span class="remu-investor-name" id="modalName">...</span>
+                        <span class="remu-divider">|</span>
+                        <span class="remu-investor-meta" id="modalRoleSquad">...</span>
+                    </div>
+                    <div class="remu-step-tag" id="modalStep">
+                        Step: ...
+                    </div>
+                </section>
+
+                <!-- Mini Cards de Métricas -->
+                <div class="remu-metrics">
+                    <div class="remu-metric-card">
+                        <span class="remu-metric-label">Clientes</span>
+                        <span class="remu-metric-value" id="modalClients">0</span>
+                    </div>
+                    <div class="remu-metric-card">
+                        <span class="remu-metric-label">Rem. Fixa</span>
+                        <span class="remu-metric-value" id="modalFixed">R$ 0,00</span>
+                    </div>
+                    <div class="remu-metric-card">
+                        <span class="remu-metric-label">MRR</span>
+                        <span class="remu-metric-value" id="modalMRR">R$ 0,00</span>
+                    </div>
+                    <div class="remu-metric-card">
+                        <span class="remu-metric-label">ROI Médio</span>
+                        <span class="remu-metric-value" id="modalROI">0%</span>
+                    </div>
+                </div>
+
+                <!-- Tabela -->
+                <div class="remu-table-card">
+                    <div class="remu-table-header">
+                        <h3>Histórico de Remuneração</h3>
+                    </div>
+                    <div class="remu-table-wrapper">
+                        <table class="remu-table">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Mês-Ano</th>
+                                    <th scope="col">MRR</th>
+                                    <th scope="col">Churn</th>
+                                    <th scope="col">R$ Variável</th>
+                                    <th scope="col">Remuneração</th>
+                                </tr>
+                            </thead>
+                            <tbody id="modalTableBody">
+                                <!-- Preenchido via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeRemunerationModal()">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="static/js/app.js"></script>
+</body>
+
+</html>

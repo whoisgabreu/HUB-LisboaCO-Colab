@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hub de Projetos | Lisboa&CO TechOps</title>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts: Poppins -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <!-- Global CSS -->
+    <link rel="stylesheet" href="static/style/styles.css">
+    <script src="static/js/app.js" defer></script>
+    <script src="static/js/home.js" defer></script>
+</head>
+
+<body>
+
+    {% include "components/header.html" %}
+
+    {% include "components/sidebar.html" %}
+
+    <div class="app-shell">
+        <!-- Sidebar Overlay -->
+        <div class="sidebar-overlay"></div>
+
+
+        <div class="main-content">
+
+
+            <!-- Conteúdo Principal -->
+            <main class="main-container">
+                <section class="welcome-section">
+                    <h2 id="welcomeTitle">Olá, ...</h2>
+                    <p>Bem-vindo ao centro operacional da Lisboa&CO.</p>
+                </section>
+
+                <!-- Seção Dados Operacionais -->
+                <h3 style="margin-bottom: 1.5rem; color: #ffffff;">Dados Operacionais</h3>
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <span class="metric-label">MRR ATUAL DA EMPRESA</span>
+                        <span class="metric-value" id="mrrValue">...</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-label">Quantidade de clientes</span>
+                        <span class="metric-value" id="clientsValue">...</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-label">Quantidade de investidores</span>
+                        <span class="metric-value" id="investorsValue">...</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-label">Quantas squad's</span>
+                        <span class="metric-value" id="squadsValue">...</span>
+                    </div>
+                </div>
+
+                <!-- Seção Atalhos -->
+                <h3 style="margin-bottom: 1.5rem; color: #ffffff;">Atalhos</h3>
+                <div class="shortcuts-grid" id="shortcutsGrid">
+                    <!-- Inseridos via JS -->
+                </div>
+            </main>
+
+        </div>
+    </div>
+</body>
+
+</html>

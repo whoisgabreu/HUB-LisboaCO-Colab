@@ -1,0 +1,131 @@
+
+<style>
+    /* ===== LOADER ===== */
+    .loader {
+        position: fixed;
+        inset: 0;
+        background: #0000006b;
+        backdrop-filter: blur(4px);
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        transition: opacity 0.4s ease;
+    }
+
+    .logo-loader {
+        width: 60px;
+        height: 60px;
+        animation: float-old 0.5s ease-out infinite;
+    }
+
+    .spinner {
+        width: 60px;
+        height: 60px;
+        border: 6px solid #dddddd00;
+        border-top-color: #D61616;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    .loader-text {
+        color: white;
+    }
+
+    @keyframes spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    /* ===== CONTEÚDO EXEMPLO ===== */
+    body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+    }
+
+    .content {
+        padding: 40px;
+    }
+</style>
+
+<!-- LOADER -->
+
+<div class="loader">
+    <!-- <img class="logo-loader" src="/static/images/V4LOGO.png" alt="Logo"> -->
+    <div class="spinner"></div>
+    <p class="loader-text">Aguarde...</p>
+</div>
+
+<script>
+
+
+    function hideLoader() {
+        const loader = document.querySelector(".loader");
+        if (loader) {
+            loader.style.opacity = "0";
+            setTimeout(() => {
+                loader.style.display = "none";
+            }, 400);
+        }
+    }
+
+    // Quando carregar normalmente
+    window.addEventListener("load", hideLoader);
+
+    // Quando voltar/avançar no navegador (bfcache)
+    window.addEventListener("pageshow", function (event) {
+        if (event.persisted) {
+            hideLoader();
+        }
+    });
+
+    // Remove o loader quando tudo terminar de carregar
+    window.addEventListener("load", () => {
+        const loader = document.querySelector(".loader");
+        loader.style.opacity = "0";
+
+        setTimeout(() => {
+            loader.style.display = "none";
+        }, 400);
+    });
+
+    const loader = document.querySelector(".loader");
+
+    // Mostra o loader
+    function showLoader() {
+        loader.style.display = "flex";
+        loader.style.opacity = "1";
+    }
+
+    // Esconde o loader quando tudo terminar de carregar
+    window.addEventListener("load", () => {
+        loader.style.opacity = "0";
+
+        setTimeout(() => {
+            loader.style.display = "none";
+        }, 400);
+    });
+
+    // Mostra o loader antes de sair da página (links, reload, redirecionamentos)
+    window.addEventListener("beforeunload", () => {
+        showLoader();
+    });
+
+    // // Intercepta cliques em links (<a>)
+    // document.addEventListener("click", (e) => {
+    //     const link = e.target.closest("a");
+
+    //     if (link && link.href) {
+    //         showLoader();
+    //     }
+    // });
+    
+    // tentando desbugar o trem
+
+
+
+</script>
+

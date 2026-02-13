@@ -1,0 +1,223 @@
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Poppins', sans-serif;
+    }
+
+    body {
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: rgb(0 0 0);
+    }
+
+    @keyframes shadowFade {
+      0% {
+        box-shadow: 15px 0px 1000px rgb(255 0 0 / 50%), inset 0px 0px 15px rgb(255 0 0 / 0%);
+        border: 1px solid rgb(255 0 0 / 20%);
+      }
+      50% {
+        box-shadow: -15px 30px 1000px rgb(255 0 0 / 70%), inset 0px 0px 15px rgb(255 0 0 / 30%);
+        border: 1px solid rgb(255 0 0 / 40%);
+      }
+      100% {
+        box-shadow: 15px 0px 1000px rgb(255 0 0 / 50%), inset 0px 0px 15px rgb(255 0 0 / 0%);
+        border: 1px solid rgb(255 0 0 / 20%);
+      }
+    }
+
+    .container {
+      display: flex;
+      width: 1300px;
+      height: 650px;
+      background-color: #17171b;
+      animation: shadowFade 3s infinite  ease-in-out;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    /* --- LADO ESQUERDO (FORMULÃƒÂRIO) --- */
+    .form-section {
+      flex: 0.5;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 2rem;
+      position: relative;
+    }
+
+    .form-section #logo1 {
+      margin-bottom: -3rem;
+      height: 200px;
+      width: 200px;
+      z-index: 2;
+    }
+
+    .logo-title {
+      user-select: none;
+      font-size: 35px;
+      color: white;
+      position: absolute;
+      top: 45%;
+    }
+
+    .form-section h2 {
+      color: #ffffff;
+      margin-bottom: 5rem;
+    }
+
+    #unidade {
+      margin-top: 16rem;
+      font-size: 50px;
+    }
+
+    .login-field,
+    .password-field {
+      position: relative;
+      display: flex;
+      align-items: center;
+      width: 300px;
+      margin-bottom: 1rem;
+    }
+
+    .login-field input,
+    .password-field input {
+      width: 100%;
+      height: 38px;
+      color: #000000;
+      border-radius: 5px;
+      background: rgb(255, 255, 255);
+      border: 1px solid rgba(255, 255, 255, 0.64);
+      box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.25);
+      padding-left: 35px;
+      transition: 0.1s ease;
+    }
+
+    .login-field i,
+    .password-field i.fa-lock {
+      position: absolute;
+      left: 12px;
+      color: #000000;
+      pointer-events: none;
+    }
+
+    .password-field i.toggle-eye {
+      position: absolute;
+      right: 12px;
+      color: #000000;
+      cursor: pointer;
+    }
+
+    input:hover {
+      outline: 2px solid rgb(255 0 0 / 50%);
+    }
+
+    input:focus {
+      outline: 2px solid rgb(255 0 0 / 80%);
+    }
+
+    button {
+      font-weight: bold;
+      width: 300px;
+      height: 39px;
+      color: #ffffff;
+      border-radius: 8px;
+      background: rgb(214 22 22);
+      border: 1px solid rgb(0 0 0 / 20%);
+      cursor: pointer;
+      transition: 0.1s cubic-bezier(0.44, 0.27, 0.78, 1.08);
+      margin-top: 1rem;
+    }
+
+    button:hover {
+      border: 1px solid rgb(0, 0, 0);
+      box-shadow: inset 0 0 10px rgb(0 0 0);
+      background-color: #911414;
+    }
+
+    /* --- LADO DIREITO (INFORMAÃƒâ€¡Ãƒâ€¢ES / IMAGEM) --- */
+
+    .info-content {
+      position: relative;
+      text-align: center;
+      z-index: 1;
+      max-width: 300px;
+    }
+
+    .info-content h3 {
+      font-size: 22px;
+      color: #ffffff;
+      margin-bottom: 1rem;
+    }
+
+    .info-content p {
+      color: #dcdcdc;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    @media (max-width: 900px) {
+      .container {
+        flex-direction: column;
+        width: 100%;
+        height: auto;
+      }
+
+      .info-section {
+        display: none;
+      }
+
+      input {
+        font-size: 16px;
+        height: 38px;
+        line-height: 38px;
+      }
+
+
+    }
+
+    footer {
+      background-color: #17171b;;
+      color: #ffffff8a;
+      text-align: center;
+      padding: 10px; 
+      position: fixed; /* fixa no rodapé */
+      bottom: 0;
+      width: 100%;
+      font-size: 12px
+    }
+
+  .error-message {
+    position: absolute;
+    bottom:0;
+    width: 300px;
+    background-color: rgba(255, 68, 68, 0.1);
+    border: 1px solid rgba(255, 68, 68, 0.3);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    text-align: center;
+    gap: 0.75rem;
+    color: #ff4444;
+    animation: shake 0.3s ease-in-out;
+  }
+
+.error-message i {
+    font-size: 1.2rem;
+}
+
+.error-message p {
+    margin: 0;
+    font-size: 0.9rem;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+}
