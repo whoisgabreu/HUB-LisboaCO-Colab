@@ -78,7 +78,7 @@ def format_date(date_str):
 
 @app.route("/hub-projetos", methods = ["GET"])
 def hub_projetos(): # Página transferida do primeiro Omni
-
+    print("a")
     def agrupar_por_cliente(projetos_lista):
         """Agrupa projetos por nome do cliente, ordenados por id"""
 
