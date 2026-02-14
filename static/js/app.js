@@ -90,14 +90,14 @@ function initUserDropdown() {
     });
 
     // Logout handling
-    const logoutBtn = document.querySelector('.logout-item');
-    if (logoutBtn) {
-        logoutBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            alert('Saindo do sistema...');
-            window.location.href = '/login';
-        });
-    }
+    // const logoutBtn = document.querySelector('.logout-item');
+    // if (logoutBtn) {
+    //     logoutBtn.addEventListener('click', (e) => {
+    //         e.preventDefault();
+    //         alert('Saindo do sistema...');
+    //         window.location.href = '/login';
+    //     });
+    // }
 }
 
 // Highlight Active Sidebar Item

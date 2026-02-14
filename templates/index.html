@@ -4,18 +4,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hub de Projetos | Lisboa&CO TechOps</title>
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Google Fonts: Poppins -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
-        rel="stylesheet">
+    rel="stylesheet">
     <!-- Global CSS -->
     <link rel="stylesheet" href="static/style/styles.css">
     <script src="static/js/app.js" defer></script>
     <script src="static/js/home.js" defer></script>
+    {% include "components/icon_title.html" %}
 </head>
 
 <body>
@@ -31,11 +31,12 @@
 
         <div class="main-content">
 
-
+            
             <!-- Conteúdo Principal -->
             <main class="main-container">
                 <section class="welcome-section">
-                    <h2 id="welcomeTitle">Olá, ...</h2>
+                    <h2 id="welcomeTitle">Olá, ... </h2>
+                    <h2>{{session.token}}</h2>
                     <p>Bem-vindo ao centro operacional da Lisboa&CO.</p>
                 </section>
 
@@ -69,6 +70,16 @@
 
         </div>
     </div>
+
+    <script>
+    window.APP_CONFIG = {
+        userEmail: "{{ session.email }}",
+        userAccessLevel: "{{ session.nivel_acesso }}",
+        userToken: "{{session.token}}"
+    };
+
+    </script>
+
 </body>
 
 </html>

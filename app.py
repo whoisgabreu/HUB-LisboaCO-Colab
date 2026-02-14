@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify, send_from_directory
+from werkzeug.security import generate_password_hash, check_password_hash #hash de senha
 import requests as req
 import os
 from collections import defaultdict
@@ -8,17 +9,21 @@ app.secret_key = os.urandom(10).hex()
 
 @app.route("/login", methods = ["GET","POST"])
 def login():
+    session.clear()
     if request.method == "POST":
 
         usuario = request.form["email"]
         senha = request.form["senha"]
 
         if usuario and senha:
-            response = req.get("https://n8n.v4lisboatech.com.br/webhook/check_login", headers={"x-api-key": "4815162342"}, params = {"email": usuario})
+            token = os.urandom(10).hex()
+
+            response = req.get("https://n8n.v4lisboatech.com.br/webhook/check_login", params = {"email": usuario, "token": token})
+
 
             if response.status_code == 401:
                 return render_template("login.html", error = "E-mail e/ou Senha incorreto(s).")
-            
+
             print(usuario, senha, response.json())
 
             
@@ -34,19 +39,26 @@ def login():
             if db_ativo is not True:
                 return render_template("login.html", error = "Login inativo. Fale com a Gerência.")
 
-            if senha != db_senha:
+            if check_password_hash(db_senha, senha) == False:
                 return render_template("login.html", error = "E-mail e/ou Senha incorreto(s).")
+
 
             session["nome"] = db_nome
             session["email"] = db_email
+            session["token"] = token
             session["funcao"] = db_funcao
             session["senioridade"] = db_senioridade
             session["squad"] = db_squad
             session["nivel_acesso"] = db_acesso
+
             return redirect(url_for("home"))
 
     return render_template("login.html")
 
+@app.route("/logout", methods=["GET", "POST"])
+def logout():
+    session.clear()
+    return redirect(url_for("login"))
 
 @app.route("/", methods = ["GET"])
 def home():
@@ -88,7 +100,7 @@ def hub_projetos(): # Página transferida do primeiro Omni
     def buscar_projetos(url, email):
         """Busca projetos com tratamento de erro"""
         try:
-            response = req.get(url, headers={"x-api-key": "4815162342"}, params={"email": email}, timeout=10)
+            response = req.get(url, headers={"x-api-key": session["token"]}, params={"email": email}, timeout=10)
             
             # Verifica se a resposta tem conteúdo
             if response.status_code == 200 and response.text.strip():
@@ -111,7 +123,7 @@ def hub_projetos(): # Página transferida do primeiro Omni
     # Buscar projetos com tratamento de erro
     
 
-    resp = req.get(f"https://n8n.v4lisboatech.com.br/webhook/squads?email={session["email"]}", headers= {"x-api-key": "4815162342"})
+    resp = req.get(f"https://n8n.v4lisboatech.com.br/webhook/squads?email={session["email"]}", headers= {"x-api-key": session["token"]})
     squads = [x["projetos"]["nome"] for x in resp.json()]
 
     ativos_data = buscar_projetos(
@@ -141,9 +153,9 @@ def hub_projetos(): # Página transferida do primeiro Omni
 @app.route("/hub-remuneracao", methods = ["GET"])
 def hub_remuneracao():
 
-    url = "https://n8n.v4lisboatech.com.br/webhook/disgraça"
+    url = "https://n8n.v4lisboatech.com.br/webhook/remuneracao"
 
-    response = req.get(url, headers={"x-api-key": "4815162342"}, timeout=10)
+    response = req.get(url, headers={"x-api-key": session["token"]}, timeout=10)
 
 
 
@@ -193,11 +205,14 @@ def hub_remuneracao():
             ]
         }
     ]
+
+    mock_investors = response.json()
+
     squads = sorted(list(set(inv["squad"] for inv in mock_investors)))
     roles = sorted(list(set(inv["role"] for inv in mock_investors)))
     
     return render_template("hub-remuneracao.html", 
-                         investors=response.json(), 
+                         investors=mock_investors, 
                          squads=squads, 
                          roles=roles)
 

@@ -4,16 +4,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="icon" href="/static/images/v4-logo.png" type="image/png">
-  <title>Login</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <link rel="stylesheet" href="{{ url_for('static', filename='style/login.css') }}">
-  <script src="{{ url_for('static', filename='js/login.min.js') }}" defer></script>
-  {% include "components/loader.html" %}
+  <script src="{{ url_for('static', filename='js/login.js') }}" defer></script>
+  {% include "components/icon_title.html" %}
 </head>
 
 <body>
-
+  
+  {% include "components/loader.html" %}
 
   <div class="container">
     <!-- LADO ESQUERDO -->
@@ -60,6 +59,8 @@
       Transformando ideias em inovação.</p>
   </footer>
 
+
+  
   <!-- <script>
       const senhaInput = document.getElementById("senha");
       const toggleIcon = document.getElementById("toggleSenha");

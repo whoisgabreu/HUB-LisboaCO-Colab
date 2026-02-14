@@ -516,7 +516,7 @@ async function updateProject(event) {
 
     data.fee = parseCurrencyToCents(data.fee);
     data.usuario = window.APP_CONFIG.userEmail;
-    
+    data.userToken = window.APP_CONFIG.userToken
     // Coletar notas do formulário
     data.notas = collectNotesFromForm();
     
@@ -525,7 +525,7 @@ async function updateProject(event) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'x-api-key': '4815162342'
+                'x-api-key': data.userToken
             },
             body: JSON.stringify(data)
         });
@@ -584,6 +584,7 @@ function closePasswordModal() {
 async function updatePassword(event) {
     event.preventDefault();
 
+
     const novaSenha = document.getElementById('nova_senha').value;
     const confirmarSenha = document.getElementById('confirmar_senha').value;
 
@@ -602,7 +603,7 @@ async function updatePassword(event) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'x-api-key': '4815162342'
+                'x-api-key': window.APP_CONFIG.userToken
             },
             body: JSON.stringify({
                 email: window.APP_CONFIG.userEmail,
