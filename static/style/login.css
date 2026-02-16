@@ -54,6 +54,7 @@
       height: 200px;
       width: 200px;
       z-index: 2;
+      user-select: none;
     }
 
     .logo-title {

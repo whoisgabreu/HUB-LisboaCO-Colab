@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify, send_from_directory
+from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash #hash de senha
 import requests as req
 import os
@@ -6,6 +7,15 @@ from collections import defaultdict
 
 app = Flask(__name__)
 app.secret_key = os.urandom(10).hex() 
+
+
+def check_session(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        if "nome" not in session:
+            return redirect(url_for("login"))
+        return func(*args, **kwargs)
+    return wrapper
 
 @app.route("/login", methods = ["GET","POST"])
 def login():
@@ -61,11 +71,8 @@ def logout():
     return redirect(url_for("login"))
 
 @app.route("/", methods = ["GET"])
+@check_session
 def home():
-    if "nome" not in session:
-        return redirect(url_for("login"))
-
-
     return render_template("index.html")
 
 @app.template_filter('format_date')
@@ -77,6 +84,7 @@ def format_date(date_str):
     return f'{day}/{month}/{year}'
 
 @app.route("/hub-projetos", methods = ["GET"])
+@check_session
 def hub_projetos(): # Página transferida do primeiro Omni
     print("a")
     def agrupar_por_cliente(projetos_lista):
@@ -117,9 +125,6 @@ def hub_projetos(): # Página transferida do primeiro Omni
             print(f"Erro na requisição para {url}: {e}")
             return []
 
-    if "nome" not in session:
-        return redirect(url_for("login"))
-
     # Buscar projetos com tratamento de erro
     
 
@@ -151,6 +156,7 @@ def hub_projetos(): # Página transferida do primeiro Omni
                          squads = squads)
 
 @app.route("/hub-remuneracao", methods = ["GET"])
+@check_session
 def hub_remuneracao():
 
     url = "https://n8n.v4lisboatech.com.br/webhook/remuneracao"
@@ -217,22 +223,27 @@ def hub_remuneracao():
                          roles=roles)
 
 @app.route("/hub-cs-cx", methods = ["GET"])
+@check_session
 def hub_cs_cx():
     return render_template("hub-cs-cx.html")
 
 @app.route("/painel-atribuicao", methods = ["GET"])
+@check_session
 def painel_atribuicao():
     return render_template("painel-atribuicao.html")
 
 @app.route("/painel-ranking", methods = ["GET"])
+@check_session
 def painel_ranking():
     return render_template("painel-ranking.html")
 
 @app.route("/vendas", methods = ["GET"])
+@check_session
 def vendas():
     return render_template("vendas.html")
 
 @app.route("/cockpit", methods = ["GET"])
+@check_session
 def cockpit():
     return render_template("cockpit.html")
 
