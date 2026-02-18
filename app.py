@@ -163,8 +163,6 @@ def hub_remuneracao():
 
     response = req.get(url, headers={"x-api-key": session["token"]}, timeout=10)
 
-
-
     mock_investors = [
         {
             "id": "inv_1",
@@ -212,15 +210,20 @@ def hub_remuneracao():
         }
     ]
 
-    mock_investors = response.json()
-
-    squads = sorted(list(set(inv["squad"] for inv in mock_investors)))
-    roles = sorted(list(set(inv["role"] for inv in mock_investors)))
-    
+    try:
+        mock_investors = response.json()
+        squads = sorted(list(set(inv["squad"] for inv in mock_investors)))
+        roles = sorted(list(set(inv["role"] for inv in mock_investors)))
+        
+    except:
+        mock_investors = []
+        squads = []
+        roles = []
     return render_template("hub-remuneracao.html", 
-                         investors=mock_investors, 
-                         squads=squads, 
-                         roles=roles)
+                        investors=mock_investors, 
+                        squads=squads, 
+                        roles=roles)
+        # return render_template("hub-remuneracao.html")
 
 @app.route("/hub-cs-cx", methods = ["GET"])
 @check_session

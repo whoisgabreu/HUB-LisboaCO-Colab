@@ -64,15 +64,37 @@
                 <div class="projects-grid" id="investorsGrid">
                     {% if investors %}
                     {% for inv in investors %}
-                    <div class="project-card" data-id="{{ inv.id }}" data-name="{{ inv.name|lower }}"
-                        data-role="{{ inv.role|lower }}" data-squad="{{ inv.squad|lower }}" data-step="{{ inv.step }}"
+                    <div class="project-card" data-id="{{ inv.id }}" data-name="{{ inv.name }}"
+                        data-role="{{ inv.role }}" data-squad="{{ inv.squad }}" data-step="{{ inv.step }}"
+                        data-yellow-flag="{{ inv.rows[0].yellow_streak if inv.rows|length > 0 else '' }}" data-green-flag="{{ inv.rows[0].green_streak if inv.rows|length > 0 else '' }}"
                         data-clients="{{ inv.clients_count }}" data-fixed="{{ inv.fixed_fee }}" data-mrr="{{ inv.mrr }}"
                         data-roi="{{ inv.roi }}" onclick="openRemunerationModal(this)">
                         <div class="project-header">
                             <div class="project-icon">
                                 <i class="fa-solid fa-user-tie"></i>
                             </div>
-                            <span class="project-status status-ativo">Step: {{ inv.step }}</span>
+                            {% if inv.rows | length > 0 %}
+
+                            <span class='project-status {{
+                                "yellow-flag" if inv.rows[-1].yellow_streak == 1
+                                else "red-flag" if inv.rows[-1].yellow_streak == 2
+                                else "black-flag" if inv.rows[-1].yellow_streak >= 3
+                                else "green-pdc-flag" if inv.rows[-1].green_streak >= 3
+                                else "green-flag"
+                            }}'>
+
+                            {{
+                                "Yellow" if inv.rows[-1].yellow_streak == 1
+                                else "Red" if inv.rows[-1].yellow_streak == 2
+                                else "Black" if inv.rows[-1].yellow_streak >= 3
+                                else "Green PDC" if inv.rows[-1].green_streak >= 3
+                                else "Green"
+                            }}
+                            </span>
+
+                            {% endif %}
+
+                            
                         </div>
                         <h3 class="project-title">{{ inv.name }}</h3>
                         <p class="project-description">
@@ -199,6 +221,7 @@
     </div>
 
     <script src="static/js/app.js"></script>
+    <script src="static/js/remuneracao.js"></script>
 </body>
 
 </html>
