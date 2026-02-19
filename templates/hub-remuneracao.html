@@ -112,8 +112,25 @@
                             {% if inv.rows %}
                             {% for row in inv.rows %}
                             <tr>
+                                <td class='{{
+                                "yellow-flag-table" if row.yellow_streak == 1
+                                else "red-flag-table" if row.yellow_streak == 2
+                                else "black-flag-table" if row.yellow_streak >= 3
+                                else "green-pdc-flag-table" if row.green_streak >= 3
+                                else "green-flag-table"
+                            }}'>
+
+                            {{
+                                "Yellow" if row.yellow_streak == 1
+                                else "Red" if row.yellow_streak == 2
+                                else "Black" if row.yellow_streak >= 3
+                                else "Green PDC" if row.green_streak >= 3
+                                else "Green"
+                            }}
+                            </td>
                                 <td>{{ row.month_year }}</td>
                                 <td>R$ {{ row.mrr | round(2) }}</td>
+                                <td>RS {{ row.churn_rs | round(2) }}</td>
                                 <td class="{{ 'remu-value-negative' if row.churn > 0 else '' }}">
                                     {% if row.churn is number %}
                                     {{ (row.churn * 100) | round(2) }}%
@@ -165,9 +182,9 @@
                         <span class="remu-divider">|</span>
                         <span class="remu-investor-meta" id="modalRoleSquad">...</span>
                     </div>
-                    <div class="remu-step-tag" id="modalStep">
+                    <!-- <div class="remu-step-tag" id="modalStep">
                         Step: ...
-                    </div>
+                    </div> -->
                 </section>
 
                 <!-- Mini Cards de Métricas -->
@@ -199,11 +216,13 @@
                         <table class="remu-table">
                             <thead>
                                 <tr>
+                                    <th scope="col">Flag</th>
                                     <th scope="col">Mês-Ano</th>
                                     <th scope="col">MRR</th>
-                                    <th scope="col">Churn</th>
+                                    <th scope="col">Churn R$</th>
+                                    <th scope="col">Churn %</th>
                                     <th scope="col">R$ Variável</th>
-                                    <th scope="col">Remuneração</th>
+                                    <th scope="col">Remuneração Total</th>
                                 </tr>
                             </thead>
                             <tbody id="modalTableBody">

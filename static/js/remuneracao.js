@@ -28,7 +28,7 @@ window.openRemunerationModal = function (card) {
     const name = card.getAttribute('data-name');
     const role = card.getAttribute('data-role');
     const squad = card.getAttribute('data-squad');
-    const step = card.getAttribute('data-step');
+    const step = card.getAttribute('data-yellow-flag');
     const clients = card.getAttribute('data-clients');
     const fixed = parseFloat(card.getAttribute('data-fixed') || 0);
     const mrr = parseFloat(card.getAttribute('data-mrr') || 0);
@@ -37,7 +37,7 @@ window.openRemunerationModal = function (card) {
     // Fill header/Identification
     document.getElementById('modalName').textContent = name;
     document.getElementById('modalRoleSquad').textContent = `${role} | ${squad}`;
-    document.getElementById('modalStep').textContent = `Step: ${step}`;
+    // document.getElementById('modalStep').textContent = `Step: ${step}`;
 
     // Fill Metrics
     document.getElementById('modalClients').textContent = clients;
