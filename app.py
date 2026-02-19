@@ -17,6 +17,8 @@ def check_session(func):
         return func(*args, **kwargs)
     return wrapper
 
+print("TESTE G2")
+
 @app.route("/login", methods = ["GET","POST"])
 def login():
     session.clear()
