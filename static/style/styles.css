@@ -342,6 +342,26 @@ body::-webkit-scrollbar-thumb:hover {
 
 /* FIM FLAGS CHURN */
 
+.tooltip-remuneracao {
+    height: 18px;
+    font-size: 13px;
+    border: solid 1px #ffffff70;
+    margin-left: 20px;
+    padding-left: 8px;
+    padding-right: 8px;
+    border-radius: 50%;
+    color: #ffffff66;
+    cursor: pointer;
+    transition: 0.3s
+}
+
+.tooltip-remuneracao:hover{
+    border: solid 1px #ff0000;
+    color: #ff0000;
+    filter: drop-shadow(0 0 5px red)
+    
+}
+
 /* FLAGS TABLE */
 
 @keyframes green-pdc {
