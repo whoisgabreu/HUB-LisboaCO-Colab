@@ -44,6 +44,7 @@ window.openRemunerationModal = function (card) {
     document.getElementById('modalFixed').textContent = Utils.formatBRL(fixed);
     document.getElementById('modalMRR').textContent = Utils.formatBRL(mrr);
 
+
     // Formatação ROI: multiplicar por 100 se for float 0-1
     if (!isNaN(roi)) {
         document.getElementById('modalROI').textContent = `${(parseFloat(roi) * 100).toFixed(2)}%`;

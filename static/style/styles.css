@@ -353,33 +353,33 @@ body::-webkit-scrollbar-thumb:hover {
     }    
 }
 
-.green-pdc-flag-table {
-    background-color: rgba(0, 255, 0, 0.1);
+.green-pdc-flag-table span {
     color: #00ff00;
     animation: green-pdc 2s ease-in-out infinite;
 }
 
-.green-flag-table {
-    background-color: rgba(0, 255, 0, 0.1);
+.green-flag-table span {
     color: #00ff00;
 }
 
-.yellow-flag-table {
-    background-color: #fffb0015;
+.yellow-flag-table span {
     color: #fffb00;
 }
 
-.red-flag-table {
-    background-color: rgba(255, 0, 0, 0.1);
+.red-flag-table span {
     color: rgba(255, 0, 0, 1);
 }
 
-.black-flag-table {
-    background-color: rgba(0,0,0, 1);
+.black-flag-table span {
     color: rgba(255, 255, 255, 0.486);
 }
 
 /* FIM FLAGS TABLE */
+
+th, td {
+    text-align: center;
+    border-right: solid 1px #ffffff29;
+}
 
 .status-ativo {
     background-color: rgba(0, 255, 0, 0.1);
@@ -1818,7 +1818,7 @@ option {
 }
 
 .modal-remu {
-    max-width: 1400px !important;
+    max-width: 1700px !important;
     width: 95% !important;
     max-height: 92vh !important;
     margin: 40px auto !important;

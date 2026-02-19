@@ -112,25 +112,39 @@
                             {% if inv.rows %}
                             {% for row in inv.rows %}
                             <tr>
+                                <!-- FLAG -->
                                 <td class='{{
-                                "yellow-flag-table" if row.yellow_streak == 1
-                                else "red-flag-table" if row.yellow_streak == 2
-                                else "black-flag-table" if row.yellow_streak >= 3
-                                else "green-pdc-flag-table" if row.green_streak >= 3
-                                else "green-flag-table"
-                            }}'>
-
-                            {{
-                                "Yellow" if row.yellow_streak == 1
-                                else "Red" if row.yellow_streak == 2
-                                else "Black" if row.yellow_streak >= 3
-                                else "Green PDC" if row.green_streak >= 3
-                                else "Green"
-                            }}
-                            </td>
+                                    "yellow-flag-table" if row.yellow_streak == 1
+                                    else "red-flag-table" if row.yellow_streak == 2
+                                    else "black-flag-table" if row.yellow_streak >= 3
+                                    else "green-pdc-flag-table" if row.green_streak >= 3
+                                    else "green-flag-table"
+                                }}'>
+                                <span>
+                                    {{
+                                        "Yellow" if row.yellow_streak == 1
+                                        else "Red" if row.yellow_streak == 2
+                                        else "Black" if row.yellow_streak >= 3
+                                        else "Green PDC" if row.green_streak >= 3
+                                        else "Green"
+                                    }}
+                                </span>
+                                </td>
+                                <!-- MÊS/ANO -->
                                 <td>{{ row.month_year }}</td>
-                                <td>R$ {{ row.mrr | round(2) }}</td>
-                                <td>RS {{ row.churn_rs | round(2) }}</td>
+                                <!-- CARGO -->
+                                <td>{{ inv.role }}</td>
+                                <!-- SENIORIDADE -->
+                                <td>{{ inv.senioridade }}</td>
+                                <!-- Nivel -->
+                                <td>{{ inv.nivel }}</td>
+                                <!-- REMUNERAÇÃO -->
+                                <td><span class="monetario">R$ {{ inv.fixed_fee | round(2) }}</span></td>
+                                <!-- MRR -->
+                                <td><span class="monetario">R$ {{ row.mrr | round(2) }}</span></td>
+                                <!-- CHURN R$ -->
+                                <td><span class="monetario">RS {{ row.churn_rs | round(2) }}</span></td>
+                                <!-- CHURN % -->
                                 <td class="{{ 'remu-value-negative' if row.churn > 0 else '' }}">
                                     {% if row.churn is number %}
                                     {{ (row.churn * 100) | round(2) }}%
@@ -138,8 +152,10 @@
                                     {{ row.churn }}
                                     {% endif %}
                                 </td>
-                                <td>R$ {{ row.variable_brl | round(2) }}</td>
-                                <td style="font-weight: 600;">R$ {{ row.total_brl | round(2) }}</td>
+                                <!-- VARIAVEL R$ -->
+                                <td><span class="monetario">R$ {{ row.variable_brl | round(2) }}</span></td>
+                                <!-- REMUNERAÇÃO TOTAL -->
+                                <td style="font-weight: 600;">R$ {{ row.total_brl | round(2) }}</span></td>
                             </tr>
                             {% endfor %}
                             {% else %}
@@ -218,6 +234,10 @@
                                 <tr>
                                     <th scope="col">Flag</th>
                                     <th scope="col">Mês-Ano</th>
+                                    <th scope="col">Cargo</th>
+                                    <th scope="col">Senioridade</th>
+                                    <th scope="col">Nivel</th>
+                                    <th scope="col">Remuneração Cargo</th>
                                     <th scope="col">MRR</th>
                                     <th scope="col">Churn R$</th>
                                     <th scope="col">Churn %</th>
