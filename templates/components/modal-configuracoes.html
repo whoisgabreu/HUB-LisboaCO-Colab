@@ -1,0 +1,143 @@
+<!-- Modal de Configurações — Perfil, Segurança e Preferências -->
+<div id="modalConfiguracoes" class="modal-configuracoes-overlay">
+    <div class="modal-configuracoes">
+        <!-- Header -->
+        <div class="modal-configuracoes-header">
+            <h2><i class="fas fa-cog"></i> Configurações</h2>
+            <button class="modal-configuracoes-fechar" onclick="fecharModalConfiguracoes()" title="Fechar">
+                <i class="fas fa-xmark"></i>
+            </button>
+        </div>
+
+        <!-- Body com Sidebar Interna -->
+        <div class="modal-config-container">
+            <aside class="modal-config-sidebar">
+                <button class="config-tab-btn active" onclick="switchConfigTab(event, 'perfil')">
+                    <i class="fas fa-user"></i> Perfil
+                </button>
+                <button class="config-tab-btn" onclick="switchConfigTab(event, 'seguranca')">
+                    <i class="fas fa-shield-alt"></i> Segurança
+                </button>
+                <button class="config-tab-btn" onclick="switchConfigTab(event, 'aparencia')">
+                    <i class="fas fa-palette"></i> Aparência
+                </button>
+            </aside>
+
+            <main class="modal-config-content">
+                <!-- Aba: Perfil -->
+                <section id="config-perfil" class="config-section active">
+                    <div class="profile-upload-container">
+                        <div class="profile-avatar-wrapper">
+                            <img id="previewAvatar" src="/static/images/default-avatar.png" alt="Avatar">
+                            <label for="uploadFoto" class="btn-change-photo" title="Alterar foto">
+                                <i class="fas fa-camera"></i>
+                            </label>
+                            <input type="file" id="uploadFoto" accept="image/png, image/jpeg, image/webp" hidden>
+                        </div>
+                        <div class="profile-info-text">
+                            <h3>Minha Foto</h3>
+                            <p>PNG, JPG ou WEBP. Máx. 2MB</p>
+                            <div class="btn-group">
+                                <button class="btn-primary" style="padding: 0.5rem 1rem; font-size: 0.8rem;" onclick="salvarFotoPerfil()">Salvar foto</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Nome</label>
+                            <input type="text" value="{{ session.nome or 'Usuário' }}" disabled>
+                            <span class="field-help">O nome não pode ser alterado.</span>
+                        </div>
+                        <div class="form-group">
+                            <label>E-mail</label>
+                            <input type="email" value="{{ session.email or 'usuario@exemplo.com' }}" disabled>
+                            <span class="field-help">O email não pode ser alterado.</span>
+                        </div>
+                        <div class="form-group">
+                            <label>Cargo</label>
+                            <input type="text" value="{{ session.funcao or 'Colaborador' }}" disabled>
+                        </div>
+                        <div class="form-group">
+                            <label>Squad</label>
+                            <input type="text" value="{{ session.squad or 'Squad' }}" disabled>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Aba: Segurança -->
+                <section id="config-seguranca" class="config-section">
+                    <div class="security-card">
+                        <div class="security-info">
+                            <h4>Trocar Senha</h4>
+                            <p>Altere sua senha de acesso ao sistema.</p>
+                        </div>
+                        <button class="btn-secondary" onclick="abrirModalTrocarSenha()">Alterar</button>
+                    </div>
+
+                    <div class="session-info">
+                        <h4>Informações de Sessão</h4>
+                        <div class="session-data">
+                            <div class="session-item">
+                                <span>Dispositivo atual:</span>
+                                <strong id="currentDevice">Carregando...</strong>
+                            </div>
+                            <div class="session-item">
+                                <span>Último acesso:</span>
+                                <strong id="lastAccess">Carregando...</strong>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+                
+                <!-- Aba: Aparência -->
+                <section id="config-aparencia" class="config-section">
+                    <div class="config-group">
+                        <h4 class="config-title-claro">Interface</h4>
+                        <div class="config-item">
+                            <div class="config-item-info">
+                                <span class="config-item-label">Modo Claro</span>
+                                <span class="config-item-descricao">Ativar interface clara para melhor legibilidade.</span>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="toggleTemaClaro">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                </section>
+            </main>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Interno para Troca de Senha (Visual) -->
+<div id="modalTrocarSenha" class="inner-modal-overlay">
+    <div class="inner-modal">
+        <div class="modal-header">
+            <h3 style="margin: 0;">Trocar Senha</h3>
+            <button class="close-btn" onclick="fecharModalTrocarSenha()">&times;</button>
+        </div>
+        <div class="modal-body" style="padding: 1.5rem;">
+            <div class="form-group" style="margin-bottom: 1rem;">
+                <label>Senha Atual</label>
+                <input type="password" id="senhaAtual">
+            </div>
+            <div class="form-group" style="margin-bottom: 1rem;">
+                <label>Nova Senha</label>
+                <input type="password" id="novaSenha">
+                <span class="field-help">Mínimo 8 caracteres.</span>
+            </div>
+            <div class="form-group">
+                <label>Confirmar Nova Senha</label>
+                <input type="password" id="confirmarNovaSenha">
+            </div>
+        </div>
+        <div class="modal-footer" style="padding: 1rem; border-top: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: flex-end; gap: 10px;">
+            <button class="btn-secondary" onclick="fecharModalTrocarSenha()">Cancelar</button>
+            <button class="btn-primary" onclick="confirmarTrocaSenha()">Confirmar</button>
+        </div>
+    </div>
+</div>
+
+<script src="/static/js/configuracoes.js"></script>

@@ -1,0 +1,1276 @@
+/**
+ * tema-claro.css
+ * Sobrescritas de cor para o modo claro (light mode).
+ * Ativado quando body possui a classe 'tema-claro'.
+ * Este arquivo NÃO altera nenhum CSS existente — apenas adiciona regras condicionais.
+ *
+ * PALETA SUAVE (sem alto contraste):
+ * - Fundo principal: #F4F5F8
+ * - Fundo de cards: #FFFFFF
+ * - Texto primário: #1F2937
+ * - Texto secundário: #4B5563
+ * - Bordas: #E5E7EB
+ * - Hover: #EEF2FF
+ * - Vermelho marca: #D61616
+ */
+
+/* =============================================
+   1. BASE — Body, App Shell, Scrollbar
+   ============================================= */
+
+body.tema-claro {
+    background-color: #F4F5F8;
+    color: #1F2937;
+}
+
+body.tema-claro::-webkit-scrollbar-track {
+    background: #E5E7EB;
+}
+
+body.tema-claro::-webkit-scrollbar-thumb {
+    background: #D61616;
+}
+
+body.tema-claro::-webkit-scrollbar-thumb:hover {
+    background: #B91414;
+}
+
+body.tema-claro .app-shell {
+    background-color: #F4F5F8;
+}
+
+/* Correção para app-container (usado em hub-projetos e placeholders) */
+body.tema-claro .app-container {
+    background-color: #F4F5F8;
+}
+
+/* =============================================
+   2. HEADER
+   ============================================= */
+
+body.tema-claro .header {
+    background-color: #FFFFFF;
+    border-bottom: 1px solid #E5E7EB;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+body.tema-claro .header-title h1 {
+    color: #1F2937;
+}
+
+body.tema-claro .header-subtitle {
+    color: #4B5563;
+}
+
+body.tema-claro .user-info {
+    background-color: rgba(214, 22, 22, 0.04);
+    border: 1px solid #E5E7EB;
+}
+
+body.tema-claro .user-name {
+    color: #1F2937;
+}
+
+body.tema-claro .user-role {
+    color: #4B5563;
+}
+
+body.tema-claro .user-menu-btn {
+    color: #4B5563;
+}
+
+body.tema-claro .user-menu-btn:hover {
+    background-color: #EEF2FF;
+    color: #D61616;
+}
+
+/* Logo vermelha no modo claro via filtro CSS */
+body.tema-claro .logo {
+    filter: brightness(0) saturate(100%) invert(15%) sepia(95%) saturate(6000%) hue-rotate(355deg) brightness(95%) contrast(100%);
+}
+
+/* =============================================
+   3. DROPDOWN DO USUÁRIO
+   ============================================= */
+
+body.tema-claro .user-dropdown {
+    background-color: #FFFFFF;
+    border: 1px solid #E5E7EB;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+}
+
+body.tema-claro .dropdown-item {
+    color: #1F2937;
+}
+
+body.tema-claro .dropdown-item:hover {
+    background-color: #EEF2FF;
+    color: #D61616;
+}
+
+body.tema-claro .dropdown-divider {
+    background-color: #E5E7EB;
+}
+
+body.tema-claro .logout-item {
+    color: #DC2626;
+}
+
+body.tema-claro .logout-item:hover {
+    background-color: rgba(220, 38, 38, 0.06);
+    color: #B91C1C;
+}
+
+/* =============================================
+   4. SIDEBAR
+   ============================================= */
+
+body.tema-claro .sidebar {
+    background-color: #FFFFFF;
+    border-right: 1px solid #E5E7EB;
+}
+
+body.tema-claro .sidebar-top {
+    border-bottom: 1px solid #E5E7EB;
+}
+
+body.tema-claro .sidebar-collapse-btn {
+    color: #4B5563;
+}
+
+body.tema-claro .sidebar-collapse-btn:hover {
+    color: #D61616;
+    background-color: #EEF2FF;
+}
+
+body.tema-claro .nav-item {
+    color: #4B5563;
+}
+
+body.tema-claro .nav-item:hover {
+    color: #1F2937;
+    background-color: #EEF2FF;
+}
+
+body.tema-claro .nav-item.active {
+    color: #D61616;
+    background-color: rgba(214, 22, 22, 0.06);
+    border-left-color: #D61616;
+}
+
+body.tema-claro .sidebar-footer {
+    border-top: 1px solid #E5E7EB;
+}
+
+body.tema-claro .sidebar-user-name {
+    color: #1F2937;
+}
+
+/* =============================================
+   5. CONTEÚDO PRINCIPAL
+   ============================================= */
+
+body.tema-claro .main-content {
+    background-color: #F4F5F8;
+}
+
+body.tema-claro .main-container {
+    background-color: #F4F5F8;
+}
+
+body.tema-claro .welcome-section h2 {
+    color: #1F2937;
+}
+
+body.tema-claro .welcome-section p {
+    color: #4B5563;
+}
+
+/* Títulos H3 inline (usado em index.html com style="color: #ffffff") */
+body.tema-claro h3 {
+    color: #1F2937 !important;
+}
+
+/* =============================================
+   6. CARDS — Projetos, Métricas, Atalhos
+   ============================================= */
+
+body.tema-claro .project-card {
+    background-color: #FFFFFF;
+    border: 1px solid #E5E7EB;
+}
+
+body.tema-claro .project-card:hover {
+    border-color: rgba(214, 22, 22, 0.4);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+}
+
+body.tema-claro .project-title {
+    color: #1F2937;
+}
+
+body.tema-claro .project-description {
+    color: #4B5563;
+}
+
+body.tema-claro .project-meta {
+    color: #4B5563;
+    border-top: 1px solid #E5E7EB;
+}
+
+/* ÍCONES DE PROJETO — manter branco sobre fundo colorido */
+body.tema-claro .project-icon {
+    color: #FFFFFF;
+}
+
+body.tema-claro .project-icon i {
+    color: #FFFFFF;
+}
+
+body.tema-claro .project-icon.inactive {
+    color: #FFFFFF;
+}
+
+body.tema-claro .project-icon.inactive i {
+    color: #FFFFFF;
+}
+
+body.tema-claro .metric-card {
+    background-color: #FFFFFF;
+    border: 1px solid #E5E7EB;
+}
+
+body.tema-claro .metric-label {
+    color: #4B5563;
+}
+
+body.tema-claro .metric-value {
+    color: #1F2937;
+}
+
+body.tema-claro .shortcut-card {
+    background-color: #FFFFFF;
+    border: 1px solid #E5E7EB;
+    color: #1F2937;
+}
+
+body.tema-claro .shortcut-card:hover {
+    border-color: rgba(214, 22, 22, 0.5);
+    background-color: rgba(214, 22, 22, 0.03);
+}
+
+/* =============================================
+   7. TABS
+   ============================================= */
+
+body.tema-claro .tabs-container {
+    border-bottom: 2px solid #E5E7EB;
+}
+
+body.tema-claro .tab-btn {
+    color: #4B5563;
+}
+
+body.tema-claro .tab-btn:hover {
+    color: #1F2937;
+    background-color: #EEF2FF;
+}
+
+body.tema-claro .tab-btn.active {
+    color: #1F2937;
+}
+
+body.tema-claro .tab-count {
+    background-color: rgba(214, 22, 22, 0.1);
+    color: #D61616;
+}
+
+body.tema-claro .tab-btn.active .tab-count {
+    background-color: #D61616;
+    color: #FFFFFF;
+}
+
+/* =============================================
+   8. FILTROS E INPUTS
+   ============================================= */
+
+body.tema-claro .search-box input {
+    background-color: #FFFFFF !important;
+    border: 1px solid #E5E7EB !important;
+    color: #1F2937 !important;
+}
+
+body.tema-claro .search-box input::placeholder {
+    color: #9CA3AF;
+}
+
+body.tema-claro .search-box input:focus {
+    border-color: rgba(214, 22, 22, 0.5) !important;
+    box-shadow: 0 0 10px rgba(214, 22, 22, 0.1) !important;
+}
+
+body.tema-claro .filter-item select {
+    background-color: #FFFFFF !important;
+    border: 1px solid #E5E7EB !important;
+    color: #1F2937 !important;
+}
+
+body.tema-claro .filter-item select:focus {
+    border-color: rgba(214, 22, 22, 0.5) !important;
+    box-shadow: 0 0 10px rgba(214, 22, 22, 0.1) !important;
+}
+
+body.tema-claro .filter-item::after {
+    color: #4B5563;
+}
+
+body.tema-claro .form-group label {
+    color: #4B5563;
+}
+
+body.tema-claro .form-group input,
+body.tema-claro .form-group select {
+    background-color: #F9FAFB;
+    border: 1px solid #E5E7EB;
+    color: #1F2937;
+}
+
+body.tema-claro .form-group input:disabled,
+body.tema-claro .form-group select:disabled {
+    background-color: #F3F4F6;
+    border-left: 1px solid #D1D5DB;
+    color: #6B7280;
+}
+
+body.tema-claro .form-group input:not(:disabled):focus,
+body.tema-claro .form-group select:not(:disabled):focus {
+    border-color: rgba(214, 22, 22, 0.5);
+    background-color: #FFFFFF;
+}
+
+body.tema-claro .form-group textarea {
+    background-color: #F9FAFB;
+    border: 1px solid #E5E7EB;
+    color: #1F2937;
+}
+
+body.tema-claro .form-group textarea:disabled {
+    background-color: #F3F4F6;
+    color: #6B7280;
+}
+
+body.tema-claro .form-group textarea:not(:disabled):focus {
+    border-color: rgba(214, 22, 22, 0.5);
+    background-color: #FFFFFF;
+}
+
+body.tema-claro option {
+    background-color: #FFFFFF;
+    color: #1F2937;
+}
+
+/* =============================================
+   9. MODAIS
+   ============================================= */
+
+body.tema-claro .modal {
+    background-color: rgba(0, 0, 0, 0.4);
+}
+
+body.tema-claro .modal-content {
+    background-color: #FFFFFF;
+    border: 1px solid #E5E7EB;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+}
+
+body.tema-claro .modal-header {
+    background-color: #FFFFFF;
+    border-bottom: 1px solid #E5E7EB;
+}
+
+body.tema-claro .modal-header h2 {
+    color: #1F2937;
+}
+
+body.tema-claro .close-btn {
+    color: #4B5563;
+}
+
+body.tema-claro .close-btn:hover {
+    background-color: #EEF2FF;
+    color: #D61616;
+}
+
+body.tema-claro .back-btn {
+    color: #4B5563;
+}
+
+body.tema-claro .back-btn:hover {
+    background-color: #EEF2FF;
+    color: #D61616;
+}
+
+body.tema-claro .modal-body {
+    box-shadow: inset 0px 2px 6px rgba(0, 0, 0, 0.04);
+}
+
+body.tema-claro .modal-body::-webkit-scrollbar-track {
+    background: #F3F4F6;
+}
+
+body.tema-claro .modal-body::-webkit-scrollbar-thumb {
+    background: rgba(214, 22, 22, 0.3);
+}
+
+body.tema-claro .modal-body::-webkit-scrollbar-thumb:hover {
+    background: rgba(214, 22, 22, 0.5);
+}
+
+body.tema-claro .modal-footer {
+    border-top: 1px solid #E5E7EB;
+}
+
+body.tema-claro .btn-secondary {
+    color: #4B5563;
+    border: 1px solid #E5E7EB;
+}
+
+body.tema-claro .btn-secondary:hover {
+    background-color: #EEF2FF;
+    color: #1F2937;
+}
+
+/* Modal Remuneração — estilos específicos */
+body.tema-claro .modal-remu {
+    background-color: #FFFFFF !important;
+    border: 1px solid #E5E7EB !important;
+    box-shadow: 0 0 60px rgba(0, 0, 0, 0.12) !important;
+}
+
+body.tema-claro .modal-remu .modal-header {
+    background-color: #FFFFFF !important;
+    border-bottom: 1px solid #E5E7EB !important;
+}
+
+body.tema-claro .modal-remu .remu-investor-card {
+    background-color: #F9FAFB !important;
+    border: 1px solid #E5E7EB !important;
+    border-left: 4px solid #D61616 !important;
+}
+
+body.tema-claro .modal-remu .remu-investor-name {
+    color: #1F2937 !important;
+}
+
+body.tema-claro .modal-remu .remu-investor-meta {
+    color: #4B5563 !important;
+}
+
+body.tema-claro .modal-remu .remu-divider {
+    color: #D1D5DB !important;
+}
+
+body.tema-claro .modal-remu .remu-metric-card {
+    background-color: #F9FAFB !important;
+    border: 1px solid #E5E7EB !important;
+}
+
+body.tema-claro .modal-remu .remu-metric-card:hover {
+    border-color: rgba(214, 22, 22, 0.4) !important;
+}
+
+/* =============================================
+   10. REMUNERAÇÃO — Cards e Tabela
+   ============================================= */
+
+body.tema-claro .remu-investor-card {
+    background-color: #FFFFFF;
+    border: 1px solid #E5E7EB;
+}
+
+body.tema-claro .remu-investor-name {
+    color: #1F2937;
+}
+
+body.tema-claro .remu-investor-meta {
+    color: #4B5563;
+}
+
+body.tema-claro .remu-divider {
+    color: #D1D5DB;
+}
+
+body.tema-claro .remu-metric-card {
+    background-color: #FFFFFF;
+    border: 1px solid #E5E7EB;
+}
+
+body.tema-claro .remu-metric-card:hover {
+    border-color: rgba(214, 22, 22, 0.3);
+}
+
+body.tema-claro .remu-metric-label {
+    color: #4B5563;
+}
+
+body.tema-claro .remu-metric-value {
+    color: #1F2937;
+}
+
+body.tema-claro .remu-table-card {
+    background-color: #FFFFFF;
+    border: 1px solid #E5E7EB;
+}
+
+body.tema-claro .remu-table-header {
+    border-bottom: 1px solid #E5E7EB;
+}
+
+body.tema-claro .remu-table-header h3 {
+    color: #1F2937;
+}
+
+body.tema-claro .remu-table th {
+    background-color: #F9FAFB;
+    color: #4B5563;
+    border-bottom: 1px solid #E5E7EB;
+}
+
+body.tema-claro .remu-table td {
+    color: #1F2937;
+    border-bottom: 1px solid #F3F4F6;
+}
+
+body.tema-claro .remu-table tr:hover td {
+    background-color: #F9FAFB;
+}
+
+/* =============================================
+   11. LISTA DE PROJETOS NO MODAL
+   ============================================= */
+
+body.tema-claro .project-list-item {
+    border-bottom: 1px solid #E5E7EB;
+}
+
+body.tema-claro .project-item-info h4 {
+    color: #1F2937;
+}
+
+body.tema-claro .project-item-info p {
+    color: #4B5563;
+}
+
+body.tema-claro .project-total-fee {
+    border-left: solid 1px #D61616;
+}
+
+/* =============================================
+   12. HISTÓRICO
+   ============================================= */
+
+body.tema-claro .history-card {
+    background-color: #F9FAFB;
+    border: 1px solid #E5E7EB;
+}
+
+body.tema-claro .history-card:hover {
+    background-color: #EEF2FF;
+}
+
+body.tema-claro .history-header {
+    border-bottom: 1px solid #E5E7EB;
+}
+
+body.tema-claro .history-date {
+    color: #1F2937;
+}
+
+body.tema-claro .history-user {
+    color: #4B5563;
+}
+
+body.tema-claro .change-field {
+    color: #1F2937;
+}
+
+body.tema-claro .change-values {
+    background-color: #F9FAFB;
+}
+
+body.tema-claro .change-before,
+body.tema-claro .change-after {
+    color: #4B5563;
+}
+
+body.tema-claro .change-before {
+    background-color: rgba(220, 38, 38, 0.04);
+    border: 1px solid rgba(220, 38, 38, 0.2);
+}
+
+body.tema-claro .change-after {
+    background-color: rgba(22, 163, 74, 0.04);
+    border: 1px solid rgba(22, 163, 74, 0.2);
+}
+
+body.tema-claro .change-arrow {
+    color: #9CA3AF;
+}
+
+/* =============================================
+   13. NOTAS
+   ============================================= */
+
+body.tema-claro .notes-section {
+    border-top: 2px solid #E5E7EB;
+}
+
+body.tema-claro .notes-header label {
+    color: #1F2937;
+}
+
+body.tema-claro .note-item {
+    background-color: #F9FAFB;
+    border: 1px solid #E5E7EB;
+}
+
+body.tema-claro .note-item:hover {
+    background-color: #EEF2FF;
+    border-color: rgba(214, 22, 22, 0.3);
+}
+
+body.tema-claro .note-item-title {
+    color: #1F2937;
+}
+
+body.tema-claro .btn-note-action {
+    border: 1px solid #E5E7EB;
+    color: #4B5563;
+}
+
+body.tema-claro .btn-note-action:hover {
+    background-color: #EEF2FF;
+    border-color: #D61616;
+    color: #D61616;
+}
+
+body.tema-claro .note-item textarea {
+    background-color: #FFFFFF;
+    border: 1px solid #E5E7EB;
+    color: #1F2937;
+}
+
+body.tema-claro .note-item textarea:not(:disabled):focus {
+    border-color: rgba(214, 22, 22, 0.5);
+    background-color: #FFFFFF;
+}
+
+/* =============================================
+   14. EMPTY STATE
+   ============================================= */
+
+body.tema-claro .empty-state {
+    color: #6B7280;
+}
+
+body.tema-claro .empty-state i {
+    color: #9CA3AF;
+}
+
+body.tema-claro .empty-history {
+    color: #6B7280;
+}
+
+body.tema-claro .notes-empty {
+    color: #6B7280;
+}
+
+/* =============================================
+   15. FOOTER
+   ============================================= */
+
+body.tema-claro footer {
+    background-color: #FFFFFF;
+    color: #6B7280;
+    border-top: 1px solid #E5E7EB;
+}
+
+/* =============================================
+   16. BOTÕES — History, Add Note, Burger
+   ============================================= */
+
+body.tema-claro .history-btn {
+    color: #4B5563;
+}
+
+body.tema-claro .history-btn:hover {
+    background-color: #EEF2FF;
+    color: #D61616;
+}
+
+body.tema-claro .add-note-btn {
+    color: #4B5563;
+}
+
+body.tema-claro .add-note-btn:hover {
+    background-color: #EEF2FF;
+    color: #D61616;
+}
+
+body.tema-claro .burger-menu {
+    color: #1F2937;
+}
+
+/* =============================================
+   17. OVERLAY DO SIDEBAR (Mobile)
+   ============================================= */
+
+body.tema-claro .sidebar-overlay.active {
+    background: rgba(0, 0, 0, 0.3);
+}
+
+/* =============================================
+   18. LOADER
+   ============================================= */
+
+body.tema-claro .loader {
+    background: rgba(244, 245, 248, 0.85);
+}
+
+body.tema-claro .loader-text {
+    color: #1F2937;
+}
+
+/* =============================================
+   19. PIPEFY BUTTON
+   ============================================= */
+
+body.tema-claro #pipefyButton {
+    background: rgba(0, 0, 0, 0.06);
+}
+
+body.tema-claro #pipefyButton:hover {
+    background: rgba(0, 0, 0, 0.12);
+}
+
+/* =============================================
+   20. SCROLLBARS GERAIS
+   ============================================= */
+
+body.tema-claro .form-group textarea::-webkit-scrollbar-track {
+    background: #F3F4F6;
+}
+
+body.tema-claro .form-group textarea::-webkit-scrollbar-thumb {
+    background: rgba(214, 22, 22, 0.2);
+}
+
+body.tema-claro .form-group textarea::-webkit-scrollbar-thumb:hover {
+    background: rgba(214, 22, 22, 0.4);
+}
+
+body.tema-claro .remu-table-wrapper::-webkit-scrollbar-track {
+    background: #F3F4F6;
+}
+
+body.tema-claro .remu-table-wrapper::-webkit-scrollbar-thumb {
+    background: rgba(214, 22, 22, 0.2);
+}
+
+/* =============================================
+   21. FLAGS DE STATUS — manter legibilidade
+   ============================================= */
+
+body.tema-claro .status-ativo {
+    background-color: rgba(22, 163, 74, 0.08);
+    color: #16A34A;
+    border: 1px solid rgba(22, 163, 74, 0.3);
+}
+
+body.tema-claro .status-inativo {
+    background-color: rgba(107, 114, 128, 0.08);
+    color: #4B5563;
+    border: 1px solid rgba(107, 114, 128, 0.3);
+}
+
+body.tema-claro .green-flag {
+    background-color: rgba(22, 163, 74, 0.08);
+    color: #16A34A;
+    border: 1px solid rgba(22, 163, 74, 0.3);
+}
+
+body.tema-claro .yellow-flag {
+    background-color: rgba(234, 179, 8, 0.08);
+    color: #B45309;
+    border: 1px solid rgba(234, 179, 8, 0.3);
+}
+
+body.tema-claro .red-flag {
+    background-color: rgba(220, 38, 38, 0.08);
+    color: #DC2626;
+    border: 1px solid rgba(220, 38, 38, 0.3);
+}
+
+body.tema-claro .black-flag {
+    background-color: rgba(31, 41, 55, 0.08);
+    color: #1F2937;
+    border: 1px solid rgba(31, 41, 55, 0.3);
+}
+
+body.tema-claro .green-pdc-flag {
+    background-color: rgba(5, 150, 105, 0.08);
+    color: #059669;
+    border: 1px solid rgba(5, 150, 105, 0.3);
+}
+
+/* =============================================
+   22. BTN-VIEW E BTN-EDIT
+   ============================================= */
+
+body.tema-claro .btn-view {
+    border-color: #E5E7EB;
+    color: #4B5563;
+}
+
+body.tema-claro .btn-view:hover {
+    border-color: #D61616;
+    color: #D61616;
+    background-color: rgba(214, 22, 22, 0.04);
+}
+
+body.tema-claro .btn-edit {
+    border-color: #E5E7EB;
+    color: #4B5563;
+}
+
+body.tema-claro .btn-edit:hover {
+    border-color: #D61616;
+    color: #D61616;
+    background-color: rgba(214, 22, 22, 0.04);
+}
+
+/* =============================================
+   23. CUSTOM SELECT / FILTER DROPDOWNS
+   ============================================= */
+
+body.tema-claro .custom-select-trigger {
+    background-color: #FFFFFF;
+    border: 1px solid #E5E7EB;
+    color: #1F2937;
+}
+
+body.tema-claro .custom-select-trigger:hover {
+    border-color: rgba(214, 22, 22, 0.4);
+}
+
+body.tema-claro .custom-options {
+    background-color: #FFFFFF;
+    border: 1px solid #E5E7EB;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+}
+
+body.tema-claro .custom-option {
+    color: #1F2937;
+}
+
+body.tema-claro .custom-option:hover,
+body.tema-claro .custom-option.selected {
+    background-color: #EEF2FF;
+    color: #D61616;
+}
+
+/* =============================================
+   24. MODAL DE CONFIGURAÇÕES (estilo próprio)
+   ============================================= */
+
+/* Overlay */
+.modal-configuracoes-overlay {
+    display: none;
+    position: fixed;
+    z-index: 100000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    animation: fadeIn 0.2s;
+}
+
+.modal-configuracoes-overlay.active {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Container do modal */
+.modal-configuracoes {
+    background-color: #17171b;
+    border: 1px solid rgba(255, 0, 0, 0.3);
+    border-radius: 16px;
+    width: 90%;
+    max-width: 480px;
+    animation: slideUp 0.3s;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+}
+
+body.tema-claro .modal-configuracoes-overlay {
+    background-color: rgba(0, 0, 0, 0.3);
+}
+
+body.tema-claro .modal-configuracoes {
+    background-color: #FFFFFF;
+    border: 1px solid #E5E7EB;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.12);
+}
+
+/* Header do modal */
+.modal-configuracoes-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem 2rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.modal-configuracoes-header h2 {
+    margin: 0;
+    font-size: 1.3rem;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.modal-configuracoes-header h2 i {
+    color: #D61616;
+}
+
+body.tema-claro .modal-configuracoes-header {
+    border-bottom: 1px solid #E5E7EB;
+}
+
+body.tema-claro .modal-configuracoes-header h2 {
+    color: #1F2937;
+}
+
+/* Botão fechar do modal de config */
+.modal-configuracoes-fechar {
+    background: transparent;
+    border: none;
+    color: #a0a0a0;
+    font-size: 1.3rem;
+    cursor: pointer;
+    transition: 0.2s;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-configuracoes-fechar:hover {
+    background-color: rgba(255, 0, 0, 0.1);
+    color: #D61616;
+}
+
+body.tema-claro .modal-configuracoes-fechar {
+    color: #4B5563;
+}
+
+body.tema-claro .modal-configuracoes-fechar:hover {
+    background-color: #EEF2FF;
+    color: #D61616;
+}
+
+/* Corpo do modal */
+.modal-configuracoes-body {
+    padding: 2rem;
+}
+
+/* Seção de aparência */
+.config-secao {
+    margin-bottom: 1.5rem;
+}
+
+.config-secao:last-child {
+    margin-bottom: 0;
+}
+
+.config-secao-titulo {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: #a0a0a0;
+    margin-bottom: 1rem;
+    font-weight: 600;
+}
+
+body.tema-claro .config-secao-titulo {
+    color: #6B7280;
+}
+
+/* Item de configuração (toggle) */
+.config-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.25rem;
+    background-color: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    transition: 0.2s;
+}
+
+.config-item:hover {
+    background-color: rgba(255, 255, 255, 0.06);
+}
+
+body.tema-claro .config-item {
+    background-color: #F9FAFB;
+    border: 1px solid #E5E7EB;
+}
+
+body.tema-claro .config-item:hover {
+    background-color: #EEF2FF;
+}
+
+.config-item-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.config-item-label {
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.config-item-label i {
+    color: #D61616;
+    font-size: 1rem;
+}
+
+body.tema-claro .config-item-label {
+    color: #1F2937;
+}
+
+.config-item-descricao {
+    font-size: 0.8rem;
+    color: #a0a0a0;
+}
+
+body.tema-claro .config-item-descricao {
+    color: #6B7280;
+}
+
+/* Toggle switch customizado */
+.toggle-switch {
+    position: relative;
+    width: 48px;
+    height: 26px;
+    flex-shrink: 0;
+}
+
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(255, 255, 255, 0.15);
+    border-radius: 26px;
+    transition: 0.3s;
+}
+
+.toggle-slider::before {
+    content: '';
+    position: absolute;
+    height: 20px;
+    width: 20px;
+    left: 3px;
+    bottom: 3px;
+    background-color: #ffffff;
+    border-radius: 50%;
+    transition: 0.3s;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+body.tema-claro .toggle-slider {
+    background-color: #D1D5DB;
+}
+
+.toggle-switch input:checked + .toggle-slider {
+    background-color: #D61616;
+}
+
+.toggle-switch input:checked + .toggle-slider::before {
+    transform: translateX(22px);
+}
+
+/* =============================================
+   22. MODAL DE CONFIGURAÇÕES (MODO CLARO)
+   ============================================= */
+
+body.tema-claro .modal-configuracoes {
+    background-color: #FFFFFF;
+    border: 1px solid #E5E7EB;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+}
+
+body.tema-claro .modal-configuracoes-header {
+    background-color: #F9FAFB;
+    border-bottom: 1px solid #E5E7EB;
+}
+
+body.tema-claro .modal-configuracoes-header h2 {
+    color: #1F2937;
+}
+
+body.tema-claro .modal-configuracoes-fechar:hover {
+    background-color: #FEE2E2;
+}
+
+body.tema-claro .modal-config-sidebar {
+    background-color: #F3F4F6;
+    border-right: 1px solid #E5E7EB;
+}
+
+body.tema-claro .config-tab-btn {
+    color: #4B5563;
+}
+
+body.tema-claro .config-tab-btn:hover {
+    background-color: #E5E7EB;
+    color: #1F2937;
+}
+
+body.tema-claro .config-tab-btn.active {
+    background-color: #FEE2E2;
+    color: #D61616;
+}
+
+body.tema-claro .modal-config-content {
+    background-color: #FFFFFF;
+}
+
+body.tema-claro .profile-upload-container {
+    background-color: #F9FAFB;
+    border: 1px solid #E5E7EB;
+}
+
+body.tema-claro .profile-avatar-wrapper img {
+    width: 130px;
+    height: 130px;
+    border-color: #D61616;
+    box-shadow: 0 0 10px rgba(214, 22, 22, 0.2);
+}
+
+body.tema-claro .profile-info-text h3 {
+    color: #1F2937;
+}
+
+body.tema-claro .profile-info-text p {
+    color: #6B7280;
+}
+
+body.tema-claro .form-group input:disabled {
+    background-color: #F9FAFB;
+    border: 1px solid #E5E7EB;
+    color: #374151;
+}
+
+body.tema-claro .field-help {
+    color: #9CA3AF;
+}
+
+body.tema-claro .security-card,
+body.tema-claro .session-info {
+    background-color: #F9FAFB;
+    border: 1px solid #E5E7EB;
+}
+
+body.tema-claro .session-item {
+    border-bottom: 1px solid #E5E7EB;
+    color: #4B5563;
+}
+
+body.tema-claro .session-item strong {
+    color: #1F2937;
+}
+
+body.tema-claro .config-item {
+    border-bottom: 1px solid #F3F4F6;
+}
+
+body.tema-claro .config-item-label {
+    color: #1F2937;
+}
+
+body.tema-claro .config-item-descricao {
+    color: #6B7280;
+}
+
+body.tema-claro .config-group h4,
+body.tema-claro .security-info h4,
+body.tema-claro .config-group h4,
+body.tema-claro .config-title-claro {
+    color: #D61616;
+}
+
+body.tema-claro .security-info p,
+body.tema-claro .config-item-descricao {
+    color: #4B5563;
+}
+
+body.tema-claro .modal-body label {
+    color: #374151;
+}
+
+body.tema-claro .inner-modal .modal-header h3 {
+    color: #1F2937;
+}
+
+/* TOAST MODO CLARO */
+body.tema-claro .toast {
+    background: #FFFFFF;
+    color: #1F2937;
+    border: 1px solid #E5E7EB;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+}
+
+/* TABELA MODO CLARO */
+body.tema-claro .remu-table th, 
+body.tema-claro .remu-table td {
+    border-right: 1px solid #D1D5DB; /* Cinza mais escuro para visibilidade */
+    border-bottom: 1px solid #E5E7EB;
+}
+
+/* MODAL INTERNO (TROCAR SENHA) MODO CLARO */
+body.tema-claro .inner-modal {
+    background-color: #FFFFFF;
+    border: 1px solid #E5E7EB;
+}
+
+body.tema-claro .inner-modal .modal-header {
+    background-color: #F9FAFB;
+    border-bottom: 1px solid #E5E7EB;
+}
+
+body.tema-claro .inner-modal input {
+    background-color: #FFFFFF;
+    border: 1px solid #E5E7EB;
+    color: #1F2937;
+}

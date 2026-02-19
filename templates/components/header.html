@@ -15,6 +15,7 @@
     </div>
 
     <div class="user-info">
+        <img id="headerUserAvatar" src="/static/images/default-avatar.png" alt="Avatar" class="user-avatar-header">
         <div class="user-details">
             <div class="user-name" id="headerUserName">{{ session.nome or 'Usuário' }}</div>
             <div class="user-role" id="headerUserRole">{{ session.funcao or 'Colaborador' }}</div>
@@ -24,9 +25,9 @@
         </button>
         <!-- Dropdown Reutilizável -->
         <div class="user-dropdown">
-            <a href="#" class="dropdown-item"><i class="fas fa-user-circle"></i> Perfil</a>
-            <a href="https://omni.v4lisboatech.com.br/" class="dropdown-item"><i class="fas fa-cog"></i>
-                Configurações</a>
+            <a href="#" class="dropdown-item" onclick="abrirModalConfiguracoes(event, 'perfil')"><i class="fas fa-user-circle"></i> Perfil</a>
+            <a href="#" class="dropdown-item" onclick="abrirModalConfiguracoes(event, 'aparencia')"><i class="fas fa-palette"></i> Aparência</a>
+            <a href="#" class="dropdown-item" onclick="abrirModalConfiguracoes(event, 'perfil')"><i class="fas fa-cog"></i> Configurações</a>
             <div class="dropdown-divider"></div>
             <a href="/logout" class="dropdown-item logout-item"><i class="fas fa-sign-out-alt"></i> Sair</a>
         </div>
