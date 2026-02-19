@@ -1,0 +1,19 @@
+Cargo = Texto <!-- fixo -->
+Senioridade = Texto <!-- fixo -->
+Level = Texto <!-- fixo -->
+
+Média de Clientes = MRR Esperado / Ticket Médio <!-- dinamico -->
+Ticket Medio = Valor Fixo <!-- fixo -->
+MRR Mínima = Remuneração Mínima/CSP Esperado <!-- dinamico -->
+MRR Esperado = Valor Fixo <!-- fixo -->
+MRR Teto = Valor Fixo <!-- fixo -->
+Variável CSP Teto % = CSP Esperado - (Remuneração Fixa/MRR Teto) <!-- dinamico -->
+Variável CSP Teto $ = MRR Teto * Variável CSP Teto % <!-- dinamico -->
+% Range Remuneração = CSP Teto $ / Remuneração Fixa <!-- dinamico -->
+Remuneração Fixa = Valor Fixo <!-- fixo -->
+Range Total Remuneração = Remuneração Mínima - Remuneração Máxima <!-- dinamico -->
+Remuneração Mínima = Remuneração Fixa - CSP Teto $ <!-- dinamico -->
+Remuneração Máxima = Variável CSP Teto $ + Remuneração Fixa <!-- dinamico -->
+CSP Esperado = Remuneração Fixa/MRR Esperado <!-- dinamico -->
+Churn Máximo % = Valor Fixo <!-- fixo -->
+Churn Máximo $ = Churn Maximo % * MRR Esperado <!-- dinamico -->
