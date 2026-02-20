@@ -1532,7 +1532,6 @@ option {
 .main-content {
     flex: 1;
     height: calc(100vh - var(--header-height));
-    overflow-y: auto;
     transition: margin-left 0.3s ease;
     display: flex;
     flex-direction: column;

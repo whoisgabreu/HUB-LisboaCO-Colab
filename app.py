@@ -212,6 +212,13 @@ def hub_remuneracao():
 
     try:
         mock_investors = response.json()
+
+        # 🔥 FILTRO AQUI — remove squad "Gerência"
+        mock_investors = [
+            inv for inv in mock_investors
+            if inv.get("squad", "").lower() != "gerência"
+        ]
+
         squads = sorted(list(set(inv["squad"] for inv in mock_investors)))
         roles = sorted(list(set(inv["role"] for inv in mock_investors)))
         

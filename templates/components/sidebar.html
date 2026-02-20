@@ -15,10 +15,15 @@
             <i class="fas fa-project-diagram"></i>
             <span>Hub de Projetos</span>
         </a>
+        {% if session.squad == "Gerência" %}
         <a href="/hub-remuneracao" class="nav-item">
             <i class="fas fa-wallet"></i>
             <span>Remuneração</span>
         </a>
+        {% endif %}
+
+        {% if session.email in ["martins.gabriel@v4company.com"]%}
+
         <a href="/hub-cs-cx" class="nav-item">
             <i class="fas fa-users"></i>
             <span>Hub de CS/CX</span>
@@ -39,5 +44,6 @@
             <i class="fas fa-tachometer-alt"></i>
             <span>Cockpit</span>
         </a>
+        {% endif %}
     </div>
 </nav>

@@ -120,7 +120,7 @@
                                     else "black-flag-table" if row.yellow_streak >= 3
                                     else "green-pdc-flag-table" if row.green_streak >= 3
                                     else "green-flag-table"
-                                }}'>
+                                }}' title='{{ row.motivo_flag }}'>
                                 <span>
                                     {{
                                         "Yellow" if row.yellow_streak == 1
@@ -161,7 +161,7 @@
                             {% endfor %}
                             {% else %}
                             <tr>
-                                <td colspan="5" style="text-align: center; padding: 2rem;">
+                                <td colspan="11" style="text-align: center; padding: 2rem;">
                                     Nenhum registro encontrado.
                                 </td>
                             </tr>
