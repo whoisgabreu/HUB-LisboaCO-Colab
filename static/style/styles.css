@@ -326,21 +326,21 @@ body::-webkit-scrollbar-thumb:hover {
 }
 
 .green-flag {
-    background-color: rgba(0, 255, 0, 0.1);
+    background-color: rgb(0 51 0);
     color: #00ff00;
-    border: 1px solid rgba(0, 255, 0, 0.3);
+    border: 1px solid rgb(0 255 0);
 }
 
 .yellow-flag {
-    background-color: var(--text-main)b0015;
-    color: var(--text-main)b00;
-    border: 1px solid #fffb0052;
+    background-color: #505000;
+    color: yellow;
+    border: 1px solid #fffb00;
 }
 
 .red-flag {
-    background-color: rgba(255, 0, 0, 0.1);
+    background-color: rgb(79 0 0);
     color: rgba(255, 0, 0, 1);
-    border: 1px solid rgba(255, 0, 0, 0.3);
+    border: 1px solid rgb(255 0 0);
 }
 
 .black-flag {
@@ -354,12 +354,12 @@ body::-webkit-scrollbar-thumb:hover {
 .tooltip-remuneracao {
     height: 18px;
     font-size: 13px;
-    border: solid 1px var(--text-main)70;
+    border: solid 1px var(--text-main);
     margin-left: 20px;
     padding-left: 8px;
     padding-right: 8px;
     border-radius: 50%;
-    color: var(--text-main)66;
+    color: var(--text-main);
     cursor: pointer;
     transition: 0.3s
 }
@@ -405,30 +405,18 @@ td[class*="-flag-table"] span {
     animation: green-pdc 2s ease-in-out infinite;
 }
 
-.green-flag-table {
-    background-color: rgba(0, 255, 0, 0.1) !important;
-}
 .green-flag-table span {
     color: #00ff00;
 }
 
-.yellow-flag-table {
-    background-color: var(--text-main)b0015 !important;
-}
 .yellow-flag-table span {
-    color: var(--text-main)b00;
+    color: yellow;
 }
 
-.red-flag-table {
-    background-color: rgba(255, 0, 0, 0.1) !important;
-}
 .red-flag-table span {
     color: rgba(255, 0, 0, 1);
 }
 
-.black-flag-table {
-    background-color: rgba(0, 0, 0, 1) !important;
-}
 .black-flag-table span {
     color: rgba(255, 255, 255, 0.486);
 }
@@ -437,7 +425,7 @@ td[class*="-flag-table"] span {
 
 th, td {
     text-align: center;
-    border-right: solid 1px var(--text-main)29;
+    border-right: solid 1px var(--text-main);
 }
 
 .status-ativo {
@@ -1495,6 +1483,18 @@ option {
     color: #a0a0a0;
     text-transform: uppercase;
     letter-spacing: 1px;
+}
+
+.remu-delta-container {
+    display: flex;
+    flex-direction: column;
+    gap: 5px
+}
+
+.remu-metric-delta {
+    color: #ffffff;
+    font-size: 15px;
+    
 }
 
 .remu-metric-value {

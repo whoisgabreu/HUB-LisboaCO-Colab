@@ -69,7 +69,7 @@
                         data-role="{{ inv.role }}" data-squad="{{ inv.squad }}" data-step="{{ inv.step }}"
                         data-yellow-flag="{{ inv.rows[0].yellow_streak if inv.rows|length > 0 else '' }}" data-green-flag="{{ inv.rows[0].green_streak if inv.rows|length > 0 else '' }}"
                         data-clients="{{ inv.clients_count }}" data-fixed="{{ inv.fixed_fee }}" data-mrr="{{ inv.mrr }}"
-                        data-roi="{{ inv.roi }}" onclick="openRemunerationModal(this)">
+                        data-mrr-esperado="{{ inv.mrrEsperado }}" data-mrr-teto="{{ inv.mrrTeto }}" data-roi="{{ inv.roi }}" onclick="openRemunerationModal(this)">
                         <div class="project-header">
                             <div class="project-icon">
                                 <i class="fa-solid fa-user-tie"></i>
@@ -217,6 +217,14 @@
                     <div class="remu-metric-card">
                         <span class="remu-metric-label">MRR</span>
                         <span class="remu-metric-value" id="modalMRR">R$ 0,00</span>
+
+                        <div class="remu-delta-container">
+                            <span class="remu-metric-label">Esperado:</span>
+                            <span class="remu-metric-delta" id="modalMRRDelta">Delta Esperado (Total Esperado) </span>
+                            <span class="remu-metric-label">Teto:</span>
+                            <span class="remu-metric-delta" id="modalMRRTetoDelta">Delta Teto (Total Teto)</span>
+                        </div>
+
                     </div>
                     <div class="remu-metric-card">
                         <span class="remu-metric-label">ROI Médio</span>

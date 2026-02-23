@@ -32,6 +32,8 @@ window.openRemunerationModal = function (card) {
     const clients = card.getAttribute('data-clients');
     const fixed = parseFloat(card.getAttribute('data-fixed') || 0);
     const mrr = parseFloat(card.getAttribute('data-mrr') || 0);
+    const mrrEsperado = parseFloat(card.getAttribute('data-mrr-esperado') || 0);
+    const mrrTeto = parseFloat(card.getAttribute('data-mrr-teto') || 0);
     const roi = card.getAttribute('data-roi');
 
     // Fill header/Identification
@@ -43,6 +45,8 @@ window.openRemunerationModal = function (card) {
     document.getElementById('modalClients').textContent = clients;
     document.getElementById('modalFixed').textContent = Utils.formatBRL(fixed);
     document.getElementById('modalMRR').textContent = Utils.formatBRL(mrr);
+    document.getElementById('modalMRRDelta').textContent = `${Utils.formatBRL(mrrEsperado)} (Delta:${Utils.formatBRL(mrrEsperado - mrr)})`;
+    document.getElementById('modalMRRTetoDelta').textContent = `${Utils.formatBRL(mrrTeto)} (Delta: ${Utils.formatBRL(mrrTeto - mrr)})`;
 
 
     // Formatação ROI: multiplicar por 100 se for float 0-1
