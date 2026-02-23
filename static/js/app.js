@@ -115,6 +115,49 @@ function highlightActiveLink() {
     });
 }
 
+// Operation Tabs Logic
+function switchOperacaoTab(tabId) {
+    // Update buttons (Pill Style)
+    document.querySelectorAll('.op-pill-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.getAttribute('onclick').includes(tabId));
+    });
+
+    // Update content sections
+    document.querySelectorAll('.op-content-section').forEach(section => {
+        section.classList.toggle('active', section.id === `section-${tabId}`);
+    });
+}
+
+function openProjectDetails(projectName) {
+    const selectionView = document.getElementById('project-selection-view');
+    const detailsView = document.getElementById('project-details-view');
+    const displayProjectName = document.getElementById('display-project-name');
+
+    if (selectionView && detailsView) {
+        if (displayProjectName) displayProjectName.innerText = projectName;
+        
+        selectionView.classList.add('hidden');
+        detailsView.classList.add('active');
+        
+        // Reset to first tab (Dashboard)
+        switchOperacaoTab('dashboard');
+    }
+}
+
+function backToProjects() {
+    const selectionView = document.getElementById('project-selection-view');
+    const detailsView = document.getElementById('project-details-view');
+    
+    if (selectionView && detailsView) {
+        selectionView.classList.remove('hidden');
+        detailsView.classList.remove('active');
+    }
+}
+
+window.switchOperacaoTab = switchOperacaoTab;
+window.openProjectDetails = openProjectDetails;
+window.backToProjects = backToProjects;
+
 /**
  * Global Utilities
  */

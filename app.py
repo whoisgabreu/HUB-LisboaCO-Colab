@@ -252,6 +252,11 @@ def painel_ranking():
 def vendas():
     return render_template("vendas.html")
 
+@app.route("/operacao", methods = ["GET"])
+@check_session
+def operacao():
+    return render_template("operacao.html")
+
 @app.route("/cockpit", methods = ["GET"])
 @check_session
 def cockpit():

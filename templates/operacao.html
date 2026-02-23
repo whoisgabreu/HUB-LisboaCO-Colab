@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Operação | Lisboa&CO</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="static/style/styles.css">
+    <link rel="stylesheet" href="static/style/tema-claro.css">
+    <script src="static/js/app.js" defer></script>
+    <script src="static/js/operacao.js" defer></script>
+    {% include "components/icon_title.html" %}
+</head>
+<body>
+    {% include "components/header.html" %}
+    {% include "components/sidebar.html" %}
+
+    <div class="app-container">
+        <div class="sidebar-overlay"></div>
+        <main class="main-container">
+            <div class="operacao-container">
+                
+                <!-- VIEW 1: SELEÇÃO DE PROJETOS -->
+                <div id="project-selection-view">
+                    <header class="operacao-header" style="margin-bottom: 3rem;">
+                        <div class="operacao-title">
+                            <h2>Gestão de Operações</h2>
+                            <p>Escolha um ecossistema para iniciar o acompanhamento tático</p>
+                        </div>
+                    </header>
+
+                    <div class="op-premium-grid">
+                        <div class="op-card-premium" onclick="openProjectDetails('Cliente Exemplo A')">
+                            <div class="op-card-header">
+                                <div class="op-card-icon"><i class="fas fa-rocket"></i></div>
+                                <span class="op-card-status">Ativo</span>
+                            </div>
+                            <h3>Cliente Exemplo A</h3>
+                            <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1.2rem;">Escalonamento de vendas via Meta Ads e Google Shopping.</p>
+                            <div class="op-card-meta">
+                                <span><i class="fas fa-users"></i> Squad Alpha</span>
+                                <span><i class="fas fa-user-tie"></i> Mariana Luz</span>
+                                <span style="color: #00ff00;"><i class="fas fa-heartbeat"></i> Saúde: 9.2</span>
+                                <span><i class="fas fa-calendar-alt"></i> Out/2025</span>
+                            </div>
+                        </div>
+
+                        <div class="op-card-premium" onclick="openProjectDetails('Cliente Beta S.A')">
+                            <div class="op-card-header">
+                                <div class="op-card-icon" style="background: linear-gradient(135deg, #10b981, #065f46);"><i class="fas fa-chart-line"></i></div>
+                                <span class="op-card-status">Ativo</span>
+                            </div>
+                            <h3>Cliente Beta S.A</h3>
+                            <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1.2rem;">Geração de Leads B2B e automação de funil de vendas.</p>
+                            <div class="op-card-meta">
+                                <span><i class="fas fa-users"></i> Squad Beta</span>
+                                <span><i class="fas fa-user-tie"></i> Ricardo Silva</span>
+                                <span style="color: #fbbf24;"><i class="fas fa-heartbeat"></i> Saúde: 7.5</span>
+                                <span><i class="fas fa-calendar-alt"></i> Jan/2026</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- VIEW 2: DETALHES DO PROJETO (PAINEL DE GT) -->
+                <div id="project-details-view">
+                    <div style="margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
+                        <button class="btn-back" onclick="backToProjects()">
+                            <i class="fas fa-arrow-left"></i> Lista de Projetos
+                        </button>
+                        <div class="op-client-title" id="display-project-name">CLIENTE NOME</div>
+                    </div>
+
+                    <div class="op-tabs-container" style="padding: 0; margin-bottom: 2rem; overflow-x: auto;">
+                        <div class="op-tabs-wrapper" style="display: flex; gap: 8px; min-width: max-content;">
+                            <button class="op-pill-btn active" onclick="switchOperacaoTab('dashboard')">
+                                <div class="op-icon-box"><i class="fas fa-th-large"></i></div>
+                                <span>Dashboard</span>
+                            </button>
+                            <button class="op-pill-btn" onclick="switchOperacaoTab('metas')">
+                                <div class="op-icon-box"><i class="fas fa-bullseye"></i></div>
+                                <span>Metas</span>
+                            </button>
+                            <button class="op-pill-btn" onclick="switchOperacaoTab('midia')">
+                                <div class="op-icon-box"><i class="fas fa-file-invoice-dollar"></i></div>
+                                <span>Plano de Mídia</span>
+                            </button>
+                            <button class="op-pill-btn" onclick="switchOperacaoTab('otimizacao')">
+                                <div class="op-icon-box"><i class="fas fa-bolt"></i></div>
+                                <span>Otimizações</span>
+                            </button>
+                            <button class="op-pill-btn" onclick="switchOperacaoTab('entregas')">
+                                <div class="op-icon-box"><i class="fas fa-check-double"></i></div>
+                                <span>Entregas do Mês</span>
+                            </button>
+                            <button class="op-pill-btn" onclick="switchOperacaoTab('kpi')">
+                                <div class="op-icon-box"><i class="fas fa-tachometer-alt"></i></div>
+                                <span>KPI Real Time</span>
+                            </button>
+                            <button class="op-pill-btn" onclick="switchOperacaoTab('links')">
+                                <div class="op-icon-box"><i class="fas fa-link"></i></div>
+                                <span>Links Úteis</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 1. DASHBOARD HUB DE GT -->
+                    <section id="section-dashboard" class="op-content-section active">
+                        <div class="op-section-title">
+                            <div class="op-icon-box"><i class="fas fa-chart-line"></i></div>
+                            <h3>Resumo de Performance</h3>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; margin-bottom: 2.5rem;">
+                            <div class="kpi-card-premium">
+                                <div style="font-size: 0.7rem; color: #888; text-transform: uppercase;">ROAS ACUMULADO</div>
+                                <div style="font-size: 1.8rem; font-weight: 700; margin: 0.5rem 0;">5.8x</div>
+                            </div>
+                            <div class="kpi-card-premium">
+                                <div style="font-size: 0.7rem; color: #888; text-transform: uppercase;">CPA MÉDIO</div>
+                                <div style="font-size: 1.8rem; font-weight: 700; margin: 0.5rem 0;">R$ 24,50</div>
+                            </div>
+                            <div class="kpi-card-premium">
+                                <div style="font-size: 0.7rem; color: #888; text-transform: uppercase;">INVESTIMENTO</div>
+                                <div style="font-size: 1.8rem; font-weight: 700; margin: 0.5rem 0;">R$ 45.300</div>
+                            </div>
+                            <div class="kpi-card-premium">
+                                <div style="font-size: 0.7rem; color: #888; text-transform: uppercase;">LEADS</div>
+                                <div style="font-size: 1.8rem; font-weight: 700; margin: 0.5rem 0;">1.842</div>
+                            </div>
+                        </div>
+
+                        <div class="tasks-header-actions">
+                            <div class="op-section-title" style="margin-bottom: 0;">
+                                <div class="op-icon-box"><i class="fas fa-tasks"></i></div>
+                                <h3>Tarefas da Semana</h3>
+                            </div>
+                            <button class="btn-add-task" onclick="openGTModal('modal-nova-tarefa')"><i class="fas fa-plus"></i> Adicionar Tarefa</button>
+                        </div>
+
+                        <div class="weekly-tasks-container">
+                            <div class="task-list" id="main-task-list">
+                                <div class="task-item">
+                                    <div class="task-checkbox" onclick="toggleTask(this)"><i class="fas fa-check"></i></div>
+                                    <div class="task-text">Subir novas variações de criativos para Campanha de Vendas</div>
+                                    <span class="task-tag">Meta Ads</span>
+                                    <button class="btn-delete-task" onclick="deleteTask(this)"><i class="fas fa-trash-alt"></i></button>
+                                </div>
+                                <div class="task-item">
+                                    <div class="task-checkbox" onclick="toggleTask(this)"><i class="fas fa-check"></i></div>
+                                    <div class="task-text">Revisar lances das palavras-chave de fundo de funil</div>
+                                    <span class="task-tag">Google Ads</span>
+                                    <button class="btn-delete-task" onclick="deleteTask(this)"><i class="fas fa-trash-alt"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- 2. ABA METAS -->
+                    <section id="section-metas" class="op-content-section">
+                        <div style="text-align: center; padding: 5rem 2rem;">
+                            <div class="op-icon-box" style="width: 80px; height: 80px; font-size: 2.5rem; margin: 0 auto 1.5rem;">
+                                <i class="fas fa-tools"></i>
+                            </div>
+                            <h3 style="font-size: 1.8rem; color: var(--text-main); margin-bottom: 0.5rem;">Módulo em Manutenção</h3>
+                            <p style="color: var(--text-muted); font-size: 1.1rem;">A gestão de metas está sendo integrada ao novo BI. Em breve aqui!</p>
+                        </div>
+                    </section>
+
+                    <!-- 3. PLANO DE MÍDIA -->
+                    <section id="section-midia" class="op-content-section">
+                        <header style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                            <div class="op-section-title" style="margin-bottom: 0;">
+                                <div class="op-icon-box"><i class="fas fa-file-invoice"></i></div>
+                                <h3>Plano de Mídia Mensal <span id="display-main-plan-date" style="color: #D61616; font-weight: 600; font-size: 0.9rem; margin-left: 10px;">[Fevereiro 2026]</span></h3>
+                            </div>
+                            <div style="display: flex; gap: 12px;">
+                                <button class="btn-add-task" style="background: transparent; color: var(--text-main); border: 1px solid var(--border-color);" onclick="editCurrentPlan()"><i class="fas fa-edit"></i> Editar Plano</button>
+                                <button class="history-dropdown-btn" onclick="openGTModal('modal-historico-planos')">
+                                    <i class="fas fa-history"></i> Histórico <i class="fas fa-chevron-down" style="font-size: 0.7rem;"></i>
+                                </button>
+                                <button class="btn-add-task" onclick="openGTModal('modal-novo-plano')"><i class="fas fa-plus"></i> Novo Plano</button>
+                            </div>
+                        </header>
+
+                        <div class="op-spreadsheet-wrapper" style="border-radius: 20px !important;">
+                            <table class="op-spreadsheet" style="border-radius: 20px; table-layout: fixed; width: 100%;">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 25%;">Canal</th>
+                                        <th style="width: 25%;">Campanhas</th>
+                                        <th style="width: 15%;">% Budget</th>
+                                        <th style="width: 17%;">R$ Budget</th>
+                                        <th style="width: 18%;">Budget/dia</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="plano-midia-body">
+                                    <tr><td><strong>Meta Ads</strong></td><td>V4 - WHATSAPP</td><td>5%</td><td>R$ 150,00</td><td>R$ 5,00</td></tr>
+                                    <tr><td><strong>LinkedIn Ads</strong></td><td>v4 - teste</td><td>95%</td><td>R$ 2.850,00</td><td>R$ 95,00</td></tr>
+                                    <tr class="total-row">
+                                        <td>TOTAL</td><td></td><td>100%</td><td>R$ 3.000,00</td><td>R$ 100,00</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+
+                    <!-- 4. OTIMIZAÇÕES -->
+                    <section id="section-otimizacao" class="op-content-section">
+                        <header style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                            <div class="op-section-title" style="margin-bottom: 0;">
+                                <div class="op-icon-box"><i class="fas fa-bolt"></i></div>
+                                <h3>Registro de Otimizações</h3>
+                            </div>
+                            <button class="btn-add-task" onclick="openGTModal('modal-nova-otimizacao')"><i class="fas fa-plus"></i> Nova Otimização</button>
+                        </header>
+                        <div id="otimizacao-empty-state" class="op-card-premium" style="background: var(--card-bg); border: 1px solid var(--border-color); padding: 3rem; text-align: center;">
+                            <div class="op-icon-box" style="margin: 0 auto 1.5rem; width: 60px; height: 60px;"><i class="fas fa-history" style="font-size: 1.5rem;"></i></div>
+                            <p style="color: var(--text-muted); margin-bottom: 2rem;">Registre aqui todas as intervenções táticas realizadas no projeto.</p>
+                            <button class="btn-primary" onclick="openGTModal('modal-nova-otimizacao')">+ Nova Otimização</button>
+                        </div>
+                        <div id="otimizacao-list" style="display: flex; flex-direction: column; gap: 15px;">
+                            <!-- Otimizações registradas vão aparecer aqui -->
+                        </div>
+                    </section>
+
+                    <!-- 5. ENTREGAS DO MÊS -->
+                    <section id="section-entregas" class="op-content-section">
+                        <header style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                            <div class="op-section-title" style="margin-bottom: 0;">
+                                <div class="op-icon-box"><i class="fas fa-check-double"></i></div>
+                                <h3>Entregas do Mês <span id="display-entregas-date" style="color: #D61616; font-weight: 600; font-size: 0.9rem; margin-left: 10px;"></span></h3>
+                            </div>
+                            <button class="history-dropdown-btn" onclick="openGTModal('modal-historico-entregas')">
+                                <i class="fas fa-history"></i> Histórico de Entregas <i class="fas fa-chevron-down" style="font-size: 0.7rem;"></i>
+                            </button>
+                        </header>
+                        
+                        <div class="entregas-grid">
+                            <!-- 1. Docs de Otimização (Auto) -->
+                            <div class="entrega-card" id="entrega-optims">
+                                <div class="entrega-check"><i class="fas fa-check"></i></div>
+                                <div class="entrega-info">
+                                    <h4>4 Docs de Otimização</h4>
+                                    <p>Automático • <span id="optims-count">0/4</span> registrados no mês</p>
+                                </div>
+                            </div>
+                            
+                            <!-- 2. Relatório Mensal (Auto/Manual com botão) -->
+                            <div class="entrega-card" id="entrega-report">
+                                <div class="entrega-check"><i class="fas fa-check"></i></div>
+                                <div class="entrega-info">
+                                    <h4>Relatório Mensal Feito</h4>
+                                    <p>Automático • Gere o relatório final do período</p>
+                                </div>
+                                <button class="btn-primary" onclick="generateMonthlyReport()" style="margin-left: auto;">Gerar Relatório</button>
+                            </div>
+                            
+                            <!-- 3. Plano de Mídia (Auto) -->
+                            <div class="entrega-card" id="entrega-media">
+                                <div class="entrega-check"><i class="fas fa-check"></i></div>
+                                <div class="entrega-info">
+                                    <h4>Plano de Mídia Atualizado</h4>
+                                    <p>Automático • Vinculado ao plano mensal ativo</p>
+                                </div>
+                            </div>
+                            
+                            <!-- 4. Acessos e Configs (Manual) -->
+                            <div class="entrega-card manual-toggle" id="entrega-access" onclick="toggleManualEntrega(this)">
+                                <div class="entrega-check"><i class="fas fa-check"></i></div>
+                                <div class="entrega-info">
+                                    <h4>Acessos e Configurações da Conta</h4>
+                                    <p>Manual • Clique para confirmar a revisão</p>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- 6. LINKS ÚTEIS -->
+                    <section id="section-links" class="op-content-section">
+                        <header style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                            <div class="op-section-title" style="margin-bottom: 0;">
+                                <div class="op-icon-box"><i class="fas fa-link"></i></div>
+                                <h3>Diretório de Links Úteis</h3>
+                            </div>
+                            <button class="btn-add-task" onclick="openGTModal('modal-novo-link')"><i class="fas fa-plus"></i> Adicionar Link</button>
+                        </header>
+
+                        <div class="access-links-grid" id="links-grid">
+                            <!-- Cards padrão já implementados e preservados -->
+                        </div>
+                    </section>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- MODAIS GT REFINADOS V6.0 -->
+    
+    <!-- Modal: Nova Tarefa -->
+    <div id="modal-nova-tarefa" class="gt-modal">
+        <div class="gt-modal-content">
+            <div class="gt-modal-header">
+                <h3 class="gt-modal-title">Nova Tarefa Semanal</h3>
+                <button class="gt-modal-close" onclick="closeGTModal('modal-nova-tarefa')">&times;</button>
+            </div>
+            <div class="gt-form-group">
+                <label class="gt-form-label">Descrição da Tarefa</label>
+                <input type="text" id="task-desc-input" class="gt-form-input" placeholder="Ex: Subir novos criativos...">
+            </div>
+            <div class="gt-form-group">
+                <label class="gt-form-label">Categoria / Tag</label>
+                <select id="task-tag-input" class="gt-form-select">
+                    <option value="Meta Ads">Meta Ads</option>
+                    <option value="Google Ads">Google Ads</option>
+                    <option value="Interno">Interno</option>
+                    <option value="Técnico">Técnico</option>
+                </select>
+            </div>
+            <div class="gt-form-footer">
+                <button class="btn-gt-cancel" onclick="closeGTModal('modal-nova-tarefa')">Cancelar</button>
+                <button class="btn-gt-confirm" onclick="addNewTask()">Salvar Tarefa</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Novo Plano de Mídia (Wizard V8.0) -->
+    <div id="modal-novo-plano" class="gt-modal">
+        <div class="gt-modal-content" id="plan-wizard-container" style="max-width: 900px; padding: 0; overflow: hidden;">
+            
+            <!-- ETAPA 1: Seleção de Mês e Ano -->
+            <div id="plan-step-1" class="plan-wizard-step active">
+                <div class="wizard-header">
+                    <button class="gt-modal-close" style="top: 25px; right: 25px;" onclick="closeGTModal('modal-novo-plano')">&times;</button>
+                    <h3 class="gt-modal-title">Criar Plano de Mídia</h3>
+                </div>
+                
+                <div style="padding: 2.5rem; display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div class="gt-form-group">
+                        <label class="gt-form-label" style="font-weight: 600;">Mês *</label>
+                        <select id="wizard-month" class="gt-wizard-select">
+                            <option value="Janeiro">Janeiro</option>
+                            <option value="Fevereiro">Fevereiro</option>
+                            <option value="Março">Março</option>
+                            <option value="Abril">Abril</option>
+                            <option value="Maio">Maio</option>
+                            <option value="Junho">Junho</option>
+                            <option value="Julho">Julho</option>
+                            <option value="Agosto">Agosto</option>
+                            <option value="Setembro">Setembro</option>
+                            <option value="Outubro">Outubro</option>
+                            <option value="Novembro">Novembro</option>
+                            <option value="Dezembro">Dezembro</option>
+                        </select>
+                    </div>
+                    <div class="gt-form-group">
+                        <label class="gt-form-label" style="font-weight: 600;">Ano *</label>
+                        <select id="wizard-year" class="gt-wizard-select">
+                            <option value="2025">2025</option>
+                            <option value="2026" selected>2026</option>
+                            <option value="2027">2027</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="gt-form-footer" style="background: none; border-top: none; padding: 0 2.5rem 2.5rem;">
+                    <button class="btn-gt-cancel" style="border: 1px solid var(--border-color);" onclick="closeGTModal('modal-novo-plano')">Cancelar</button>
+                    <button class="btn-gt-confirm" style="background: #D61616; border-radius: 8px; padding: 12px 30px;" onclick="goToPlanStep2()">Criar</button>
+                </div>
+            </div>
+
+            <!-- ETAPA 2: Editor de Planilha -->
+            <div id="plan-step-2" class="plan-wizard-step">
+                <div style="padding: 1.5rem; border-bottom: 1px solid var(--border-color);">
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <div style="background: rgba(214, 22, 22, 0.1); color: #D61616; width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">
+                            <i class="far fa-calendar-alt"></i>
+                        </div>
+                        <div>
+                            <h4 id="display-wizard-date" style="margin: 0;">Fevereiro 2026</h4>
+                            <p style="color: var(--text-muted); font-size: 0.8rem; margin: 0;">Define a distribuição do budget mensal por canal e campanha</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="padding: 1.5rem;">
+                    <div style="display: flex; gap: 15px; align-items: flex-end; margin-bottom: 2rem;">
+                        <div class="gt-form-group" style="flex: 1; margin: 0;">
+                            <label class="gt-form-label" style="font-size: 0.75rem; font-weight: 700;">Budget Mensal</label>
+                            <input type="number" id="wizard-total-budget" class="gt-wizard-input" value="0" oninput="calculateEditorValues()">
+                        </div>
+                        <button class="btn-add-line-wizard" onclick="addEditorRow()">
+                            <i class="fas fa-plus"></i> Adicionar Campanha
+                        </button>
+                    </div>
+
+                    <div class="wizard-table-container">
+                        <table class="wizard-editor-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 20%;">Canal</th>
+                                    <th style="width: 35%;">Campanhas</th>
+                                    <th style="width: 12%;">% Budget</th>
+                                    <th style="width: 15%;">R$ Budget</th>
+                                    <th style="width: 15%;">Budget/dia</th>
+                                    <th style="width: 3%;"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="wizard-editor-body">
+                                <!-- Linhas dinâmicas -->
+                            </tbody>
+                            <tfoot>
+                                <tr class="wizard-total-row">
+                                    <td colspan="2">Total</td>
+                                    <td id="wizard-total-percent">0%</td>
+                                    <td id="wizard-total-cash">R$ 0,00</td>
+                                    <td id="wizard-total-day">R$ 0,00</td>
+                                    <td></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+
+                <div style="padding: 1.5rem; border-top: 1px solid var(--border-color);">
+                    <button class="btn-wizard-save" onclick="saveFinalPlan()">Salvar Plano de Mídia</button>
+                </div>
+            </div>
+            
+        </div>
+    </div>
+
+    <!-- Modal: Otimização Detalhada -->
+    <div id="modal-nova-otimizacao" class="gt-modal">
+        <div class="gt-modal-content">
+            <div class="gt-modal-header">
+                <h3 class="gt-modal-title">Registrar Otimização Detalhada</h3>
+                <button class="gt-modal-close" onclick="closeGTModal('modal-nova-otimizacao')">&times;</button>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <div class="gt-form-group">
+                    <label class="gt-form-label">O que será otimizado?</label>
+                    <select id="opt-type" class="gt-form-select">
+                        <option value="Campanha">Campanha</option>
+                        <option value="Criativo">Criativo</option>
+                        <option value="GTM">Google Tag Manager</option>
+                        <option value="Analytics">GA4 / Analytics</option>
+                        <option value="LP">Landing Page / Site</option>
+                        <option value="Públicos">Públicos / Segmentação</option>
+                    </select>
+                </div>
+                <div class="gt-form-group">
+                    <label class="gt-form-label">Canal / Recurso</label>
+                    <select id="opt-channel" class="gt-form-select">
+                        <option value="Meta Ads">Meta Ads</option>
+                        <option value="Google Ads">Google Ads</option>
+                        <option value="LP/Site">Landing Page</option>
+                        <option value="Geral">Geral Ecossistema</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="gt-form-group" style="margin-top: 15px;">
+                <label class="gt-form-label">Data da Otimização</label>
+                <input type="date" id="opt-date" class="gt-form-input" style="width: 100%;">
+            </div>
+
+            <div class="gt-form-group">
+                <label class="gt-form-label">Detalhes da Intervenção</label>
+                <textarea id="opt-details" class="gt-form-textarea" rows="4" placeholder="Ex: Alteração de CPA desejado de R$ 25 para R$ 22 na campanha X..."></textarea>
+            </div>
+
+            <div class="gt-form-footer">
+                <button class="btn-gt-cancel" onclick="closeGTModal('modal-nova-otimizacao')">Cancelar</button>
+                <button class="btn-gt-confirm" onclick="saveOtimizacao()">Salvar Registro</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Histórico com Accordion V7.0 -->
+    <div id="modal-historico-planos" class="gt-modal">
+        <div class="gt-modal-content" style="max-width: 800px;">
+            <div class="gt-modal-header">
+                <h3 class="gt-modal-title">Histórico de Planos de Mídia</h3>
+                <button class="gt-modal-close" onclick="closeGTModal('modal-historico-planos')">&times;</button>
+            </div>
+            
+            <div class="history-accordion">
+                <!-- Janeiro 2026 -->
+                <div class="history-month-item" id="history-jan-2026">
+                    <div class="history-month-header" onclick="toggleHistoryMonth('history-jan-2026')">
+                        <div style="display: flex; align-items: center; gap: 15px;">
+                            <span class="badge-gt badge-estavel">Janeiro 2026</span>
+                            <span style="color: #888; font-size: 0.85rem;">Budget: R$ 5.400,00</span>
+                        </div>
+                        <i class="fas fa-chevron-down history-arrow"></i>
+                    </div>
+                    <div class="history-month-content">
+                        <table class="op-spreadsheet" style="font-size: 0.8rem; background: rgba(0,0,0,0.2);">
+                            <thead>
+                                <tr><th>Canal</th><th>Campanha</th><th>%</th><th>Budget R$</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr><td>Meta Ads</td><td>PROMO VERÃO</td><td>60%</td><td>R$ 3.240</td></tr>
+                                <tr><td>Google Ads</td><td>PESQUISA BRAND</td><td>40%</td><td>R$ 2.160</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Dezembro 2025 -->
+                <div class="history-month-item" id="history-dez-2025">
+                    <div class="history-month-header" onclick="toggleHistoryMonth('history-dez-2025')">
+                        <div style="display: flex; align-items: center; gap: 15px;">
+                            <span class="badge-gt" style="background: rgba(255,255,255,0.1);">Dezembro 2025</span>
+                            <span style="color: #888; font-size: 0.85rem;">Budget: R$ 4.000,00</span>
+                        </div>
+                        <i class="fas fa-chevron-down history-arrow"></i>
+                    </div>
+                    <div class="history-month-content">
+                        <table class="op-spreadsheet" style="font-size: 0.8rem; background: rgba(0,0,0,0.2);">
+                            <thead>
+                                <tr><th>Canal</th><th>Campanha</th><th>%</th><th>Budget R$</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr><td>Meta Ads</td><td>CONVERSÃO NATAL</td><td>75%</td><td>R$ 3.000</td></tr>
+                                <tr><td>Google Ads</td><td>BRANDING</td><td>25%</td><td>R$ 1.000</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <p style="font-size: 0.75rem; color: #555; text-align: center; margin-top: 1.5rem; font-style: italic;">Dados arquivados em PDF no BI.</p>
+        </div>
+    </div>
+
+    <!-- Modal: Histórico de Entregas -->
+    <div id="modal-historico-entregas" class="gt-modal">
+        <div class="gt-modal-content" style="max-width: 800px;">
+            <div class="gt-modal-header">
+                <h3 class="gt-modal-title">Histórico de Entregas Mensais</h3>
+                <button class="gt-modal-close" onclick="closeGTModal('modal-historico-entregas')">&times;</button>
+            </div>
+            
+            <div class="history-accordion">
+                <!-- Janeiro 2026 -->
+                <div class="history-month-item" id="history-entregas-jan-2026">
+                    <div class="history-month-header" onclick="toggleHistoryMonth('history-entregas-jan-2026')">
+                        <div style="display: flex; align-items: center; gap: 15px;">
+                            <span class="badge-gt badge-estavel">Janeiro 2026</span>
+                            <span style="color: #28a745; font-size: 0.85rem; font-weight: 500;">4/4 Entregues <i class="fas fa-check-circle"></i></span>
+                        </div>
+                        <i class="fas fa-chevron-down history-arrow"></i>
+                    </div>
+                    <div class="history-month-content">
+                        <ul style="list-style: none; margin: 0; padding: 0.5rem 1rem;">
+                            <li style="margin-bottom: 15px; color: var(--text-muted);"><i class="fas fa-check" style="color: #00ff00; margin-right: 10px;"></i> 4 Docs de Otimização Registrados</li>
+                            <li style="margin-bottom: 15px; color: var(--text-muted);"><i class="fas fa-check" style="color: #00ff00; margin-right: 10px;"></i> Relatório Mensal Processado</li>
+                            <li style="margin-bottom: 15px; color: var(--text-muted);"><i class="fas fa-check" style="color: #00ff00; margin-right: 10px;"></i> Plano de Mídia Executado</li>
+                            <li style="margin-bottom: 15px; color: var(--text-muted);"><i class="fas fa-check" style="color: #00ff00; margin-right: 10px;"></i> Acessos e Configurações Revisados</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Dezembro 2025 -->
+                <div class="history-month-item" id="history-entregas-dez-2025">
+                    <div class="history-month-header" onclick="toggleHistoryMonth('history-entregas-dez-2025')">
+                        <div style="display: flex; align-items: center; gap: 15px;">
+                            <span class="badge-gt" style="background: rgba(255,255,255,0.1);">Dezembro 2025</span>
+                            <span style="color: #28a745; font-size: 0.85rem; font-weight: 500;">4/4 Entregues <i class="fas fa-check-circle"></i></span>
+                        </div>
+                        <i class="fas fa-chevron-down history-arrow"></i>
+                    </div>
+                    <div class="history-month-content">
+                        <ul style="list-style: none; margin: 0; padding: 0.5rem 1rem;">
+                            <li style="margin-bottom: 15px; color: var(--text-muted);"><i class="fas fa-check" style="color: #00ff00; margin-right: 10px;"></i> 4 Docs de Otimização Registrados</li>
+                            <li style="margin-bottom: 15px; color: var(--text-muted);"><i class="fas fa-check" style="color: #00ff00; margin-right: 10px;"></i> Relatório Mensal Processado</li>
+                            <li style="margin-bottom: 15px; color: var(--text-muted);"><i class="fas fa-check" style="color: #00ff00; margin-right: 10px;"></i> Plano de Mídia Executado</li>
+                            <li style="margin-bottom: 15px; color: var(--text-muted);"><i class="fas fa-check" style="color: #00ff00; margin-right: 10px;"></i> Acessos e Configurações Revisados</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <p style="font-size: 0.75rem; color: #555; text-align: center; margin-top: 1.5rem; font-style: italic;">As entregas passadas ficam salvas com o arquivo de BI para histórico consultivo.</p>
+        </div>
+    </div>
+
+    <script>
+    window.APP_CONFIG = {
+        userEmail: "{{ session.email }}",
+        userAccessLevel: "{{ session.nivel_acesso }}",
+        userToken: "{{session.token}}"
+    };
+    </script>
+    {% include "components/modal-configuracoes.html" %}
+    <script src="static/js/tema.js"></script>
+</body>
+</html>
