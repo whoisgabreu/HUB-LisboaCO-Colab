@@ -72,7 +72,8 @@
                         data-clients="{{ inv.clients_count }}" data-fixed="{{ inv.fixed_fee }}" data-mrr="{{ inv.mrr }}"
                         data-mrr-total="{{ inv.mrrTotal }}" data-mrr-esperado="{{ inv.mrrEsperado }}"
                         data-mrr-teto="{{ inv.mrrTeto }}" data-roi="{{ inv.roi }}" data-rem-min="{{ inv.rem_min }}"
-                        data-rem-max="{{ inv.rem_max }}" onclick="openRemunerationModal(this)">
+                        data-rem-max="{{ inv.rem_max }}" data-projetos-vinculados="{{ inv.projetos_vinculados }}"
+                        onclick="openRemunerationModal(this)">
                         <div class="project-header">
                             <div class="project-icon">
                                 <i class="fa-solid fa-user-tie"></i>
@@ -220,25 +221,47 @@
                     <!-- Clientes -->
                     <div class="remu-metric-card">
                         <div class="remu-metric-header">
-                            <span class="remu-metric-label">Clientes</span>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span class="remu-metric-label">Clientes</span>
+                                <span class="remu-badge" id="modalClientsBadge">0</span>
+                            </div>
                             <i class="fa-solid fa-users remu-metric-icon"></i>
                         </div>
-                        <span class="remu-metric-value" id="modalClients">0</span>
+                        <div id="modalProjetosContainer" class="remu-projects-container">
+                            <!-- Tabela de projetos injetada via JS -->
+                        </div>
                     </div>
 
-                    <!-- Remuneração Fixa -->
+                    <!-- Remuneração -->
                     <div class="remu-metric-card">
                         <div class="remu-metric-header">
-                            <span class="remu-metric-label">Rem. Fixa</span>
+                            <span class="remu-metric-label">Remuneração</span>
                             <i class="fa-solid fa-wallet remu-metric-icon"></i>
                         </div>
-                        <span class="remu-metric-value" id="modalFixed">R$ 0,00</span>
+
+                        <div class="remu-values-list">
+                            <div class="remu-value-item primary">
+                                <span class="remu-value-label">Fixa</span>
+                                <span class="remu-value-amount" id="modalFixed">R$ 0,00</span>
+                            </div>
+
+                            <div class="remu-value-grid">
+                                <div class="remu-value-item">
+                                    <span class="remu-value-label">Mínima</span>
+                                    <span class="remu-value-amount min" id="modalRemMin">R$ 0,00</span>
+                                </div>
+                                <div class="remu-value-item">
+                                    <span class="remu-value-label">Máxima</span>
+                                    <span class="remu-value-amount max" id="modalRemMax">R$ 0,00</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- MRR Comparativo (Preenchido via JS) -->
                     <div class="remu-metric-card" id="modalMRRCard">
                         <div class="remu-metric-header">
-                            <span class="remu-metric-label">MRR (Sua Contribuição x Total)</span>
+                            <span class="remu-metric-label">MRR (Trabalhado x Total)</span>
                             <i class="fa-solid fa-chart-line remu-metric-icon"></i>
                         </div>
                         <div id="modalMRR" class="remu-comparison-box">

@@ -30,7 +30,10 @@ window.openRemunerationModal = function (card) {
     const squad = card.getAttribute('data-squad');
     const step = card.getAttribute('data-yellow-flag');
     const clients = card.getAttribute('data-clients');
+    const projetos_vinculados = card.getAttribute('data-projetos-vinculados').split(',');
     const fixed = parseFloat(card.getAttribute('data-fixed') || 0);
+    const remMin = parseFloat(card.getAttribute('data-rem-min') || 0);
+    const remMax = parseFloat(card.getAttribute('data-rem-max') || 0);
     const mrr = parseFloat(card.getAttribute('data-mrr') || 0);
     const mrrTotal = parseFloat(card.getAttribute('data-mrr-total') || 0);
     const mrrEsperado = parseFloat(card.getAttribute('data-mrr-esperado') || 0);
@@ -43,19 +46,61 @@ window.openRemunerationModal = function (card) {
     // document.getElementById('modalStep').textContent = `Step: ${step}`;
 
     // Fill Metrics
-    document.getElementById('modalClients').textContent = clients;
-    document.getElementById('modalFixed').textContent = Utils.formatBRL(fixed);
+    const clientsBadge = document.getElementById('modalClientsBadge');
+    if (clientsBadge) clientsBadge.textContent = clients;
+    // Preenchimento detalhado de projetos vinculados em tabela
+    const projetosContainer = document.getElementById('modalProjetosContainer');
+    if (projetosContainer) {
+        let projetosList = [];
+        try {
+            const rawData = card.getAttribute('data-projetos-vinculados') || '[]';
+            projetosList = JSON.parse(rawData);
+        } catch (e) {
+            console.error("Erro ao processar projetos vinculados:", e);
+        }
 
-    // MRR Comparativo: Sua Contribuição x Total
+        if (projetosList.length > 0) {
+            let tableHtml = `
+                <table class="remu-mini-table">
+                    <thead>
+                        <tr>
+                            <th>Projeto</th>
+                            <th>Fee</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            projetosList.forEach(p => {
+                tableHtml += `
+                    <tr>
+                        <td>
+                            <div class="remu-mini-project-name">${p.nome || 'N/A'}</div>
+                            <div class="remu-mini-project-id">${p.id}</div>
+                        </td>
+                        <td class="remu-mini-project-fee">${Utils.formatBRL(p.fee)}</td>
+                    </tr>
+                `;
+            });
+            tableHtml += `</tbody></table>`;
+            projetosContainer.innerHTML = tableHtml;
+        } else {
+            projetosContainer.innerHTML = '<div class="remu-no-data">Nenhum projeto vinculado</div>';
+        }
+    }
+    document.getElementById('modalFixed').textContent = Utils.formatBRL(fixed);
+    document.getElementById('modalRemMin').textContent = Utils.formatBRL(remMin);
+    document.getElementById('modalRemMax').textContent = Utils.formatBRL(remMax);
+
+    // MRR Comparativo: Trabalhado x Total
     const mrrBox = document.getElementById('modalMRR');
     if (mrrBox) {
         mrrBox.innerHTML = `
             <div class="remu-comparison-item primary">
-                <span class="remu-comparison-label">Sua Contribuição</span>
+                <span class="remu-comparison-label">MRR Trabalhado</span>
                 <span class="remu-comparison-val">${Utils.formatBRL(mrr)}</span>
             </div>
             <div class="remu-comparison-item" style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 8px;">
-                <span class="remu-comparison-label">Total da Carteira</span>
+                <span class="remu-comparison-label">MRR Total</span>
                 <span class="remu-comparison-val" style="font-size: 0.95rem; opacity: 0.8;">${Utils.formatBRL(mrrTotal)}</span>
             </div>
         `;

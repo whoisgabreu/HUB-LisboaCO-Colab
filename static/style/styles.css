@@ -1,4 +1,4 @@
-:root {
+﻿:root {
     --header-height: 82px;
     --bg-main: #000000;
     --bg-hover: #17171b;
@@ -395,7 +395,7 @@ td[class*="-flag-table"] span {
     width: 100% !important;
     height: 100% !important;
     padding: 1rem 0.5rem !important;
-    /* Mantém a altura da célula */
+    /* MantÃ©m a altura da cÃ©lula */
     font-weight: 700 !important;
 }
 
@@ -545,7 +545,7 @@ td {
     }
 }
 
-/* ENTREGAS DO MÊS */
+/* ENTREGAS DO MÃŠS */
 .entregas-grid {
     display: flex;
     flex-direction: column;
@@ -664,26 +664,8 @@ td {
 .modal-body {
     padding: 2rem;
     max-height: calc(85vh - 180px);
-    overflow-y: auto;
+
     box-shadow: inset 0px 5px 10px rgb(0 0 0 / 50%)
-}
-
-.modal-body::-webkit-scrollbar {
-    width: 8px;
-}
-
-.modal-body::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 10px;
-}
-
-.modal-body::-webkit-scrollbar-thumb {
-    background: rgba(255, 0, 0, 0.3);
-    border-radius: 10px;
-}
-
-.modal-body::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 0, 0, 0.5);
 }
 
 /* LISTA DE PROJETOS NO MODAL DO CLIENTE */
@@ -730,7 +712,7 @@ td {
     font-size: 0.85rem;
 }
 
-/* FORMULÃÂÃÂRIO */
+/* FORMULÃƒÂƒÃ‚ÂƒÃƒÂ‚Ã‚ÂRIO */
 .input-with-icon {
     position: relative
 }
@@ -857,7 +839,7 @@ td {
     border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-/* BOTÃÂÃÂES */
+/* BOTÃƒÂƒÃ‚ÂƒÃƒÂ‚Ã‚Â•ES */
 .btn-primary,
 .btn-secondary,
 .btn-view,
@@ -916,7 +898,7 @@ option {
     color: var(--text-main);
 }
 
-/* BotÃÂÃÂ£o do menu de usuÃÂÃÂ¡rio */
+/* BotÃƒÂƒÃ‚ÂƒÃƒÂ‚Ã‚Â£o do menu de usuÃƒÂƒÃ‚ÂƒÃƒÂ‚Ã‚Â¡rio */
 .user-menu-btn {
     background: transparent;
     border: none;
@@ -1004,10 +986,10 @@ option {
     position: relative;
 }
 
-/* Remove o botÃÂÃÂ£o de logout antigo do CSS */
+/* Remove o botÃƒÂƒÃ‚ÂƒÃƒÂ‚Ã‚Â£o de logout antigo do CSS */
 .logout-btn {
     display: none;
-    /* Esconde o botÃÂÃÂ£o antigo se ainda existir */
+    /* Esconde o botÃƒÂƒÃ‚ÂƒÃƒÂ‚Ã‚Â£o antigo se ainda existir */
 }
 
 /* MODAL PEQUENO PARA SENHA */
@@ -1048,12 +1030,12 @@ option {
     color: #d61616;
 }
 
-/* Modal grande para histÃÂÃÂ³rico */
+/* Modal grande para histÃƒÂƒÃ‚ÂƒÃƒÂ‚Ã‚Â³rico */
 .modal-large {
     max-width: 1000px;
 }
 
-/* Timeline de histÃÂÃÂ³rico */
+/* Timeline de histÃƒÂƒÃ‚ÂƒÃƒÂ‚Ã‚Â³rico */
 .history-timeline {
     display: flex;
     flex-direction: column;
@@ -1208,7 +1190,7 @@ option {
 }
 
 /* NOVO MODAL */
-/* BotÃÂÃÂ£o adicionar nota */
+/* BotÃƒÂƒÃ‚ÂƒÃƒÂ‚Ã‚Â£o adicionar nota */
 .add-note-btn {
     background: transparent;
     border: 1px solid rgb(255 255 255 / 0%);
@@ -1229,7 +1211,7 @@ option {
     color: #d61616;
 }
 
-/* SeÃÂÃÂ§ÃÂÃÂ£o de notas */
+/* SeÃƒÂƒÃ‚ÂƒÃƒÂ‚Ã‚Â§ÃƒÂƒÃ‚ÂƒÃƒÂ‚Ã‚Â£o de notas */
 .notes-section {
     margin-top: 2rem;
     padding-top: 2rem;
@@ -1463,18 +1445,17 @@ option {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     gap: 1.5rem;
-    margin-bottom: 2.5rem;
 }
 
 .remu-metric-card {
     background: rgba(255, 255, 255, 0.03);
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 16px;
-    padding: 1.5rem;
+    padding: 1.25rem;
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
-    min-height: 140px;
+    justify-content: flex-start;
+    gap: 0.75rem;
     transition: all 0.3s ease;
     position: relative;
     overflow: hidden;
@@ -1502,7 +1483,7 @@ option {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 1rem;
+    margin-bottom: 0.5rem;
 }
 
 .remu-metric-label {
@@ -1545,7 +1526,9 @@ option {
 
 .remu-comparison-item.primary .remu-comparison-val {
     color: #D61616;
-    font-size: 1.4rem;
+    font-size: 2rem;
+    font-weight: 800;
+    margin-top: 4px;
 }
 
 .remu-comparison-label {
@@ -1597,8 +1580,31 @@ option {
     background-color: var(--bg-hover);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 12px;
-    overflow: hidden;
-    margin-bottom: 2rem;
+    margin-bottom: 4rem;
+    margin-left: 2rem;
+    margin-right: 2rem;
+    max-height: 500px;
+    overflow-y: auto;
+    overflow-x: auto;
+}
+
+.remu-table-card::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+.remu-table-card::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 3px;
+}
+
+.remu-table-card::-webkit-scrollbar-thumb {
+    background: #D61616;
+    border-radius: 3px;
+}
+
+.remu-table-card::-webkit-scrollbar-thumb:hover {
+    background: #ff3333;
 }
 
 .remu-table-header {
@@ -1612,9 +1618,7 @@ option {
 }
 
 .remu-table-wrapper {
-    overflow-x: auto;
-    max-height: 500px;
-    overflow-y: auto;
+    width: 100%;
 }
 
 .remu-table {
@@ -2103,27 +2107,7 @@ option {
     padding: 1.8rem 2.5rem !important;
 }
 
-/* 3) Scrollable Body within Modal */
-.modal-remu .modal-body {
-    flex: 1 !important;
-    overflow-y: auto !important;
-    max-height: none !important;
-    /* Content fills available space */
-    padding: 2.5rem !important;
-}
 
-.modal-remu .modal-body::-webkit-scrollbar {
-    width: 10px;
-}
-
-.modal-remu .modal-body::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.05);
-}
-
-.modal-remu .modal-body::-webkit-scrollbar-thumb {
-    background: rgba(214, 22, 22, 0.4);
-    border-radius: 10px;
-}
 
 /* 4) Metrics Grid Tuning */
 .modal-remu .remu-metrics {
@@ -2131,7 +2115,6 @@ option {
     /* grid-template-columns: repeat(5, 1fr) !important; */
     grid-template-columns: repeat(4, 1fr) !important;
     gap: 2rem !important;
-    margin-bottom: 4rem !important;
     margin-top: 1rem !important;
 }
 
@@ -2290,12 +2273,12 @@ option {
     }
 
     .modal-remu .modal-body {
-        padding: 1.5rem !important;
+        padding: 2rem !important;
     }
 }
 
 /* =============================================
-   MODAL DE CONFIGURAÃÂÃÂES - REFORMULADO
+   MODAL DE CONFIGURAÃƒÂƒÃ‚Â‡ÃƒÂƒÃ‚Â•ES - REFORMULADO
    ============================================= */
 .modal-configuracoes-overlay {
     display: none;
@@ -2499,7 +2482,7 @@ option {
     display: block;
 }
 
-/* SEGURANÃÂA */
+/* SEGURANÃƒÂƒÃ‚Â‡A */
 .security-card {
     background-color: rgba(255, 255, 255, 0.03);
     border: 1px solid rgba(255, 255, 255, 0.05);
@@ -2538,7 +2521,7 @@ option {
     color: var(--text-main);
 }
 
-/* PREFERÃÂNCIAS */
+/* PREFERÃƒÂƒÃ‚ÂŠNCIAS */
 .config-group {
     margin-bottom: 2.5rem;
 }
@@ -2667,11 +2650,11 @@ option {
     color: #e74c3c;
 }
 
-/* DIVISÃÂRIAS NA TABELA DE REMUNERAÃÂÃÂO */
+/* DIVISÃƒÂƒÃ‚Â“RIAS NA TABELA DE REMUNERAÃƒÂƒÃ‚Â‡ÃƒÂƒÃ‚ÂƒO */
 .remu-table th,
 .remu-table td {
     border-right: 1px solid var(--border-color);
-    /* Mais visÃÂ­vel no escuro */
+    /* Mais visÃƒÂƒÃ‚Â­vel no escuro */
 }
 
 .remu-table {
@@ -2709,7 +2692,7 @@ option {
     font-size: 0.9rem;
 }
 
-/* Sub-tabs OperaÃ§Ã£o */
+/* Sub-tabs OperaÃƒÂ§ÃƒÂ£o */
 .operacao-tabs {
     display: flex;
     gap: 0.5rem;
@@ -2857,7 +2840,7 @@ option {
     border-color: #D61616;
 }
 
-/* Form Styles (Plano de MÃ­dia/Auditoria) */
+/* Form Styles (Plano de MÃƒÂ­dia/Auditoria) */
 .op-form-container {
     background: var(--bg-hover);
     padding: 2rem;
@@ -3111,7 +3094,7 @@ option {
     gap: 0.5rem;
 }
 
-/* Planilha de MÃ­dia Refinada */
+/* Planilha de MÃƒÂ­dia Refinada */
 .op-spreadsheet-wrapper {
     background: var(--card-bg);
     border-radius: 12px;
@@ -3191,7 +3174,7 @@ option {
     border-radius: 12px;
 }
 
-/* Ãcones Padronizados: Fundo Vermelho, Ãcone Branco */
+/* ÃƒÂcones Padronizados: Fundo Vermelho, ÃƒÂcone Branco */
 .op-icon-box {
     width: 32px;
     height: 32px;
@@ -3207,7 +3190,7 @@ option {
 
 .op-pill-btn i {
     display: none;
-    /* Vou usar o op-icon-box dentro do botÃ£o ou manter o Ã­cone branco padrÃ£o */
+    /* Vou usar o op-icon-box dentro do botÃƒÂ£o ou manter o ÃƒÂ­cone branco padrÃƒÂ£o */
 }
 
 .op-pill-btn.active {
@@ -3316,7 +3299,7 @@ option {
     font-weight: 500;
 }
 
-/* ForÃ§ar arredondamento em todas as tabelas operacionais */
+/* ForÃƒÂ§ar arredondamento em todas as tabelas operacionais */
 .op-table-wrapper,
 .op-spreadsheet-wrapper {
     border-radius: 20px !important;
@@ -3337,7 +3320,7 @@ option {
 }
 
 
-/* PAINEL DE GT - ESTILOS AVANÃADOS */
+/* PAINEL DE GT - ESTILOS AVANÃƒÂ‡ADOS */
 
 .op-tabs-wrapper {
     max-width: none !important;
@@ -3478,7 +3461,7 @@ option {
     opacity: 0.8;
 }
 
-/* Layout de Links Ãteis (CartÃµes de Acesso) */
+/* Layout de Links ÃƒÂšteis (CartÃƒÂµes de Acesso) */
 .access-links-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
@@ -3575,7 +3558,7 @@ option {
 }
 
 
-/* CORREÃÃES V2.1 */
+/* CORREÃƒÂ‡ÃƒÂ•ES V2.1 */
 
 /* Quadro de Tarefas Semanais */
 .weekly-tasks-container {
@@ -3643,7 +3626,7 @@ option {
     font-weight: 600;
 }
 
-/* Ajuste de Alinhamento Tabela de MÃ­dia */
+/* Ajuste de Alinhamento Tabela de MÃƒÂ­dia */
 .op-spreadsheet th,
 .op-spreadsheet td {
     text-align: center !important;
@@ -3679,7 +3662,7 @@ option {
 }
 
 
-/* AJUSTES V2.2 - LAYOUT EM LINHA E AÃÃES DE TAREFA */
+/* AJUSTES V2.2 - LAYOUT EM LINHA E AÃƒÂ‡ÃƒÂ•ES DE TAREFA */
 
 .op-pill-btn {
     flex-direction: row !important;
@@ -3759,7 +3742,7 @@ option {
 }
 
 
-/* AJUSTES V3.0 - LINKS E HISTÃRICO MÃDIA */
+/* AJUSTES V3.0 - LINKS E HISTÃƒÂ“RICO MÃƒÂDIA */
 
 .access-link-card {
     background: var(--card-bg) !important;
@@ -3782,7 +3765,7 @@ option {
     border-radius: 8px !important;
 }
 
-/* Timeline HistÃ³rico Plano de MÃ­dia */
+/* Timeline HistÃƒÂ³rico Plano de MÃƒÂ­dia */
 .plan-history-selector {
     display: flex;
     gap: 12px;
@@ -3817,7 +3800,7 @@ option {
 
 /* MODAIS E DROPDOWN V4.0 */
 
-/* Seletor Dropdown HistÃ³rico */
+/* Seletor Dropdown HistÃƒÂ³rico */
 .plan-history-dropdown {
     position: relative;
     display: inline-block;
@@ -3964,7 +3947,7 @@ option {
 }
 
 
-/* Estilos de Tarefa ConcluÃ­da */
+/* Estilos de Tarefa ConcluÃƒÂ­da */
 .task-item.completed .task-text {
     text-decoration: line-through;
     opacity: 0.5;
@@ -3977,7 +3960,7 @@ option {
 }
 
 
-/* HISTÃRICO ACCORDION V7.0 */
+/* HISTÃƒÂ“RICO ACCORDION V7.0 */
 .history-month-item {
     margin-bottom: 1rem;
     border: 1px solid rgba(255, 255, 255, 0.05);
@@ -4035,7 +4018,7 @@ option {
 }
 
 
-/* FLUXO WIZARD PLANO DE MÃDIA V8.0 */
+/* FLUXO WIZARD PLANO DE MÃƒÂDIA V8.0 */
 .plan-wizard-step {
     display: none;
 }
@@ -4277,4 +4260,146 @@ body.tema-claro .toggle-slider:before {
 
 body.tema-claro .toggle-switch input:checked+.toggle-slider {
     background-color: #fee2e2;
+}
+
+/* Container e Mini-tabela de Projetos Vinculados */
+.remu-projects-container {
+    margin-top: 10px;
+    max-height: 200px;
+    overflow-y: auto;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 8px;
+    padding: 5px;
+}
+
+.remu-projects-container::-webkit-scrollbar {
+    width: 6px;
+}
+
+.remu-projects-container::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 3px;
+}
+
+.remu-projects-container::-webkit-scrollbar-thumb {
+    background: #D61616;
+    border-radius: 3px;
+}
+
+.remu-projects-container::-webkit-scrollbar-thumb:hover {
+    background: #ff3333;
+}
+
+.remu-mini-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8rem;
+}
+
+.remu-mini-table th {
+    text-align: left;
+    color: #666;
+    text-transform: uppercase;
+    font-size: 0.65rem;
+    padding: 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    border-right: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.remu-mini-table td {
+    padding: 8px;
+    border-bottom: 1px solid rgb(255 255 255 / 21%);
+    border-right: 1px solid rgb(255 255 255 / 21%);
+    border-left: 1px solid rgb(255 255 255 / 21%);
+    vertical-align: middle;
+}
+
+.remu-mini-project-name {
+    font-weight: 600;
+    color: #eee;
+    margin-bottom: 2px;
+}
+
+.remu-mini-project-id {
+    font-size: 0.65rem;
+    color: #666;
+}
+
+.remu-mini-project-fee {
+    font-weight: 700;
+    color: #ffffff;
+    text-align: right;
+}
+
+.remu-no-data {
+    padding: 15px;
+    text-align: center;
+    color: #555;
+    font-size: 0.8rem;
+    font-style: italic;
+}
+
+/* Badge de NotificaÃ§Ã£o/Contagem */
+.remu-badge {
+    background: #D61616;
+    color: white;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    font-weight: 700;
+    box-shadow: 0 0 10px rgba(214, 22, 22, 0.4);
+}
+
+/* Estilos para a lista de valores de remuneração no modal */
+.remu-values-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.2rem;
+    margin-top: 0.5rem;
+}
+
+.remu-value-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.remu-value-item.primary .remu-value-amount {
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: #fff;
+}
+
+.remu-value-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.remu-value-label {
+    font-size: 0.65rem;
+    color: #888;
+    text-transform: uppercase;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+.remu-value-amount {
+    font-size: 1.2rem;
+    font-weight: 700;
+}
+
+.remu-value-amount.min {
+    color: #ff4d4d;
+}
+
+.remu-value-amount.max {
+    color: #4ade80;
 }

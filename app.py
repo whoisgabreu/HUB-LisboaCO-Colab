@@ -7,6 +7,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from datetime import datetime
 import os
+import json
 
 from database import Session, engine, Base
 from models import Investidor, Auth, ProjetoAtivo, ProjetoOnetime, ProjetoInativo, MetricaMensal, InvestidorProjeto, OperacaoTarefa, OperacaoEntregaMensal
@@ -256,6 +257,20 @@ def hub_remuneracao():
             ).filter(InvestidorProjeto.active == True).group_by(InvestidorProjeto.email_investidor).all()
             clients_map = {email: count for email, count in client_counts}
 
+            # 2. Busca projetos vinculados por investidor para mapeamento
+            all_vinculos = db.query(InvestidorProjeto).all()
+            projetos_map = {}
+            for v in all_vinculos:
+                if v.email_investidor not in projetos_map:
+                    projetos_map[v.email_investidor] = []
+                # Inclui ID, Nome e Fee para exibição detalhada
+                projetos_map[v.email_investidor].append({
+                    "id": v.pipefy_id_projeto,
+                    "nome": v.nome_projeto,
+                    "fee": float(v.fee_projeto or 0)
+                })
+
+
             # 2. Busca métricas mais recentes agrupadas por investidor
             metricas_raw = db.query(MetricaMensal, Investidor).join(
                 Investidor, MetricaMensal.email_investidor == Investidor.email
@@ -285,6 +300,7 @@ def hub_remuneracao():
                     "step": metrica.level,
                     "clients_count": clients_map.get(email, 0),
                     "fixed_fee": float(metrica.fixo_remuneracao_fixa or 0),
+                    "projetos_vinculados": json.dumps(projetos_map.get(email, [])),
                     "mrr": float(metrica.fixo_mrr_atual or 0),
                     "mrrTotal": float(metrica.fixo_mrr_projeto_total or 0),
                     "mrrEsperado": float(metrica.fixo_mrr_esperado or 0),
