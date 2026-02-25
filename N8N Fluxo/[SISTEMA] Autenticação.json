@@ -1,0 +1,370 @@
+{
+  "name": "[SISTEMA] Autenticação",
+  "nodes": [
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        64,
+        -352
+      ],
+      "id": "f8fefcb6-ed4b-4540-9fd4-779c65a40d02",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "content": "# Login\n",
+        "height": 656,
+        "width": 1296,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1008,
+        -400
+      ],
+      "id": "48ca9021-d78e-4049-9d11-5ec94691dfda",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "schema": {
+          "__rl": true,
+          "value": "plataforma_geral",
+          "mode": "list",
+          "cachedResultName": "plataforma_geral"
+        },
+        "table": {
+          "__rl": true,
+          "value": "auth",
+          "mode": "list",
+          "cachedResultName": "auth"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "email": "={{ $json.email }}",
+            "token": "={{ $('login').item.json.query.token }}"
+          },
+          "matchingColumns": [
+            "email"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "token",
+              "displayName": "token",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -176,
+        -160
+      ],
+      "id": "882cc981-d063-4ad6-9871-4b81865caebd",
+      "name": "auth",
+      "credentials": {
+        "postgres": {
+          "id": "3MreXHC1Ukpf8Wps",
+          "name": "Lisboa.Co - Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {
+          "responseCode": 401
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -176,
+        32
+      ],
+      "id": "a16021ea-cbf4-4177-8838-1c8b4d15af6f",
+      "name": "return erro"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d7b1cc00-8b90-4bef-83a9-2057e8fe1e28",
+              "name": "user",
+              "value": "={{ $('carregar user').item.json }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -176,
+        -352
+      ],
+      "id": "d17f5db3-d06b-433d-8afe-1ee7896a4524",
+      "name": "normalizar saída"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('carregar user').item.json }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "object",
+                      "operation": "notEmpty",
+                      "singleValue": true
+                    },
+                    "id": "be5c6fb3-24c6-48df-9c82-003ff3651bf6"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "8fad2cdc-5b6a-4ed7-b431-1eb7b10d09a8",
+                    "leftValue": "={{ $('carregar user').item.json }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "object",
+                      "operation": "empty",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        -400,
+        -352
+      ],
+      "id": "7eadd1c6-1da0-4eab-968b-216b48132f3c",
+      "name": "verificar user"
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "schema": {
+          "__rl": true,
+          "value": "plataforma_geral",
+          "mode": "list",
+          "cachedResultName": "plataforma_geral"
+        },
+        "table": {
+          "__rl": true,
+          "value": "investidores",
+          "mode": "list",
+          "cachedResultName": "investidores"
+        },
+        "returnAll": true,
+        "where": {
+          "values": [
+            {
+              "column": "email",
+              "value": "={{ $json.query.email }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -640,
+        -352
+      ],
+      "id": "409a6afc-4a55-49d9-a76a-47604a473473",
+      "name": "carregar user",
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "3MreXHC1Ukpf8Wps",
+          "name": "Lisboa.Co - Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "path": "check_login",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -896,
+        -352
+      ],
+      "id": "e478dc38-7b6b-4005-92e5-4751cf011179",
+      "name": "login",
+      "webhookId": "2dd6eb73-e689-45b6-86a1-c90f315a8667"
+    }
+  ],
+  "pinData": {
+    "login": [
+      {
+        "json": {
+          "headers": {
+            "host": "n8n.v4lisboatech.com.br",
+            "user-agent": "python-requests/2.32.5",
+            "accept": "*/*",
+            "accept-encoding": "gzip, deflate",
+            "x-forwarded-for": "131.0.190.207",
+            "x-forwarded-host": "n8n.v4lisboatech.com.br",
+            "x-forwarded-port": "443",
+            "x-forwarded-proto": "https",
+            "x-forwarded-server": "2c5ac91c5549",
+            "x-real-ip": "131.0.190.207"
+          },
+          "params": {},
+          "query": {
+            "email": "martins.gabriel@v4company.com",
+            "token": "c40b547f2d202737194b"
+          },
+          "body": {},
+          "webhookUrl": "https://n8n.v4lisboatech.com.br/webhook/check_login",
+          "executionMode": "production"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "normalizar saída": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "verificar user": {
+      "main": [
+        [
+          {
+            "node": "normalizar saída",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "auth",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "return erro",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "carregar user": {
+      "main": [
+        [
+          {
+            "node": "verificar user",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "login": {
+      "main": [
+        [
+          {
+            "node": "carregar user",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "be08826e-d0f1-41b2-9804-5e28e3ecd0f7",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "2d946570092a86d9c7ad06bd1a4d02c366559a0792b5dca95ecb6b7fe9120c6c"
+  },
+  "id": "RXzEV5Z4LFRM64CN",
+  "tags": []
+}

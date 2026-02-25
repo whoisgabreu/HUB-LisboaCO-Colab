@@ -17,7 +17,7 @@ function formatCurrency(value, currency) {
     return new Intl.NumberFormat('pt-BR', {
         style: 'currency',
         currency: currency || 'BRL'
-    }).format(number / 100); // centavos → reais
+    }).format(number); // centavos → reais
 }
 
 function parseCurrencyToCents(value) {

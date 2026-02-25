@@ -1,0 +1,5739 @@
+{
+  "name": "[SISTEMA] Crud",
+  "nodes": [
+    {
+      "parameters": {
+        "operation": "select",
+        "schema": {
+          "__rl": true,
+          "value": "plataforma_geral",
+          "mode": "list",
+          "cachedResultName": "plataforma_geral"
+        },
+        "table": {
+          "__rl": true,
+          "value": "investidores",
+          "mode": "list",
+          "cachedResultName": "investidores"
+        },
+        "returnAll": true,
+        "where": {
+          "values": [
+            {
+              "column": "email",
+              "value": "={{ $json.email }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -1344,
+        208
+      ],
+      "id": "0bd57a49-502a-44c5-82ef-19c81c74c416",
+      "name": "Carregar Usuário",
+      "credentials": {
+        "postgres": {
+          "id": "3MreXHC1Ukpf8Wps",
+          "name": "Lisboa.Co - Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "schema": {
+          "__rl": true,
+          "value": "plataforma_geral",
+          "mode": "list",
+          "cachedResultName": "plataforma_geral"
+        },
+        "table": {
+          "__rl": true,
+          "value": "projetos_ativos",
+          "mode": "list",
+          "cachedResultName": "projetos_ativos"
+        },
+        "returnAll": true,
+        "where": {
+          "values": [
+            {
+              "column": "squad_atribuida",
+              "value": "={{ $json.squad }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -960,
+        352
+      ],
+      "id": "249bc76a-ca86-4744-a627-7dedae814104",
+      "name": "Carregar Projetos",
+      "credentials": {
+        "postgres": {
+          "id": "3MreXHC1Ukpf8Wps",
+          "name": "Lisboa.Co - Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -544,
+        352
+      ],
+      "id": "38628ba9-1f92-451b-be4e-e6bf28076e84",
+      "name": "Retornar Json"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0bbca64b-a503-4391-aec0-51556b7fee81",
+              "name": "projetos",
+              "value": "={{ $('Carregar Projetos').item.json }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -752,
+        352
+      ],
+      "id": "e6aa4b66-2b5c-4142-98d5-377771e61125",
+      "name": "Normalizar Dados"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.squad }}",
+                    "rightValue": "Gerência",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "77921d0b-f81c-4a64-8d4b-ecb351307659"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Gerência"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "b49988cc-b8f9-48cc-bc92-ef01d967a7a2",
+                    "leftValue": "={{ $json.squad }}",
+                    "rightValue": "Gerência",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEquals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        -1152,
+        208
+      ],
+      "id": "3504288d-59e6-4fcc-bdf4-b3bf47462ac5",
+      "name": "Switch1"
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "schema": {
+          "__rl": true,
+          "value": "plataforma_geral",
+          "mode": "list",
+          "cachedResultName": "plataforma_geral"
+        },
+        "table": {
+          "__rl": true,
+          "value": "projetos_ativos",
+          "mode": "list",
+          "cachedResultName": "projetos_ativos"
+        },
+        "returnAll": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -960,
+        192
+      ],
+      "id": "dc30c34a-67b2-4cea-a3dc-c38acb824705",
+      "name": "Carregar Projetos1",
+      "credentials": {
+        "postgres": {
+          "id": "3MreXHC1Ukpf8Wps",
+          "name": "Lisboa.Co - Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0bbca64b-a503-4391-aec0-51556b7fee81",
+              "name": "projetos",
+              "value": "={{ $('Carregar Projetos1').item.json }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -752,
+        192
+      ],
+      "id": "90b5fed0-6258-4fb9-9061-a462b4b80f2f",
+      "name": "Normalizar Dados1"
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -544,
+        192
+      ],
+      "id": "0139ae9a-20d1-4c2a-a747-3751ae5d7869",
+      "name": "Retornar Json1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d7b1cc00-8b90-4bef-83a9-2057e8fe1e28",
+              "name": "error",
+              "value": "=UNAUTHORIZED",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1344,
+        464
+      ],
+      "id": "c001859b-bd28-42d9-acc4-0b71513ca4fa",
+      "name": "Edit Fields2"
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -1152,
+        464
+      ],
+      "id": "68ef44b1-b1e4-46fe-98a4-9ccacf996311",
+      "name": "Respond to Webhook2"
+    },
+    {
+      "parameters": {
+        "path": "list_projetos",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -1872,
+        208
+      ],
+      "id": "ed125b1a-13a2-49b3-84eb-9f0458fb0de5",
+      "name": "Listar Projetos Ativos",
+      "webhookId": "2dd6eb73-e689-45b6-86a1-c90f315a8667"
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "schema": {
+          "__rl": true,
+          "value": "plataforma_geral",
+          "mode": "list",
+          "cachedResultName": "plataforma_geral"
+        },
+        "table": {
+          "__rl": true,
+          "value": "investidores",
+          "mode": "list",
+          "cachedResultName": "investidores"
+        },
+        "returnAll": true,
+        "where": {
+          "values": [
+            {
+              "column": "email",
+              "value": "={{ $json.email }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        336,
+        160
+      ],
+      "id": "bb79e9ac-818f-48d3-a5e2-bba7e679b1f1",
+      "name": "Carregar Usuário2",
+      "credentials": {
+        "postgres": {
+          "id": "3MreXHC1Ukpf8Wps",
+          "name": "Lisboa.Co - Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "schema": {
+          "__rl": true,
+          "value": "plataforma_geral",
+          "mode": "list",
+          "cachedResultName": "plataforma_geral"
+        },
+        "table": {
+          "__rl": true,
+          "value": "projetos_onetime",
+          "mode": "list",
+          "cachedResultName": "projetos_onetime"
+        },
+        "returnAll": true,
+        "where": {
+          "values": [
+            {
+              "column": "squad_atribuida",
+              "value": "={{ $json.squad }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        720,
+        304
+      ],
+      "id": "46c3a6a5-ca8b-4218-84be-82edc1e8b089",
+      "name": "Carregar Projetos2",
+      "credentials": {
+        "postgres": {
+          "id": "3MreXHC1Ukpf8Wps",
+          "name": "Lisboa.Co - Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1136,
+        304
+      ],
+      "id": "274d3bde-45f9-424b-baa8-36d030b40822",
+      "name": "Retornar Json2"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0bbca64b-a503-4391-aec0-51556b7fee81",
+              "name": "projetos",
+              "value": "={{ $('Carregar Projetos2').item.json }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        928,
+        304
+      ],
+      "id": "379f02d6-7abd-4457-9cb8-8410a317a185",
+      "name": "Normalizar Dados2"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.squad }}",
+                    "rightValue": "Gerência",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "77921d0b-f81c-4a64-8d4b-ecb351307659"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Gerência"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "b49988cc-b8f9-48cc-bc92-ef01d967a7a2",
+                    "leftValue": "={{ $json.squad }}",
+                    "rightValue": "Gerência",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEquals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        528,
+        160
+      ],
+      "id": "21dcbcc9-d426-4c12-9bfc-2dfc1f5de624",
+      "name": "Switch3"
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "schema": {
+          "__rl": true,
+          "value": "plataforma_geral",
+          "mode": "list",
+          "cachedResultName": "plataforma_geral"
+        },
+        "table": {
+          "__rl": true,
+          "value": "projetos_onetime",
+          "mode": "list",
+          "cachedResultName": "projetos_onetime"
+        },
+        "returnAll": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        720,
+        144
+      ],
+      "id": "e3e0ae09-0992-47ba-8f62-c1e19003540a",
+      "name": "Carregar Projetos3",
+      "credentials": {
+        "postgres": {
+          "id": "3MreXHC1Ukpf8Wps",
+          "name": "Lisboa.Co - Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0bbca64b-a503-4391-aec0-51556b7fee81",
+              "name": "projetos",
+              "value": "={{ $('Carregar Projetos3').item.json }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        928,
+        144
+      ],
+      "id": "6872bd57-ab83-4a1f-a206-62cc1b3ff0b2",
+      "name": "Normalizar Dados3"
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1136,
+        144
+      ],
+      "id": "9096bfcd-4626-436e-b23f-483480445a25",
+      "name": "Retornar Json3"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d7b1cc00-8b90-4bef-83a9-2057e8fe1e28",
+              "name": "error",
+              "value": "=UNAUTHORIZED",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        336,
+        480
+      ],
+      "id": "c2702c8a-c084-45f6-b86c-3ba30d19b420",
+      "name": "Edit Fields3"
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        528,
+        480
+      ],
+      "id": "d05f2d88-911f-4af4-b267-44300f1d1fad",
+      "name": "Respond to Webhook3"
+    },
+    {
+      "parameters": {
+        "path": "list_projetos_onetime",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -240,
+        160
+      ],
+      "id": "797c8afe-c1c9-48ef-94c6-4e610627bcc3",
+      "name": "Listar Projetos Onetime",
+      "webhookId": "2dd6eb73-e689-45b6-86a1-c90f315a8667"
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "schema": {
+          "__rl": true,
+          "value": "plataforma_geral",
+          "mode": "list",
+          "cachedResultName": "plataforma_geral"
+        },
+        "table": {
+          "__rl": true,
+          "value": "investidores",
+          "mode": "list",
+          "cachedResultName": "investidores"
+        },
+        "returnAll": true,
+        "where": {
+          "values": [
+            {
+              "column": "email",
+              "value": "={{ $json.email }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -1344,
+        752
+      ],
+      "id": "23af4613-f5e7-4aab-b5c7-e563b600563d",
+      "name": "Carregar Usuário3",
+      "credentials": {
+        "postgres": {
+          "id": "3MreXHC1Ukpf8Wps",
+          "name": "Lisboa.Co - Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "schema": {
+          "__rl": true,
+          "value": "plataforma_geral",
+          "mode": "list",
+          "cachedResultName": "plataforma_geral"
+        },
+        "table": {
+          "__rl": true,
+          "value": "projetos_inativos",
+          "mode": "list",
+          "cachedResultName": "projetos_inativos"
+        },
+        "returnAll": true,
+        "where": {
+          "values": [
+            {
+              "column": "squad_atribuida",
+              "value": "={{ $json.squad }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -960,
+        896
+      ],
+      "id": "0c2f3a7b-edc0-4b80-8f7d-694305b20946",
+      "name": "Carregar Projetos4",
+      "credentials": {
+        "postgres": {
+          "id": "3MreXHC1Ukpf8Wps",
+          "name": "Lisboa.Co - Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -544,
+        896
+      ],
+      "id": "659062d1-aac0-4431-b246-f14d79c03c10",
+      "name": "Retornar Json4"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0bbca64b-a503-4391-aec0-51556b7fee81",
+              "name": "projetos",
+              "value": "={{ $('Carregar Projetos4').item.json }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -752,
+        896
+      ],
+      "id": "004089d9-7439-4558-9a93-d14915033d2c",
+      "name": "Normalizar Dados4"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.squad }}",
+                    "rightValue": "Gerência",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "77921d0b-f81c-4a64-8d4b-ecb351307659"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Gerência"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "b49988cc-b8f9-48cc-bc92-ef01d967a7a2",
+                    "leftValue": "={{ $json.squad }}",
+                    "rightValue": "Gerência",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEquals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        -1152,
+        752
+      ],
+      "id": "783831c5-a45b-4c24-9150-6baab41d3d14",
+      "name": "Switch5"
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "schema": {
+          "__rl": true,
+          "value": "plataforma_geral",
+          "mode": "list",
+          "cachedResultName": "plataforma_geral"
+        },
+        "table": {
+          "__rl": true,
+          "value": "projetos_inativos",
+          "mode": "list",
+          "cachedResultName": "projetos_inativos"
+        },
+        "returnAll": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -960,
+        736
+      ],
+      "id": "c0996d23-f71b-4fb8-9556-421600fc355f",
+      "name": "Carregar Projetos5",
+      "credentials": {
+        "postgres": {
+          "id": "3MreXHC1Ukpf8Wps",
+          "name": "Lisboa.Co - Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0bbca64b-a503-4391-aec0-51556b7fee81",
+              "name": "projetos",
+              "value": "={{ $('Carregar Projetos5').item.json }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -752,
+        736
+      ],
+      "id": "dc6897e6-522b-4938-80a0-523062de116e",
+      "name": "Normalizar Dados5"
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -544,
+        736
+      ],
+      "id": "fe282786-be85-4f3b-9eeb-04d73eb99b30",
+      "name": "Retornar Json5"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d7b1cc00-8b90-4bef-83a9-2057e8fe1e28",
+              "name": "error",
+              "value": "=UNAUTHORIZED",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1344,
+        1072
+      ],
+      "id": "243dd845-70a8-48f6-a4a1-50cb795d1f2e",
+      "name": "Edit Fields4"
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -1152,
+        1072
+      ],
+      "id": "4bc172ce-eda1-4c3e-9e63-95994fdc7e21",
+      "name": "Respond to Webhook4"
+    },
+    {
+      "parameters": {
+        "path": "list_projetos_inativos",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -1872,
+        752
+      ],
+      "id": "19016baa-6c2a-46a2-8ebf-997f9202dab3",
+      "name": "Listar Projetos Inativos",
+      "webhookId": "2dd6eb73-e689-45b6-86a1-c90f315a8667"
+    },
+    {
+      "parameters": {
+        "content": "# Projetos Ativos",
+        "height": 544,
+        "width": 1552,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1904,
+        96
+      ],
+      "id": "87d8e35e-be83-43d6-9430-64120a9d1aee",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "# Projetos Onetime\n",
+        "height": 544,
+        "width": 1616,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -320,
+        96
+      ],
+      "id": "0af91262-1418-4936-9a44-cd6e68af12cd",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "# Projetos Inativos",
+        "height": 544,
+        "width": 1552,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1904,
+        672
+      ],
+      "id": "37d359d7-b468-4a65-be22-157b77628ec7",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "# HUB Projetos",
+        "height": 2064,
+        "width": 3280
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1936,
+        16
+      ],
+      "id": "6008ca50-bf0f-4551-b2d4-0eba3cc6fa2e",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "content": "# ???????????",
+        "height": 1184,
+        "width": 1616
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1792,
+        16
+      ],
+      "id": "e1a77b03-5765-42ee-bdbb-0d6361d75fb6",
+      "name": "Sticky Note5"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "update_projeto",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -1824,
+        1616
+      ],
+      "id": "cd3c9e5e-164a-4230-a84b-999e5799507a",
+      "name": "Listar Projetos Ativos1",
+      "webhookId": "2dd6eb73-e689-45b6-86a1-c90f315a8667"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Listar Projetos Ativos1').item.json.headers[\"x-api-key\"] }}",
+                    "rightValue": "4815162342",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "fce9cdd9-caee-455b-85d6-52a9eeb467f6"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "X-API-KEY"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "b99d693a-7e48-4cb2-bbb2-98afb63ad84d",
+                    "leftValue": "={{ $('Listar Projetos Ativos1').item.json.headers[\"x-api-key\"] }}",
+                    "rightValue": "4815162342",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEquals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "ERRO"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        -1408,
+        1616
+      ],
+      "id": "a7b57a6b-836e-46d4-a6cc-9c2bfba45423",
+      "name": "Switch7"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d7b1cc00-8b90-4bef-83a9-2057e8fe1e28",
+              "name": "error",
+              "value": "=UNAUTHORIZED",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1616,
+        1824
+      ],
+      "id": "d41e6f04-d12e-402f-9a1a-6450540adb53",
+      "name": "Edit Fields5"
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -1408,
+        1824
+      ],
+      "id": "198bd100-147a-4004-98db-261a9cbb9602",
+      "name": "Respond to Webhook5"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.body.tipo_projeto }}",
+                    "rightValue": "ativo",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "a07032b5-bf55-4366-8650-a8b60324b3b1"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "ativo"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "22ce5f23-5cbf-472a-b802-388dd53a6007",
+                    "leftValue": "={{ $json.body.tipo_projeto }}",
+                    "rightValue": "onetime",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "onetime"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "8a567fa5-bc01-4efd-874e-530e38f5839d",
+                    "leftValue": "={{ $json.body.tipo_projeto }}",
+                    "rightValue": "inativo",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "inativo"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        -1184,
+        1712
+      ],
+      "id": "3f526b9b-21bf-4a58-841b-96179ff25184",
+      "name": "Switch8"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "schema": {
+          "__rl": true,
+          "value": "plataforma_geral",
+          "mode": "list",
+          "cachedResultName": "plataforma_geral"
+        },
+        "table": {
+          "__rl": true,
+          "value": "projetos_inativos",
+          "mode": "list",
+          "cachedResultName": "projetos_inativos"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $json.body.projeto_id }}",
+            "pipefy_id": "={{ $json.body.pipefy_id }}",
+            "nome": "={{ $json.body.nome }}",
+            "documento": "={{ $json.body.documento }}",
+            "fee": "={{ $json.body.fee }}",
+            "moeda": "={{ $json.body.moeda }}",
+            "squad_atribuida": "={{ $json.body.squad_atribuida }}",
+            "produto_contratado": "={{ $json.body.produto_contratado }}",
+            "data_de_inicio": "={{ $ifEmpty($json.data_de_inicio , DateTime.fromISO(2900)) }}",
+            "cohort": "={{ $json.body.cohort }}",
+            "meta_account_id": "={{ $json.body.meta_account_id }}",
+            "google_account_id": "={{ $json.body.google_account_id }}",
+            "fase_do_pipefy": "={{ $json.body.fase_do_pipefy }}",
+            "url_webhook_gchat": "={{ $json.body.url_webhook_gchat }}",
+            "informacoes_gerais": "={{ $json.body.informacoes_gerais }}",
+            "step": "={{ $json.body.step}}",
+            "orcamento_midia_meta": 0,
+            "orcamento_midia_google": 0
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "pipefy_id",
+              "displayName": "pipefy_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "nome",
+              "displayName": "nome",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "documento",
+              "displayName": "documento",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fee",
+              "displayName": "fee",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "moeda",
+              "displayName": "moeda",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "squad_atribuida",
+              "displayName": "squad_atribuida",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "produto_contratado",
+              "displayName": "produto_contratado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "data_de_inicio",
+              "displayName": "data_de_inicio",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "cohort",
+              "displayName": "cohort",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "meta_account_id",
+              "displayName": "meta_account_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "google_account_id",
+              "displayName": "google_account_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fase_do_pipefy",
+              "displayName": "fase_do_pipefy",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "url_webhook_gchat",
+              "displayName": "url_webhook_gchat",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "step",
+              "displayName": "step",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "informacoes_gerais",
+              "displayName": "informacoes_gerais",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "orcamento_midia_meta",
+              "displayName": "orcamento_midia_meta",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "orcamento_midia_google",
+              "displayName": "orcamento_midia_google",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "data_fim",
+              "displayName": "data_fim",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "extra",
+              "displayName": "extra",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "object",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "notas",
+              "displayName": "notas",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "object",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "ekyte_workspace",
+              "displayName": "ekyte_workspace",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -512,
+        1888
+      ],
+      "id": "8bda540b-7fe9-41ee-b7d2-2281df6c34f0",
+      "name": "Update Inativo",
+      "credentials": {
+        "postgres": {
+          "id": "3MreXHC1Ukpf8Wps",
+          "name": "Lisboa.Co - Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "schema": {
+          "__rl": true,
+          "value": "plataforma_geral",
+          "mode": "list",
+          "cachedResultName": "plataforma_geral"
+        },
+        "table": {
+          "__rl": true,
+          "value": "projetos_ativos",
+          "mode": "list",
+          "cachedResultName": "projetos_ativos"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $json.projeto_id }}",
+            "pipefy_id": "={{ $json.pipefy_id }}",
+            "fee": "={{ $json.fee }}",
+            "orcamento_midia_meta": "={{ $json.orcamento_midia_meta }}",
+            "orcamento_midia_google": "={{ $json.orcamento_midia_google }}",
+            "nome": "={{ $json.nome }}",
+            "documento": "={{ $json.documento }}",
+            "moeda": "={{ $json.moeda }}",
+            "squad_atribuida": "={{ $json.squad_atribuida }}",
+            "produto_contratado": "={{ $json.produto_contratado }}",
+            "data_de_inicio": "={{ $ifEmpty($json.data_de_inicio , DateTime.fromISO(2900)) }}",
+            "cohort": "={{ $json.cohort }}",
+            "meta_account_id": "={{ $json.meta_account_id }}",
+            "google_account_id": "={{ $json.google_account_id }}",
+            "fase_do_pipefy": "={{ $json.fase_do_pipefy }}",
+            "url_webhook_gchat": "={{ $json.url_webhook_gchat }}",
+            "step": "={{ $json.step }}",
+            "informacoes_gerais": "={{ $json.informacoes_gerais }}",
+            "extra": "={{ $json.extra }}",
+            "notas": "={{ $json.notas }}",
+            "data_fim": "={{ $ifEmpty($json.data_fim , DateTime.fromISO(2900)) }}",
+            "ekyte_workspace": "={{ $json.ekyte_workspace }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "pipefy_id",
+              "displayName": "pipefy_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "nome",
+              "displayName": "nome",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "documento",
+              "displayName": "documento",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fee",
+              "displayName": "fee",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "moeda",
+              "displayName": "moeda",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "squad_atribuida",
+              "displayName": "squad_atribuida",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "produto_contratado",
+              "displayName": "produto_contratado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "data_de_inicio",
+              "displayName": "data_de_inicio",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "cohort",
+              "displayName": "cohort",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "meta_account_id",
+              "displayName": "meta_account_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "google_account_id",
+              "displayName": "google_account_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fase_do_pipefy",
+              "displayName": "fase_do_pipefy",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "url_webhook_gchat",
+              "displayName": "url_webhook_gchat",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "step",
+              "displayName": "step",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "informacoes_gerais",
+              "displayName": "informacoes_gerais",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "orcamento_midia_meta",
+              "displayName": "orcamento_midia_meta",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "orcamento_midia_google",
+              "displayName": "orcamento_midia_google",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "data_fim",
+              "displayName": "data_fim",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "extra",
+              "displayName": "extra",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "object",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "notas",
+              "displayName": "notas",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "object",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "ekyte_workspace",
+              "displayName": "ekyte_workspace",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -512,
+        1568
+      ],
+      "id": "4e2ffd91-86db-412a-a698-a9af1670e626",
+      "name": "Update Ativo",
+      "credentials": {
+        "postgres": {
+          "id": "3MreXHC1Ukpf8Wps",
+          "name": "Lisboa.Co - Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "schema": {
+          "__rl": true,
+          "value": "plataforma_geral",
+          "mode": "list",
+          "cachedResultName": "plataforma_geral"
+        },
+        "table": {
+          "__rl": true,
+          "value": "investidores",
+          "mode": "list",
+          "cachedResultName": "investidores"
+        },
+        "returnAll": true,
+        "where": {
+          "values": [
+            {
+              "column": "email",
+              "value": "={{ $json.email }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        352,
+        736
+      ],
+      "id": "1873a90c-304e-4f98-bcd5-337bc569479c",
+      "name": "Carregar Usuário4",
+      "credentials": {
+        "postgres": {
+          "id": "3MreXHC1Ukpf8Wps",
+          "name": "Lisboa.Co - Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "schema": {
+          "__rl": true,
+          "value": "plataforma_geral",
+          "mode": "list",
+          "cachedResultName": "plataforma_geral"
+        },
+        "table": {
+          "__rl": true,
+          "value": "squads",
+          "mode": "list",
+          "cachedResultName": "squads"
+        },
+        "returnAll": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        560,
+        736
+      ],
+      "id": "99553d40-6ec6-4040-b993-4de465c1f715",
+      "name": "Carregar Projetos7",
+      "credentials": {
+        "postgres": {
+          "id": "3MreXHC1Ukpf8Wps",
+          "name": "Lisboa.Co - Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0bbca64b-a503-4391-aec0-51556b7fee81",
+              "name": "projetos",
+              "value": "={{ $('Carregar Projetos7').item.json }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        720,
+        736
+      ],
+      "id": "a3fb3036-4ef4-4beb-98d4-2e6bc7b95494",
+      "name": "Normalizar Dados7"
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1136,
+        736
+      ],
+      "id": "bb1768e0-fe94-47cb-ac27-5c6644e6cd1e",
+      "name": "Retornar Json7"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d7b1cc00-8b90-4bef-83a9-2057e8fe1e28",
+              "name": "error",
+              "value": "=UNAUTHORIZED",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        464,
+        1056
+      ],
+      "id": "71d5aeb8-a4c1-4c31-8959-0436aef598ba",
+      "name": "Edit Fields6"
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        656,
+        1056
+      ],
+      "id": "7486a183-31e6-4591-b86e-122f15b7c52b",
+      "name": "Respond to Webhook6"
+    },
+    {
+      "parameters": {
+        "path": "squads",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -224,
+        736
+      ],
+      "id": "d02c257a-5a81-491f-8604-4a8956471cca",
+      "name": "Listar Projetos Inativos1",
+      "webhookId": "2dd6eb73-e689-45b6-86a1-c90f315a8667"
+    },
+    {
+      "parameters": {
+        "content": "# Squads",
+        "height": 544,
+        "width": 1600,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -304,
+        672
+      ],
+      "id": "bf655915-9d65-4c83-af0b-2b1f39a0ce7a",
+      "name": "Sticky Note6"
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "schema": {
+          "__rl": true,
+          "value": "plataforma_geral",
+          "mode": "list",
+          "cachedResultName": "plataforma_geral"
+        },
+        "table": {
+          "__rl": true,
+          "value": "investidores",
+          "mode": "list",
+          "cachedResultName": "investidores"
+        },
+        "returnAll": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -4496,
+        208
+      ],
+      "id": "ec7bbd3c-e72e-4f00-abe7-74b0a5aeb53f",
+      "name": "Carregar Usuário5",
+      "credentials": {
+        "postgres": {
+          "id": "3MreXHC1Ukpf8Wps",
+          "name": "Lisboa.Co - Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -3984,
+        208
+      ],
+      "id": "fcaf6176-6d36-4bf9-822b-2b5ff375fd97",
+      "name": "Retornar Json8"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d7b1cc00-8b90-4bef-83a9-2057e8fe1e28",
+              "name": "error",
+              "value": "=UNAUTHORIZED",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -4496,
+        448
+      ],
+      "id": "0b7ec6d0-c043-4df2-a930-bb4d085086c0",
+      "name": "Edit Fields7"
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -3984,
+        448
+      ],
+      "id": "6afc5d85-40cd-4d71-bc31-b79447cbdc04",
+      "name": "Respond to Webhook7"
+    },
+    {
+      "parameters": {
+        "content": "# Users",
+        "height": 544,
+        "width": 1584,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -5312,
+        96
+      ],
+      "id": "b603f33f-f953-4783-af7c-ac14bcc553ab",
+      "name": "Sticky Note7"
+    },
+    {
+      "parameters": {
+        "content": "# Atualizar Cards de Projetos",
+        "height": 512,
+        "width": 1584,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1888,
+        1536
+      ],
+      "id": "8e83fb3c-ae42-4275-87bc-a78b345adc31",
+      "name": "Sticky Note8"
+    },
+    {
+      "parameters": {
+        "content": "# Create/Update User",
+        "height": 608,
+        "width": 1584,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -5312,
+        672
+      ],
+      "id": "fd4c7d23-3be4-4352-ae90-157e6ed0e03c",
+      "name": "Sticky Note9"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d7b1cc00-8b90-4bef-83a9-2057e8fe1e28",
+              "name": "error",
+              "value": "=UNAUTHORIZED",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -5024,
+        1056
+      ],
+      "id": "ecfbcf43-671d-472c-b40b-5644f5e65951",
+      "name": "Edit Fields8"
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -4832,
+        1056
+      ],
+      "id": "7d79e5f4-ad72-49cb-b9df-5cbb13ccc3d8",
+      "name": "Respond to Webhook8"
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "schema": {
+          "__rl": true,
+          "value": "plataforma_geral",
+          "mode": "list",
+          "cachedResultName": "plataforma_geral"
+        },
+        "table": {
+          "__rl": true,
+          "value": "squads",
+          "mode": "list",
+          "cachedResultName": "squads"
+        },
+        "returnAll": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2416,
+        384
+      ],
+      "id": "84e4b2d4-48f5-4ce3-88d2-8bf29aa60a8b",
+      "name": "Carregar Projetos8",
+      "credentials": {
+        "postgres": {
+          "id": "3MreXHC1Ukpf8Wps",
+          "name": "Lisboa.Co - Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0bbca64b-a503-4391-aec0-51556b7fee81",
+              "name": "projetos",
+              "value": "={{ $('Carregar Projetos8').item.json.nome }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2592,
+        384
+      ],
+      "id": "40beeb97-748f-4955-93ab-0f196fa3433a",
+      "name": "Normalizar Dados8"
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        2800,
+        384
+      ],
+      "id": "026e6b1e-9809-458d-bff2-c9698a358dae",
+      "name": "Retornar Json9"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.headers[\"x-api-key\"] }}",
+                    "rightValue": "4815162342",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "fce9cdd9-caee-455b-85d6-52a9eeb467f6"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "X-API-KEY"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "b99d693a-7e48-4cb2-bbb2-98afb63ad84d",
+                    "leftValue": "={{ $json.headers[\"x-api-key\"] }}",
+                    "rightValue": "4815162342",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEquals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "ERRO"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        2208,
+        384
+      ],
+      "id": "70e4c4d2-c5f5-4eea-8e6c-98e712e5c5c8",
+      "name": "Switch12"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d7b1cc00-8b90-4bef-83a9-2057e8fe1e28",
+              "name": "error",
+              "value": "=UNAUTHORIZED",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2400,
+        704
+      ],
+      "id": "a9d1e228-7788-4da6-b5a3-71826d4bff22",
+      "name": "Edit Fields9"
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        2592,
+        704
+      ],
+      "id": "911d66ba-8182-4e11-b1f0-8ec2fd89ddbb",
+      "name": "Respond to Webhook9"
+    },
+    {
+      "parameters": {
+        "path": "list_squads",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        2032,
+        384
+      ],
+      "id": "46dcdef3-5c8d-4195-8755-6cdbeb47c493",
+      "name": "Listar Projetos Inativos3",
+      "webhookId": "2dd6eb73-e689-45b6-86a1-c90f315a8667"
+    },
+    {
+      "parameters": {
+        "content": "# Listar Squads",
+        "height": 544,
+        "width": 1040,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1952,
+        320
+      ],
+      "id": "937128e1-4bc3-4c84-af91-38bffb020ab8",
+      "name": "Sticky Note10"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.body.switch }}",
+                    "rightValue": "status",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "cdb551bd-93ae-42ab-a733-606c4cf0a9b0"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "toggle_user_status"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "45b012af-9147-4060-8a9e-b057e77f9006",
+                    "leftValue": "={{ $json.body.switch }}",
+                    "rightValue": "user_info",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "user_info"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "d880b751-2d35-4e86-98e9-72e414ca997f",
+                    "leftValue": "={{ $json.body.switch }}",
+                    "rightValue": "user_password",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "user_password"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "11dc9081-aa70-4450-b45d-24553b714e2c",
+                    "leftValue": "={{ $json.body.switch }}",
+                    "rightValue": "create_user",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "create_user"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        -4496,
+        896
+      ],
+      "id": "27a2411d-866c-4f5e-9597-60ef4834ef98",
+      "name": "User Info Switch"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "update_user_info",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -5248,
+        816
+      ],
+      "id": "c26aa69b-46c7-4dbd-8280-0085e3cd9f6e",
+      "name": "update_user_info",
+      "webhookId": "2dd6eb73-e689-45b6-86a1-c90f315a8667"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "schema": {
+          "__rl": true,
+          "value": "plataforma_geral",
+          "mode": "list",
+          "cachedResultName": "plataforma_geral"
+        },
+        "table": {
+          "__rl": true,
+          "value": "investidores",
+          "mode": "list",
+          "cachedResultName": "investidores"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "ativo": "={{ $json.body.ativo }}",
+            "id": "={{ $json.body.user_id }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "nome",
+              "displayName": "nome",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "funcao",
+              "displayName": "funcao",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "senioridade",
+              "displayName": "senioridade",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "squad",
+              "displayName": "squad",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "senha",
+              "displayName": "senha",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "nivel_acesso",
+              "displayName": "nivel_acesso",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "ativo",
+              "displayName": "ativo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "boolean",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -3920,
+        704
+      ],
+      "id": "18d789ac-42ac-4936-a4e3-698cc7b6ae8b",
+      "name": "toggle_user_status",
+      "credentials": {
+        "postgres": {
+          "id": "N9en5dKd3JrLOVxQ",
+          "name": "Postgres Lisboa"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "schema": {
+          "__rl": true,
+          "value": "plataforma_geral",
+          "mode": "list",
+          "cachedResultName": "plataforma_geral"
+        },
+        "table": {
+          "__rl": true,
+          "value": "investidores",
+          "mode": "list",
+          "cachedResultName": "investidores"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $json.body.user_id }}",
+            "nome": "={{ $json.body.nome }}",
+            "email": "={{ $json.body.email }}",
+            "funcao": "={{ $json.body.funcao }}",
+            "ativo": "={{ $json.body.ativo }}",
+            "senioridade": "={{ $json.body.senioridade }}",
+            "squad": "={{ $json.body.squad }}",
+            "nivel_acesso": "={{ $json.body.nivel_acesso }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "nome",
+              "displayName": "nome",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "funcao",
+              "displayName": "funcao",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "senioridade",
+              "displayName": "senioridade",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "squad",
+              "displayName": "squad",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "senha",
+              "displayName": "senha",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "nivel_acesso",
+              "displayName": "nivel_acesso",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "ativo",
+              "displayName": "ativo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "boolean",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -3920,
+        848
+      ],
+      "id": "003257a3-0d3f-45a5-8e20-b5e727e38f24",
+      "name": "user_info",
+      "credentials": {
+        "postgres": {
+          "id": "N9en5dKd3JrLOVxQ",
+          "name": "Postgres Lisboa"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "schema": {
+          "__rl": true,
+          "value": "plataforma_geral",
+          "mode": "list",
+          "cachedResultName": "plataforma_geral"
+        },
+        "table": {
+          "__rl": true,
+          "value": "investidores",
+          "mode": "list",
+          "cachedResultName": "investidores"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "email": "={{ $json.body.email }}",
+            "senha": "={{ $json.body.senha }}"
+          },
+          "matchingColumns": [
+            "email"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "nome",
+              "displayName": "nome",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "funcao",
+              "displayName": "funcao",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "senioridade",
+              "displayName": "senioridade",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "squad",
+              "displayName": "squad",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "senha",
+              "displayName": "senha",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "nivel_acesso",
+              "displayName": "nivel_acesso",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "ativo",
+              "displayName": "ativo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "boolean",
+              "canBeUsedToMatch": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -3920,
+        992
+      ],
+      "id": "a0f822e5-8ec7-4b28-8ed1-8ef284e141a5",
+      "name": "user_password",
+      "credentials": {
+        "postgres": {
+          "id": "N9en5dKd3JrLOVxQ",
+          "name": "Postgres Lisboa"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schema": {
+          "__rl": true,
+          "value": "plataforma_geral",
+          "mode": "list",
+          "cachedResultName": "plataforma_geral"
+        },
+        "table": {
+          "__rl": true,
+          "value": "investidores",
+          "mode": "list",
+          "cachedResultName": "investidores"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "ativo": "={{ $('update_user_info').item.json.body.ativo }}",
+            "nome": "={{ $('update_user_info').item.json.body.nome }}",
+            "email": "={{ $('update_user_info').item.json.body.email }}",
+            "funcao": "={{ $('update_user_info').item.json.body.funcao }}",
+            "senioridade": "={{ $('update_user_info').item.json.body.senioridade }}",
+            "squad": "={{ $('update_user_info').item.json.body.squad }}",
+            "senha": "={{ $('update_user_info').item.json.body.senha }}",
+            "nivel_acesso": "={{ $('update_user_info').item.json.body.nivel_acesso }}",
+            "id": "={{ $json.id + 1 }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "nome",
+              "displayName": "nome",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "funcao",
+              "displayName": "funcao",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "senioridade",
+              "displayName": "senioridade",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "squad",
+              "displayName": "squad",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "senha",
+              "displayName": "senha",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "nivel_acesso",
+              "displayName": "nivel_acesso",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ativo",
+              "displayName": "ativo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "boolean",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -3920,
+        1136
+      ],
+      "id": "a5cde929-d467-484e-8462-6399e5b8b64a",
+      "name": "create_user",
+      "credentials": {
+        "postgres": {
+          "id": "N9en5dKd3JrLOVxQ",
+          "name": "Postgres Lisboa"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "schema": {
+          "__rl": true,
+          "value": "plataforma_geral",
+          "mode": "list",
+          "cachedResultName": "plataforma_geral"
+        },
+        "table": {
+          "__rl": true,
+          "value": "investidores",
+          "mode": "list",
+          "cachedResultName": "investidores"
+        },
+        "limit": 1,
+        "sort": {
+          "values": [
+            {
+              "column": "id",
+              "direction": "DESC"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -4112,
+        1136
+      ],
+      "id": "43ff418c-ed42-4ac2-aa23-fa0c953d25be",
+      "name": "Select rows from a table",
+      "credentials": {
+        "postgres": {
+          "id": "N9en5dKd3JrLOVxQ",
+          "name": "Postgres Lisboa"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "schema": {
+          "__rl": true,
+          "value": "plataforma_geral",
+          "mode": "list",
+          "cachedResultName": "plataforma_geral"
+        },
+        "table": {
+          "__rl": true,
+          "value": "projetos_ativos",
+          "mode": "list",
+          "cachedResultName": "projetos_ativos"
+        },
+        "returnAll": true,
+        "where": {
+          "values": [
+            {
+              "column": "id",
+              "value": "={{ $('Listar Projetos Ativos1').item.json.body.projeto_id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -960,
+        1568
+      ],
+      "id": "b7fc33c1-49ff-4202-b096-deaef2984e8c",
+      "name": "Select rows from a table1",
+      "credentials": {
+        "postgres": {
+          "id": "N9en5dKd3JrLOVxQ",
+          "name": "Postgres Lisboa"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const antigo = $input.first().json;\nconst novo = $('body').first().json.body;\n\nconst campos = [\n  'nome',\n  'pipefy_id',\n  'documento',\n  'fee',\n  'moeda',\n  'squad_atribuida',\n  'produto_contratado',\n  'cohort',\n  'meta_account_id',\n  'google_account_id',\n  'fase_do_pipefy',\n  'url_webhook_gchat',\n  'ekyte_workspace',\n  'step',\n  'informacoes_gerais',\n  'orcamento_midia_meta',\n  'orcamento_midia_google'\n];\n\nconst alteracoes = {};\n\n// Detecta alterações\nfor (const campo of campos) {\n  const antes = antigo[campo];\n  const depois = novo[campo];\n\n  if (antes != depois) {\n    alteracoes[campo] = { antes, depois };\n  }\n}\n\n// Pega histórico anterior ou cria lista vazia\nconst historicoAnterior = antigo.extra?.historico || [];\n\n// Se houver alterações, adiciona novo registro\nlet historicoAtualizado = [...historicoAnterior];\n\nif (Object.keys(alteracoes).length > 0) {\n  const novoRegistro = {\n    data: new Date().toISOString(),\n    usuario: novo['usuario'] || 'sistema',\n    alteracoes\n  };\n  historicoAtualizado.push(novoRegistro);\n}\n\n// Retorna objeto final com histórico completo dentro de extra.historico\nreturn [{\n  json: {\n    ...novo,\n    extra: {\n      historico: historicoAtualizado\n    }\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -752,
+        1568
+      ],
+      "id": "251d99f5-bb39-4c49-8cec-076b974a3e92",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "41b7ed0a-6e21-4a26-944e-aacabeb3b98c",
+              "name": "body",
+              "value": "={{ $json.body }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1616,
+        1616
+      ],
+      "id": "d8991a3c-0928-4dc8-817b-8beb9b194660",
+      "name": "body"
+    },
+    {
+      "parameters": {
+        "jsCode": "const antigo = $input.first().json;\nconst novo = $('body').first().json.body;\n\nconsole.log(antigo)\n\nconst campos = [\n  'nome',\n  'pipefy_id',\n  'documento',\n  'fee',\n  'moeda',\n  'squad_atribuida',\n  'produto_contratado',\n  'data_de_inicio',\n  'cohort',\n  'meta_account_id',\n  'google_account_id',\n  'fase_do_pipefy',\n  'url_webhook_gchat',\n  'step',\n  'informacoes_gerais',\n];\n\nconst alteracoes = {};\n\nfor (const campo of campos) {\n  const antes = antigo[campo];\n  const depois = novo[campo];\n\n  if (antes != depois) {\n    alteracoes[campo] = {\n      antes,\n      depois\n    };\n  }\n}\n\n// Se nada mudou, reaproveita histórico\nif (Object.keys(alteracoes).length === 0) {\n  return [{\n    json: {\n      ...novo,\n      historico_final: antigo.historico || []\n    }\n  }];\n}\n\nconst novoRegistro = {\n  data: new Date().toISOString(),\n  alteracoes,\n  usuario: novo['usuario'] || 'sistema'\n};\n\nreturn [{\n  json: {\n    ...novo,\n    historico_final: [\n      ...(antigo.historico_final || []),\n      novoRegistro\n    ]\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -256,
+        1936
+      ],
+      "id": "5ee79383-532f-47aa-92cb-2659478c3119",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "schema": {
+          "__rl": true,
+          "value": "plataforma_geral",
+          "mode": "list",
+          "cachedResultName": "plataforma_geral"
+        },
+        "table": {
+          "__rl": true,
+          "value": "projetos_onetime",
+          "mode": "list",
+          "cachedResultName": "projetos_onetime"
+        },
+        "returnAll": true,
+        "where": {
+          "values": [
+            {
+              "column": "id",
+              "value": "={{ $('Listar Projetos Ativos1').item.json.body.projeto_id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -960,
+        1728
+      ],
+      "id": "9238df64-49a7-4f9d-bef7-c9563c77365d",
+      "name": "Select rows from a table2",
+      "credentials": {
+        "postgres": {
+          "id": "N9en5dKd3JrLOVxQ",
+          "name": "Postgres Lisboa"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const antigo = $input.first().json;\nconst novo = $('body').first().json.body;\n\nconst campos = [\n  'nome',\n  'pipefy_id',\n  'documento',\n  'fee',\n  'moeda',\n  'squad_atribuida',\n  'produto_contratado',\n  'cohort',\n  'meta_account_id',\n  'google_account_id',\n  'fase_do_pipefy',\n  'url_webhook_gchat',\n  'ekyte_workspace',\n  'step',\n  'informacoes_gerais',\n  'orcamento_midia_meta',\n  'orcamento_midia_google'\n];\n\nconst alteracoes = {};\n\n// Detecta alterações\nfor (const campo of campos) {\n  const antes = antigo[campo];\n  const depois = novo[campo];\n\n  if (antes != depois) {\n    alteracoes[campo] = { antes, depois };\n  }\n}\n\n// Pega histórico anterior ou cria lista vazia\nconst historicoAnterior = antigo.extra?.historico || [];\n\n// Se houver alterações, adiciona novo registro\nlet historicoAtualizado = [...historicoAnterior];\n\nif (Object.keys(alteracoes).length > 0) {\n  const novoRegistro = {\n    data: new Date().toISOString(),\n    usuario: novo['usuario'] || 'sistema',\n    alteracoes\n  };\n  historicoAtualizado.push(novoRegistro);\n}\n\n// Retorna objeto final com histórico completo dentro de extra.historico\nreturn [{\n  json: {\n    ...novo,\n    extra: {\n      historico: historicoAtualizado\n    }\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -752,
+        1728
+      ],
+      "id": "bb6eaf75-199b-470c-9476-1dcb6d025815",
+      "name": "Code in JavaScript2"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "schema": {
+          "__rl": true,
+          "value": "plataforma_geral",
+          "mode": "list",
+          "cachedResultName": "plataforma_geral"
+        },
+        "table": {
+          "__rl": true,
+          "value": "projetos_onetime",
+          "mode": "list",
+          "cachedResultName": "projetos_onetime"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $json.projeto_id }}",
+            "pipefy_id": "={{ $json.pipefy_id }}",
+            "fee": "={{ $json.fee }}",
+            "orcamento_midia_meta": "={{ $json.orcamento_midia_meta }}",
+            "orcamento_midia_google": "={{ $json.orcamento_midia_google }}",
+            "nome": "={{ $json.nome }}",
+            "documento": "={{ $json.documento }}",
+            "moeda": "={{ $json.moeda }}",
+            "squad_atribuida": "={{ $json.squad_atribuida }}",
+            "produto_contratado": "={{ $json.produto_contratado }}",
+            "data_de_inicio": "={{ $ifEmpty($json.data_de_inicio , DateTime.fromISO(2900)) }}",
+            "cohort": "={{ $json.cohort }}",
+            "meta_account_id": "={{ $json.meta_account_id }}",
+            "google_account_id": "={{ $json.google_account_id }}",
+            "fase_do_pipefy": "={{ $json.fase_do_pipefy }}",
+            "url_webhook_gchat": "={{ $json.url_webhook_gchat }}",
+            "step": "={{ $json.step }}",
+            "informacoes_gerais": "={{ $json.informacoes_gerais }}",
+            "extra": "={{ $json.extra }}",
+            "notas": "={{ $json.notas }}",
+            "data_fim": "={{ $ifEmpty($json.data_fim , DateTime.fromISO(2900)) }}",
+            "ekyte_workspace": "={{ $json.ekyte_workspace }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "pipefy_id",
+              "displayName": "pipefy_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "nome",
+              "displayName": "nome",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "documento",
+              "displayName": "documento",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fee",
+              "displayName": "fee",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "moeda",
+              "displayName": "moeda",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "squad_atribuida",
+              "displayName": "squad_atribuida",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "produto_contratado",
+              "displayName": "produto_contratado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "data_de_inicio",
+              "displayName": "data_de_inicio",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "cohort",
+              "displayName": "cohort",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "meta_account_id",
+              "displayName": "meta_account_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "google_account_id",
+              "displayName": "google_account_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fase_do_pipefy",
+              "displayName": "fase_do_pipefy",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "url_webhook_gchat",
+              "displayName": "url_webhook_gchat",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "step",
+              "displayName": "step",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "informacoes_gerais",
+              "displayName": "informacoes_gerais",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "orcamento_midia_meta",
+              "displayName": "orcamento_midia_meta",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "orcamento_midia_google",
+              "displayName": "orcamento_midia_google",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "data_fim",
+              "displayName": "data_fim",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "extra",
+              "displayName": "extra",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "object",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "notas",
+              "displayName": "notas",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "object",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "ekyte_workspace",
+              "displayName": "ekyte_workspace",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -512,
+        1728
+      ],
+      "id": "0c01d196-4bf5-48f3-8530-b3b3dd0c1a85",
+      "name": "Update Onetime",
+      "credentials": {
+        "postgres": {
+          "id": "3MreXHC1Ukpf8Wps",
+          "name": "Lisboa.Co - Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "schema": {
+          "__rl": true,
+          "value": "plataforma_geral",
+          "mode": "list",
+          "cachedResultName": "plataforma_geral"
+        },
+        "table": {
+          "__rl": true,
+          "value": "projetos_ativos",
+          "mode": "list",
+          "cachedResultName": "projetos_ativos"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $json.projeto_id }}",
+            "pipefy_id": "={{ $json.pipefy_id }}",
+            "fee": "={{ $json.fee }}",
+            "orcamento_midia_meta": "={{ $json.orcamento_midia_meta }}",
+            "orcamento_midia_google": "={{ $json.orcamento_midia_google }}",
+            "nome": "={{ $json.nome }}",
+            "documento": "={{ $json.documento }}",
+            "moeda": "={{ $json.moeda }}",
+            "squad_atribuida": "={{ $json.squad_atribuida }}",
+            "produto_contratado": "={{ $json.produto_contratado }}",
+            "data_de_inicio": "={{ $json.data_de_inicio }}",
+            "cohort": "={{ $json.cohort }}",
+            "meta_account_id": "={{ $json.meta_account_id }}",
+            "google_account_id": "={{ $json.google_account_id }}",
+            "fase_do_pipefy": "={{ $json.fase_do_pipefy }}",
+            "url_webhook_gchat": "={{ $json.url_webhook_gchat }}",
+            "step": "={{ $json.step }}",
+            "informacoes_gerais": "={{ $json.informacoes_gerais }}",
+            "extra": "={{ $json.extra }}",
+            "notas": "={{ $json.notas }}",
+            "data_fim": "={{ $ifEmpty($json.data_fim , DateTime.fromISO(2900)) }}",
+            "ekyte_workspace": "={{ $json.ekyte_workspace }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "pipefy_id",
+              "displayName": "pipefy_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "nome",
+              "displayName": "nome",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "documento",
+              "displayName": "documento",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fee",
+              "displayName": "fee",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "moeda",
+              "displayName": "moeda",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "squad_atribuida",
+              "displayName": "squad_atribuida",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "produto_contratado",
+              "displayName": "produto_contratado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "data_de_inicio",
+              "displayName": "data_de_inicio",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "cohort",
+              "displayName": "cohort",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "meta_account_id",
+              "displayName": "meta_account_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "google_account_id",
+              "displayName": "google_account_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fase_do_pipefy",
+              "displayName": "fase_do_pipefy",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "url_webhook_gchat",
+              "displayName": "url_webhook_gchat",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "step",
+              "displayName": "step",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "informacoes_gerais",
+              "displayName": "informacoes_gerais",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "orcamento_midia_meta",
+              "displayName": "orcamento_midia_meta",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "orcamento_midia_google",
+              "displayName": "orcamento_midia_google",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "data_fim",
+              "displayName": "data_fim",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "extra",
+              "displayName": "extra",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "object",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "notas",
+              "displayName": "notas",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "object",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "ekyte_workspace",
+              "displayName": "ekyte_workspace",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -256,
+        1536
+      ],
+      "id": "a8b7a932-f0ed-46d2-b283-b20fdd904488",
+      "name": "Update Ativo1",
+      "credentials": {
+        "postgres": {
+          "id": "3MreXHC1Ukpf8Wps",
+          "name": "Lisboa.Co - Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json }}",
+                    "rightValue": "4815162342",
+                    "operator": {
+                      "type": "object",
+                      "operation": "notEmpty",
+                      "singleValue": true
+                    },
+                    "id": "fce9cdd9-caee-455b-85d6-52a9eeb467f6"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "X-API-KEY"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "b99d693a-7e48-4cb2-bbb2-98afb63ad84d",
+                    "leftValue": "={{ $json }}",
+                    "rightValue": "4815162342",
+                    "operator": {
+                      "type": "object",
+                      "operation": "empty",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "ERRO"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        -3136,
+        208
+      ],
+      "id": "d3987fd7-a39f-4ef5-9677-aa5be2eb6d90",
+      "name": "Switch16"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d7b1cc00-8b90-4bef-83a9-2057e8fe1e28",
+              "name": "error",
+              "value": "=UNAUTHORIZED",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -2912,
+        448
+      ],
+      "id": "5fd6ad5a-30b3-4fe9-bc7d-a40b4a908b6c",
+      "name": "Edit Fields11"
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -2720,
+        448
+      ],
+      "id": "2aa1e12c-8080-4f9f-8e41-b3917e71eff6",
+      "name": "Respond to Webhook12"
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "schema": {
+          "__rl": true,
+          "value": "plataforma_geral",
+          "mode": "list",
+          "cachedResultName": "plataforma_geral"
+        },
+        "table": {
+          "__rl": true,
+          "value": "investidores",
+          "mode": "list",
+          "cachedResultName": "investidores"
+        },
+        "returnAll": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -2928,
+        208
+      ],
+      "id": "60f50cae-7586-4258-94fa-4c38988dd810",
+      "name": "Investidores",
+      "executeOnce": false,
+      "credentials": {
+        "postgres": {
+          "id": "N9en5dKd3JrLOVxQ",
+          "name": "Postgres Lisboa"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "schema": {
+          "__rl": true,
+          "value": "plataforma_geral",
+          "mode": "list",
+          "cachedResultName": "plataforma_geral"
+        },
+        "table": {
+          "__rl": true,
+          "value": "investidores_metricas_mensais_novo",
+          "mode": "list",
+          "cachedResultName": "investidores_metricas_mensais_novo"
+        },
+        "returnAll": true,
+        "where": {
+          "values": [
+            {
+              "column": "email_investidor",
+              "value": "={{ $json.email }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -2736,
+        208
+      ],
+      "id": "b48aa4ec-dee9-4b39-a41c-3bd434683a3d",
+      "name": "metricas",
+      "executeOnce": false,
+      "credentials": {
+        "postgres": {
+          "id": "N9en5dKd3JrLOVxQ",
+          "name": "Postgres Lisboa"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "path": "remuneracao",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -3520,
+        208
+      ],
+      "id": "14b88bd1-8909-481c-9401-9fa40cd400f2",
+      "name": "Listar Projetos Ativos3",
+      "webhookId": "2dd6eb73-e689-45b6-86a1-c90f315a8667"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Pega os dados dos nodes anteriores usando $()\nconst usersRaw = $(\"Investidores\").all();\nconst metricsRaw = $(\"metricas\").all();\n\n// Extrai apenas o json\nconst users = usersRaw.map(u => u.json);\nconst metricsAll = metricsRaw.map(m => m.json);\n\n// Função para consolidar dados\nconst result = users.map(user => {\n\n    // Filtra as métricas do usuário pelo email\n    const userMetrics = metricsAll.filter(m => m.email_investidor === user.email);\n\n    // =========================\n    // CLIENTS COUNT (PROJETOS)\n    // =========================\n\n    // Junta todos os produtos de todos os meses\n    const allProducts = userMetrics.flatMap(m => \n        (m.detalhes?.produtos || [])\n    );\n\n    // Remove projetos duplicados pelo ID\n    const uniqueProjectIds = [...new Set(allProducts.map(p => p.id))];\n\n    const clients_count = uniqueProjectIds.length;\n\n    // =========================\n    // ROWS MENSAIS\n    // =========================\n\n    const rows = userMetrics.map(m => {\n    \n        const total = parseFloat(m.calc_remuneracao_total) || 0;\n        const minimo = parseFloat(m.fixo_remuneracao_minima) || 0;\n        const maximo = parseFloat(m.fixo_remuneracao_maxima) || 0;\n    \n        const totalAjustado =\n            total < minimo ? minimo :\n            total > maximo ? maximo :\n            total;\n    \n        return {\n            month_year: `${String(m.mes).padStart(2,'0')}/${m.ano}`,\n            mrr: parseFloat(m.fixo_mrr_atual) || 0,\n            churn_rs: parseFloat(m.fixo_churn_atual) || 0,\n            churn: parseFloat(m.calc_churn_real_percentual) || 0,\n            variable_brl: parseFloat(m.calc_variavel_total) || 0,\n            total_brl: totalAjustado,\n            flag: m.flag,\n            yellow_streak: m.yellow_streak,\n            green_streak: m.green_streak\n        };\n    });\n\n    //return {\n    //    id: `inv_${user.id}`,\n    //    name: user.nome,\n    //    role: user.funcao,\n    //    squad: user.squad,\n    //    step: \"Potencializar\",\n    //    clients_count: clients_count,   // ✅ agora correto\n    //    fixed_fee: parseFloat(user.fixed_fee || 2000),\n    //    // mrr: rows.reduce((acc, r) => acc + r.mrr, 0),\n    //    mrr: parseFloat(m.fixo_mrr_atual),\n    //    roi: parseFloat(user.roi || 0),\n    //    rows: rows\n    //};\n\n    const lastRow = rows.length > 0 ? rows[rows.length - 1] : null;\n    \n    return {\n        id: `inv_${user.id}`,\n        name: user.nome,\n        role: user.funcao,\n        senioridade: user.senioridade,\n        nivel: user.nivel,\n        squad: user.squad,\n        step: \"Potencializar\",\n        clients_count: clients_count,\n        fixed_fee: parseFloat(user.fixed || 2000),\n        mrr: lastRow ? lastRow.mrr : 0,   // ✅ MRR do último mês\n        roi: parseFloat(user.roi || 0),\n        rows: rows\n    };\n  \n  \n});\n\nreturn result.map(r => ({ json: r }));\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2528,
+        352
+      ],
+      "id": "af9fb96b-479e-4ace-a596-0d08bd49ecbd",
+      "name": "Code in JavaScript5"
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -2320,
+        208
+      ],
+      "id": "2590e715-543f-4672-bf72-af2893e1ff61",
+      "name": "Respond to Webhook13"
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "schema": {
+          "__rl": true,
+          "value": "plataforma_geral",
+          "mode": "list",
+          "cachedResultName": "plataforma_geral"
+        },
+        "table": {
+          "__rl": true,
+          "value": "auth",
+          "mode": "list",
+          "cachedResultName": "auth"
+        },
+        "returnAll": true,
+        "where": {
+          "values": [
+            {
+              "column": "token",
+              "value": "={{ $json.headers['x-api-key'] }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -3312,
+        208
+      ],
+      "id": "ce383149-2564-4e51-92df-098437f250bf",
+      "name": "check token",
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "3MreXHC1Ukpf8Wps",
+          "name": "Lisboa.Co - Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "# Remuneração",
+        "height": 544,
+        "width": 1568,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -3600,
+        96
+      ],
+      "id": "485ebd8d-bd39-4679-8883-cda6f6a4f2c2",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "# HUB Remuneração",
+        "height": 1232,
+        "width": 1632
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -3632,
+        16
+      ],
+      "id": "fec780ac-d95a-4f46-81d7-ae0b82736015",
+      "name": "Sticky Note11"
+    },
+    {
+      "parameters": {
+        "content": "# Gerenciar Usuários",
+        "height": 1296,
+        "width": 1648
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -5344,
+        16
+      ],
+      "id": "69cd8cee-1ed9-4276-b723-95f0a3a4ef46",
+      "name": "Sticky Note12"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json }}",
+                    "rightValue": "4815162342",
+                    "operator": {
+                      "type": "object",
+                      "operation": "notEmpty",
+                      "singleValue": true
+                    },
+                    "id": "fce9cdd9-caee-455b-85d6-52a9eeb467f6"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "X-API-KEY"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "b99d693a-7e48-4cb2-bbb2-98afb63ad84d",
+                    "leftValue": "={{ $json }}",
+                    "rightValue": "4815162342",
+                    "operator": {
+                      "type": "object",
+                      "operation": "empty",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "ERRO"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        -4784,
+        208
+      ],
+      "id": "b0eabd92-363e-42b9-9b41-73abc052ba4b",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "schema": {
+          "__rl": true,
+          "value": "plataforma_geral",
+          "mode": "list",
+          "cachedResultName": "plataforma_geral"
+        },
+        "table": {
+          "__rl": true,
+          "value": "auth",
+          "mode": "list",
+          "cachedResultName": "auth"
+        },
+        "returnAll": true,
+        "where": {
+          "values": [
+            {
+              "column": "token",
+              "value": "={{ $json.headers['x-api-key'] }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -4992,
+        208
+      ],
+      "id": "79ea9baf-e137-4adf-ae56-fadda428734b",
+      "name": "check token1",
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "3MreXHC1Ukpf8Wps",
+          "name": "Lisboa.Co - Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json }}",
+                    "rightValue": "4815162342",
+                    "operator": {
+                      "type": "object",
+                      "operation": "notEmpty",
+                      "singleValue": true
+                    },
+                    "id": "fce9cdd9-caee-455b-85d6-52a9eeb467f6"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "X-API-KEY"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "b99d693a-7e48-4cb2-bbb2-98afb63ad84d",
+                    "leftValue": "={{ $json }}",
+                    "rightValue": "4815162342",
+                    "operator": {
+                      "type": "object",
+                      "operation": "empty",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "ERRO"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        -4816,
+        816
+      ],
+      "id": "22fcef6c-e850-47a3-917d-307d76f8bf02",
+      "name": "Switch9"
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "schema": {
+          "__rl": true,
+          "value": "plataforma_geral",
+          "mode": "list",
+          "cachedResultName": "plataforma_geral"
+        },
+        "table": {
+          "__rl": true,
+          "value": "auth",
+          "mode": "list",
+          "cachedResultName": "auth"
+        },
+        "returnAll": true,
+        "where": {
+          "values": [
+            {
+              "column": "token",
+              "value": "={{ $json.headers['x-api-key'] }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -4992,
+        816
+      ],
+      "id": "b5e22580-3e56-4f64-ade3-55864dd01714",
+      "name": "check token2",
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "3MreXHC1Ukpf8Wps",
+          "name": "Lisboa.Co - Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "path": "list_users",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -5232,
+        208
+      ],
+      "id": "0b1fd993-956d-45b1-8e09-fa37e4d835ef",
+      "name": "Listar Usuários",
+      "webhookId": "2dd6eb73-e689-45b6-86a1-c90f315a8667"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json }}",
+                    "rightValue": "4815162342",
+                    "operator": {
+                      "type": "object",
+                      "operation": "notEmpty",
+                      "singleValue": true
+                    },
+                    "id": "fce9cdd9-caee-455b-85d6-52a9eeb467f6"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "X-API-KEY"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "b99d693a-7e48-4cb2-bbb2-98afb63ad84d",
+                    "leftValue": "={{ $json }}",
+                    "rightValue": "4815162342",
+                    "operator": {
+                      "type": "object",
+                      "operation": "empty",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "ERRO"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        -1520,
+        208
+      ],
+      "id": "7361e950-5d2e-4634-950f-fcb23bf9dcb6",
+      "name": "Switch17"
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "schema": {
+          "__rl": true,
+          "value": "plataforma_geral",
+          "mode": "list",
+          "cachedResultName": "plataforma_geral"
+        },
+        "table": {
+          "__rl": true,
+          "value": "auth",
+          "mode": "list",
+          "cachedResultName": "auth"
+        },
+        "returnAll": true,
+        "where": {
+          "values": [
+            {
+              "column": "token",
+              "value": "={{ $json.headers['x-api-key'] }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -1696,
+        208
+      ],
+      "id": "c2609722-b973-4eac-b9c2-6412f517eef5",
+      "name": "check token3",
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "3MreXHC1Ukpf8Wps",
+          "name": "Lisboa.Co - Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json }}",
+                    "rightValue": "4815162342",
+                    "operator": {
+                      "type": "object",
+                      "operation": "notEmpty",
+                      "singleValue": true
+                    },
+                    "id": "fce9cdd9-caee-455b-85d6-52a9eeb467f6"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "X-API-KEY"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "b99d693a-7e48-4cb2-bbb2-98afb63ad84d",
+                    "leftValue": "={{ $json }}",
+                    "rightValue": "4815162342",
+                    "operator": {
+                      "type": "object",
+                      "operation": "empty",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "ERRO"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        -1520,
+        752
+      ],
+      "id": "604f7f43-f21a-4fc4-a5ec-4e5b1566c084",
+      "name": "Switch18"
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "schema": {
+          "__rl": true,
+          "value": "plataforma_geral",
+          "mode": "list",
+          "cachedResultName": "plataforma_geral"
+        },
+        "table": {
+          "__rl": true,
+          "value": "auth",
+          "mode": "list",
+          "cachedResultName": "auth"
+        },
+        "returnAll": true,
+        "where": {
+          "values": [
+            {
+              "column": "token",
+              "value": "={{ $json.headers['x-api-key'] }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -1696,
+        752
+      ],
+      "id": "bede759e-f6e5-4ca5-87ad-0324274d771e",
+      "name": "check token4",
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "3MreXHC1Ukpf8Wps",
+          "name": "Lisboa.Co - Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json }}",
+                    "rightValue": "4815162342",
+                    "operator": {
+                      "type": "object",
+                      "operation": "notEmpty",
+                      "singleValue": true
+                    },
+                    "id": "fce9cdd9-caee-455b-85d6-52a9eeb467f6"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "X-API-KEY"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "b99d693a-7e48-4cb2-bbb2-98afb63ad84d",
+                    "leftValue": "={{ $json }}",
+                    "rightValue": "4815162342",
+                    "operator": {
+                      "type": "object",
+                      "operation": "empty",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "ERRO"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        112,
+        160
+      ],
+      "id": "55c36b6d-f94a-4bd0-a87b-2f2dc4b67ecb",
+      "name": "Switch19"
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "schema": {
+          "__rl": true,
+          "value": "plataforma_geral",
+          "mode": "list",
+          "cachedResultName": "plataforma_geral"
+        },
+        "table": {
+          "__rl": true,
+          "value": "auth",
+          "mode": "list",
+          "cachedResultName": "auth"
+        },
+        "returnAll": true,
+        "where": {
+          "values": [
+            {
+              "column": "token",
+              "value": "={{ $json.headers['x-api-key'] }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -64,
+        160
+      ],
+      "id": "ae5cffa7-aa45-4428-916d-9687ce5d5780",
+      "name": "check token5",
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "3MreXHC1Ukpf8Wps",
+          "name": "Lisboa.Co - Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json }}",
+                    "rightValue": "4815162342",
+                    "operator": {
+                      "type": "object",
+                      "operation": "notEmpty",
+                      "singleValue": true
+                    },
+                    "id": "fce9cdd9-caee-455b-85d6-52a9eeb467f6"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "X-API-KEY"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "b99d693a-7e48-4cb2-bbb2-98afb63ad84d",
+                    "leftValue": "={{ $json }}",
+                    "rightValue": "4815162342",
+                    "operator": {
+                      "type": "object",
+                      "operation": "empty",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "ERRO"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        144,
+        736
+      ],
+      "id": "b7f6e18a-9b22-4ad0-be56-a43e6c314875",
+      "name": "Switch20"
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "schema": {
+          "__rl": true,
+          "value": "plataforma_geral",
+          "mode": "list",
+          "cachedResultName": "plataforma_geral"
+        },
+        "table": {
+          "__rl": true,
+          "value": "auth",
+          "mode": "list",
+          "cachedResultName": "auth"
+        },
+        "returnAll": true,
+        "where": {
+          "values": [
+            {
+              "column": "token",
+              "value": "={{ $json.headers['x-api-key'] }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -32,
+        736
+      ],
+      "id": "fa0d058d-247b-4c72-9ce2-61f4658f6c7e",
+      "name": "check token6",
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "3MreXHC1Ukpf8Wps",
+          "name": "Lisboa.Co - Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "# Alterar status no projeto vinculado ao investidor. (Tabela \"investidores_projetos\")\n## Gatilho vem de webhook dentro do Pipefy quando um card é movido pra alguma das fases que indicam \"churn\" chamando endpoint abaixo.",
+        "height": 544,
+        "width": 1568,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -3600,
+        672
+      ],
+      "id": "d88d7f7d-7fc8-4f65-bb8b-faee7029bf70",
+      "name": "Sticky Note13"
+    },
+    {
+      "parameters": {
+        "path": "investidor_projeto/churn",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -3056,
+        896
+      ],
+      "id": "b7812e53-d910-4e56-bd57-4ae55d46821a",
+      "name": "Webhook",
+      "webhookId": "88cd0ed4-b6a9-463d-a27d-8f6e8731cae6"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "schema": {
+          "__rl": true,
+          "value": "plataforma_geral",
+          "mode": "list",
+          "cachedResultName": "plataforma_geral"
+        },
+        "table": {
+          "__rl": true,
+          "value": "investidores_projetos",
+          "mode": "list",
+          "cachedResultName": "investidores_projetos"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "active": false,
+            "pipefy_id_projeto": "={{ $json.query.pipefy_id }}",
+            "inactivated_at": "={{ $now.year }}-{{ $now.month.toString().padStart(2, '0') }}-{{ $now.day.toString().padStart(2, '0') }}"
+          },
+          "matchingColumns": [
+            "pipefy_id_projeto"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "email_investidor",
+              "displayName": "email_investidor",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "pipefy_id_projeto",
+              "displayName": "pipefy_id_projeto",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "active",
+              "displayName": "active",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "boolean",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "inactivated_at",
+              "displayName": "inactivated_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "cientista",
+              "displayName": "cientista",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "boolean",
+              "canBeUsedToMatch": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -2848,
+        896
+      ],
+      "id": "be6ade01-994d-4478-bce7-e7c131b47bf8",
+      "name": "Update rows in a table",
+      "credentials": {
+        "postgres": {
+          "id": "3MreXHC1Ukpf8Wps",
+          "name": "Lisboa.Co - Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// ===============================\n// Pega dados dos nodes anteriores\n// ===============================\nconst usersRaw = $(\"Investidores\").all();\nconst metricsRaw = $(\"metricas\").all();\n\n// Extrai apenas o json\nconst users = usersRaw.map(u => u.json);\nconst metricsAll = metricsRaw.map(m => m.json);\n\n// ==========================================\n// Indexa métricas por email (melhora performance)\n// ==========================================\nconst metricsByEmail = {};\n\nfor (const metric of metricsAll) {\n    const email = metric.email_investidor;\n\n    if (!metricsByEmail[email]) {\n        metricsByEmail[email] = [];\n    }\n\n    metricsByEmail[email].push(metric);\n}\n\n// ==========================================\n// Consolidação principal\n// ==========================================\nconst result = users.map(user => {\n\n    const userMetrics = metricsByEmail[user.email] || [];\n\n    // ======================================\n    // CLIENTS COUNT (PROJETOS ÚNICOS)\n    // ======================================\n    const allProducts = userMetrics.flatMap(m => \n        (m.detalhes?.produtos || [])\n    );\n\n    const uniqueProjectIds = [\n        ...new Set(allProducts.map(p => p.id))\n    ];\n\n    const clients_count = uniqueProjectIds.length;\n\n    // ======================================\n    // Ordena métricas por ano + mês\n    // ======================================\n    const sortedMetrics = [...userMetrics].sort((a, b) => {\n        if (a.ano !== b.ano) return a.ano - b.ano;\n        return a.mes - b.mes;\n    });\n\n    const lastMetric = sortedMetrics.length > 0\n        ? sortedMetrics[sortedMetrics.length - 1]\n        : null;\n\n    // ======================================\n    // ROWS MENSAIS\n    // ======================================\n    const rows = sortedMetrics.map(m => {\n\n        const total = parseFloat(m.calc_remuneracao_total) || 0;\n        const minimo = parseFloat(m.fixo_remuneracao_minima) || 0;\n        const maximo = parseFloat(m.fixo_remuneracao_maxima) || 0;\n\n        const totalAjustado =\n            total < minimo ? minimo :\n            total > maximo ? maximo :\n            total;\n\n        return {\n            month_year: `${String(m.mes).padStart(2,'0')}/${m.ano}`,\n            mrr: parseFloat(m.fixo_mrr_atual) || 0,\n            churn_rs: parseFloat(m.fixo_churn_atual) || 0,\n            churn: parseFloat(m.calc_churn_real_percentual) || 0,\n            variable_brl: parseFloat(m.calc_variavel_total) || 0,\n            total_brl: totalAjustado,\n            flag: m.flag,\n            motivo_flag: m.motivo_flag,\n            yellow_streak: m.yellow_streak,\n            green_streak: m.green_streak\n        };\n    });\n\n    const lastRow = rows.length > 0\n        ? rows[rows.length - 1]\n        : null;\n\n    // ======================================\n    // RETORNO FINAL\n    // ======================================\n    return {\n        id: `inv_${user.id}`,\n        name: user.nome,\n        role: user.funcao,\n        senioridade: user.senioridade,\n        nivel: user.nivel,\n        squad: user.squad,\n        step: \"Potencializar\",\n\n        clients_count: clients_count,\n\n        // ✅ AGORA VEM DA MÉTRICA MAIS RECENTE\n        fixed_fee: lastMetric\n            ? parseFloat(lastMetric.fixo_remuneracao_fixa || 0)\n            : 0,\n\n        // ✅ MRR do último mês\n        mrr: lastRow ? lastRow.mrr : 0,\n        mrrEsperado: lastMetric\n            ? parseFloat(lastMetric.fixo_mrr_esperado || 0)\n            : 0,\n        mrrTeto: lastMetric\n            ? parseFloat(lastMetric.fixo_mrr_teto || 0)\n            : 0,\n        roi: parseFloat(user.roi || 0),\n\n        rows: rows\n    };\n});\n\n// ==========================================\n// Retorno no formato esperado pelo n8n\n// ==========================================\nreturn result.map(r => ({ json: r }));\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2528,
+        208
+      ],
+      "id": "0b8ea457-f223-488c-8596-bcc2fe203712",
+      "name": "Code in JavaScript3"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Carregar Usuário": {
+      "main": [
+        [
+          {
+            "node": "Switch1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Carregar Projetos": {
+      "main": [
+        [
+          {
+            "node": "Normalizar Dados",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalizar Dados": {
+      "main": [
+        [
+          {
+            "node": "Retornar Json",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch1": {
+      "main": [
+        [
+          {
+            "node": "Carregar Projetos1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Carregar Projetos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Carregar Projetos1": {
+      "main": [
+        [
+          {
+            "node": "Normalizar Dados1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalizar Dados1": {
+      "main": [
+        [
+          {
+            "node": "Retornar Json1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields2": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Listar Projetos Ativos": {
+      "main": [
+        [
+          {
+            "node": "check token3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Carregar Usuário2": {
+      "main": [
+        [
+          {
+            "node": "Switch3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Carregar Projetos2": {
+      "main": [
+        [
+          {
+            "node": "Normalizar Dados2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalizar Dados2": {
+      "main": [
+        [
+          {
+            "node": "Retornar Json2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch3": {
+      "main": [
+        [
+          {
+            "node": "Carregar Projetos3",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Carregar Projetos2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Carregar Projetos3": {
+      "main": [
+        [
+          {
+            "node": "Normalizar Dados3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalizar Dados3": {
+      "main": [
+        [
+          {
+            "node": "Retornar Json3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields3": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Listar Projetos Onetime": {
+      "main": [
+        [
+          {
+            "node": "check token5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Carregar Usuário3": {
+      "main": [
+        [
+          {
+            "node": "Switch5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Carregar Projetos4": {
+      "main": [
+        [
+          {
+            "node": "Normalizar Dados4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalizar Dados4": {
+      "main": [
+        [
+          {
+            "node": "Retornar Json4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch5": {
+      "main": [
+        [
+          {
+            "node": "Carregar Projetos5",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Carregar Projetos4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Carregar Projetos5": {
+      "main": [
+        [
+          {
+            "node": "Normalizar Dados5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalizar Dados5": {
+      "main": [
+        [
+          {
+            "node": "Retornar Json5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields4": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Listar Projetos Inativos": {
+      "main": [
+        [
+          {
+            "node": "check token4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch7": {
+      "main": [
+        [
+          {
+            "node": "Switch8",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields5": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Listar Projetos Ativos1": {
+      "main": [
+        [
+          {
+            "node": "body",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch8": {
+      "main": [
+        [
+          {
+            "node": "Select rows from a table1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Select rows from a table2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Carregar Usuário4": {
+      "main": [
+        [
+          {
+            "node": "Carregar Projetos7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Carregar Projetos7": {
+      "main": [
+        [
+          {
+            "node": "Normalizar Dados7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalizar Dados7": {
+      "main": [
+        [
+          {
+            "node": "Retornar Json7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields6": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Listar Projetos Inativos1": {
+      "main": [
+        [
+          {
+            "node": "check token6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Carregar Usuário5": {
+      "main": [
+        [
+          {
+            "node": "Retornar Json8",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields7": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields8": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook8",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Carregar Projetos8": {
+      "main": [
+        [
+          {
+            "node": "Normalizar Dados8",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalizar Dados8": {
+      "main": [
+        [
+          {
+            "node": "Retornar Json9",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch12": {
+      "main": [
+        [
+          {
+            "node": "Carregar Projetos8",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields9",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields9": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook9",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Listar Projetos Inativos3": {
+      "main": [
+        [
+          {
+            "node": "Switch12",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "User Info Switch": {
+      "main": [
+        [
+          {
+            "node": "toggle_user_status",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "user_info",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "user_password",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Select rows from a table",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "update_user_info": {
+      "main": [
+        [
+          {
+            "node": "check token2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Select rows from a table": {
+      "main": [
+        [
+          {
+            "node": "create_user",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Select rows from a table1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        []
+      ]
+    },
+    "body": {
+      "main": [
+        [
+          {
+            "node": "Switch7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Select rows from a table2": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript2": {
+      "main": [
+        []
+      ]
+    },
+    "Edit Fields11": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook12",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch16": {
+      "main": [
+        [
+          {
+            "node": "Investidores",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields11",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Investidores": {
+      "main": [
+        [
+          {
+            "node": "metricas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "metricas": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript5",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Code in JavaScript3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Listar Projetos Ativos3": {
+      "main": [
+        [
+          {
+            "node": "check token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript5": {
+      "main": [
+        []
+      ]
+    },
+    "check token": {
+      "main": [
+        [
+          {
+            "node": "Switch16",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "check token1": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Carregar Usuário5",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "check token2": {
+      "main": [
+        [
+          {
+            "node": "Switch9",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch9": {
+      "main": [
+        [
+          {
+            "node": "User Info Switch",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields8",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Listar Usuários": {
+      "main": [
+        [
+          {
+            "node": "check token1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "check token3": {
+      "main": [
+        [
+          {
+            "node": "Switch17",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch17": {
+      "main": [
+        [
+          {
+            "node": "Carregar Usuário",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "check token4": {
+      "main": [
+        [
+          {
+            "node": "Switch18",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch18": {
+      "main": [
+        [
+          {
+            "node": "Carregar Usuário3",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "check token5": {
+      "main": [
+        [
+          {
+            "node": "Switch19",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch19": {
+      "main": [
+        [
+          {
+            "node": "Carregar Usuário2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "check token6": {
+      "main": [
+        [
+          {
+            "node": "Switch20",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch20": {
+      "main": [
+        [
+          {
+            "node": "Carregar Usuário4",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Update rows in a table",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript3": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook13",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false,
+    "errorWorkflow": "jWwpjxs6nBeOYX15"
+  },
+  "versionId": "09ec1217-0cc6-4c1e-83d9-05bba24e6dd7",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "2d946570092a86d9c7ad06bd1a4d02c366559a0792b5dca95ecb6b7fe9120c6c"
+  },
+  "id": "kM1kcGbFqPNNWzhq",
+  "tags": []
+}

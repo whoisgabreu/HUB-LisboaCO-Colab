@@ -32,6 +32,7 @@ window.openRemunerationModal = function (card) {
     const clients = card.getAttribute('data-clients');
     const fixed = parseFloat(card.getAttribute('data-fixed') || 0);
     const mrr = parseFloat(card.getAttribute('data-mrr') || 0);
+    const mrrTotal = parseFloat(card.getAttribute('data-mrr-total') || 0);
     const mrrEsperado = parseFloat(card.getAttribute('data-mrr-esperado') || 0);
     const mrrTeto = parseFloat(card.getAttribute('data-mrr-teto') || 0);
     const roi = card.getAttribute('data-roi');
@@ -44,17 +45,53 @@ window.openRemunerationModal = function (card) {
     // Fill Metrics
     document.getElementById('modalClients').textContent = clients;
     document.getElementById('modalFixed').textContent = Utils.formatBRL(fixed);
-    document.getElementById('modalMRR').textContent = Utils.formatBRL(mrr);
-    document.getElementById('modalMRRDelta').textContent = `${Utils.formatBRL(mrrEsperado)} (Delta:${Utils.formatBRL(mrrEsperado - mrr)})`;
-    document.getElementById('modalMRRTetoDelta').textContent = `${Utils.formatBRL(mrrTeto)} (Delta: ${Utils.formatBRL(mrrTeto - mrr)})`;
 
-
-    // Formatação ROI: multiplicar por 100 se for float 0-1
-    if (!isNaN(roi)) {
-        document.getElementById('modalROI').textContent = `${(parseFloat(roi) * 100).toFixed(2)}%`;
-    } else {
-        document.getElementById('modalROI').textContent = roi;
+    // MRR Comparativo: Sua Contribuição x Total
+    const mrrBox = document.getElementById('modalMRR');
+    if (mrrBox) {
+        mrrBox.innerHTML = `
+            <div class="remu-comparison-item primary">
+                <span class="remu-comparison-label">Sua Contribuição</span>
+                <span class="remu-comparison-val">${Utils.formatBRL(mrr)}</span>
+            </div>
+            <div class="remu-comparison-item" style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 8px;">
+                <span class="remu-comparison-label">Total da Carteira</span>
+                <span class="remu-comparison-val" style="font-size: 0.95rem; opacity: 0.8;">${Utils.formatBRL(mrrTotal)}</span>
+            </div>
+        `;
     }
+
+    // Metas de MRR (Esperado e Teto)
+    const targetsBox = document.getElementById('modalTargets');
+    if (targetsBox) {
+        const deltaEsp = mrrTotal - mrrEsperado;
+        const deltaTeto = mrrTotal - mrrTeto;
+
+        targetsBox.innerHTML = `
+            <div class="remu-target-item">
+                <span class="remu-comparison-label">Esperado</span>
+                <span class="remu-target-val">${Utils.formatBRL(mrrEsperado)}</span>
+                <span class="remu-target-delta ${deltaEsp >= 0 ? 'pos' : 'neg'}">
+                    ${deltaEsp >= 0 ? 'Excedeu em' : 'Faltam'} ${Utils.formatBRL(Math.abs(deltaEsp))}
+                </span>
+            </div>
+            <div class="remu-target-item" style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 8px;">
+                <span class="remu-comparison-label">Teto</span>
+                <span class="remu-target-val">${Utils.formatBRL(mrrTeto)}</span>
+                <span class="remu-target-delta ${deltaTeto >= 0 ? 'pos' : 'neg'}">
+                    ${deltaTeto >= 0 ? 'Atingiu/Excedeu' : 'Faltam'} ${Utils.formatBRL(Math.abs(deltaTeto))}
+                </span>
+            </div>
+        `;
+    }
+
+    // Não remover bloco de código abaixo pois será implementado futuramente
+    // // Formatação ROI: multiplicar por 100 se for float 0-1
+    // if (!isNaN(roi)) {
+    //     document.getElementById('modalROI').textContent = `${(parseFloat(roi) * 100).toFixed(2)}%`;
+    // } else {
+    //     document.getElementById('modalROI').textContent = roi;
+    // }
 
     // Inject Table Body from Template
     const template = document.getElementById(`tmpl-${id}`);

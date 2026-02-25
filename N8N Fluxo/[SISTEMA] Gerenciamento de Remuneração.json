@@ -1,0 +1,857 @@
+{
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -48,
+        -400
+      ],
+      "id": "7fe75b87-da5b-4664-becb-e400734c2df7",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "schema": {
+          "__rl": true,
+          "value": "plataforma_geral",
+          "mode": "list",
+          "cachedResultName": "plataforma_geral"
+        },
+        "table": {
+          "__rl": true,
+          "value": "investidores_projetos",
+          "mode": "list",
+          "cachedResultName": "investidores_projetos"
+        },
+        "returnAll": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        144,
+        -400
+      ],
+      "id": "9923f96e-71b4-43c7-94d6-4ee7d869c0cf",
+      "name": "Investidor Projetos",
+      "credentials": {
+        "postgres": {
+          "id": "N9en5dKd3JrLOVxQ",
+          "name": "Postgres Lisboa"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "language": "python",
+        "pythonCode": "temp_dict = {}\n\nfor item in _('Investidor Projetos').all():\n    email = item.json.email_investidor\n\n    if email not in temp_dict:\n        temp_dict[email] = {\n            \"email\": email,\n            \"projetos\": []\n        }\n\n    temp_dict[email][\"projetos\"].append({\n        \"id\": item.json.pipefy_id_projeto,\n        \"cientista\": item.json.cientista,\n        \"ativo\": item.json.active\n    })\n\n# transforma o dict em lista\nresultado_final = list(temp_dict.values())\n\nreturn resultado_final\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        336,
+        -400
+      ],
+      "id": "97a9fc7a-0533-46d9-b980-4fa385f82bc8",
+      "name": "Separar Projetos por Investidor"
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "schema": {
+          "__rl": true,
+          "value": "plataforma_geral",
+          "mode": "list",
+          "cachedResultName": "plataforma_geral"
+        },
+        "table": {
+          "__rl": true,
+          "value": "projetos",
+          "mode": "list",
+          "cachedResultName": "projetos"
+        },
+        "returnAll": true,
+        "where": {
+          "values": [
+            {
+              "column": "pipefy_id",
+              "condition": "IS NOT NULL"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        528,
+        -400
+      ],
+      "id": "5c0e84c6-24a8-4ed0-b831-24d187c43f0b",
+      "name": "Listar Todos Projetos",
+      "credentials": {
+        "postgres": {
+          "id": "N9en5dKd3JrLOVxQ",
+          "name": "Postgres Lisboa"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "language": "python",
+        "pythonCode": "from datetime import datetime\n\nresultado = []\n\n# Nodes\nprojetos_por_investidor = _(\"Separar Projetos por Investidor\").all()\nlista_projetos = _(\"Listar Todos Projetos\").all()\ninvestidor_projetos = _(\"Investidor Projetos\").all()\n\n# Índice de projetos (onde está o fee)\nprojetos_index = {\n    item[\"json\"][\"pipefy_id\"]: item[\"json\"]\n    for item in lista_projetos\n}\n\n# 🔥 Chave composta (email + projeto)\ninvestidor_projetos_index = {\n    (item[\"json\"][\"email_investidor\"], item[\"json\"][\"pipefy_id_projeto\"]): item[\"json\"]\n    for item in investidor_projetos\n}\n\n# Mês atual no formato YYYY-MM\nagora = datetime.utcnow()\nmes_atual_str = agora.strftime(\"%Y-%m\")  # ex: 2026-02\n\nfor investidor_item in projetos_por_investidor:\n    investidor = investidor_item[\"json\"]\n\n    mrr_atual = 0\n    churn_atual = 0\n\n    for projeto_ref in investidor[\"projetos\"]:\n\n        pipefy_id = projeto_ref[\"id\"]\n\n        projeto = projetos_index.get(pipefy_id)\n\n        chave = (investidor[\"email\"], pipefy_id)\n        investidor_projeto = investidor_projetos_index.get(chave)\n\n        if not projeto or not investidor_projeto:\n            continue\n\n        fee = projeto[\"fee\"]\n\n        # Regra do cientista\n        if investidor_projeto.get(\"cientista\"):\n            fee *= 1.5\n\n        # =====================\n        # MRR (ativo)\n        # =====================\n        if investidor_projeto.get(\"active\") == True:\n            mrr_atual += fee\n\n        # =====================\n        # CHURN (somente se inativado no mês atual)\n        # =====================\n        else:\n            inactivated_at = investidor_projeto.get(\"inactivated_at\")\n\n            if inactivated_at:\n                mes_inativacao = inactivated_at[:7]  # pega \"YYYY-MM\"\n\n                if mes_inativacao == mes_atual_str:\n                    churn_atual += fee\n\n    resultado.append({\n        \"json\": {\n            \"email_investidor\": investidor[\"email\"],\n            \"fixo_mrr_atual\": mrr_atual,\n            \"fixo_churn_atual\": churn_atual,\n            \"detalhes\": investidor[\"projetos\"]\n        }\n    })\n\nreturn resultado\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        -400
+      ],
+      "id": "c387e891-29c6-40ff-8c59-8a3babfa0747",
+      "name": "Conjunto de Dados",
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "schema": {
+          "__rl": true,
+          "value": "plataforma_geral",
+          "mode": "list",
+          "cachedResultName": "plataforma_geral"
+        },
+        "table": {
+          "__rl": true,
+          "value": "investidores",
+          "mode": "list",
+          "cachedResultName": "investidores"
+        },
+        "returnAll": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        912,
+        -400
+      ],
+      "id": "b76cb4b9-97e7-441c-b011-c2b689444c68",
+      "name": "Investidores",
+      "executeOnce": true,
+      "credentials": {
+        "postgres": {
+          "id": "N9en5dKd3JrLOVxQ",
+          "name": "Postgres Lisboa"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "schema": {
+          "__rl": true,
+          "value": "plataforma_geral",
+          "mode": "list",
+          "cachedResultName": "plataforma_geral"
+        },
+        "table": {
+          "__rl": true,
+          "value": "remuneracao_cargos",
+          "mode": "list",
+          "cachedResultName": "remuneracao_cargos"
+        },
+        "returnAll": true,
+        "where": {
+          "values": [
+            {
+              "column": "fixo_cargo",
+              "value": "={{ $json.funcao }}"
+            },
+            {
+              "column": "fixo_senioridade",
+              "value": "={{ $json.senioridade }}"
+            },
+            {
+              "column": "fixo_level",
+              "value": "={{ $json.nivel }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1312,
+        -400
+      ],
+      "id": "3b726248-dc7d-4a08-9b25-9958c052c991",
+      "name": "Cargos",
+      "executeOnce": false,
+      "alwaysOutputData": false,
+      "credentials": {
+        "postgres": {
+          "id": "N9en5dKd3JrLOVxQ",
+          "name": "Postgres Lisboa"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "schema": {
+          "__rl": true,
+          "value": "plataforma_geral",
+          "mode": "list",
+          "cachedResultName": "plataforma_geral"
+        },
+        "table": {
+          "__rl": true,
+          "value": "investidores_metricas_mensais_novo",
+          "mode": "list",
+          "cachedResultName": "investidores_metricas_mensais_novo"
+        },
+        "limit": 1,
+        "where": {
+          "values": [
+            {
+              "column": "email_investidor",
+              "value": "={{ $json.dados.email_investidor }}"
+            }
+          ]
+        },
+        "sort": {
+          "values": [
+            {
+              "column": "mes",
+              "direction": "DESC"
+            },
+            {
+              "column": "ano",
+              "direction": "DESC"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1888,
+        -400
+      ],
+      "id": "30514f93-b9f6-4443-9cbd-8e258a410bd1",
+      "name": "Select rows from a table",
+      "executeOnce": false,
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "N9en5dKd3JrLOVxQ",
+          "name": "Postgres Lisboa"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Pega todos os itens do \"Edit Fields\"\nconst itemsAtual = $('FLAG').all();\n\n// Pega todos os históricos do Select rows\nconst historicos = $input.all();\n\n// Processa cada item individualmente\nreturn itemsAtual.map(atual => {\n    // Encontra o histórico correspondente a este investidor\n    const historico = historicos.find(h => h.json.email_investidor === atual.json.email_investidor)?.json;\n\n    // Inicializa streaks\n    let green_streak = 0;\n    let yellow_streak = 0;\n\n    if (!historico) {\n        // Sem histórico: o primeiro registro já conta +1\n        green_streak = atual.json.flag === \"GREEN\" ? 1 : 0;\n        yellow_streak = atual.json.flag === \"YELLOW\" ? 1 : 0;\n    } else {\n        const mesAtual = new Date().getMonth() + 1;\n        const anoAtual = new Date().getFullYear();\n\n        const mesAnterior = Number(historico.mes);\n        const anoAnterior = Number(historico.ano);\n\n        const flagAnterior = historico.flag;\n        const greenAnterior = Number(historico.green_streak || 0);\n        const yellowAnterior = Number(historico.yellow_streak || 0);\n\n        // Calcula o mês anterior esperado\n        let mesEsperado = mesAtual - 1;\n        let anoEsperado = anoAtual;\n        if (mesAtual === 1) {\n            mesEsperado = 12;\n            anoEsperado = anoAtual - 1;\n        }\n\n        const ehMesConsecutivo = mesAnterior === mesEsperado && anoAnterior === anoEsperado;\n\n        if (ehMesConsecutivo) {\n            if (atual.json.flag === \"GREEN\") {\n                green_streak = flagAnterior === \"GREEN\" ? greenAnterior + 1 : 1;\n            }\n            if (atual.json.flag === \"YELLOW\") {\n                yellow_streak = flagAnterior === \"YELLOW\" ? yellowAnterior + 1 : 1;\n            }\n        } else {\n            // Não consecutivo: começa do 1\n            green_streak = atual.json.flag === \"GREEN\" ? 1 : 0;\n            yellow_streak = atual.json.flag === \"YELLOW\" ? 1 : 0;\n        }\n    }\n\n    return {\n        json: {\n            ...atual.json,\n            green_streak,\n            yellow_streak\n        }\n    };\n});\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2080,
+        -400
+      ],
+      "id": "6b68c612-caba-402a-bd1f-af9e2e267b07",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "schema": {
+          "__rl": true,
+          "value": "plataforma_geral",
+          "mode": "list",
+          "cachedResultName": "plataforma_geral"
+        },
+        "table": {
+          "__rl": true,
+          "value": "investidores_metricas_mensais_novo",
+          "mode": "list",
+          "cachedResultName": "investidores_metricas_mensais_novo"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "email_investidor": "={{ $json.dados.email_investidor }}",
+            "fixo_churn_maximo_percentual": "={{ $json.dados.churn_maximo_percentual }}",
+            "fixo_csp_esperado": "={{ $json.dados.csp_esperado }}",
+            "fixo_remuneracao_fixa": "={{ $json.dados.remuneracao_fixa }}",
+            "fixo_churn_atual": "={{ $json.dados.fixo_churn_atual/100 }}",
+            "fixo_mrr_atual": "={{ $json.dados.fixo_mrr_atual/100 }}",
+            "mes": "={{ $now.month }}",
+            "detalhes": "={{ {\"produtos\":$json.dados.detalhes} }}",
+            "cargo": "={{ $json.dados.cargo }}",
+            "senioridade": "={{ $json.dados.senioridade }}",
+            "level": "={{ $json.dados.nivel }}",
+            "ano": "={{ $now.year }}",
+            "fixo_mrr_minimo": "={{ $json.dados.mrr_minima }}",
+            "fixo_mrr_esperado": "={{ $json.dados.mrr_esperado }}",
+            "fixo_mrr_teto": "={{ $json.dados.mrr_teto }}",
+            "fixo_churn_maximo_valor": "={{ $json.dados.churn_maximo_valor }}",
+            "flag": "={{ $json.flag }}",
+            "green_streak": "={{ $json.green_streak }}",
+            "yellow_streak": "={{ $json.yellow_streak }}",
+            "fixo_remuneracao_minima": "={{ $json.dados.remuneracao_minima }}",
+            "fixo_remuneracao_maxima": "={{ $json.dados.remuneracao_maxima }}",
+            "motivo_flag": "={{ $json.motivo_flag }}"
+          },
+          "matchingColumns": [
+            "email_investidor",
+            "ano",
+            "mes"
+          ],
+          "schema": [
+            {
+              "id": "mes",
+              "displayName": "mes",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "ano",
+              "displayName": "ano",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "email_investidor",
+              "displayName": "email_investidor",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "detalhes",
+              "displayName": "detalhes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "object",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "cargo",
+              "displayName": "cargo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "senioridade",
+              "displayName": "senioridade",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "level",
+              "displayName": "level",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "fixo_mrr_atual",
+              "displayName": "fixo_mrr_atual",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "fixo_churn_atual",
+              "displayName": "fixo_churn_atual",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "fixo_remuneracao_fixa",
+              "displayName": "fixo_remuneracao_fixa",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "fixo_csp_esperado",
+              "displayName": "fixo_csp_esperado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "fixo_churn_maximo_percentual",
+              "displayName": "fixo_churn_maximo_percentual",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "fixo_mrr_minimo",
+              "displayName": "fixo_mrr_minimo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "fixo_mrr_esperado",
+              "displayName": "fixo_mrr_esperado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "fixo_mrr_teto",
+              "displayName": "fixo_mrr_teto",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "fixo_churn_maximo_valor",
+              "displayName": "fixo_churn_maximo_valor",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "calc_churn_real_percentual",
+              "displayName": "calc_churn_real_percentual",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false,
+              "removed": true
+            },
+            {
+              "id": "calc_delta_churn_percentual",
+              "displayName": "calc_delta_churn_percentual",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false,
+              "removed": true
+            },
+            {
+              "id": "calc_delta_churn_valor",
+              "displayName": "calc_delta_churn_valor",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false,
+              "removed": true
+            },
+            {
+              "id": "calc_variavel_churn",
+              "displayName": "calc_variavel_churn",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false,
+              "removed": true
+            },
+            {
+              "id": "calc_delta_csp",
+              "displayName": "calc_delta_csp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false,
+              "removed": true
+            },
+            {
+              "id": "calc_variavel_csp",
+              "displayName": "calc_variavel_csp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false,
+              "removed": true
+            },
+            {
+              "id": "calc_variavel_total",
+              "displayName": "calc_variavel_total",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false,
+              "removed": true
+            },
+            {
+              "id": "calc_remuneracao_total",
+              "displayName": "calc_remuneracao_total",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false,
+              "removed": true
+            },
+            {
+              "id": "flag",
+              "displayName": "flag",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "yellow_streak",
+              "displayName": "yellow_streak",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "green_streak",
+              "displayName": "green_streak",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "fixo_remuneracao_minima",
+              "displayName": "fixo_remuneracao_minima",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "fixo_remuneracao_maxima",
+              "displayName": "fixo_remuneracao_maxima",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "motivo_flag",
+              "displayName": "motivo_flag",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2272,
+        -400
+      ],
+      "id": "3efb6fa2-41f8-4e3f-a90f-64a61fe3cdb4",
+      "name": "Registrar",
+      "executeOnce": false,
+      "credentials": {
+        "postgres": {
+          "id": "N9en5dKd3JrLOVxQ",
+          "name": "Postgres Lisboa"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Calcula Métricas de Remuneração\n",
+        "height": 192,
+        "width": 2560,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -96,
+        -448
+      ],
+      "id": "b3f52bd0-0a84-41e8-a71a-3976283d158a",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "language": "python",
+        "pythonCode": "return _input.all()"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        -400
+      ],
+      "id": "e830c0b5-cc28-474b-a958-7ef65f4867b8",
+      "name": "Lista de Investidores"
+    },
+    {
+      "parameters": {
+        "language": "python",
+        "pythonCode": "conjuntos = _('Conjunto de Dados').all()\ninvestidores = _('Investidores').all()\ncargos = _('Cargos').all()\n\n# -------------------------\n# Criar índice de investidores por email\n# -------------------------\ninvestidores_index = {\n    item.json.email: item.json\n    for item in investidores\n}\n\n# -------------------------\n# Criar índice de cargos por chave composta\n# (cargo + senioridade + level)\n# -------------------------\ncargos_index = {\n    (\n        item.json.fixo_cargo,\n        item.json.fixo_senioridade,\n        item.json.fixo_level\n    ): item.json\n    for item in cargos\n}\n\n# -------------------------\n# Processamento principal\n# -------------------------\nfor conjunto in conjuntos:\n\n    email = conjunto.json.email_investidor\n    investidor = investidores_index.get(email)\n\n    if not investidor:\n        continue\n\n    # Dados do investidor\n    cargo_nome = investidor.get(\"funcao\")\n    senioridade = investidor.get(\"senioridade\")\n    nivel = investidor.get(\"nivel\")\n\n    conjunto.json.cargo = cargo_nome\n    conjunto.json.senioridade = senioridade\n    conjunto.json.nivel = nivel\n\n    # Buscar cargo usando chave composta\n    cargo = cargos_index.get((cargo_nome, senioridade, nivel))\n\n    if not cargo:\n        continue\n\n    conjunto.json.remuneracao_minima = cargo.get(\"calc_remuneracao_minima\")\n    conjunto.json.remuneracao_fixa = cargo.get(\"fixo_remuneracao_fixa\")\n    conjunto.json.remuneracao_maxima = cargo.get(\"calc_remuneracao_maxima\")\n\n    conjunto.json.csp_esperado = cargo.get(\"calc_csp_esperado\")\n\n    conjunto.json.churn_maximo_percentual = cargo.get(\"fixo_churn_maximo_percentual\")\n    conjunto.json.churn_maximo_valor = cargo.get(\"calc_churn_maximo_valor\")\n\n    conjunto.json.mrr_minima = cargo.get(\"calc_mrr_minima\")\n    conjunto.json.mrr_esperado = cargo.get(\"fixo_mrr_esperado\")\n    conjunto.json.mrr_teto = cargo.get(\"fixo_mrr_teto\")\n\nreturn conjuntos\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1504,
+        -400
+      ],
+      "id": "5ab5c4a4-c531-4376-a075-c0ae83400aba",
+      "name": "Code in Python (Beta)"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "4e2f5e6d-2445-47b8-9083-724bca507bec",
+              "name": "=dados",
+              "value": "={{ $json }}",
+              "type": "object"
+            },
+            {
+              "id": "a41f0c76-5e13-4288-a383-55dd0af3c943",
+              "name": "flag",
+              "value": "={{ (() => {   \nconst churnAtual = Number($json.fixo_churn_atual)/100;   \nconst churnMax = Number($json.churn_maximo_valor);    \nconst mrrAtual = Number($json.fixo_mrr_atual)/100;   \nconst mrrMin = Number($json.mrr_minima);\nconst mrrEsperado = Number($json.mrr_esperado);\nconst mrrTeto = Number($json.mrr_teto);\n\nconst isGreen =  churnAtual <= churnMax &&  mrrAtual >= mrrMin &&  mrrAtual <= mrrTeto;    \n\nif (isGreen) return \"GREEN\";    \n\nreturn \"YELLOW\"; })() }}",
+              "type": "string"
+            },
+            {
+              "id": "39602c69-a571-4137-a7a5-550dc875afaf",
+              "name": "motivo_flag",
+              "value": "={{ (() => {  \n  const churnAtual = Number($json.fixo_churn_atual)/100;  \n  const churnMax = Number($json.churn_maximo_valor);  \n\n  const mrrAtual = Number($json.fixo_mrr_atual)/100;  \n  const mrrEsperado = Number($json.mrr_esperado);  \n  const mrrTeto = Number($json.mrr_teto);\n\n  const motivos = [];\n\n  if (churnAtual > churnMax) {\n    motivos.push(`Churn acima do máximo (${churnAtual.toFixed(2)} > ${churnMax})`);\n  }\n\n  if (mrrAtual < mrrEsperado) {\n    motivos.push(`MRR abaixo do esperado (${mrrAtual.toFixed(2)} < ${mrrEsperado})`);\n  }\n\n  if (mrrAtual > mrrTeto) {\n    motivos.push(`MRR acima do teto (${mrrAtual.toFixed(2)} > ${mrrTeto})`);\n  }\n\n  if (motivos.length === 0) {\n    return \"Dentro dos parâmetros (GREEN)\";\n  }\n\n  return motivos.join(\" | \");\n})() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1696,
+        -400
+      ],
+      "id": "b28774c6-0c7f-4799-bb25-70c9ff5bd11e",
+      "name": "FLAG"
+    }
+  ],
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Investidor Projetos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Investidor Projetos": {
+      "main": [
+        [
+          {
+            "node": "Separar Projetos por Investidor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Separar Projetos por Investidor": {
+      "main": [
+        [
+          {
+            "node": "Listar Todos Projetos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Listar Todos Projetos": {
+      "main": [
+        [
+          {
+            "node": "Conjunto de Dados",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Conjunto de Dados": {
+      "main": [
+        [
+          {
+            "node": "Investidores",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Investidores": {
+      "main": [
+        [
+          {
+            "node": "Lista de Investidores",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cargos": {
+      "main": [
+        [
+          {
+            "node": "Code in Python (Beta)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Select rows from a table": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Registrar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lista de Investidores": {
+      "main": [
+        [
+          {
+            "node": "Cargos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in Python (Beta)": {
+      "main": [
+        [
+          {
+            "node": "FLAG",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FLAG": {
+      "main": [
+        [
+          {
+            "node": "Select rows from a table",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "2d946570092a86d9c7ad06bd1a4d02c366559a0792b5dca95ecb6b7fe9120c6c"
+  }
+}

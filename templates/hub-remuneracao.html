@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
-    rel="stylesheet">
+        rel="stylesheet">
     <link rel="stylesheet" href="static/style/styles.css">
     <link rel="stylesheet" href="static/style/tema-claro.css">
     {% include "components/icon_title.html" %}
@@ -67,9 +67,12 @@
                     {% for inv in investors %}
                     <div class="project-card" data-id="{{ inv.id }}" data-name="{{ inv.name }}"
                         data-role="{{ inv.role }}" data-squad="{{ inv.squad }}" data-step="{{ inv.step }}"
-                        data-yellow-flag="{{ inv.rows[0].yellow_streak if inv.rows|length > 0 else '' }}" data-green-flag="{{ inv.rows[0].green_streak if inv.rows|length > 0 else '' }}"
+                        data-yellow-flag="{{ inv.rows[0].yellow_streak if inv.rows|length > 0 else '' }}"
+                        data-green-flag="{{ inv.rows[0].green_streak if inv.rows|length > 0 else '' }}"
                         data-clients="{{ inv.clients_count }}" data-fixed="{{ inv.fixed_fee }}" data-mrr="{{ inv.mrr }}"
-                        data-mrr-esperado="{{ inv.mrrEsperado }}" data-mrr-teto="{{ inv.mrrTeto }}" data-roi="{{ inv.roi }}" onclick="openRemunerationModal(this)">
+                        data-mrr-total="{{ inv.mrrTotal }}" data-mrr-esperado="{{ inv.mrrEsperado }}"
+                        data-mrr-teto="{{ inv.mrrTeto }}" data-roi="{{ inv.roi }}" data-rem-min="{{ inv.rem_min }}"
+                        data-rem-max="{{ inv.rem_max }}" onclick="openRemunerationModal(this)">
                         <div class="project-header">
                             <div class="project-icon">
                                 <i class="fa-solid fa-user-tie"></i>
@@ -84,18 +87,18 @@
                                 else "green-flag"
                             }}'>
 
-                            {{
+                                {{
                                 "Yellow" if inv.rows[-1].yellow_streak == 1
                                 else "Red" if inv.rows[-1].yellow_streak == 2
                                 else "Black" if inv.rows[-1].yellow_streak >= 3
                                 else "Green PDC" if inv.rows[-1].green_streak >= 3
                                 else "Green"
-                            }}
+                                }}
                             </span>
 
                             {% endif %}
 
-                            
+
                         </div>
                         <h3 class="project-title">{{ inv.name }}</h3>
                         <p class="project-description">
@@ -121,15 +124,15 @@
                                     else "green-pdc-flag-table" if row.green_streak >= 3
                                     else "green-flag-table"
                                 }}' title='{{ row.motivo_flag }}'>
-                                <span>
-                                    {{
+                                    <span>
+                                        {{
                                         "Yellow" if row.yellow_streak == 1
                                         else "Red" if row.yellow_streak == 2
                                         else "Black" if row.yellow_streak >= 3
                                         else "Green PDC" if row.green_streak >= 3
                                         else "Green"
-                                    }}
-                                </span>
+                                        }}
+                                    </span>
                                 </td>
                                 <!-- MÊS/ANO -->
                                 <td>{{ row.month_year }}</td>
@@ -142,9 +145,9 @@
                                 <!-- REMUNERAÇÃO -->
                                 <td><span class="monetario">R$ {{ inv.fixed_fee | round(2) }}</span></td>
                                 <!-- MRR -->
-                                <td><span class="monetario">R$ {{ row.mrr | round(2) }}</span></td>
+                                <td><span class="monetario">R$ {{ (row.mrr) | round(2) }}</span></td>
                                 <!-- CHURN R$ -->
-                                <td><span class="monetario">RS {{ row.churn_rs | round(2) }}</span></td>
+                                <td><span class="monetario">R$ {{ row.churn_rs | round(2) }}</span></td>
                                 <!-- CHURN % -->
                                 <td class="{{ 'remu-value-negative' if row.churn > 0 else '' }}">
                                     {% if row.churn is number %}
@@ -154,9 +157,17 @@
                                     {% endif %}
                                 </td>
                                 <!-- VARIAVEL R$ -->
-                                <td><span class="monetario">R$ {{ row.variable_brl | round(2) }}</span></td>
+                                <td><span class="monetario">R$ {{ (row.variable_brl) | round(2) }}</span></td>
                                 <!-- REMUNERAÇÃO TOTAL -->
-                                <td style="font-weight: 600;">R$ {{ row.total_brl | round(2) }}</span></td>
+                                <td style="font-weight: 600;">
+                                    R$
+                                    {% if row.total_brl < row.rem_min %} {{ row.rem_min | round(2) }} {% elif
+                                        row.total_brl> row.rem_max %}
+                                        {{ row.rem_max | round(2) }}
+                                        {% else %}
+                                        {{ row.total_brl | round(2) }}
+                                        {% endif %}
+                                </td>
                             </tr>
                             {% endfor %}
                             {% else %}
@@ -204,38 +215,63 @@
                     </div> -->
                 </section>
 
-                <!-- Mini Cards de Métricas -->
+                <!-- Mini Cards de Métricas Redenhados -->
                 <div class="remu-metrics">
+                    <!-- Clientes -->
                     <div class="remu-metric-card">
-                        <span class="remu-metric-label">Clientes</span>
+                        <div class="remu-metric-header">
+                            <span class="remu-metric-label">Clientes</span>
+                            <i class="fa-solid fa-users remu-metric-icon"></i>
+                        </div>
                         <span class="remu-metric-value" id="modalClients">0</span>
                     </div>
+
+                    <!-- Remuneração Fixa -->
                     <div class="remu-metric-card">
-                        <span class="remu-metric-label">Rem. Fixa</span>
+                        <div class="remu-metric-header">
+                            <span class="remu-metric-label">Rem. Fixa</span>
+                            <i class="fa-solid fa-wallet remu-metric-icon"></i>
+                        </div>
                         <span class="remu-metric-value" id="modalFixed">R$ 0,00</span>
                     </div>
-                    <div class="remu-metric-card">
-                        <span class="remu-metric-label">MRR</span>
-                        <span class="remu-metric-value" id="modalMRR">R$ 0,00</span>
 
-                        <div class="remu-delta-container">
-                            <span class="remu-metric-label">Esperado:</span>
-                            <span class="remu-metric-delta" id="modalMRRDelta">Delta Esperado (Total Esperado) </span>
-                            <span class="remu-metric-label">Teto:</span>
-                            <span class="remu-metric-delta" id="modalMRRTetoDelta">Delta Teto (Total Teto)</span>
+                    <!-- MRR Comparativo (Preenchido via JS) -->
+                    <div class="remu-metric-card" id="modalMRRCard">
+                        <div class="remu-metric-header">
+                            <span class="remu-metric-label">MRR (Sua Contribuição x Total)</span>
+                            <i class="fa-solid fa-chart-line remu-metric-icon"></i>
                         </div>
-
+                        <div id="modalMRR" class="remu-comparison-box">
+                            <!-- Injetado via JS -->
+                        </div>
                     </div>
+
+                    <!-- Metas (Esperado/Teto) (Preenchido via JS) -->
                     <div class="remu-metric-card">
-                        <span class="remu-metric-label">ROI Médio</span>
-                        <span class="remu-metric-value" id="modalROI">0%</span>
+                        <div class="remu-metric-header">
+                            <span class="remu-metric-label">Metas de MRR</span>
+                            <i class="fa-solid fa-bullseye remu-metric-icon"></i>
+                        </div>
+                        <div class="remu-target-card" id="modalTargets">
+                            <!-- Injetado via JS -->
+                        </div>
                     </div>
-                </div>
+                </div> <!-- Fim de remu-metrics -->
 
-                <!-- Tabela -->
-                <div class="remu-table-card">
-                    <div class="remu-table-header">
-                        <h3>Histórico de Remuneração <span class="tooltip-remuneracao" title="Remuneração = Fixo + Variável.
+                <!-- O ROI Médio está oculto conforme solicitação anterior, mas mantido comentado -->
+                <!-- <div class="remu-metric-card">
+                    <div class="remu-metric-header">
+                        <span class="remu-metric-label">ROI Médio</span>
+                        <i class="fa-solid fa-percentage remu-metric-icon"></i>
+                    </div>
+                    <span class="remu-metric-value" id="modalROI">0%</span>
+                </div> -->
+            </div> <!-- Fim de modal-body -->
+
+            <!-- Tabela -->
+            <div class="remu-table-card">
+                <div class="remu-table-header">
+                    <h3>Histórico de Remuneração <span class="tooltip-remuneracao" title="Remuneração = Fixo + Variável.
 
 Variável depende de 2 fatores:
 
@@ -248,35 +284,30 @@ Remuneração Total = Fixo + Variável.
 
 Menor churn e maior eficiência = maior remuneração.
                         ">i</span></h3>
-                        
-                    </div>
-                    <div class="remu-table-wrapper">
-                        <table class="remu-table">
-                            <thead>
-                                <tr>
-                                    <th scope="col">Flag</th>
-                                    <th scope="col">Mês-Ano</th>
-                                    <th scope="col">Cargo</th>
-                                    <th scope="col">Senioridade</th>
-                                    <th scope="col">Nivel</th>
-                                    <th scope="col">Remuneração Cargo</th>
-                                    <th scope="col">MRR</th>
-                                    <th scope="col">Churn R$</th>
-                                    <th scope="col">Churn %</th>
-                                    <th scope="col">R$ Variável</th>
-                                    <th scope="col">Remuneração Total</th>
-                                </tr>
-                            </thead>
-                            <tbody id="modalTableBody">
-                                <!-- Preenchido via JS -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
 
-            <div class="modal-footer">
-                <button class="btn-secondary" onclick="closeRemunerationModal()">Fechar</button>
+                </div>
+                <div class="remu-table-wrapper">
+                    <table class="remu-table">
+                        <thead>
+                            <tr>
+                                <th scope="col">Flag</th>
+                                <th scope="col">Mês-Ano</th>
+                                <th scope="col">Cargo</th>
+                                <th scope="col">Senioridade</th>
+                                <th scope="col">Nivel</th>
+                                <th scope="col">Remuneração Cargo</th>
+                                <th scope="col">MRR</th>
+                                <th scope="col">Churn R$</th>
+                                <th scope="col">Churn %</th>
+                                <th scope="col">R$ Variável</th>
+                                <th scope="col">Remuneração Total</th>
+                            </tr>
+                        </thead>
+                        <tbody id="modalTableBody">
+                            <!-- Preenchido via JS -->
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
