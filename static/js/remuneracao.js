@@ -34,6 +34,8 @@ window.openRemunerationModal = function (card) {
     const fixed = parseFloat(card.getAttribute('data-fixed') || 0);
     const remMin = parseFloat(card.getAttribute('data-rem-min') || 0);
     const remMax = parseFloat(card.getAttribute('data-rem-max') || 0);
+    const remAtual = parseFloat(card.getAttribute('data-rem-atual') || 0);
+    const churnRs = parseFloat(card.getAttribute('data-churn-rs') || 0);
     const mrr = parseFloat(card.getAttribute('data-mrr') || 0);
     const mrrTotal = parseFloat(card.getAttribute('data-mrr-total') || 0);
     const mrrEsperado = parseFloat(card.getAttribute('data-mrr-esperado') || 0);
@@ -88,6 +90,7 @@ window.openRemunerationModal = function (card) {
         }
     }
     document.getElementById('modalFixed').textContent = Utils.formatBRL(fixed);
+    document.getElementById('modalRemAtual').textContent = Utils.formatBRL(remAtual);
     document.getElementById('modalRemMin').textContent = Utils.formatBRL(remMin);
     document.getElementById('modalRemMax').textContent = Utils.formatBRL(remMax);
 
@@ -98,6 +101,10 @@ window.openRemunerationModal = function (card) {
             <div class="remu-comparison-item primary">
                 <span class="remu-comparison-label">MRR Trabalhado</span>
                 <span class="remu-comparison-val">${Utils.formatBRL(mrr)}</span>
+            </div>
+            <div class="remu-comparison-item" style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 8px;">
+                <span class="remu-comparison-label">Churn</span>
+                <span class="remu-comparison-val" style="color: #ff4444;">${Utils.formatBRL(churnRs)}</span>
             </div>
             <div class="remu-comparison-item" style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 8px;">
                 <span class="remu-comparison-label">MRR Total</span>

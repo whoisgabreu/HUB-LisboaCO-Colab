@@ -72,8 +72,15 @@
                         data-clients="{{ inv.clients_count }}" data-fixed="{{ inv.fixed_fee }}" data-mrr="{{ inv.mrr }}"
                         data-mrr-total="{{ inv.mrrTotal }}" data-mrr-esperado="{{ inv.mrrEsperado }}"
                         data-mrr-teto="{{ inv.mrrTeto }}" data-roi="{{ inv.roi }}" data-rem-min="{{ inv.rem_min }}"
-                        data-rem-max="{{ inv.rem_max }}" data-projetos-vinculados="{{ inv.projetos_vinculados }}"
-                        onclick="openRemunerationModal(this)">
+                        data-rem-max="{{ inv.rem_max }}" data-rem-atual="{{ 
+    (
+        inv.rows[-1].rem_min if inv.rows[-1].total_brl < inv.rows[-1].rem_min
+        else inv.rows[-1].rem_max if inv.rows[-1].total_brl > inv.rows[-1].rem_max
+        else inv.rows[-1].total_brl
+    ) | round(2)
+    if inv.rows|length > 0 else 0
+}}" data-churn-rs="{{ inv.rows[-1].churn_rs if inv.rows|length > 0 else 0 }}"
+                        data-projetos-vinculados="{{ inv.projetos_vinculados }}" onclick="openRemunerationModal(this)">
                         <div class="project-header">
                             <div class="project-icon">
                                 <i class="fa-solid fa-user-tie"></i>
@@ -219,16 +226,38 @@
                 <!-- Mini Cards de Métricas Redenhados -->
                 <div class="remu-metrics">
                     <!-- Clientes -->
-                    <div class="remu-metric-card">
+                    <!-- Clientes (Refinado Fase 15) -->
+                    <div class="remu-metric-card" onclick="openClientsListModal()"
+                        style="cursor: pointer; transition: transform 0.2s;"
+                        onmouseover="this.style.transform='translateY(-5px)'"
+                        onmouseout="this.style.transform='translateY(0)'">
                         <div class="remu-metric-header">
-                            <div style="display: flex; align-items: center; gap: 8px;">
-                                <span class="remu-metric-label">Clientes</span>
-                                <span class="remu-badge" id="modalClientsBadge">0</span>
-                            </div>
+                            <span class="remu-metric-label">Clientes</span>
                             <i class="fa-solid fa-users remu-metric-icon"></i>
                         </div>
-                        <div id="modalProjetosContainer" class="remu-projects-container">
-                            <!-- Tabela de projetos injetada via JS -->
+                        <div class="remu-clients-summary"
+                            style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 10px;">
+                            <div class="remu-summary-item">
+                                <span class="remu-summary-label"
+                                    style="font-size: 0.65rem; color: #888; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px; display: block; margin-bottom: 4px;">Ativos
+                                    no mês</span>
+                                <span id="modalClientsActive" class="remu-summary-val"
+                                    style="font-size: 1.8rem; font-weight: 800; color: #fff;">0</span>
+                            </div>
+                            <div class="remu-summary-item">
+                                <span class="remu-summary-label"
+                                    style="font-size: 0.65rem; color: #888; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px; display: block; margin-bottom: 4px;">Inativos
+                                    no mês</span>
+                                <span id="modalClientsInactive" class="remu-summary-val"
+                                    style="font-size: 1.8rem; font-weight: 800; color: #555;">0</span>
+                            </div>
+                        </div>
+                        <div
+                            style="margin-top: 12px; text-align: right; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 8px;">
+                            <span
+                                style="font-size: 0.7rem; color: #D61616; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">Ver
+                                listagem completa <i class="fa-solid fa-chevron-right"
+                                    style="font-size: 0.6rem; margin-left: 4px;"></i></span>
                         </div>
                     </div>
 
@@ -241,8 +270,16 @@
 
                         <div class="remu-values-list">
                             <div class="remu-value-item primary">
+                                <span class="remu-value-label">Atual</span>
+                                <span class="remu-value-amount" id="modalRemAtual" style="color: #D61616;">R$
+                                    0,00</span>
+                            </div>
+
+                            <div class="remu-value-item"
+                                style="border-top: 1px solid rgba(255, 255, 255, 0.05); padding-top: 8px;">
                                 <span class="remu-value-label">Fixa</span>
-                                <span class="remu-value-amount" id="modalFixed">R$ 0,00</span>
+                                <span class="remu-value-amount" id="modalFixed"
+                                    style="font-size: 1.2rem; opacity: 0.9;">R$ 0,00</span>
                             </div>
 
                             <div class="remu-value-grid">
@@ -337,6 +374,78 @@ Menor churn e maior eficiência = maior remuneração.
 
     <script src="static/js/app.js"></script>
     <script src="static/js/remuneracao.js"></script>
+
+    <!-- MODAL DE LISTAGEM DE CLIENTES (FASE 15) -->
+    <div id="clientsListModal" class="remu-modal" style="z-index: 100000;">
+        <div class="remu-modal-content" style="max-width: 600px;">
+            <div class="remu-modal-body">
+                <div id="modalClientsFullList" class="remu-projects-container" style="max-height: 85vh;">
+                    <div class="remu-modal-header">
+                        <h3>Listagem de Projetos</h3>
+                        <button type="button" class="remu-modal-close" onclick="closeClientsListModal()">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+                    <!-- Preenchido via JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Lógica para o Card de Clientes e Modal de Listagem Detail (Fase 15)
+        let currentProjectsList = [];
+
+        // Estender a função openRemunerationModal para processar os novos dados do card
+        if (typeof window.openRemunerationModal === 'function') {
+            const originalOpenRemunerationModal = window.openRemunerationModal;
+            window.openRemunerationModal = function (card) {
+                originalOpenRemunerationModal(card);
+                try {
+                    const badge = document.getElementById('modalClientsBadge');
+                    if (badge) badge.style.display = 'none';
+
+                    const activeCount = parseInt(card.getAttribute('data-clients') || 0);
+                    const rawProjects = card.getAttribute('data-projetos-vinculados') || '[]';
+                    currentProjectsList = JSON.parse(rawProjects);
+
+                    const totalCount = currentProjectsList.length;
+                    const inactiveCount = Math.max(0, totalCount - activeCount);
+
+                    const activeEl = document.getElementById('modalClientsActive');
+                    const inactiveEl = document.getElementById('modalClientsInactive');
+                    if (activeEl) activeEl.textContent = activeCount;
+                    if (inactiveEl) inactiveEl.textContent = inactiveCount;
+                } catch (e) { console.error("Erro na Fase 15:", e); }
+            };
+        }
+
+        function openClientsListModal() {
+            const container = document.getElementById('modalClientsFullList');
+            if (!container) return;
+            if (currentProjectsList.length > 0) {
+                let tableHtml = `<table class="remu-mini-table"><thead><tr><th>Projeto</th><th>Fee</th></tr></thead><tbody>`;
+                currentProjectsList.forEach(p => {
+                    tableHtml += `<tr><td><div class="remu-mini-project-name">${p.nome || 'N/A'}</div><div class="remu-mini-project-id">${p.id}</div></td><td class="remu-mini-project-fee">${window.Utils ? Utils.formatBRL(p.fee) : p.fee}</td></tr>`;
+                });
+                tableHtml += `</tbody></table>`;
+                container.innerHTML = tableHtml;
+            } else { container.innerHTML = '<div class="remu-no-data">Nenhum projeto vinculado</div>'; }
+            const modal = document.getElementById('clientsListModal');
+            if (modal) modal.classList.add('active');
+        }
+
+        function closeClientsListModal() {
+            const modal = document.getElementById('clientsListModal');
+            if (modal) modal.classList.remove('active');
+        }
+
+        window.addEventListener('click', (e) => {
+            const modal = document.getElementById('clientsListModal');
+            if (e.target === modal) closeClientsListModal();
+        });
+    </script>
+
     {% include "components/modal-configuracoes.html" %}
     <script src="static/js/tema.js"></script>
 </body>

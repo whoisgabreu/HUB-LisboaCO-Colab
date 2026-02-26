@@ -1676,6 +1676,59 @@ option {
     opacity: 0.3;
 }
 
+#clientsListModal {
+    display: none;
+
+    &.active {
+        position: fixed;
+        inset: 0;
+        display: flex;
+
+
+        /* Centralização do modal */
+        justify-content: center;
+        align-items: center;
+
+        background: #00000082;
+        backdrop-filter: blur(4px);
+        padding: 1rem;
+        border: solid 1px #ffffff4a;
+        border-radius: 8px;
+        box-shadow: 0 0 15px rgb(0 0 0);
+
+        .remu-modal-close {
+            position: absolute;
+            top: 1vh;
+            right: 1vw;
+            background: #ffffff00;
+            border: solid 1px white;
+            border-radius: 50%;
+            padding: 1px 5px;
+            color: white;
+
+            &:hover {
+                color: red;
+                border: solid 1px #ff0000;
+                filter: drop-shadow(0 0 15px red);
+            }
+        }
+
+        .remu-modal-content {
+            width: 600px;
+            max-width: 95%;
+
+
+            .remu-projects-container {
+                background: var(--card-bg);
+                padding: 1rem;
+                border: solid 1px #ffffff4a;
+                border-radius: 8px;
+                height: 100%;
+            }
+        }
+    }
+}
+
 @media (max-width: 1024px) {
     .remu-metrics {
         grid-template-columns: repeat(2, 1fr);
