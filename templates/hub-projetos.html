@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
-    rel="stylesheet">
+        rel="stylesheet">
     <link rel="stylesheet" href="static/style/styles.css">
     <link rel="stylesheet" href="static/style/hub-projetos.css">
     <link rel="stylesheet" href="static/style/tema-claro.css">
@@ -38,466 +38,467 @@
 
             <!-- TESTE -->
             <!-- CONTEÚDO PRINCIPAL -->
-                <div class="main-container">
-                    <div class="welcome-section">
-                        <h2>Bem-vindo, {{ session.nome.split()[0] }}! 👋</h2>
-                        <p>Gerencie seus clientes e projetos de forma centralizada</p>
-                    </div>
+            <div class="main-container">
+                <div class="welcome-section">
+                    <h2>Bem-vindo, {{ session.nome.split()[0] }}! 👋</h2>
+                    <p>Gerencie seus clientes e projetos de forma centralizada</p>
+                </div>
 
-                    <!-- TABS DE NAVEGAÇÃO -->
-                    <div class="tabs-container">
-                        <button class="tab-btn active" onclick="switchTab(event, 'ativos')">
-                            <i class="fa-solid fa-rocket"></i>
-                            Clientes Ativos
-                            <span class="tab-count">{{ clientes_ativos|length }}</span>
-                        </button>
-                        <button class="tab-btn" onclick="switchTab(event, 'onetime')">
-                            <i class="fa-solid fa-bolt"></i>
-                            One-Time
-                            <span class="tab-count">{{ clientes_onetime|length }}</span>
-                        </button>
-                        <button class="tab-btn" onclick="switchTab(event, 'inativos')">
-                            <i class="fa-solid fa-archive"></i>
-                            Inativos
-                            <span class="tab-count">{{ clientes_inativos|length }}</span>
-                        </button>
-                    </div>
+                <!-- TABS DE NAVEGAÇÃO -->
+                <div class="tabs-container">
+                    <button class="tab-btn active" onclick="switchTab(event, 'ativos')">
+                        <i class="fa-solid fa-rocket"></i>
+                        Clientes Ativos
+                        <span class="tab-count">{{ clientes_ativos|length }}</span>
+                    </button>
+                    <button class="tab-btn" onclick="switchTab(event, 'onetime')">
+                        <i class="fa-solid fa-bolt"></i>
+                        One-Time
+                        <span class="tab-count">{{ clientes_onetime|length }}</span>
+                    </button>
+                    <button class="tab-btn" onclick="switchTab(event, 'inativos')">
+                        <i class="fa-solid fa-archive"></i>
+                        Inativos
+                        <span class="tab-count">{{ clientes_inativos|length }}</span>
+                    </button>
+                </div>
 
-                    <!-- FILTROS -->
-                    <div class="filters">
-                        <div class="search-box">
-                            <i class="fa-solid fa-magnifying-glass"></i>
-                            {% if session.squad == "Gerência" %}
-                            <input type="text" id="searchInput" placeholder="Buscar por cliente ou squad..." onkeyup="filterClients()">
+                <!-- FILTROS -->
+                <div class="filters">
+                    <div class="search-box">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        {% if session.squad == "Gerência" %}
+                        <input type="text" id="searchInput" placeholder="Buscar por cliente ou squad..."
+                            onkeyup="filterClients()">
+                        {% else %}
+                        <input type="text" id="searchInput" placeholder="Buscar por cliente..."
+                            onkeyup="filterClients()">
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- CONTAINER DE SLIDES -->
+                <div class="slides-wrapper">
+                    <!-- SLIDE ATIVOS -->
+                    <div class="slide-content active" id="slide-ativos">
+                        <div class="projects-grid">
+                            {% if clientes_ativos %}
+                            {% for cliente_nome, projetos in clientes_ativos.items() %}
+                            <div class="project-card" data-cliente="{{ cliente_nome|lower }}"
+                                data-projetos='{{ projetos|tojson|safe }}' data-tipo="ativo"
+                                data-squad="{{ projetos[0].squad_atribuida|lower }}" onclick="openClientModal(this)">
+                                <div class="project-header">
+                                    <div class="project-icon">
+                                        <i class="fa-solid fa-building"></i>
+                                    </div>
+                                    <span class="project-status status-ativo">{{ projetos|length }} projeto(s)</span>
+                                </div>
+                                <h3 class="project-title">{{ cliente_nome|title }}</h3>
+                                <p class="project-description">
+                                    Squad: {{ projetos[0].squad_atribuida if projetos[0].squad_atribuida else 'N/A' }}
+                                </p>
+                                <div class="project-meta">
+                                    <span>
+                                        <i class="fa-solid fa-calendar"></i>
+                                        {{ projetos[0].data_de_inicio | format_date }}
+                                    </span>
+                                    <span>
+                                        <i class="fa-solid fa-layer-group"></i>
+                                        {{ projetos|length }} projetos
+                                    </span>
+                                </div>
+                            </div>
+                            {% endfor %}
                             {% else %}
-                            <input type="text" id="searchInput" placeholder="Buscar por cliente..." onkeyup="filterClients()">
+                            <div class="empty-state">
+                                <i class="fa-solid fa-inbox"></i>
+                                <h3>Nenhum cliente ativo</h3>
+                                <p>Você ainda não está associado a nenhum cliente ativo</p>
+                            </div>
                             {% endif %}
                         </div>
                     </div>
 
-                    <!-- CONTAINER DE SLIDES -->
-                    <div class="slides-wrapper">
-                        <!-- SLIDE ATIVOS -->
-                        <div class="slide-content active" id="slide-ativos">
-                            <div class="projects-grid">
-                                {% if clientes_ativos %}
-                                    {% for cliente_nome, projetos in clientes_ativos.items() %}
-                                    <div class="project-card" 
-                                        data-cliente="{{ cliente_nome|lower }}"
-                                        data-projetos='{{ projetos|tojson|safe }}'
-                                        data-tipo="ativo"
-                                        data-squad="{{ projetos[0].squad_atribuida|lower }}"
-                                        onclick="openClientModal(this)">
-                                        <div class="project-header">
-                                            <div class="project-icon">
-                                                <i class="fa-solid fa-building"></i>
-                                            </div>
-                                            <span class="project-status status-ativo">{{ projetos|length }} projeto(s)</span>
-                                        </div>
-                                        <h3 class="project-title">{{ cliente_nome|title }}</h3>
-                                        <p class="project-description">
-                                            Squad: {{ projetos[0].squad_atribuida if projetos[0].squad_atribuida else 'N/A' }}
-                                        </p>
-                                        <div class="project-meta">
-                                            <span>
-                                                <i class="fa-solid fa-calendar"></i>
-                                                {{ projetos[0].data_de_inicio | format_date }}
-                                            </span>
-                                            <span>
-                                                <i class="fa-solid fa-layer-group"></i>
-                                                {{ projetos|length }} projetos
-                                            </span>
-                                        </div>
+                    <!-- SLIDE ONETIME -->
+                    <div class="slide-content" id="slide-onetime">
+                        <div class="projects-grid">
+                            {% if clientes_onetime %}
+                            {% for cliente_nome, projetos in clientes_onetime.items() %}
+                            <div class="project-card" data-cliente="{{ cliente_nome|lower }}"
+                                data-projetos='{{ projetos|tojson|safe }}' data-tipo="onetime"
+                                onclick="openClientModal(this)">
+                                <div class="project-header">
+                                    <div class="project-icon">
+                                        <i class="fa-solid fa-building"></i>
                                     </div>
-                                    {% endfor %}
-                                {% else %}
-                                    <div class="empty-state">
-                                        <i class="fa-solid fa-inbox"></i>
-                                        <h3>Nenhum cliente ativo</h3>
-                                        <p>Você ainda não está associado a nenhum cliente ativo</p>
-                                    </div>
-                                {% endif %}
-                            </div>
-                        </div>
-
-                        <!-- SLIDE ONETIME -->
-                        <div class="slide-content" id="slide-onetime">
-                            <div class="projects-grid">
-                                {% if clientes_onetime %}
-                                    {% for cliente_nome, projetos in clientes_onetime.items() %}
-                                    <div class="project-card" 
-                                        data-cliente="{{ cliente_nome|lower }}"
-                                        data-projetos='{{ projetos|tojson|safe }}'
-                                        data-tipo="onetime"
-                                        onclick="openClientModal(this)">
-                                        <div class="project-header">
-                                            <div class="project-icon">
-                                                <i class="fa-solid fa-building"></i>
-                                            </div>
-                                            <span class="project-status status-onetime">{{ projetos|length }} projeto(s)</span>
-                                        </div>
-                                        <h3 class="project-title">{{ cliente_nome|title }}</h3>
-                                        <p class="project-description">
-                                            Squad: {{ projetos[0].squad_atribuida if projetos[0].squad_atribuida else 'N/A' }}
-                                        </p>
-                                        <div class="project-meta">
-                                            <span>
-                                                <i class="fa-solid fa-calendar"></i>
-                                                {{ projetos[0].data_de_inicio | format_date }}
-                                            </span>
-                                            <span>
-                                                <i class="fa-solid fa-layer-group"></i>
-                                                {{ projetos|length }} projetos
-                                            </span>
-                                        </div>
-                                    </div>
-                                    {% endfor %}
-                                {% else %}
-                                    <div class="empty-state">
-                                        <i class="fa-solid fa-inbox"></i>
-                                        <h3>Nenhum cliente one-time</h3>
-                                    </div>
-                                {% endif %}
-                            </div>
-                        </div>
-
-                        <!-- SLIDE INATIVOS -->
-                        <div class="slide-content" id="slide-inativos">
-                            <div class="projects-grid">
-                                {% if clientes_inativos %}
-                                    {% for cliente_nome, projetos in clientes_inativos.items() %}
-                                    <div class="project-card" 
-                                        data-cliente="{{ cliente_nome|lower }}"
-                                        data-projetos='{{ projetos|tojson|safe }}'
-                                        data-tipo="inativo"
-                                        onclick="openClientModal(this)">
-                                        <div class="project-header">
-                                            <div class="project-icon inactive">
-                                                <i class="fa-solid fa-building"></i>
-                                            </div>
-                                            <span class="project-status status-inativo">{{ projetos|length }} projeto(s)</span>
-                                        </div>
-                                        <h3 class="project-title">{{ cliente_nome|title }}</h3>
-                                        <p class="project-description">
-                                            Squad: {{ projetos[0].squad_atribuida if projetos[0].squad_atribuida else 'N/A' }}
-                                        </p>
-                                        <div class="project-meta">
-                                            <span>
-                                                <i class="fa-solid fa-calendar"></i>
-                                                {{ projetos[0].data_de_inicio | format_date }}
-                                            </span>
-                                            <span>
-                                                <i class="fa-solid fa-layer-group"></i>
-                                                {{ projetos|length }} projetos
-                                            </span>
-                                        </div>
-                                    </div>
-                                    {% endfor %}
-                                {% else %}
-                                    <div class="empty-state">
-                                        <i class="fa-solid fa-inbox"></i>
-                                        <h3>Nenhum cliente inativo</h3>
-                                    </div>
-                                {% endif %}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- MODAL DE LISTA DE PROJETOS DO CLIENTE -->
-                <div id="clientModal" class="modal">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h2 id="clientModalTitle">Projetos do Cliente</h2>
-                            <button class="close-btn" onclick="closeClientModal()">
-                                <i class="fa-solid fa-xmark"></i>
-                            </button>
-                        </div>
-                        
-                        <div class="modal-body">
-                            <div class="projects-list" id="projectsList"></div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- MODAL DE DETALHES/EDIÇÃO DO PROJETO -->
-                <div id="projectModal" class="modal">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <button class="back-btn" onclick="backToClientModal()">
-                                <i class="fa-solid fa-arrow-left"></i>
-                            </button>
-                            <h2 id="projectModalTitle">Detalhes do Projeto</h2>
-                            <div class="header-actions">
-                                <button class="add-note-btn" onclick="openAddNoteModal()" title="Adicionar Nota">
-                                    <i class="fa-solid fa-note-sticky"></i>
-                                </button>
-                                <button class="history-btn" id="historyBtn" onclick="openHistoryModal()" title="Ver Histórico">
-                                    <i class="fa-solid fa-clock-rotate-left"></i>
-                                </button>
-                                <button class="close-btn" onclick="closeProjectModal()">
-                                    <i class="fa-solid fa-xmark"></i>
-                                </button>
-                            </div>
-                        </div>
-                        
-
-
-
-                        <form id="projectForm" onsubmit="updateProject(event)">
-                            <div class="modal-body">
-                                <div class="form-grid">
-                                    <div class="form-group">
-                                        <label>Nome do Projeto</label>
-                                        <input type="text" name="nome" id="modal_nome" required disabled>
-                                    </div>
-                                    
-                                    <!-- TESTE STEP -->
-                                    <div class="form-group">
-                                        <label>Step</label>
-                                        <select name="step" id="modal_step" disabled>
-                                            <option value="">Selecione...</option>
-                                            <option value="Saber">Saber</option>
-                                            <option value="Ter">Ter</option>
-                                            <option value="Executar">Executar</option>
-                                            <option value="Potencializar">Potencializar</option>
-                                        </select>
-                                    </div>
-                                    <!-- TESTE STEP -->
-
-                                    <div class="input-with-icon">
-                                        <div class="form-group">
-                                            <label>Pipefy ID</label>
-                                            <input type="text" name="pipefy_id" id="modal_pipefy_id" disabled>
-                                            <div id="pipefyButton" title="Abrir no Pipefy"><i class="fa-solid fa-link"></i></div>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="form-group">
-                                        <label>Documento</label>
-                                        <input type="text" name="documento" id="modal_documento" disabled>
-                                    </div>
-                                    
-                                    <div class="form-group">
-                                        <label>Fee</label>
-                                        <input type="text" name="fee" id="modal_fee" disabled>
-                                    </div>
-                                    
-                                    <div class="form-group">
-                                        <label>Moeda</label>
-                                        <select name="moeda" id="modal_moeda" disabled>
-                                            <option value="BRL">BRL</option>
-                                            <option value="USD">USD</option>
-                                            <option value="EUR">EUR</option>
-                                        </select>
-                                    </div>
-                                    
-                                    <div class="form-group">
-                                        <label>Squad Atribuída</label>
-                                        <select name="squad_atribuida" id="modal_squad" disabled>
-                                            {% for squad in squads %}
-                                                <option value='{{ squad }}'>{{ squad }}</option>
-                                            {% endfor %}
-                                        </select>
-                                    </div>
-                                    <!-- ✅ REMOVIDO O </div> EXCEDENTE AQUI -->
-
-                                    <div class="form-group">
-                                        <label>Produto Contratado</label>
-                                        <input type="text" name="produto_contratado" id="modal_produto" disabled>
-                                    </div>
-                                    
-                                    <div class="form-group">
-                                        <label>Data de Início</label>
-                                        <input type="date" name="data_de_inicio" id="modal_data_inicio" disabled>
-                                    </div>
-
-                                    <div class="form-group">
-                                        <label>Data Fim</label>
-                                        <input type="date" name="data_fim" id="modal_data_fim" disabled>
-                                    </div>
-                                    
-                                    <div class="form-group">
-                                        <label>Cohort</label>
-                                        <!-- <input type="text" name="cohort" id="modal_cohort" disabled> -->
-                                        <select name="cohort" id="modal_cohort" disabled>
-                                            <option value="PDV - Ponto de Venda">PDV - Ponto de Venda</option>
-                                            <option value="E-Commerce">E-Commerce</option>
-                                            <option value="Inside Sales">Inside Sales</option>
-                                            <option value="Info Produto">Info Produto</option>
-                                        </select>
-
-                                    </div>
-                                    
-                                    <div class="form-group">
-                                        <label>Meta Account ID</label>
-                                        <input type="text" name="meta_account_id" id="modal_meta_account" disabled>
-                                    </div>
-                                    
-                                    <div class="form-group">
-                                        <label>Google Account ID</label>
-                                        <input type="text" name="google_account_id" id="modal_google_account" disabled>
-                                    </div>
-
-                                    <div class="form-group">
-                                        <label>Orçamento de Mídia - Meta</label>
-                                        <input type="text" name="orcamento_midia_meta" id="modal_orcamento_midia_meta" disabled>
-                                    </div>
-
-                                    <div class="form-group">
-                                        <label>Orçamento de Mídia - Google</label>
-                                        <input type="text" name="orcamento_midia_google" id="modal_orcamento_midia_google" disabled>
-                                    </div>
-                                    
-                                    <div class="form-group full-width">
-                                        <label>Fase do Pipefy</label>
-                                        <input type="text" name="fase_do_pipefy" id="modal_fase_pipefy" disabled>
-                                    </div>
-                                    
-                                    <div class="form-group full-width">
-                                        <label>URL Webhook GChat</label>
-                                        <input type="url" name="url_webhook_gchat" id="modal_webhook_url" disabled>
-                                    </div>
-
-                                    <div class="form-group full-width">
-                                        <label>Ekyte Workspace</label>
-                                        <input type="text" name="ekyte_workspace" id="modal_ekyte_workspace" disabled>
-                                    </div>
-
-                                    <!-- TESTE DETALHES -->
-                                    <div class="form-group full-width">
-                                        <label>Informações Gerais do Projeto</label>
-                                        <textarea name="informacoes_gerais" id="modal_informacoes" rows="6" disabled></textarea>
-                                    </div>
-
-                                    <!-- SEÇÃO DE NOTAS CUSTOMIZADAS -->
-                                    <div class="form-group full-width notes-section" id="notesSection">
-                                        <div class="notes-header">
-                                            <label><i class="fa-solid fa-note-sticky"></i> Notas e Anotações</label>
-                                        </div>
-                                        <div id="notesContainer" class="notes-container">
-                                            <!-- Notas serão adicionadas aqui dinamicamente -->
-                                        </div>
-                                    </div>
-
-
+                                    <span class="project-status status-onetime">{{ projetos|length }} projeto(s)</span>
+                                </div>
+                                <h3 class="project-title">{{ cliente_nome|title }}</h3>
+                                <p class="project-description">
+                                    Squad: {{ projetos[0].squad_atribuida if projetos[0].squad_atribuida else 'N/A' }}
+                                </p>
+                                <div class="project-meta">
+                                    <span>
+                                        <i class="fa-solid fa-calendar"></i>
+                                        {{ projetos[0].data_de_inicio | format_date }}
+                                    </span>
+                                    <span>
+                                        <i class="fa-solid fa-layer-group"></i>
+                                        {{ projetos|length }} projetos
+                                    </span>
                                 </div>
                             </div>
-                            
-                            <div class="modal-footer">
-                                <button type="button" class="btn-secondary" onclick="backToClientModal()">Voltar</button>
-
-                                <!-- ✅ Agora o mesmo botão vira Editar/Cancelar -->
-                                
-                                {% if session.nivel_acesso != "Leitor" %}
-                                    <button type="button" class="btn-edit" id="editBtn" onclick="toggleEditMode()">
-                                        <i class="fa-solid fa-pen-to-square"></i> Editar
-                                    </button>
-
-                                    <button type="submit" class="btn-primary" id="saveBtn" style="display: none;">
-                                        <i class="fa-solid fa-floppy-disk"></i> Salvar
-                                    </button>
-                                {% endif %}
-
+                            {% endfor %}
+                            {% else %}
+                            <div class="empty-state">
+                                <i class="fa-solid fa-inbox"></i>
+                                <h3>Nenhum cliente one-time</h3>
                             </div>
-                            
-                            <input type="hidden" name="projeto_id" id="modal_projeto_id">
-                            <input type="hidden" name="tipo_projeto" id="modal_tipo_projeto">
-                        </form>
-                    </div>
-                </div>
-
-
-                <!-- MODAL DE ALTERAR SENHA -->
-                <div id="passwordModal" class="modal">
-                    <div class="modal-content modal-small">
-                        <div class="modal-header">
-                            <h2>Alterar Senha</h2>
-                            <button class="close-btn" onclick="closePasswordModal()">
-                                <i class="fa-solid fa-xmark"></i>
-                            </button>
+                            {% endif %}
                         </div>
-                        
-                        <form id="passwordForm" onsubmit="updatePassword(event)">
-                            <div class="modal-body">
-                                <div class="form-grid-single">
-                                    <div class="form-group">
-                                        <label>Nova Senha *</label>
-                                        <input type="password" name="nova_senha" id="nova_senha" required minlength="6">
-                                        <small>Mínimo 6 caracteres</small>
+                    </div>
+
+                    <!-- SLIDE INATIVOS -->
+                    <div class="slide-content" id="slide-inativos">
+                        <div class="projects-grid">
+                            {% if clientes_inativos %}
+                            {% for cliente_nome, projetos in clientes_inativos.items() %}
+                            <div class="project-card" data-cliente="{{ cliente_nome|lower }}"
+                                data-projetos='{{ projetos|tojson|safe }}' data-tipo="inativo"
+                                onclick="openClientModal(this)">
+                                <div class="project-header">
+                                    <div class="project-icon inactive">
+                                        <i class="fa-solid fa-building"></i>
                                     </div>
-                                    
-                                    <div class="form-group">
-                                        <label>Confirmar Nova Senha *</label>
-                                        <input type="password" name="confirmar_senha" id="confirmar_senha" required minlength="6">
-                                    </div>
+                                    <span class="project-status status-inativo">{{ projetos|length }} projeto(s)</span>
+                                </div>
+                                <h3 class="project-title">{{ cliente_nome|title }}</h3>
+                                <p class="project-description">
+                                    Squad: {{ projetos[0].squad_atribuida if projetos[0].squad_atribuida else 'N/A' }}
+                                </p>
+                                <div class="project-meta">
+                                    <span>
+                                        <i class="fa-solid fa-calendar"></i>
+                                        {{ projetos[0].data_de_inicio | format_date }}
+                                    </span>
+                                    <span>
+                                        <i class="fa-solid fa-layer-group"></i>
+                                        {{ projetos|length }} projetos
+                                    </span>
                                 </div>
                             </div>
-                            
-                            <div class="modal-footer">
-                                <button type="button" class="btn-secondary" onclick="closePasswordModal()">Cancelar</button>
-                                <button type="submit" class="btn-primary">
-                                    <i class="fa-solid fa-key"></i> Atualizar Senha
-                                </button>
+                            {% endfor %}
+                            {% else %}
+                            <div class="empty-state">
+                                <i class="fa-solid fa-inbox"></i>
+                                <h3>Nenhum cliente inativo</h3>
                             </div>
-                        </form>
+                            {% endif %}
+                        </div>
                     </div>
                 </div>
+            </div>
 
+            <!-- MODAL DE LISTA DE PROJETOS DO CLIENTE -->
+            <div id="clientModal" class="modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2 id="clientModalTitle">Projetos do Cliente</h2>
+                        <button class="close-btn" onclick="closeClientModal()">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
 
-                <!-- MODAL DE HISTÓRICO -->
-                <div id="historyModal" class="modal">
-                    <div class="modal-content modal-large">
-                        <div class="modal-header">
-                            <h2><i class="fa-solid fa-clock-rotate-left"></i> Histórico de Alterações</h2>
-                            <button class="close-btn" onclick="closeHistoryModal()">
+                    <div class="modal-body">
+                        <div class="projects-list" id="projectsList"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MODAL DE DETALHES/EDIÇÃO DO PROJETO -->
+            <div id="projectModal" class="modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button class="back-btn" onclick="backToClientModal()">
+                            <i class="fa-solid fa-arrow-left"></i>
+                        </button>
+                        <h2 id="projectModalTitle">Detalhes do Projeto</h2>
+                        <div class="header-actions">
+                            <button class="add-note-btn" onclick="openAddNoteModal()" title="Adicionar Nota">
+                                <i class="fa-solid fa-note-sticky"></i>
+                            </button>
+                            <button class="history-btn" id="historyBtn" onclick="openHistoryModal()"
+                                title="Ver Histórico">
+                                <i class="fa-solid fa-clock-rotate-left"></i>
+                            </button>
+                            <button class="close-btn" onclick="closeProjectModal()">
                                 <i class="fa-solid fa-xmark"></i>
                             </button>
                         </div>
-                        
+                    </div>
+
+
+
+
+                    <form id="projectForm" onsubmit="updateProject(event)">
                         <div class="modal-body">
-                            <div id="historyContent" class="history-timeline">
-                                <!-- Conteúdo será preenchido via JavaScript -->
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label>Nome do Projeto</label>
+                                    <input type="text" name="nome" id="modal_nome" required disabled>
+                                </div>
+
+                                <!-- TESTE STEP -->
+                                <div class="form-group">
+                                    <label>Step</label>
+                                    <select name="step" id="modal_step" disabled>
+                                        <option value="">Selecione...</option>
+                                        <option value="Saber">Saber</option>
+                                        <option value="Ter">Ter</option>
+                                        <option value="Executar">Executar</option>
+                                        <option value="Potencializar">Potencializar</option>
+                                    </select>
+                                </div>
+                                <!-- TESTE STEP -->
+
+                                <div class="input-with-icon">
+                                    <div class="form-group">
+                                        <label>Pipefy ID</label>
+                                        <input type="text" name="pipefy_id" id="modal_pipefy_id" disabled>
+                                        <div id="pipefyButton" title="Abrir no Pipefy"><i class="fa-solid fa-link"></i>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Documento</label>
+                                    <input type="text" name="documento" id="modal_documento" disabled>
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Fee</label>
+                                    <input type="text" name="fee" id="modal_fee" disabled>
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Moeda</label>
+                                    <select name="moeda" id="modal_moeda" disabled>
+                                        <option value="BRL">BRL</option>
+                                        <option value="USD">USD</option>
+                                        <option value="EUR">EUR</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Squad Atribuída</label>
+                                    <select name="squad_atribuida" id="modal_squad" disabled>
+                                        {% for squad in squads %}
+                                        <option value='{{ squad }}'>{{ squad }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <!-- ✅ REMOVIDO O </div> EXCEDENTE AQUI -->
+
+                                <div class="form-group">
+                                    <label>Produto Contratado</label>
+                                    <input type="text" name="produto_contratado" id="modal_produto" disabled>
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Data de Início</label>
+                                    <input type="date" name="data_de_inicio" id="modal_data_inicio" disabled>
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Data Fim</label>
+                                    <input type="date" name="data_fim" id="modal_data_fim" disabled>
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Cohort</label>
+                                    <!-- <input type="text" name="cohort" id="modal_cohort" disabled> -->
+                                    <select name="cohort" id="modal_cohort" disabled>
+                                        <option value="PDV - Ponto de Venda">PDV - Ponto de Venda</option>
+                                        <option value="E-Commerce">E-Commerce</option>
+                                        <option value="Inside Sales">Inside Sales</option>
+                                        <option value="Info Produto">Info Produto</option>
+                                    </select>
+
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Meta Account ID</label>
+                                    <input type="text" name="meta_account_id" id="modal_meta_account" disabled>
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Google Account ID</label>
+                                    <input type="text" name="google_account_id" id="modal_google_account" disabled>
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Orçamento de Mídia - Meta</label>
+                                    <input type="text" name="orcamento_midia_meta" id="modal_orcamento_midia_meta"
+                                        disabled>
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Orçamento de Mídia - Google</label>
+                                    <input type="text" name="orcamento_midia_google" id="modal_orcamento_midia_google"
+                                        disabled>
+                                </div>
+
+                                <div class="form-group full-width">
+                                    <label>Fase do Pipefy</label>
+                                    <input type="text" name="fase_do_pipefy" id="modal_fase_pipefy" disabled>
+                                </div>
+
+                                <div class="form-group full-width">
+                                    <label>URL Webhook GChat</label>
+                                    <input type="url" name="url_webhook_gchat" id="modal_webhook_url" disabled>
+                                </div>
+
+                                <div class="form-group full-width">
+                                    <label>Ekyte Workspace</label>
+                                    <input type="text" name="ekyte_workspace" id="modal_ekyte_workspace" disabled>
+                                </div>
+
+                                <!-- TESTE DETALHES -->
+                                <div class="form-group full-width">
+                                    <label>Informações Gerais do Projeto</label>
+                                    <textarea name="informacoes_gerais" id="modal_informacoes" rows="6"
+                                        disabled></textarea>
+                                </div>
+
+                                <!-- SEÇÃO DE NOTAS CUSTOMIZADAS -->
+                                <div class="form-group full-width notes-section" id="notesSection">
+                                    <div class="notes-header">
+                                        <label><i class="fa-solid fa-note-sticky"></i> Notas e Anotações</label>
+                                    </div>
+                                    <div id="notesContainer" class="notes-container">
+                                        <!-- Notas serão adicionadas aqui dinamicamente -->
+                                    </div>
+                                </div>
+
+
                             </div>
                         </div>
-                        
+
                         <div class="modal-footer">
-                            <button class="btn-secondary" onclick="closeHistoryModal()">Fechar</button>
-                        </div>
-                    </div>
-                </div>
+                            <button type="button" class="btn-secondary" onclick="backToClientModal()">Voltar</button>
 
+                            <!-- ✅ Agora o mesmo botão vira Editar/Cancelar -->
 
-                <!-- MODAL DE ADICIONAR NOTA -->
-                <div id="addNoteModal" class="modal">
-                    <div class="modal-content modal-small">
-                        <div class="modal-header">
-                            <h2>Nova Nota</h2>
-                            <button class="close-btn" onclick="closeAddNoteModal()">
-                                <i class="fa-solid fa-xmark"></i>
+                            {% if session.nivel_acesso != "Operação" %}
+                            <button type="button" class="btn-edit" id="editBtn" onclick="toggleEditMode()">
+                                <i class="fa-solid fa-pen-to-square"></i> Editar
                             </button>
+
+                            <button type="submit" class="btn-primary" id="saveBtn" style="display: none;">
+                                <i class="fa-solid fa-floppy-disk"></i> Salvar
+                            </button>
+                            {% endif %}
+
                         </div>
-                        
-                        <form id="addNoteForm" onsubmit="addNote(event)">
-                            <div class="modal-body">
-                                <div class="form-grid-single">
-                                    <div class="form-group">
-                                        <label>Nome da Nota *</label>
-                                        <input type="text" id="note_name" required placeholder="Ex: Análise de Mercado">
-                                        <small>Este será o título do campo de anotação</small>
-                                    </div>
+
+                        <input type="hidden" name="projeto_id" id="modal_projeto_id">
+                        <input type="hidden" name="tipo_projeto" id="modal_tipo_projeto">
+                    </form>
+                </div>
+            </div>
+
+
+            <!-- MODAL DE ALTERAR SENHA -->
+            <div id="passwordModal" class="modal">
+                <div class="modal-content modal-small">
+                    <div class="modal-header">
+                        <h2>Alterar Senha</h2>
+                        <button class="close-btn" onclick="closePasswordModal()">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+
+                    <form id="passwordForm" onsubmit="updatePassword(event)">
+                        <div class="modal-body">
+                            <div class="form-grid-single">
+                                <div class="form-group">
+                                    <label>Nova Senha *</label>
+                                    <input type="password" name="nova_senha" id="nova_senha" required minlength="6">
+                                    <small>Mínimo 6 caracteres</small>
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Confirmar Nova Senha *</label>
+                                    <input type="password" name="confirmar_senha" id="confirmar_senha" required
+                                        minlength="6">
                                 </div>
                             </div>
-                            
-                            <div class="modal-footer">
-                                <button type="button" class="btn-secondary" onclick="closeAddNoteModal()">Cancelar</button>
-                                <button type="submit" class="btn-primary">
-                                    <i class="fa-solid fa-plus"></i> Adicionar Nota
-                                </button>
-                            </div>
-                        </form>
+                        </div>
+
+                        <div class="modal-footer">
+                            <button type="button" class="btn-secondary" onclick="closePasswordModal()">Cancelar</button>
+                            <button type="submit" class="btn-primary">
+                                <i class="fa-solid fa-key"></i> Atualizar Senha
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+
+            <!-- MODAL DE HISTÓRICO -->
+            <div id="historyModal" class="modal">
+                <div class="modal-content modal-large">
+                    <div class="modal-header">
+                        <h2><i class="fa-solid fa-clock-rotate-left"></i> Histórico de Alterações</h2>
+                        <button class="close-btn" onclick="closeHistoryModal()">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+
+                    <div class="modal-body">
+                        <div id="historyContent" class="history-timeline">
+                            <!-- Conteúdo será preenchido via JavaScript -->
+                        </div>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button class="btn-secondary" onclick="closeHistoryModal()">Fechar</button>
                     </div>
                 </div>
+            </div>
+
+
+            <!-- MODAL DE ADICIONAR NOTA -->
+            <div id="addNoteModal" class="modal">
+                <div class="modal-content modal-small">
+                    <div class="modal-header">
+                        <h2>Nova Nota</h2>
+                        <button class="close-btn" onclick="closeAddNoteModal()">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+
+                    <form id="addNoteForm" onsubmit="addNote(event)">
+                        <div class="modal-body">
+                            <div class="form-grid-single">
+                                <div class="form-group">
+                                    <label>Nome da Nota *</label>
+                                    <input type="text" id="note_name" required placeholder="Ex: Análise de Mercado">
+                                    <small>Este será o título do campo de anotação</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="modal-footer">
+                            <button type="button" class="btn-secondary" onclick="closeAddNoteModal()">Cancelar</button>
+                            <button type="submit" class="btn-primary">
+                                <i class="fa-solid fa-plus"></i> Adicionar Nota
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
             <!-- FIM TESTE -->
 
 
