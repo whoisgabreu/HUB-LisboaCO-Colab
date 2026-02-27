@@ -1,4 +1,4 @@
-﻿:root {
+:root {
     --header-height: 82px;
     --bg-main: #000000;
     --bg-hover: #17171b;
@@ -395,7 +395,7 @@ td[class*="-flag-table"] span {
     width: 100% !important;
     height: 100% !important;
     padding: 1rem 0.5rem !important;
-    /* MantÃ©m a altura da cÃ©lula */
+    /* Mantém a altura da célula */
     font-weight: 700 !important;
 }
 
@@ -545,7 +545,7 @@ td {
     }
 }
 
-/* ENTREGAS DO MÃŠS */
+/* ENTREGAS DO MÊS */
 .entregas-grid {
     display: flex;
     flex-direction: column;
@@ -712,7 +712,7 @@ td {
     font-size: 0.85rem;
 }
 
-/* FORMULÃƒÂƒÃ‚ÂƒÃƒÂ‚Ã‚ÂRIO */
+/* FORMULÃÂÃÂRIO */
 .input-with-icon {
     position: relative
 }
@@ -839,7 +839,7 @@ td {
     border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-/* BOTÃƒÂƒÃ‚ÂƒÃƒÂ‚Ã‚Â•ES */
+/* BOTÃÂÃÂES */
 .btn-primary,
 .btn-secondary,
 .btn-view,
@@ -898,7 +898,7 @@ option {
     color: var(--text-main);
 }
 
-/* BotÃƒÂƒÃ‚ÂƒÃƒÂ‚Ã‚Â£o do menu de usuÃƒÂƒÃ‚ÂƒÃƒÂ‚Ã‚Â¡rio */
+/* BotÃÂÃÂ£o do menu de usuÃÂÃÂ¡rio */
 .user-menu-btn {
     background: transparent;
     border: none;
@@ -986,10 +986,10 @@ option {
     position: relative;
 }
 
-/* Remove o botÃƒÂƒÃ‚ÂƒÃƒÂ‚Ã‚Â£o de logout antigo do CSS */
+/* Remove o botÃÂÃÂ£o de logout antigo do CSS */
 .logout-btn {
     display: none;
-    /* Esconde o botÃƒÂƒÃ‚ÂƒÃƒÂ‚Ã‚Â£o antigo se ainda existir */
+    /* Esconde o botÃÂÃÂ£o antigo se ainda existir */
 }
 
 /* MODAL PEQUENO PARA SENHA */
@@ -1030,12 +1030,12 @@ option {
     color: #d61616;
 }
 
-/* Modal grande para histÃƒÂƒÃ‚ÂƒÃƒÂ‚Ã‚Â³rico */
+/* Modal grande para histÃÂÃÂ³rico */
 .modal-large {
     max-width: 1000px;
 }
 
-/* Timeline de histÃƒÂƒÃ‚ÂƒÃƒÂ‚Ã‚Â³rico */
+/* Timeline de histÃÂÃÂ³rico */
 .history-timeline {
     display: flex;
     flex-direction: column;
@@ -1190,7 +1190,7 @@ option {
 }
 
 /* NOVO MODAL */
-/* BotÃƒÂƒÃ‚ÂƒÃƒÂ‚Ã‚Â£o adicionar nota */
+/* BotÃÂÃÂ£o adicionar nota */
 .add-note-btn {
     background: transparent;
     border: 1px solid rgb(255 255 255 / 0%);
@@ -1211,7 +1211,7 @@ option {
     color: #d61616;
 }
 
-/* SeÃƒÂƒÃ‚ÂƒÃƒÂ‚Ã‚Â§ÃƒÂƒÃ‚ÂƒÃƒÂ‚Ã‚Â£o de notas */
+/* SeÃÂÃÂ§ÃÂÃÂ£o de notas */
 .notes-section {
     margin-top: 2rem;
     padding-top: 2rem;
@@ -1685,11 +1685,11 @@ option {
         display: flex;
         animation: slideUp 0.2s ease-out;
 
-        /* Centralização do modal */
+        /* Centraliza��o do modal */
         justify-content: center;
         align-items: center;
 
-        background: #00000082;
+        background: #000000a6;
         backdrop-filter: blur(4px);
         border-radius: 8px;
         box-shadow: 0 0 15px rgb(0 0 0);
@@ -1718,16 +1718,14 @@ option {
 
         .remu-modal-content {
             width: 600px;
-            max-width: 95%;
-
+            max-width: 100%;
+            max-height: 95%;
 
 
             .remu-projects-container {
-                background: var(--card-bg);
                 padding: 2rem 1rem;
-                border: solid 1px #ffffff4a;
                 border-radius: 8px;
-                height: 100%;
+                max-height: 100%
             }
         }
     }
@@ -2335,7 +2333,7 @@ option {
 }
 
 /* =============================================
-   MODAL DE CONFIGURAÃƒÂƒÃ‚Â‡ÃƒÂƒÃ‚Â•ES - REFORMULADO
+   MODAL DE CONFIGURAÃÂÃÂES - REFORMULADO
    ============================================= */
 .modal-configuracoes-overlay {
     display: none;
@@ -2539,7 +2537,7 @@ option {
     display: block;
 }
 
-/* SEGURANÃƒÂƒÃ‚Â‡A */
+/* SEGURANÃÂA */
 .security-card {
     background-color: rgba(255, 255, 255, 0.03);
     border: 1px solid rgba(255, 255, 255, 0.05);
@@ -2578,7 +2576,7 @@ option {
     color: var(--text-main);
 }
 
-/* PREFERÃƒÂƒÃ‚ÂŠNCIAS */
+/* PREFERÃÂNCIAS */
 .config-group {
     margin-bottom: 2.5rem;
 }
@@ -2707,11 +2705,11 @@ option {
     color: #e74c3c;
 }
 
-/* DIVISÃƒÂƒÃ‚Â“RIAS NA TABELA DE REMUNERAÃƒÂƒÃ‚Â‡ÃƒÂƒÃ‚ÂƒO */
+/* DIVISÃÂRIAS NA TABELA DE REMUNERAÃÂÃÂO */
 .remu-table th,
 .remu-table td {
     border-right: 1px solid var(--border-color);
-    /* Mais visÃƒÂƒÃ‚Â­vel no escuro */
+    /* Mais visÃÂ­vel no escuro */
 }
 
 .remu-table {
@@ -2749,7 +2747,7 @@ option {
     font-size: 0.9rem;
 }
 
-/* Sub-tabs OperaÃƒÂ§ÃƒÂ£o */
+/* Sub-tabs OperaÃ§Ã£o */
 .operacao-tabs {
     display: flex;
     gap: 0.5rem;
@@ -2897,7 +2895,7 @@ option {
     border-color: #D61616;
 }
 
-/* Form Styles (Plano de MÃƒÂ­dia/Auditoria) */
+/* Form Styles (Plano de MÃ­dia/Auditoria) */
 .op-form-container {
     background: var(--bg-hover);
     padding: 2rem;
@@ -3151,7 +3149,7 @@ option {
     gap: 0.5rem;
 }
 
-/* Planilha de MÃƒÂ­dia Refinada */
+/* Planilha de MÃ­dia Refinada */
 .op-spreadsheet-wrapper {
     background: var(--card-bg);
     border-radius: 12px;
@@ -3231,7 +3229,7 @@ option {
     border-radius: 12px;
 }
 
-/* ÃƒÂcones Padronizados: Fundo Vermelho, ÃƒÂcone Branco */
+/* Ãcones Padronizados: Fundo Vermelho, Ãcone Branco */
 .op-icon-box {
     width: 32px;
     height: 32px;
@@ -3247,7 +3245,7 @@ option {
 
 .op-pill-btn i {
     display: none;
-    /* Vou usar o op-icon-box dentro do botÃƒÂ£o ou manter o ÃƒÂ­cone branco padrÃƒÂ£o */
+    /* Vou usar o op-icon-box dentro do botÃ£o ou manter o Ã­cone branco padrÃ£o */
 }
 
 .op-pill-btn.active {
@@ -3356,7 +3354,7 @@ option {
     font-weight: 500;
 }
 
-/* ForÃƒÂ§ar arredondamento em todas as tabelas operacionais */
+/* ForÃ§ar arredondamento em todas as tabelas operacionais */
 .op-table-wrapper,
 .op-spreadsheet-wrapper {
     border-radius: 20px !important;
@@ -3377,7 +3375,7 @@ option {
 }
 
 
-/* PAINEL DE GT - ESTILOS AVANÃƒÂ‡ADOS */
+/* PAINEL DE GT - ESTILOS AVANÃADOS */
 
 .op-tabs-wrapper {
     max-width: none !important;
@@ -3518,7 +3516,7 @@ option {
     opacity: 0.8;
 }
 
-/* Layout de Links ÃƒÂšteis (CartÃƒÂµes de Acesso) */
+/* Layout de Links Ãteis (CartÃµes de Acesso) */
 .access-links-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
@@ -3615,7 +3613,7 @@ option {
 }
 
 
-/* CORREÃƒÂ‡ÃƒÂ•ES V2.1 */
+/* CORREÃÃES V2.1 */
 
 /* Quadro de Tarefas Semanais */
 .weekly-tasks-container {
@@ -3683,7 +3681,7 @@ option {
     font-weight: 600;
 }
 
-/* Ajuste de Alinhamento Tabela de MÃƒÂ­dia */
+/* Ajuste de Alinhamento Tabela de MÃ­dia */
 .op-spreadsheet th,
 .op-spreadsheet td {
     text-align: center !important;
@@ -3719,7 +3717,7 @@ option {
 }
 
 
-/* AJUSTES V2.2 - LAYOUT EM LINHA E AÃƒÂ‡ÃƒÂ•ES DE TAREFA */
+/* AJUSTES V2.2 - LAYOUT EM LINHA E AÃÃES DE TAREFA */
 
 .op-pill-btn {
     flex-direction: row !important;
@@ -3799,7 +3797,7 @@ option {
 }
 
 
-/* AJUSTES V3.0 - LINKS E HISTÃƒÂ“RICO MÃƒÂDIA */
+/* AJUSTES V3.0 - LINKS E HISTÃRICO MÃDIA */
 
 .access-link-card {
     background: var(--card-bg) !important;
@@ -3822,7 +3820,7 @@ option {
     border-radius: 8px !important;
 }
 
-/* Timeline HistÃƒÂ³rico Plano de MÃƒÂ­dia */
+/* Timeline HistÃ³rico Plano de MÃ­dia */
 .plan-history-selector {
     display: flex;
     gap: 12px;
@@ -3857,7 +3855,7 @@ option {
 
 /* MODAIS E DROPDOWN V4.0 */
 
-/* Seletor Dropdown HistÃƒÂ³rico */
+/* Seletor Dropdown HistÃ³rico */
 .plan-history-dropdown {
     position: relative;
     display: inline-block;
@@ -4004,7 +4002,7 @@ option {
 }
 
 
-/* Estilos de Tarefa ConcluÃƒÂ­da */
+/* Estilos de Tarefa ConcluÃ­da */
 .task-item.completed .task-text {
     text-decoration: line-through;
     opacity: 0.5;
@@ -4017,7 +4015,7 @@ option {
 }
 
 
-/* HISTÃƒÂ“RICO ACCORDION V7.0 */
+/* HISTÃRICO ACCORDION V7.0 */
 .history-month-item {
     margin-bottom: 1rem;
     border: 1px solid rgba(255, 255, 255, 0.05);
@@ -4075,7 +4073,7 @@ option {
 }
 
 
-/* FLUXO WIZARD PLANO DE MÃƒÂDIA V8.0 */
+/* FLUXO WIZARD PLANO DE MÃDIA V8.0 */
 .plan-wizard-step {
     display: none;
 }
@@ -4396,7 +4394,7 @@ body.tema-claro .toggle-switch input:checked+.toggle-slider {
     font-style: italic;
 }
 
-/* Badge de NotificaÃ§Ã£o/Contagem */
+/* Badge de Notificação/Contagem */
 .remu-badge {
     background: #D61616;
     color: white;
@@ -4412,7 +4410,7 @@ body.tema-claro .toggle-switch input:checked+.toggle-slider {
     box-shadow: 0 0 10px rgba(214, 22, 22, 0.4);
 }
 
-/* Estilos para a lista de valores de remuneração no modal */
+/* Estilos para a lista de valores de remunera��o no modal */
 .remu-values-list {
     display: flex;
     flex-direction: column;
@@ -4459,4 +4457,223 @@ body.tema-claro .toggle-switch input:checked+.toggle-slider {
 
 .remu-value-amount.max {
     color: #4ade80;
+}
+
+/* MODAL DE LISTAGEM DE CLIENTES */
+.remu-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.8);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 100000;
+    backdrop-filter: blur(4px);
+    animation: fadeIn 0.2s ease-out;
+}
+
+.remu-modal.active {
+    display: flex;
+}
+
+.remu-modal-content {
+    background-color: var(--bg-hover);
+    border: 1px solid rgba(214, 22, 22, 0.2);
+    border-radius: 12px;
+    width: 90%;
+    max-width: 600px;
+    max-height: 85vh;
+    overflow: hidden;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
+    display: flex;
+    flex-direction: column;
+}
+
+.remu-modal-header {
+    padding: 1.25rem 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.01);
+}
+
+.remu-modal-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: var(--text-main);
+    font-weight: 600;
+}
+
+.remu-modal-close {
+    background: transparent;
+    border: none;
+    color: #888;
+    font-size: 1.2rem;
+    cursor: pointer;
+    transition: 0.2s;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.remu-modal-close:hover {
+    background-color: rgba(214, 22, 22, 0.1);
+    color: #D61616;
+}
+
+.remu-modal-body {
+    padding: 0;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.remu-projects-container {
+    width: 100%;
+}
+
+.remu-mini-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.remu-mini-table th {
+    text-align: left;
+    padding: 0.75rem 1.5rem;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    color: #666;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.remu-mini-table td {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+}
+
+.remu-mini-project-name {
+    font-weight: 500;
+    color: var(--text-main);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.remu-mini-project-id {
+    font-size: 0.75rem;
+    color: #666;
+    margin-top: 2px;
+}
+
+.remu-mini-project-fee {
+    font-weight: 600;
+    color: #D61616;
+    text-align: right;
+}
+
+.remu-churn-badge {
+    background: rgba(255, 68, 68, 0.1);
+    color: #ff4444;
+    font-size: 0.6rem;
+    padding: 1px 6px;
+    border-radius: 3px;
+    text-transform: uppercase;
+    font-weight: 700;
+    border: 1px solid rgba(255, 68, 68, 0.2);
+    display: inline-flex;
+    align-items: center;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+/* FILTROS E BUSCA (Padro Operao/Projetos) */
+.filters {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+}
+
+.search-box {
+    flex: 1;
+    min-width: 250px;
+    position: relative;
+}
+
+.search-box input {
+    width: 100%;
+    padding: 0.75rem 0.75rem 0.75rem 2.5rem;
+    background-color: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    color: white;
+    transition: 0.2s;
+    font-family: 'Poppins', sans-serif;
+}
+
+.search-box input:focus {
+    outline: 2px solid rgba(214, 22, 22, 0.4);
+    border-color: rgba(214, 22, 22, 0.3);
+    background-color: rgba(255, 255, 255, 0.08);
+}
+
+.search-box i {
+    position: absolute;
+    left: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #888;
+}
+
+/* FILTROS E BUSCA (Padrão Operação/Projetos) */
+.filters {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+}
+
+.search-box {
+    flex: 1;
+    min-width: 250px;
+    position: relative;
+}
+
+.search-box input {
+    width: 100%;
+    padding: 0.75rem 0.75rem 0.75rem 2.5rem;
+    background-color: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    color: white;
+    transition: 0.2s;
+    font-family: 'Poppins', sans-serif;
+}
+
+.search-box input:focus {
+    outline: 2px solid rgba(214, 22, 22, 0.4);
+    border-color: rgba(214, 22, 22, 0.3);
+    background-color: rgba(255, 255, 255, 0.08);
+}
+
+.search-box i {
+    position: absolute;
+    left: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #888;
 }

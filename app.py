@@ -267,7 +267,8 @@ def hub_remuneracao():
                 projetos_map[v.email_investidor].append({
                     "id": v.pipefy_id_projeto,
                     "nome": v.nome_projeto,
-                    "fee": float(v.fee_projeto or 0)
+                    "fee": float(v.fee_projeto or 0),
+                    "active": v.active
                 })
 
 

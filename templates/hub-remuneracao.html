@@ -375,17 +375,17 @@ Menor churn e maior eficiência = maior remuneração.
     <script src="static/js/app.js"></script>
     <script src="static/js/remuneracao.js"></script>
 
-    <!-- MODAL DE LISTAGEM DE CLIENTES (FASE 15) -->
-    <div id="clientsListModal" class="remu-modal" style="z-index: 100000;">
-        <div class="remu-modal-content" style="max-width: 600px;">
+    <!-- MODAL DE LISTAGEM DE CLIENTES (FASE 15+) -->
+    <div id="clientsListModal" class="remu-modal">
+        <div class="remu-modal-content">
+            <div class="remu-modal-header">
+                <h3>Listagem de Projetos</h3>
+                <button type="button" class="remu-modal-close" onclick="closeClientsListModal()">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
             <div class="remu-modal-body">
-                <div id="modalClientsFullList" class="remu-projects-container" style="max-height: 85vh;">
-                    <div class="remu-modal-header">
-                        <h3>Listagem de Projetos</h3>
-                        <button type="button" class="remu-modal-close" onclick="closeClientsListModal()">
-                            <i class="fa-solid fa-xmark"></i>
-                        </button>
-                    </div>
+                <div id="modalClientsFullList" class="remu-projects-container">
                     <!-- Preenchido via JS -->
                 </div>
             </div>
@@ -424,13 +424,21 @@ Menor churn e maior eficiência = maior remuneração.
             const container = document.getElementById('modalClientsFullList');
             if (!container) return;
             if (currentProjectsList.length > 0) {
-                let tableHtml = `<table class="remu-mini-table"><thead><tr><th>Projeto</th><th>Fee</th></tr></thead><tbody>`;
+                let tableHtml = `<table class="remu-mini-table"><thead><tr><th>Projeto</th><th style="text-align: right;">Fee</th></tr></thead><tbody>`;
                 currentProjectsList.forEach(p => {
-                    tableHtml += `<tr><td><div class="remu-mini-project-name">${p.nome || 'N/A'}</div><div class="remu-mini-project-id">${p.id}</div></td><td class="remu-mini-project-fee">${window.Utils ? Utils.formatBRL(p.fee) : p.fee}</td></tr>`;
+                    const churnBadge = p.active === false ? '<span class="remu-churn-badge">Churn</span>' : '';
+                    tableHtml += `
+                        <tr>
+                            <td>
+                                <div class="remu-mini-project-name">${p.nome || 'N/A'} ${churnBadge}</div>
+                                <div class="remu-mini-project-id">${p.id}</div>
+                            </td>
+                            <td class="remu-mini-project-fee">${window.Utils ? Utils.formatBRL(p.fee) : p.fee}</td>
+                        </tr>`;
                 });
                 tableHtml += `</tbody></table>`;
                 container.innerHTML = tableHtml;
-            } else { container.innerHTML = '<div class="remu-no-data">Nenhum projeto vinculado</div>'; }
+            } else { container.innerHTML = '<div class="remu-no-data" style="padding: 2rem; text-align: center; color: #666;">Nenhum projeto vinculado</div>'; }
             const modal = document.getElementById('clientsListModal');
             if (modal) modal.classList.add('active');
         }

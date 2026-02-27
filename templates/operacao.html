@@ -35,6 +35,14 @@
                         </div>
                     </header>
 
+                    <div class="filters" style="max-width: 400px; margin-bottom: 2rem;">
+                        <div class="search-box">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                            <input type="text" id="opSearchInput" placeholder="Buscar por projeto..."
+                                onkeyup="filterProjects()">
+                        </div>
+                    </div>
+
                     <div class="op-premium-grid">
                         {% for p in projetos %}
                         <div class="op-card-premium" onclick='openProjectDetails({{ p | tojson }})'>

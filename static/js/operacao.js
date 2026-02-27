@@ -232,3 +232,21 @@ function updateMRRDisplay(percentual) {
 document.addEventListener('DOMContentLoaded', () => {
     console.log('Operação JS Ativo 🚀');
 });
+
+// --- FILTRO DE BUSCA DE PROJETOS ---
+function filterProjects() {
+    const searchValue = document.getElementById('opSearchInput').value.toLowerCase();
+    const cards = document.querySelectorAll('.op-card-premium');
+
+    cards.forEach(card => {
+        const projectName = (card.querySelector('h3')?.textContent || '').toLowerCase();
+        const product = (card.querySelector('p')?.textContent || '').toLowerCase();
+        const squad = (card.querySelector('.op-card-meta')?.textContent || '').toLowerCase();
+
+        const match = projectName.includes(searchValue) || 
+                      product.includes(searchValue) || 
+                      squad.includes(searchValue);
+
+        card.style.display = match ? 'block' : 'none';
+    });
+}
