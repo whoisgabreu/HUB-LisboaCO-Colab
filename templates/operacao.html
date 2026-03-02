@@ -45,7 +45,8 @@
 
                     <div class="op-premium-grid">
                         {% for p in projetos %}
-                        <div class="op-card-premium" onclick='openProjectDetails({{ p | tojson }})'>
+                        <div class="op-card-premium" data-project="{{ p | tojson | forceescape }}"
+                            onclick="openProjectDetails(JSON.parse(this.dataset.project))">
                             <div class="op-card-header">
                                 <div class="op-card-icon"><i class="fas fa-rocket"></i></div>
                                 <span class="op-card-status">Ativo</span>
@@ -78,8 +79,8 @@
                         <div class="op-client-title" id="display-project-name">CLIENTE NOME</div>
                     </div>
 
-                    <div class="op-tabs-container" style="padding: 0; margin-bottom: 2rem; overflow-x: auto;">
-                        <div class="op-tabs-wrapper" style="display: flex; gap: 8px; min-width: max-content;">
+                    <div class="op-tabs-container" style="margin-bottom: 2rem;">
+                        <div class="op-tabs-wrapper">
                             <button class="op-pill-btn active" onclick="switchOperacaoTab('dashboard')">
                                 <div class="op-icon-box"><i class="fas fa-tasks"></i></div>
                                 <span>Tasks da Semana</span>
@@ -103,6 +104,10 @@
                             <button class="op-pill-btn" onclick="switchOperacaoTab('links')">
                                 <div class="op-icon-box"><i class="fas fa-link"></i></div>
                                 <span>Links Úteis</span>
+                            </button>
+                            <button class="op-pill-btn" onclick="switchOperacaoTab('checkin')">
+                                <div class="op-icon-box"><i class="fas fa-calendar-check"></i></div>
+                                <span>Checkin Semanal</span>
                             </button>
                         </div>
                     </div>
@@ -293,32 +298,32 @@
                             <div class="entrega-card" id="entrega-1" onclick="toggleEntrega(1)">
                                 <div class="entrega-check"><i class="fas fa-check"></i></div>
                                 <div class="entrega-info">
-                                    <h4>Entrega 01 (25%)</h4>
-                                    <p>Clique para marcar conclusão</p>
+                                    <h4>Plano de Mídia (Entrega 01)</h4>
+                                    <p>Automático ao salvar plano</p>
                                 </div>
                             </div>
 
                             <div class="entrega-card" id="entrega-2" onclick="toggleEntrega(2)">
                                 <div class="entrega-check"><i class="fas fa-check"></i></div>
                                 <div class="entrega-info">
-                                    <h4>Entrega 02 (25%)</h4>
-                                    <p>Clique para marcar conclusão</p>
+                                    <h4>Documentos de Otimização (Entrega 02)</h4>
+                                    <p>4 otimizações registradas</p>
                                 </div>
                             </div>
 
                             <div class="entrega-card" id="entrega-3" onclick="toggleEntrega(3)">
                                 <div class="entrega-check"><i class="fas fa-check"></i></div>
                                 <div class="entrega-info">
-                                    <h4>Entrega 03 (25%)</h4>
-                                    <p>Clique para marcar conclusão</p>
+                                    <h4>Configuração de Conta (Entrega 03)</h4>
+                                    <p>Manual: GTM, Google, API e Tags</p>
                                 </div>
                             </div>
 
                             <div class="entrega-card" id="entrega-4" onclick="toggleEntrega(4)">
                                 <div class="entrega-check"><i class="fas fa-check"></i></div>
                                 <div class="entrega-info">
-                                    <h4>Entrega 04 (25%)</h4>
-                                    <p>Clique para marcar conclusão</p>
+                                    <h4>Relatório Mensal (Entrega 04)</h4>
+                                    <p>Manual: Análise de fechamento do mês</p>
                                 </div>
                             </div>
                         </div>
@@ -349,6 +354,47 @@
 
                         <div class="access-links-grid" id="links-grid">
                             <!-- Cards padrão já implementados e preservados -->
+                        </div>
+                    </section>
+
+                    <!-- 7. CHECKIN SEMANAL (ACCOUNT) -->
+                    <section id="section-checkin" class="op-content-section">
+                        <header
+                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                            <div class="op-section-title" style="margin-bottom: 0;">
+                                <div class="op-icon-box"><i class="fas fa-calendar-check"></i></div>
+                                <h3>Checkin Semanal de Qualidade</h3>
+                            </div>
+                            <button class="btn-add-task" onclick="openGTModal('modal-novo-checkin')">
+                                <i class="fas fa-plus"></i> Realizar Checkin
+                            </button>
+                        </header>
+
+                        <div class="checkin-summary-grid"
+                            style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 2rem;">
+                            <div class="kpi-card-premium" style="background: rgba(40, 167, 69, 0.05);">
+                                <div style="font-size: 0.7rem; color: #888; text-transform: uppercase;">STATUS DA SEMANA
+                                </div>
+                                <div id="checkin-status-badge"
+                                    style="font-size: 1.2rem; font-weight: 600; margin-top: 0.5rem; color: #ffc107;">
+                                    Pendente <i class="fas fa-clock"></i>
+                                </div>
+                            </div>
+                            <div class="kpi-card-premium">
+                                <div style="font-size: 0.7rem; color: #888; text-transform: uppercase;">MÉDIA CSAT
+                                    (PROJETO)</div>
+                                <div id="checkin-avg-csat"
+                                    style="font-size: 1.8rem; font-weight: 700; margin: 0.5rem 0;">--</div>
+                            </div>
+                        </div>
+
+                        <div class="op-section-title">
+                            <i class="fas fa-history" style="margin-right: 10px; color: var(--accent-red);"></i>
+                            <h4>Histórico de Checkins</h4>
+                        </div>
+
+                        <div id="checkin-list" style="display: flex; flex-direction: column; gap: 12px;">
+                            <!-- Checkins registrados via API -->
                         </div>
                     </section>
                 </div>
@@ -447,7 +493,9 @@
 
             <!-- ETAPA 2: Editor de Planilha -->
             <div id="plan-step-2" class="plan-wizard-step">
-                <div style="padding: 1.5rem; border-bottom: 1px solid var(--border-color);">
+                <div style="padding: 1.5rem; border-bottom: 1px solid var(--border-color); position: relative;">
+                    <button class="gt-modal-close" style="top: 15px; right: 20px;"
+                        onclick="closeGTModal('modal-novo-plano')">&times;</button>
                     <div style="display: flex; align-items: center; gap: 15px;">
                         <div
                             style="background: rgba(214, 22, 22, 0.1); color: #D61616; width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">
@@ -502,7 +550,10 @@
                     </div>
                 </div>
 
-                <div style="padding: 1.5rem; border-top: 1px solid var(--border-color);">
+                <div
+                    style="padding: 1.5rem; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between;">
+                    <button class="btn-gt-cancel" style="border: 1px solid var(--border-color);"
+                        onclick="backToPlanStep1()">Voltar</button>
                     <button class="btn-wizard-save" onclick="saveFinalPlan()">Salvar Plano de Mídia</button>
                 </div>
             </div>
@@ -645,6 +696,96 @@
 
             <p style="font-size: 0.75rem; color: #555; text-align: center; margin-top: 1.5rem; font-style: italic;">
                 Dados arquivados em PDF no BI.</p>
+        </div>
+    </div>
+
+    <!-- Modal: Novo Checkin Semanal (Account V8.0) -->
+    <div id="modal-novo-checkin" class="gt-modal">
+        <div class="gt-modal-content" style="max-width: 600px; padding: 0; overflow: hidden; border-radius: 16px;">
+            <div class="gt-modal-header"
+                style="padding: 2rem; background: var(--bg-hover); border-bottom: 1px solid var(--border-color);">
+                <div>
+                    <h3 class="gt-modal-title" style="margin-bottom: 5px;">Check-in Semanal de Qualidade</h3>
+                    <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0;">Validação semanal obrigatória do
+                        Account para garantia do MRR</p>
+                </div>
+                <button class="gt-modal-close" onclick="closeGTModal('modal-novo-checkin')">&times;</button>
+            </div>
+
+            <div style="padding: 2rem; max-height: 70vh; overflow-y: auto;">
+                <!-- Questão 1 -->
+                <div class="gt-form-group" style="margin-bottom: 2rem;">
+                    <label class="gt-form-label" style="font-weight: 700; color: var(--text-main); font-size: 0.95rem;">
+                        * Stakeholder participou do Check-in?
+                    </label>
+                    <select id="checkin-compareceu" class="gt-wizard-select" style="margin-top: 10px;">
+                        <option value="true" selected>Sim</option>
+                        <option value="false">Não</option>
+                    </select>
+                </div>
+
+                <!-- Questão 2 -->
+                <div class="gt-form-group" style="margin-bottom: 2rem;">
+                    <label class="gt-form-label" style="font-weight: 700; color: var(--text-main); font-size: 0.95rem;">
+                        * As campanhas estão ativas?
+                    </label>
+                    <p style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.4; margin: 8px 0 12px;">
+                        As campanhas do projeto estão ativas de acordo com planejamento e plano de mídia, ou tivemos
+                        algum empecilho por falta de saldo ou algum outro fator externo?
+                    </p>
+                    <select id="checkin-campanhas-ativas" class="gt-wizard-select">
+                        <option value="true" selected>Sim</option>
+                        <option value="false">Não</option>
+                    </select>
+                </div>
+
+                <!-- Questão 3 -->
+                <div class="gt-form-group" style="margin-bottom: 2rem;">
+                    <label class="gt-form-label" style="font-weight: 700; color: var(--text-main); font-size: 0.95rem;">
+                        * Houve algum gap de comunicação?
+                    </label>
+                    <p style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.4; margin: 8px 0 12px;">
+                        Ex: Grupo do WhatsApp está parado há vários dias, não tivemos resposta do cliente sobre alguma
+                        demanda, ou nosso time não se atentou à alguma informação relevante do projeto.
+                    </p>
+                    <select id="checkin-gap-comunicacao" class="gt-wizard-select">
+                        <option value="false" selected>Não</option>
+                        <option value="true">Sim</option>
+                    </select>
+                </div>
+
+                <!-- Questão 4 -->
+                <div class="gt-form-group" style="margin-bottom: 2rem;">
+                    <label class="gt-form-label" style="font-weight: 700; color: var(--text-main); font-size: 0.95rem;">
+                        * O cliente reclamou de algum ponto do projeto?
+                    </label>
+                    <p style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.4; margin: 8px 0 12px;">
+                        Ex: reclamou de entregáveis (qualidade ou prazo), resultado (volume de leads ou vendas) ou de
+                        algo referente à matriz (cobrança, boleto, NF, etc)
+                    </p>
+                    <select id="checkin-cliente-reclamou" class="gt-wizard-select">
+                        <option value="false" selected>Não</option>
+                        <option value="true">Sim</option>
+                    </select>
+                </div>
+
+                <div class="gt-form-group">
+                    <label class="gt-form-label" style="font-weight: 700; color: var(--text-main); font-size: 0.95rem;">
+                        Observações / Próximos Passos
+                    </label>
+                    <textarea id="checkin-obs" class="gt-form-textarea" rows="4"
+                        placeholder="O que foi discutido no checkin? Quais as próximas ações?"
+                        style="margin-top: 10px;"></textarea>
+                </div>
+            </div>
+
+            <div class="gt-form-footer"
+                style="padding: 1.5rem 2rem; background: var(--bg-hover); border-top: 1px solid var(--border-color);">
+                <button class="btn-gt-cancel" onclick="closeGTModal('modal-novo-checkin')"
+                    style="border: 1px solid var(--border-color);">Cancelar</button>
+                <button class="btn-gt-confirm" onclick="saveCheckin()"
+                    style="background: #D61616; border-radius: 8px; padding: 12px 30px;">Salvar Check-in</button>
+            </div>
         </div>
     </div>
 
