@@ -5,12 +5,12 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from collections import defaultdict
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
-from datetime import datetime
+from datetime import datetime as dt
 import os
 import json
 
 from database import Session, engine, Base
-from models import Investidor, Auth, ProjetoAtivo, ProjetoOnetime, ProjetoInativo, MetricaMensal, InvestidorProjeto, OperacaoTarefa, OperacaoEntregaMensal
+from models import Investidor, Auth, ProjetoAtivo, ProjetoOnetime, ProjetoInativo, MetricaMensal, InvestidorProjeto, OperacaoTarefa, OperacaoEntregaMensal, OperacaoPlanoMidia, OperacaoOtimizacao, OperacaoCheckin
 from services.remuneracao import calcular_metricas_mensais
 
 # Cria as tabelas caso não existam no banco
@@ -408,6 +408,12 @@ def operacao():
     return render_template("operacao.html", projetos=meus_projetos)
 
 
+@app.route("/criativa", methods=["GET"])
+@check_session
+def criativa():
+    return render_template("criativa.html")
+
+
 # ─── APIs OPERAÇÃO ───────────────────────────────────────────────────────────
 
 @app.route("/api/operacao/tarefas/<int:pipefy_id>", methods=["GET"])
@@ -495,62 +501,189 @@ def processar_remuneracao():
         print(f"Erro ao processar remuneracao: {e}")
         return jsonify({"error": str(e)}), 500
 
-@app.route("/api/operacao/entregas", methods=["POST"])
+# ─────────────────────────────────────────────────────────────────────────────
+# AUXILIARES DE AUTOMAÇÃO DE ENTREGAS
+# ─────────────────────────────────────────────────────────────────────────────
+
+def sync_mrr_vinculos(db, pipefy_id, valor_contribuicao):
+    """Sincroniza o valor de contribuição em todos os vínculos do projeto."""
+    vinculos = db.query(InvestidorProjeto).filter_by(pipefy_id_projeto=pipefy_id).all()
+    for v in vinculos:
+        v.fee_contribuicao = valor_contribuicao
+
+def atualizar_entregas_automaticas(db, pipefy_id, mes, ano, investidor_email):
+    """
+    Lógica de Automação de Entregas para Gestores de Tráfego:
+    1 - Plano de Mídia: Existe algum plano salvo no mês/ano?
+    2 - Otimizações: Existem pelo menos 4 otimizações no mês/ano?
+    3 - Setup/Relatório: (Pode ser estendido para verificar tasks específicas futuramente)
+    """
+    # 1. Verificar Plano de Mídia
+    plano_existe = db.query(OperacaoPlanoMidia).filter_by(
+        projeto_pipefy_id=pipefy_id, mes=mes, ano=ano
+    ).first() is not None
+
+    # 2. Verificar 4 Otimizações
+    # (Simplificação: pegamos otimizações dentro do mês/ano da data_otimizacao)
+    # Nota: Precisamos filtrar pela data no banco.
+    from sqlalchemy import extract
+    count_otimizacoes = db.query(OperacaoOtimizacao).filter(
+        OperacaoOtimizacao.projeto_pipefy_id == pipefy_id,
+        extract('month', OperacaoOtimizacao.data_otimizacao) == mes,
+        extract('year', OperacaoOtimizacao.data_otimizacao) == ano
+    ).count()
+
+    # Busca ou cria registro de entrega
+    entrega = db.query(OperacaoEntregaMensal).filter_by(
+        investidor_email=investidor_email, projeto_pipefy_id=pipefy_id, mes=mes, ano=ano
+    ).first()
+
+    if not entrega:
+        projeto = db.get(ProjetoAtivo, pipefy_id)
+        fee = float(projeto.fee or 0) if projeto else 0
+        entrega = OperacaoEntregaMensal(
+            investidor_email=investidor_email, projeto_pipefy_id=pipefy_id, mes=mes, ano=ano,
+            valor_fee_original=fee
+        )
+        db.add(entrega)
+
+    # Marca entregas automáticas
+    entrega.entrega_1 = plano_existe
+    entrega.entrega_2 = (count_otimizacoes >= 4)
+    # Entrega 3 e 4 permanecem manuais por enquanto ou via tasks (pode evoluir)
+
+    # Recalcula percentual e MRR
+    count = sum([1 for i in range(1, 5) if getattr(entrega, f"entrega_{i}")])
+    entrega.percentual_calculado = count * 0.25
+    entrega.valor_contribuicao_mrr = float(entrega.percentual_calculado) * float(entrega.valor_fee_original)
+
+    # Sincroniza vínculos
+    sync_mrr_vinculos(db, pipefy_id, entrega.valor_contribuicao_mrr)
+    
+    db.commit()
+    return recalculate_investor_mrr(db, investidor_email, mes, ano)
+
+# ─── APIs NOVAS (PLANO, OTIMIZAÇÃO, CHECKIN) ──────────────────────────────────
+
+@app.route("/api/operacao/plano-midia", methods=["POST"])
 @check_session
-def save_entregas():
+def save_plano_midia():
     data = request.json
     email = session.get("email")
-    pipefy_id = data["pipefy_id"]
-    mes = data["mes"]
-    ano = data["ano"]
-    
     try:
         with Session() as db:
-            # Busca o fee original do projeto
-            projeto = db.get(ProjetoAtivo, pipefy_id)
-            fee = float(projeto.fee or 0) if projeto else 0
-
-            entrega = db.query(OperacaoEntregaMensal).filter_by(
-                investidor_email=email, projeto_pipefy_id=pipefy_id, mes=mes, ano=ano
+            plano = db.query(OperacaoPlanoMidia).filter_by(
+                projeto_pipefy_id=data["pipefy_id"], mes=data["mes"], ano=data["ano"]
             ).first()
-            
-            if not entrega:
-                entrega = OperacaoEntregaMensal(
-                    investidor_email=email, projeto_pipefy_id=pipefy_id, mes=mes, ano=ano,
-                    valor_fee_original=fee
+
+            if not plano:
+                plano = OperacaoPlanoMidia(
+                    projeto_pipefy_id=data["pipefy_id"], mes=data["mes"], ano=data["ano"],
+                    investidor_email=email, created_at=dt.now()
                 )
-                db.add(entrega)
+                db.add(plano)
             
-            # Atualiza flags de entrega
-            for i in range(1, 5):
-                key = f"entrega_{i}"
-                if key in data:
-                    setattr(entrega, key, data[key])
-            
-            # Calcula percentual: cada check = 0.25
-            count = sum([1 for i in range(1, 5) if getattr(entrega, f"entrega_{i}")])
-            entrega.percentual_calculado = count * 0.25
-            entrega.valor_contribuicao_mrr = float(entrega.percentual_calculado) * fee
-            
-            # Sincroniza o fee_contribuicao na tabela investidores_projetos para todos os investidores do projeto
-            vinculos = db.query(InvestidorProjeto).filter_by(pipefy_id_projeto=pipefy_id).all()
-            for v in vinculos:
-                v.fee_contribuicao = entrega.valor_contribuicao_mrr
-            
+            plano.dados_plano = data["dados_plano"]
+            plano.updated_at = dt.now()
             db.commit()
+
+            # Trigger automação
+            atualizar_entregas_automaticas(db, data["pipefy_id"], data["mes"], data["ano"], email)
             
-            # Gatilho para recálculo do MRR total do investidor no mês
-            novo_mrr = recalculate_investor_mrr(db, email, mes, ano)
-            
-            return jsonify({
-                "status": "success", 
-                "percentual": float(entrega.percentual_calculado),
-                "valor_mrr_projeto": float(entrega.valor_contribuicao_mrr),
-                "mrr_total_atualizado": novo_mrr
-            })
+            return jsonify({"status": "success"})
     except SQLAlchemyError as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route("/api/operacao/plano-midia/<int:pipefy_id>/<int:mes>/<int:ano>", methods=["GET"])
+@check_session
+def get_plano_midia(pipefy_id, mes, ano):
+    try:
+        with Session() as db:
+            plano = db.query(OperacaoPlanoMidia).filter_by(
+                projeto_pipefy_id=pipefy_id, mes=mes, ano=ano
+            ).first()
+            if plano:
+                return jsonify({
+                    "id": plano.id,
+                    "dados_plano": plano.dados_plano,
+                    "created_at": plano.created_at.isoformat() if plano.created_at else None
+                })
+            return jsonify(None)
+    except SQLAlchemyError as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/operacao/otimizacao", methods=["POST"])
+@check_session
+def save_otimizacao_api():
+    data = request.json
+    email = session.get("email")
+    try:
+        with Session() as db:
+            nova = OperacaoOtimizacao(
+                projeto_pipefy_id=data["pipefy_id"],
+                investidor_email=email,
+                tipo=data["tipo"],
+                canal=data["canal"],
+                data_otimizacao=dt.strptime(data["data"], "%Y-%m-%d"),
+                detalhes=data["detalhes"],
+                created_at=dt.now()
+            )
+            db.add(nova)
+            db.commit()
+
+            # Trigger automação
+            d = nova.data_otimizacao
+            atualizar_entregas_automaticas(db, data["pipefy_id"], d.month, d.year, email)
+
+            return jsonify({"status": "success"})
+    except SQLAlchemyError as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/operacao/checkin", methods=["POST"])
+@check_session
+def save_checkin():
+    data = request.json
+    email = session.get("email")
+    try:
+        with Session() as db:
+            novo = OperacaoCheckin(
+                projeto_pipefy_id=data["pipefy_id"],
+                investidor_email=email,
+                semana_ano=data["semana_ano"],
+                compareceu=data["compareceu"],
+                campanhas_ativas=data.get("campanhas_ativas", True),
+                gap_comunicacao=data.get("gap_comunicacao", False),
+                cliente_reclamou=data.get("cliente_reclamou", False),
+                satisfeito=data.get("satisfeito", True),
+                csat_pontuacao=data.get("csat"),
+                observacoes=data.get("obs"),
+                created_at=dt.now()
+            )
+            db.add(novo)
+            db.commit()
+            return jsonify({"status": "success"})
+    except SQLAlchemyError as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/operacao/checkins/<int:pipefy_id>", methods=["GET"])
+@check_session
+def get_checkins(pipefy_id):
+    try:
+        with Session() as db:
+            checkins = db.query(OperacaoCheckin).filter_by(projeto_pipefy_id=pipefy_id).order_by(OperacaoCheckin.created_at.desc()).all()
+            return jsonify([{
+                "semana": c.semana_ano,
+                "compareceu": c.compareceu,
+                "campanhas_ativas": c.campanhas_ativas,
+                "gap_comunicacao": c.gap_comunicacao,
+                "cliente_reclamou": c.cliente_reclamou,
+                "satisfeito": c.satisfeito,
+                "csat": c.csat_pontuacao,
+                "obs": c.observacoes,
+                "data": c.created_at.strftime("%d/%m/%Y") if c.created_at else ""
+            } for c in checkins])
+    except SQLAlchemyError as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/cockpit", methods=["GET"])
 @check_session

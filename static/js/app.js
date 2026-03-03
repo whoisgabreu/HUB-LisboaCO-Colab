@@ -135,10 +135,10 @@ function openProjectDetails(projectName) {
 
     if (selectionView && detailsView) {
         if (displayProjectName) displayProjectName.innerText = projectName;
-        
+
         selectionView.classList.add('hidden');
         detailsView.classList.add('active');
-        
+
         // Reset to first tab (Dashboard)
         switchOperacaoTab('dashboard');
     }
@@ -147,7 +147,7 @@ function openProjectDetails(projectName) {
 function backToProjects() {
     const selectionView = document.getElementById('project-selection-view');
     const detailsView = document.getElementById('project-details-view');
-    
+
     if (selectionView && detailsView) {
         selectionView.classList.remove('hidden');
         detailsView.classList.remove('active');
@@ -174,4 +174,44 @@ const Utils = {
     }
 };
 
+/**
+ * Exibe uma notificação Toast premium na tela.
+ * @param {string} message - Mensagem a ser exibida
+ * @param {string} type - Tipo: 'success', 'error', 'info'
+ */
+function showToast(message, type = 'success') {
+    let container = document.getElementById('toast-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'toast-container';
+        document.body.appendChild(container);
+    }
+
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+
+    let icon = 'fa-check-circle';
+    if (type === 'error') icon = 'fa-exclamation-circle';
+    if (type === 'info') icon = 'fa-info-circle';
+
+    toast.innerHTML = `
+        <i class="fas ${icon}"></i>
+        <div class="toast-message">${message}</div>
+    `;
+
+    container.appendChild(toast);
+
+    // Remove após 3 segundos
+    setTimeout(() => {
+        toast.classList.add('hiding');
+        setTimeout(() => {
+            toast.remove();
+            if (container.childNodes.length === 0) {
+                container.remove();
+            }
+        }, 300);
+    }, 3000);
+}
+
 window.Utils = Utils;
+window.showToast = showToast;

@@ -13,7 +13,7 @@ body.tema-claro {
     --text-main: #1f2937;
     --text-muted: #6b7280;
     --border-color: #d1d5db;
-    
+
     /* Overrides adicionais para componentes específicos */
     color: #1f2937;
     background-color: #f0f2f5;
@@ -223,8 +223,10 @@ body.tema-claro td[class*="-flag-table"] span {
 
 body.tema-claro .yellow-flag,
 body.tema-claro .yellow-flag-table {
-    background-color: #fbbf24 !important; /* Amarelo mais saturado */
-    color: #451a03 !important; /* Contraste altíssimo */
+    background-color: #fbbf24 !important;
+    /* Amarelo mais saturado */
+    color: #451a03 !important;
+    /* Contraste altíssimo */
     border: none !important;
 }
 
@@ -260,11 +262,11 @@ body.tema-claro .tab-btn {
     color: #6b7280 !important;
 }
 
-body.tema-claro .op-tab-btn.active { 
-    background: #D61616 !important; 
-    color: #ffffff !important; 
-    border-color: #D61616 !important; 
-    font-weight: 600 !important; 
+body.tema-claro .op-tab-btn.active {
+    background: #D61616 !important;
+    color: #ffffff !important;
+    border-color: #D61616 !important;
+    font-weight: 600 !important;
 }
 
 body.tema-claro .tab-count {
@@ -365,12 +367,13 @@ body.tema-claro .gt-toast {
     background-color: #ffffff !important;
     color: #1f2937 !important;
     border: 1px solid #d1d5db !important;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.1) !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1) !important;
 }
 
 body.tema-claro .gt-toast.toast-success {
     border-left: 5px solid #22c55e !important;
 }
+
 body.tema-claro .gt-toast.toast-success i {
     color: #22c55e !important;
 }
@@ -378,6 +381,245 @@ body.tema-claro .gt-toast.toast-success i {
 body.tema-claro .gt-toast.toast-error {
     border-left: 5px solid #ef4444 !important;
 }
+
 body.tema-claro .gt-toast.toast-error i {
     color: #ef4444 !important;
+}
+
+/* ═══ Aba Criativa — Modo Claro ═══ */
+
+body.tema-claro .criativa-title h2 {
+    color: #111827 !important;
+}
+
+body.tema-claro .criativa-title p {
+    color: #6b7280 !important;
+}
+
+/* Botões de navegação */
+body.tema-claro .criativa-nav-btn {
+    background: #ffffff;
+    color: #374151 !important;
+    border: 1px solid #d1d5db !important;
+}
+
+body.tema-claro .criativa-nav-btn:hover {
+    border-color: #D61616 !important;
+    color: #D61616 !important;
+    background: rgba(214, 22, 22, 0.05) !important;
+}
+
+body.tema-claro .criativa-nav-btn.active {
+    background: #D61616 !important;
+    color: #ffffff !important;
+    border-color: #D61616 !important;
+}
+
+/* KPIs */
+body.tema-claro .criativa-kpi-card {
+    background: #ffffff !important;
+    border: 1px solid #d1d5db !important;
+}
+
+body.tema-claro .criativa-kpi-card:hover {
+    border-color: #D61616 !important;
+    box-shadow: 0 8px 20px rgba(214, 22, 22, 0.08) !important;
+}
+
+body.tema-claro .criativa-kpi-label {
+    color: #6b7280 !important;
+}
+
+body.tema-claro .criativa-kpi-value {
+    color: #111827 !important;
+}
+
+/* Tabela Card */
+body.tema-claro .criativa-table-card {
+    background: #ffffff !important;
+    border: 1px solid #d1d5db !important;
+}
+
+body.tema-claro .criativa-table-header {
+    border-bottom: 1px solid #e5e7eb !important;
+}
+
+body.tema-claro .criativa-table-header h3 {
+    color: #111827 !important;
+}
+
+/* Tabela */
+body.tema-claro .criativa-table thead th {
+    background: #D61616 !important;
+    color: #ffffff !important;
+    border-bottom: 2px solid #a01010 !important;
+}
+
+body.tema-claro .criativa-table {
+    border: 1px solid #d1d5db !important;
+}
+
+body.tema-claro .criativa-table thead th {
+    border-right: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+body.tema-claro .criativa-table tbody td {
+    border-color: #e5e7eb !important;
+    border-right: 1px solid #e5e7eb !important;
+    color: #374151 !important;
+}
+
+body.tema-claro .criativa-table thead th:last-child,
+body.tema-claro .criativa-table tbody td:last-child {
+    border-right: none !important;
+}
+
+/* Destaque de Colunas no Modo Claro */
+body.tema-claro .text-contratado {
+    background-color: rgba(220, 38, 38, 0.05) !important;
+    /* Destaque de fundo sutil para metas */
+}
+
+body.tema-claro .criativa-table thead th.text-contratado {
+    background-color: #b91c1c !important;
+    /* Vermelho mais profundo para o header da meta */
+}
+
+
+body.tema-claro .criativa-table tbody tr:hover:not(.criativa-total-row) {
+    background-color: rgba(214, 22, 22, 0.04) !important;
+}
+
+body.tema-claro .criativa-total-row {
+    background: rgba(214, 22, 22, 0.06) !important;
+    border-top: 2px solid #d1d5db !important;
+}
+
+body.tema-claro .criativa-total-row td {
+    color: #111827 !important;
+}
+
+/* Cards de entregas (checkboxes) */
+body.tema-claro .entrega-card {
+    background: #ffffff !important;
+    border: 1px solid #d1d5db !important;
+}
+
+body.tema-claro .entrega-card:hover {
+    border-color: #D61616 !important;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.06) !important;
+}
+
+body.tema-claro .entrega-card.checked {
+    border-color: #22c55e !important;
+    background: rgba(34, 197, 94, 0.04) !important;
+}
+
+body.tema-claro .entrega-check {
+    border-color: #d1d5db !important;
+}
+
+body.tema-claro .entrega-info h4 {
+    color: #111827 !important;
+}
+
+body.tema-claro .entrega-info p {
+    color: #6b7280 !important;
+}
+
+body.tema-claro .entrega-card.checked .entrega-info p {
+    color: #16a34a !important;
+}
+
+/* Modais no Modo Claro */
+body.tema-claro .modal-content {
+    background: #ffffff !important;
+    border-color: #d1d5db !important;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1) !important;
+}
+
+body.tema-claro .modal-header,
+body.tema-claro .modal-footer {
+    border-color: #e5e7eb !important;
+}
+
+body.tema-claro .modal-header h3 {
+    color: #111827 !important;
+}
+
+body.tema-claro .form-group label {
+    color: #4b5563 !important;
+}
+
+body.tema-claro .form-group input,
+body.tema-claro .form-group select {
+    background: #f9fafb !important;
+    border-color: #d1d5db !important;
+    color: #111827 !important;
+}
+
+body.tema-claro .btn-cancel {
+    background: #f3f4f6 !important;
+    border-color: #d1d5db !important;
+    color: #4b5563 !important;
+}
+
+body.tema-claro .btn-cancel:hover {
+    background: #e5e7eb !important;
+    color: #111827 !important;
+}
+
+body.tema-claro .historico-item {
+    border-color: #e5e7eb !important;
+}
+
+/* Novo Histórico no Modo Claro */
+body.tema-claro .mes-tab {
+    border-color: #d1d5db !important;
+    color: #6b7280 !important;
+}
+
+body.tema-claro .mes-tab:hover {
+    border-color: #D61616 !important;
+    color: #D61616 !important;
+}
+
+body.tema-claro .mes-tab.active {
+    background: #D61616 !important;
+    color: #ffffff !important;
+}
+
+body.tema-claro .historico-detalhe-card {
+    background: #f9fafb !important;
+    border-color: #e5e7eb !important;
+}
+
+body.tema-claro .historico-detalhe-header:hover {
+    background: #f3f4f6 !important;
+}
+
+body.tema-claro .historico-cliente-info strong {
+    color: #111827 !important;
+}
+
+body.tema-claro .tabela-detalhe th {
+    border-color: #e5e7eb !important;
+}
+
+body.tema-claro .tabela-detalhe td {
+    border-color: #f3f4f6 !important;
+    color: #374151 !important;
+}
+
+/* Destaque no Histórico Modo Claro */
+body.tema-claro .tabela-detalhe td.text-contratado {
+    background-color: rgba(220, 38, 38, 0.03) !important;
+}
+
+/* Toasts no Modo Claro */
+body.tema-claro .toast {
+    background: #ffffff !important;
+    border-color: #d1d5db !important;
+    color: #111827 !important;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08) !important;
 }

@@ -253,3 +253,56 @@ class OperacaoEntregaMensal(Base):
     valor_contribuicao_mrr = Column(DECIMAL(15, 2), default=0)
     created_at = Column(Date)
     updated_at = Column(Date)
+
+
+class OperacaoPlanoMidia(Base):
+    """Tabela: plataforma_geral.operacao_planos_midia"""
+    __tablename__ = "operacao_planos_midia"
+    __table_args__ = {"schema": "plataforma_geral"}
+
+    id = Column(Integer, primary_key=True)
+    projeto_pipefy_id = Column(Integer, nullable=False)
+    mes = Column(Integer, nullable=False)
+    ano = Column(Integer, nullable=False)
+    investidor_email = Column(Text, nullable=False)
+    dados_plano = Column(JSONB, nullable=False) # Lista de canais, campanhas, orçamentos
+    created_at = Column(Date)
+    updated_at = Column(Date)
+
+
+class OperacaoOtimizacao(Base):
+    """Tabela: plataforma_geral.operacao_otimizacoes"""
+    __tablename__ = "operacao_otimizacoes"
+    __table_args__ = {"schema": "plataforma_geral"}
+
+    id = Column(Integer, primary_key=True)
+    projeto_pipefy_id = Column(Integer, nullable=False)
+    investidor_email = Column(Text, nullable=False)
+    tipo = Column(String(50)) # Campanha, Criativo, GTM, etc.
+    canal = Column(String(50)) # Meta, Google, etc.
+    data_otimizacao = Column(Date, nullable=False)
+    detalhes = Column(Text)
+    created_at = Column(Date)
+
+
+class OperacaoCheckin(Base):
+    """Tabela: plataforma_geral.operacao_checkins"""
+    __tablename__ = "operacao_checkins"
+    __table_args__ = {"schema": "plataforma_geral"}
+
+    id = Column(Integer, primary_key=True)
+    projeto_pipefy_id = Column(Integer, nullable=False)
+    investidor_email = Column(Text, nullable=False)
+    semana_ano = Column(String(20), nullable=False) # Ex: 2026-W09
+    
+    # Novas Perguntas (V8.0)
+    compareceu = Column(Boolean, default=False)
+    campanhas_ativas = Column(Boolean, default=True)
+    gap_comunicacao = Column(Boolean, default=False)
+    cliente_reclamou = Column(Boolean, default=False)
+    
+    # Legado / Métricas
+    satisfeito = Column(Boolean, default=True)
+    csat_pontuacao = Column(Integer)
+    observacoes = Column(Text)
+    created_at = Column(Date)
