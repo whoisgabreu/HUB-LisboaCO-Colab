@@ -293,38 +293,12 @@
                             </button>
                         </header>
 
-                        <div class="entregas-grid">
-                            <!-- Checkboxes 1 a 4: Cada uma vale 25% do Fee -->
-                            <div class="entrega-card" id="entrega-1" onclick="toggleEntrega(1)">
-                                <div class="entrega-check"><i class="fas fa-check"></i></div>
-                                <div class="entrega-info">
-                                    <h4>Plano de Mídia (Entrega 01)</h4>
-                                    <p>Automático ao salvar plano</p>
-                                </div>
-                            </div>
-
-                            <div class="entrega-card" id="entrega-2" onclick="toggleEntrega(2)">
-                                <div class="entrega-check"><i class="fas fa-check"></i></div>
-                                <div class="entrega-info">
-                                    <h4>Documentos de Otimização (Entrega 02)</h4>
-                                    <p>4 otimizações registradas</p>
-                                </div>
-                            </div>
-
-                            <div class="entrega-card" id="entrega-3" onclick="toggleEntrega(3)">
-                                <div class="entrega-check"><i class="fas fa-check"></i></div>
-                                <div class="entrega-info">
-                                    <h4>Configuração de Conta (Entrega 03)</h4>
-                                    <p>Manual: GTM, Google, API e Tags</p>
-                                </div>
-                            </div>
-
-                            <div class="entrega-card" id="entrega-4" onclick="toggleEntrega(4)">
-                                <div class="entrega-check"><i class="fas fa-check"></i></div>
-                                <div class="entrega-info">
-                                    <h4>Relatório Mensal (Entrega 04)</h4>
-                                    <p>Manual: Análise de fechamento do mês</p>
-                                </div>
+                        <div class="entregas-grid" id="entregas-grid">
+                            <!-- Entregas geradas dinamicamente pelo JS com base no cargo do usuário -->
+                            <div style="text-align:center;padding:3rem;color:var(--text-muted);">
+                                <i class="fas fa-spinner fa-spin"
+                                    style="font-size:1.5rem;margin-bottom:1rem;display:block;"></i>
+                                Carregando entregas do mês...
                             </div>
                         </div>
 
@@ -353,7 +327,7 @@
                         </header>
 
                         <div class="access-links-grid" id="links-grid">
-                            <!-- Cards padrão já implementados e preservados -->
+                            <!-- Links carregados via API ao abrir a aba -->
                         </div>
                     </section>
 
@@ -856,12 +830,56 @@
         </div>
     </div>
 
+    <!-- Modal: Novo Link Útil -->
+    <div id="modal-novo-link" class="gt-modal">
+        <div class="gt-modal-content" style="max-width: 520px;">
+            <div class="gt-modal-header">
+                <h3 class="gt-modal-title">Adicionar Link Útil</h3>
+                <button class="gt-modal-close" onclick="closeGTModal('modal-novo-link')">&times;</button>
+            </div>
+
+            <div class="gt-form-group">
+                <label class="gt-form-label">Título do Link *</label>
+                <input type="text" id="link-titulo" class="gt-form-input"
+                    placeholder="Ex: Conta Google Ads, BM do Meta...">
+            </div>
+
+            <div class="gt-form-group">
+                <label class="gt-form-label">URL *</label>
+                <input type="url" id="link-url" class="gt-form-input" placeholder="https://...">
+            </div>
+
+            <div class="gt-form-group">
+                <label class="gt-form-label">Ícone (FontAwesome) — opcional</label>
+                <select id="link-icone" class="gt-form-select">
+                    <option value="fa-link">🔗 Link Genérico</option>
+                    <option value="fa-ad">📢 Anúncios</option>
+                    <option value="fa-chart-bar">📊 Relatório / Analytics</option>
+                    <option value="fa-google">🔍 Google</option>
+                    <option value="fa-facebook">📘 Facebook / Meta</option>
+                    <option value="fa-file-alt">📄 Documento</option>
+                    <option value="fa-cog">⚙️ Config / GTM</option>
+                    <option value="fa-shopping-cart">🛒 E-commerce</option>
+                    <option value="fa-envelope">✉️ Email / CRM</option>
+                    <option value="fa-globe">🌐 Website / LP</option>
+                </select>
+            </div>
+
+            <div class="gt-form-footer">
+                <button class="btn-gt-cancel" onclick="closeGTModal('modal-novo-link')">Cancelar</button>
+                <button class="btn-gt-confirm" onclick="saveLink()">Salvar Link</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         window.APP_CONFIG = {
             userEmail: "{{ session.email }}",
             userAccessLevel: "{{ session.nivel_acesso }}",
             userToken: "{{session.token}}"
         };
+        // Cargo do usuário injetado para o delivery engine do frontend
+        window.__USER_ROLE__ = "{{ session.funcao }}";
     </script>
     {% include "components/modal-configuracoes.html" %}
     <script src="static/js/tema.js"></script>

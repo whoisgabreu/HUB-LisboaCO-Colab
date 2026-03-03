@@ -10,8 +10,15 @@ import os
 import json
 
 from database import Session, engine, Base
-from models import Investidor, Auth, ProjetoAtivo, ProjetoOnetime, ProjetoInativo, MetricaMensal, InvestidorProjeto, OperacaoTarefa, OperacaoEntregaMensal, OperacaoPlanoMidia, OperacaoOtimizacao, OperacaoCheckin
+from models import (
+    Investidor, Auth, ProjetoAtivo, ProjetoOnetime, ProjetoInativo,
+    MetricaMensal, InvestidorProjeto,
+    OperacaoTarefa, OperacaoEntregaMensal, OperacaoPlanoMidia,
+    OperacaoOtimizacao, OperacaoCheckin,
+    MonthlyDelivery, OperacaoLinkUtil
+)
 from services.remuneracao import calcular_metricas_mensais
+from services.delivery_engine import process_deliveries, process_all_deliveries_for_project
 
 # Cria as tabelas caso não existam no banco
 Base.metadata.create_all(engine)
@@ -68,19 +75,16 @@ def check_access(roles):
 # ─── HELPERS ────────────────────────────────────────────────────────────────
 
 def recalculate_investor_mrr(db, email, mes, ano):
-    """Recalcula o MRR total do investidor somando as entregas de todos os seus projetos."""
-    entregas = db.query(OperacaoEntregaMensal).filter_by(
-        investidor_email=email, mes=mes, ano=ano
+    """Recalcula o MRR total do investidor somando as contribuições de monthly_deliveries."""
+    entregas = db.query(MonthlyDelivery).filter_by(
+        email=email, month=mes, year=ano, status='completed'
     ).all()
-    
-    total_mrr = sum(float(e.valor_contribuicao_mrr or 0) for e in entregas)
-    
+    total_mrr = sum(float(e.mrr_contribution or 0) for e in entregas)
     metrica = db.query(MetricaMensal).filter_by(
         email_investidor=email, mes=mes, ano=ano
     ).first()
-    
     if metrica:
-        metrica.fixo_mrr_atual = total_mrr
+        metrica.fixo_mrr_entrega = total_mrr
         db.commit()
     return total_mrr
 
@@ -488,6 +492,43 @@ def get_entregas(pipefy_id, mes, ano):
     except SQLAlchemyError as e:
         return jsonify({"error": str(e)}), 500
 
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ENDPOINT: MONTHLY DELIVERIES (ENTREGAS AUTOMÁTICAS – READ ONLY)
+# ─────────────────────────────────────────────────────────────────────────────
+
+@app.route("/api/operacao/monthly-deliveries/<int:pipefy_id>/<int:mes>/<int:ano>", methods=["GET"])
+@check_session
+def get_monthly_deliveries(pipefy_id, mes, ano):
+    """Retorna as entregas automáticas do mês para o usuário logado neste projeto."""
+    email = session.get("email")
+    try:
+        with Session() as db:
+            entregas = db.query(MonthlyDelivery).filter_by(
+                email=email,
+                client_id=pipefy_id,
+                month=mes,
+                year=ano,
+            ).all()
+            return jsonify([{
+                "id": e.id,
+                "role": e.role,
+                "delivery_type": e.delivery_type,
+                "status": e.status,
+                "fee_snapshot": float(e.fee_snapshot or 0),
+                "mrr_contribution": float(e.mrr_contribution or 0),
+                "completed_at": e.completed_at.isoformat() if e.completed_at else None,
+            } for e in entregas])
+    except SQLAlchemyError as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/operacao/entregas", methods=["POST"])
+@check_session
+def block_manual_entrega():
+    """Marcação manual de entregas foi desabilitada. Entregas são 100% automáticas."""
+    return jsonify({"error": "Marcação manual de entregas não é permitida. As entregas são geradas automaticamente pelo sistema."}), 403
+
 @app.route("/api/remuneracao/processar")
 @check_session
 @check_access(["Admin", "Sócio", "Gerência"])
@@ -570,27 +611,35 @@ def atualizar_entregas_automaticas(db, pipefy_id, mes, ano, investidor_email):
 def save_plano_midia():
     data = request.json
     email = session.get("email")
+    print(f"DEBUG: save_plano_midia POST - Email: {email}, ID: {data.get('pipefy_id')}, Mes: {data.get('mes')}")
     try:
         with Session() as db:
+            # Filtrar por email também para evitar conflitos de cargos
             plano = db.query(OperacaoPlanoMidia).filter_by(
-                projeto_pipefy_id=data["pipefy_id"], mes=data["mes"], ano=data["ano"]
+                projeto_pipefy_id=data["pipefy_id"], 
+                mes=data["mes"], 
+                ano=data["ano"],
+                investidor_email=email
             ).first()
 
             if not plano:
+                print("DEBUG: Creating new plan record")
                 plano = OperacaoPlanoMidia(
                     projeto_pipefy_id=data["pipefy_id"], mes=data["mes"], ano=data["ano"],
                     investidor_email=email, created_at=dt.now()
                 )
                 db.add(plano)
+            else:
+                print("DEBUG: Updating existing plan record")
             
-            plano.dados_plano = data["dados_plano"]
+            plano.dados_plano = data.get("dados_plano", {})
             plano.updated_at = dt.now()
             db.commit()
 
-            # Trigger automação
-            atualizar_entregas_automaticas(db, data["pipefy_id"], data["mes"], data["ano"], email)
-            
-            return jsonify({"status": "success"})
+        # Trigger delivery_engine (fora do with-block para nova sessão)
+        res_engine = process_deliveries(email, data["pipefy_id"], data["mes"], data["ano"])
+        print(f"DEBUG: Delivery engine result: {res_engine}")
+        return jsonify({"status": "success", "engine": res_engine})
     except SQLAlchemyError as e:
         return jsonify({"error": str(e)}), 500
 
@@ -599,9 +648,17 @@ def save_plano_midia():
 def get_plano_midia(pipefy_id, mes, ano):
     try:
         with Session() as db:
+            # Primeiro tenta buscar o plano do próprio usuário
             plano = db.query(OperacaoPlanoMidia).filter_by(
-                projeto_pipefy_id=pipefy_id, mes=mes, ano=ano
+                projeto_pipefy_id=pipefy_id, mes=mes, ano=ano,
+                investidor_email=session.get("email")
             ).first()
+
+            # Se não houver do usuário, tenta qualquer um do projeto para visualização/compartilhamento
+            if not plano:
+                plano = db.query(OperacaoPlanoMidia).filter_by(
+                    projeto_pipefy_id=pipefy_id, mes=mes, ano=ano
+                ).first()
             if plano:
                 return jsonify({
                     "id": plano.id,
@@ -631,11 +688,10 @@ def save_otimizacao_api():
             db.add(nova)
             db.commit()
 
-            # Trigger automação
-            d = nova.data_otimizacao
-            atualizar_entregas_automaticas(db, data["pipefy_id"], d.month, d.year, email)
-
-            return jsonify({"status": "success"})
+        # Trigger delivery_engine
+        d = dt.strptime(data["data"], "%Y-%m-%d")
+        process_deliveries(email, data["pipefy_id"], d.month, d.year)
+        return jsonify({"status": "success"})
     except SQLAlchemyError as e:
         return jsonify({"error": str(e)}), 500
 
@@ -661,7 +717,10 @@ def save_checkin():
             )
             db.add(novo)
             db.commit()
-            return jsonify({"status": "success"})
+
+        # Trigger delivery_engine para Account (entrega checkin)
+        process_deliveries(email, data["pipefy_id"], dt.now().month, dt.now().year)
+        return jsonify({"status": "success"})
     except SQLAlchemyError as e:
         return jsonify({"error": str(e)}), 500
 
@@ -684,6 +743,92 @@ def get_checkins(pipefy_id):
             } for c in checkins])
     except SQLAlchemyError as e:
         return jsonify({"error": str(e)}), 500
+
+
+# ─── GET OTIMIZAÇÕES ─────────────────────────────────────────────────────────
+
+@app.route("/api/operacao/otimizacoes/<int:pipefy_id>", methods=["GET"])
+@check_session
+def get_otimizacoes(pipefy_id):
+    """Lista todas as otimizações registradas para um projeto."""
+    email = session.get("email")
+    squad = session.get("squad")
+    try:
+        with Session() as db:
+            query = db.query(OperacaoOtimizacao).filter_by(projeto_pipefy_id=pipefy_id)
+            if squad != "Gerência":
+                query = query.filter_by(investidor_email=email)
+            otimizacoes = query.order_by(OperacaoOtimizacao.data_otimizacao.desc()).all()
+            return jsonify([{
+                "id": o.id,
+                "tipo": o.tipo,
+                "canal": o.canal,
+                "data": o.data_otimizacao.strftime("%d/%m/%Y") if o.data_otimizacao else "",
+                "detalhes": o.detalhes,
+                "criado_em": o.created_at.strftime("%d/%m/%Y") if o.created_at else ""
+            } for o in otimizacoes])
+    except SQLAlchemyError as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# ─── LINKS ÚTEIS ─────────────────────────────────────────────────────────────
+
+@app.route("/api/operacao/links/<int:pipefy_id>", methods=["GET"])
+@check_session
+def get_links(pipefy_id):
+    try:
+        with Session() as db:
+            links = db.query(OperacaoLinkUtil).filter_by(
+                projeto_pipefy_id=pipefy_id
+            ).order_by(OperacaoLinkUtil.created_at.desc()).all()
+            return jsonify([{
+                "id": lk.id,
+                "titulo": lk.titulo,
+                "url": lk.url,
+                "icone": lk.icone or "fa-link",
+                "criado_por": lk.criado_por
+            } for lk in links])
+    except SQLAlchemyError as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/operacao/links", methods=["POST"])
+@check_session
+def save_link():
+    data = request.json
+    email = session.get("email")
+    try:
+        with Session() as db:
+            if not data.get("titulo") or not data.get("url"):
+                return jsonify({"error": "Título e URL são obrigatórios."}), 400
+            lk = OperacaoLinkUtil(
+                projeto_pipefy_id=data["pipefy_id"],
+                titulo=data["titulo"],
+                url=data["url"],
+                icone=data.get("icone", "fa-link"),
+                criado_por=email,
+                created_at=dt.now()
+            )
+            db.add(lk)
+            db.commit()
+            return jsonify({"status": "success", "id": lk.id})
+    except SQLAlchemyError as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/operacao/links/<int:link_id>", methods=["DELETE"])
+@check_session
+def delete_link(link_id):
+    try:
+        with Session() as db:
+            lk = db.get(OperacaoLinkUtil, link_id)
+            if lk:
+                db.delete(lk)
+                db.commit()
+            return jsonify({"status": "success"})
+    except SQLAlchemyError as e:
+        return jsonify({"error": str(e)}), 500
+
 
 @app.route("/cockpit", methods=["GET"])
 @check_session

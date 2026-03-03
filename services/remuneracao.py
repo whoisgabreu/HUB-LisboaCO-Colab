@@ -1,8 +1,8 @@
 from sqlalchemy import extract, and_, desc
 from database import Session
 from models import (
-    Investidor, InvestidorProjeto, 
-    MetricaMensal, OperacaoEntregaMensal, RemuneracaoCargo
+    Investidor, InvestidorProjeto,
+    MetricaMensal, MonthlyDelivery, RemuneracaoCargo
 )
 from decimal import Decimal
 from datetime import datetime, date
@@ -108,13 +108,14 @@ def calcular_metricas_mensais(mes, ano):
             else:
                 motivo_flag = "Cargo/Nível não configurado"
 
-            # MRR Entrega (de Operação) - Já migrado para unidades na Fase 5
-            soma_entrega = db.query(OperacaoEntregaMensal).filter(
-                OperacaoEntregaMensal.investidor_email == inv.email,
-                OperacaoEntregaMensal.mes == mes,
-                OperacaoEntregaMensal.ano == ano
+            # MRR Entrega – calculado a partir de monthly_deliveries (desacoplado por cargo)
+            soma_entrega = db.query(MonthlyDelivery).filter(
+                MonthlyDelivery.email == inv.email,
+                MonthlyDelivery.month == mes,
+                MonthlyDelivery.year == ano,
+                MonthlyDelivery.status == 'completed',
             ).all()
-            total_entrega = sum(Decimal(str(e.valor_contribuicao_mrr or 0)) for e in soma_entrega)
+            total_entrega = sum(Decimal(str(e.mrr_contribution or 0)) for e in soma_entrega)
 
             # Lógica de Streaks
             historico = db.query(MetricaMensal).filter(
