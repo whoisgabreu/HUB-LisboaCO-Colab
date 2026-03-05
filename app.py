@@ -19,6 +19,7 @@ from models import (
 )
 from services.remuneracao import calcular_metricas_mensais
 from services.delivery_engine import process_deliveries, process_all_deliveries_for_project
+from services.delivery_service import DeliveryService
 
 # Cria as tabelas caso não existam no banco
 Base.metadata.create_all(engine)
@@ -31,7 +32,7 @@ scheduler = APScheduler()
 
 def job_recalcular_remuneracao():
     """Tarefa agendada para rodar diariamente."""
-    print(f"[{datetime.now()}] Iniciando recalculo automatico de remuneracao...")
+    print(f"[{dt.now()}] Iniciando recalculo automatico de remuneracao...")
     from datetime import datetime as dt
     from services.remuneracao import calcular_metricas_mensais
     try:
@@ -249,8 +250,9 @@ def hub_projetos():
     )
 
 
-@app.route("/hub-remuneracao", methods=["GET"])
+@app.route("/hub-remuneracao")
 @check_session
+@check_access(["Gerência"])
 def hub_remuneracao():
     try:
         with Session() as db:
@@ -414,6 +416,7 @@ def operacao():
 
 @app.route("/criativa", methods=["GET"])
 @check_session
+@check_access(["Designer", "WebDesigner"])
 def criativa():
     return render_template("criativa.html")
 
@@ -422,6 +425,7 @@ def criativa():
 
 @app.route("/api/operacao/tarefas/<int:pipefy_id>", methods=["GET"])
 @check_session
+@check_access(["Account", "Gestor de Tráfego"])
 def get_tarefas(pipefy_id):
     tipo = request.args.get("tipo", "semanal")
     referencia = request.args.get("referencia")
@@ -443,6 +447,7 @@ def get_tarefas(pipefy_id):
 
 @app.route("/api/operacao/tarefas", methods=["POST"])
 @check_session
+@check_access(["Account", "Gestor de Tráfego"])
 def save_tarefa():
     data = request.json
     try:
@@ -463,6 +468,17 @@ def save_tarefa():
                 )
                 db.add(tarefa)
             db.commit()
+            
+            # Trigger DeliveryService for relevant types based on task type (E4)
+            email_sessao = session.get("email")
+            if tarefa.tipo == 'quarter':
+                DeliveryService.checkAndComplete(email_sessao, tarefa.projeto_pipefy_id, 'relatorio_account', dt.now().month, dt.now().year)
+                DeliveryService.checkAndComplete(email_sessao, tarefa.projeto_pipefy_id, 'relatorio_gt', dt.now().month, dt.now().year)
+                DeliveryService.checkAndComplete(email_sessao, tarefa.projeto_pipefy_id, 'forecasting', dt.now().month, dt.now().year)
+            elif tarefa.tipo == 'semanal':
+                DeliveryService.checkAndComplete(email_sessao, tarefa.projeto_pipefy_id, 'planner_monday', dt.now().month, dt.now().year)
+                DeliveryService.checkAndComplete(email_sessao, tarefa.projeto_pipefy_id, 'config_conta', dt.now().month, dt.now().year)
+
             return jsonify({"status": "success", "id": tarefa.id})
     except SQLAlchemyError as e:
         return jsonify({"error": str(e)}), 500
@@ -470,6 +486,7 @@ def save_tarefa():
 
 @app.route("/api/operacao/entregas/<int:pipefy_id>/<int:mes>/<int:ano>", methods=["GET"])
 @check_session
+@check_access(["Account", "Gestor de Tráfego"])
 def get_entregas(pipefy_id, mes, ano):
     email = session.get("email")
     try:
@@ -499,6 +516,7 @@ def get_entregas(pipefy_id, mes, ano):
 
 @app.route("/api/operacao/monthly-deliveries/<int:pipefy_id>/<int:mes>/<int:ano>", methods=["GET"])
 @check_session
+@check_access(["Account", "Gestor de Tráfego"])
 def get_monthly_deliveries(pipefy_id, mes, ano):
     """Retorna as entregas automáticas do mês para o usuário logado neste projeto."""
     email = session.get("email")
@@ -608,6 +626,7 @@ def atualizar_entregas_automaticas(db, pipefy_id, mes, ano, investidor_email):
 
 @app.route("/api/operacao/plano-midia", methods=["POST"])
 @check_session
+@check_access(["Gestor de Tráfego"])
 def save_plano_midia():
     data = request.json
     email = session.get("email")
@@ -636,7 +655,8 @@ def save_plano_midia():
             plano.updated_at = dt.now()
             db.commit()
 
-        # Trigger delivery_engine (fora do with-block para nova sessão)
+        # Trigger delivery_engine and DeliveryService (E4)
+        DeliveryService.checkAndComplete(email, data["pipefy_id"], "plano_midia", data["mes"], data["ano"])
         res_engine = process_deliveries(email, data["pipefy_id"], data["mes"], data["ano"])
         print(f"DEBUG: Delivery engine result: {res_engine}")
         return jsonify({"status": "success", "engine": res_engine})
@@ -645,6 +665,7 @@ def save_plano_midia():
 
 @app.route("/api/operacao/plano-midia/<int:pipefy_id>/<int:mes>/<int:ano>", methods=["GET"])
 @check_session
+@check_access(["Account", "Gestor de Tráfego"])
 def get_plano_midia(pipefy_id, mes, ano):
     try:
         with Session() as db:
@@ -671,6 +692,7 @@ def get_plano_midia(pipefy_id, mes, ano):
 
 @app.route("/api/operacao/otimizacao", methods=["POST"])
 @check_session
+@check_access(["Gestor de Tráfego"])
 def save_otimizacao_api():
     data = request.json
     email = session.get("email")
@@ -688,8 +710,9 @@ def save_otimizacao_api():
             db.add(nova)
             db.commit()
 
-        # Trigger delivery_engine
+        # Trigger delivery_engine and DeliveryService (E4)
         d = dt.strptime(data["data"], "%Y-%m-%d")
+        DeliveryService.checkAndComplete(email, data["pipefy_id"], "otimizacao", d.month, d.year)
         process_deliveries(email, data["pipefy_id"], d.month, d.year)
         return jsonify({"status": "success"})
     except SQLAlchemyError as e:
@@ -697,6 +720,7 @@ def save_otimizacao_api():
 
 @app.route("/api/operacao/checkin", methods=["POST"])
 @check_session
+@check_access(["Account"])
 def save_checkin():
     data = request.json
     email = session.get("email")
@@ -718,7 +742,8 @@ def save_checkin():
             db.add(novo)
             db.commit()
 
-        # Trigger delivery_engine para Account (entrega checkin)
+        # Trigger delivery_engine and DeliveryService (E4)
+        DeliveryService.checkAndComplete(email, data["pipefy_id"], "checkin", dt.now().month, dt.now().year)
         process_deliveries(email, data["pipefy_id"], dt.now().month, dt.now().year)
         return jsonify({"status": "success"})
     except SQLAlchemyError as e:
@@ -726,6 +751,7 @@ def save_checkin():
 
 @app.route("/api/operacao/checkins/<int:pipefy_id>", methods=["GET"])
 @check_session
+@check_access(["Account", "Gestor de Tráfego"])
 def get_checkins(pipefy_id):
     try:
         with Session() as db:
@@ -749,6 +775,7 @@ def get_checkins(pipefy_id):
 
 @app.route("/api/operacao/otimizacoes/<int:pipefy_id>", methods=["GET"])
 @check_session
+@check_access(["Account", "Gestor de Tráfego"])
 def get_otimizacoes(pipefy_id):
     """Lista todas as otimizações registradas para um projeto."""
     email = session.get("email")
@@ -775,6 +802,7 @@ def get_otimizacoes(pipefy_id):
 
 @app.route("/api/operacao/links/<int:pipefy_id>", methods=["GET"])
 @check_session
+@check_access(["Account", "Gestor de Tráfego"])
 def get_links(pipefy_id):
     try:
         with Session() as db:
@@ -785,6 +813,7 @@ def get_links(pipefy_id):
                 "id": lk.id,
                 "titulo": lk.titulo,
                 "url": lk.url,
+                "descricao": lk.descricao,
                 "icone": lk.icone or "fa-link",
                 "criado_por": lk.criado_por
             } for lk in links])
@@ -794,6 +823,7 @@ def get_links(pipefy_id):
 
 @app.route("/api/operacao/links", methods=["POST"])
 @check_session
+@check_access(["Account", "Gestor de Tráfego"])
 def save_link():
     data = request.json
     email = session.get("email")
@@ -805,6 +835,7 @@ def save_link():
                 projeto_pipefy_id=data["pipefy_id"],
                 titulo=data["titulo"],
                 url=data["url"],
+                descricao=data.get("descricao"),
                 icone=data.get("icone", "fa-link"),
                 criado_por=email,
                 created_at=dt.now()
@@ -818,6 +849,7 @@ def save_link():
 
 @app.route("/api/operacao/links/<int:link_id>", methods=["DELETE"])
 @check_session
+@check_access(["Account", "Gestor de Tráfego"])
 def delete_link(link_id):
     try:
         with Session() as db:

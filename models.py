@@ -348,6 +348,7 @@ class OperacaoLinkUtil(Base):
     projeto_pipefy_id = Column(Integer, nullable=False)
     titulo = Column(String(200), nullable=False)
     url = Column(Text, nullable=False)
+    descricao = Column(Text)
     icone = Column(String(50), default='fa-link')
     criado_por = Column(Text)
     created_at = Column(DateTime)

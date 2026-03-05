@@ -408,15 +408,16 @@ async function loadLinks(pipefyId) {
         }
 
         grid.innerHTML = data.map(lk => `
-            <div class="access-link-card" style="position:relative;">
+            <div class="access-link-card" style="position:relative; display: flex; flex-direction: column; height: 100%;">
                 <button onclick="deleteLink(${lk.id})" title="Remover link"
                     style="position:absolute;top:10px;right:10px;background:none;border:none;color:#888;cursor:pointer;font-size:0.9rem;">
                     <i class="fas fa-trash-alt"></i>
                 </button>
-                <a href="${lk.url}" target="_blank" rel="noopener" style="text-decoration:none;display:block;">
+                <a href="${lk.url}" target="_blank" rel="noopener" style="text-decoration:none;display:block;flex: 1;">
                     <div class="op-icon-box" style="margin-bottom:10px;"><i class="fas ${lk.icone || 'fa-link'}"></i></div>
-                    <div style="font-weight:600;font-size:0.9rem;color:var(--text-main);">${lk.titulo}</div>
-                    <div style="font-size:0.75rem;color:var(--text-muted);margin-top:4px;word-break:break-all;">${lk.url}</div>
+                    <div style="font-weight:600;font-size:0.9rem;color:var(--text-main); margin-bottom: 4px;">${lk.titulo}</div>
+                    ${lk.descricao ? `<div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:8px;line-height:1.4;">${lk.descricao}</div>` : ''}
+                    <div style="font-size:0.75rem;color:var(--accent-red);word-break:break-all;opacity:0.8;">${lk.url}</div>
                 </a>
             </div>`).join('');
     } catch (e) { console.error("Erro ao carregar links:", e); }
@@ -425,13 +426,14 @@ async function loadLinks(pipefyId) {
 async function saveLink() {
     const titulo = document.getElementById('link-titulo').value.trim();
     const url = document.getElementById('link-url').value.trim();
+    const descricao = document.getElementById('link-descricao').value.trim();
     const icone = document.getElementById('link-icone').value.trim() || 'fa-link';
 
     if (!titulo || !url) { showToast('Título e URL são obrigatórios.', 'error'); return; }
 
     const payload = {
         pipefy_id: currentProject.pipefy_id,
-        titulo, url, icone
+        titulo, url, descricao, icone
     };
 
     try {
@@ -445,7 +447,8 @@ async function saveLink() {
             closeGTModal('modal-novo-link');
             document.getElementById('link-titulo').value = '';
             document.getElementById('link-url').value = '';
-            document.getElementById('link-icone').value = '';
+            document.getElementById('link-descricao').value = '';
+            document.getElementById('link-icone').value = 'fa-link';
             loadLinks(currentProject.pipefy_id);
         }
     } catch (e) { console.error(e); }
@@ -563,8 +566,11 @@ function goToPlanStep2() {
     document.getElementById('display-wizard-date').innerText = `${m} ${y}`;
     document.getElementById('plan-step-1').classList.remove('active');
     document.getElementById('plan-step-2').classList.add('active');
-    editorRows = [];
-    addEditorRow();
+
+    // Inicializa editorRows apenas se estiver vazio
+    if (editorRows.length === 0) {
+        addEditorRow();
+    }
     calculateEditorValues();
 }
 

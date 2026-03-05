@@ -491,7 +491,7 @@
                             <input type="number" id="wizard-total-budget" class="gt-wizard-input" value="0"
                                 oninput="calculateEditorValues()">
                         </div>
-                        <button class="btn-add-line-wizard" onclick="addEditorRow()">
+                        <button type="button" class="btn-add-line-wizard" onclick="addEditorRow()">
                             <i class="fas fa-plus"></i> Adicionar Campanha
                         </button>
                     </div>
@@ -847,6 +847,12 @@
             <div class="gt-form-group">
                 <label class="gt-form-label">URL *</label>
                 <input type="url" id="link-url" class="gt-form-input" placeholder="https://...">
+            </div>
+
+            <div class="gt-form-group">
+                <label class="gt-form-label">Descrição (Opcional)</label>
+                <textarea id="link-descricao" class="gt-form-input" style="height: 80px; resize: vertical;"
+                    placeholder="Breve resumo sobre este link..."></textarea>
             </div>
 
             <div class="gt-form-group">
