@@ -20,6 +20,7 @@ from models import (
 from services.remuneracao import calcular_metricas_mensais
 from services.delivery_engine import process_deliveries, process_all_deliveries_for_project
 from services.delivery_service import DeliveryService
+from services.operacao_service import OperacaoService
 
 # Cria as tabelas caso não existam no banco
 Base.metadata.create_all(engine)
@@ -85,6 +86,7 @@ def recalculate_investor_mrr(db, email, mes, ano):
         email_investidor=email, mes=mes, ano=ano
     ).first()
     if metrica:
+        metrica.fixo_mrr_atual = total_mrr
         metrica.fixo_mrr_entrega = total_mrr
         db.commit()
     return total_mrr
@@ -264,7 +266,23 @@ def hub_remuneracao():
             clients_map = {email: count for email, count in client_counts}
 
             # 2. Busca projetos vinculados por investidor para mapeamento
-            all_vinculos = db.query(InvestidorProjeto).all()
+            # Considera apenas projetos ativos ou inativados no mês corrente
+            hoje = dt.now()
+            mes_atual = hoje.month
+            ano_atual = hoje.year
+
+            from sqlalchemy import extract, or_, and_
+            all_vinculos = db.query(InvestidorProjeto).filter(
+                or_(
+                    InvestidorProjeto.active == True,
+                    and_(
+                        InvestidorProjeto.active == False,
+                        extract('month', InvestidorProjeto.inactivated_at) == mes_atual,
+                        extract('year', InvestidorProjeto.inactivated_at) == ano_atual
+                    )
+                )
+            ).all()
+
             projetos_map = {}
             for v in all_vinculos:
                 if v.email_investidor not in projetos_map:
@@ -308,7 +326,7 @@ def hub_remuneracao():
                     "clients_count": clients_map.get(email, 0),
                     "fixed_fee": float(metrica.fixo_remuneracao_fixa or 0),
                     "projetos_vinculados": json.dumps(projetos_map.get(email, [])),
-                    "mrr": float(metrica.fixo_mrr_atual or 0),
+                    "mrr": float(metrica.fixo_mrr_entrega or 0),
                     "mrrTotal": float(metrica.fixo_mrr_projeto_total or 0),
                     "mrrEsperado": float(metrica.fixo_mrr_esperado or 0),
                     "mrrTeto": float(metrica.fixo_mrr_teto or 0),
@@ -321,12 +339,12 @@ def hub_remuneracao():
 
             investidores_dict[email]["rows"].append({
                 "month_year": f"{metrica.mes:02d}/{metrica.ano}",
-                "mrr": float(metrica.fixo_mrr_atual or 0),
+                "mrr": float(metrica.fixo_mrr_entrega or 0),
                 "mrrTotal": float(metrica.fixo_mrr_projeto_total or 0),
                 "churn": float(metrica.calc_churn_real_percentual or 0),
                 "churn_rs": float(metrica.fixo_churn_atual or 0),
                 "variable_brl": float(metrica.calc_variavel_total or 0),
-                "total_brl": float(metrica.calc_remuneracao_total or 0),
+                "total_brl": max(float(metrica.calc_remuneracao_total or 0), float(metrica.fixo_remuneracao_minima or 0)),
                 "rem_min": float(metrica.fixo_remuneracao_minima or 0),
                 "rem_max": float(metrica.fixo_remuneracao_maxima or 0),
                 "yellow_streak": metrica.yellow_streak or 0,
@@ -394,18 +412,7 @@ def operacao():
     
     try:
         with Session() as db:
-            # Busca projetos vinculados ao investidor
-            if squad == "Gerência":
-                projetos = db.query(ProjetoAtivo).all()
-            else:
-                projetos = db.query(ProjetoAtivo).join(
-                    InvestidorProjeto, ProjetoAtivo.pipefy_id == InvestidorProjeto.pipefy_id_projeto
-                ).filter(
-                    InvestidorProjeto.email_investidor == email,
-                    InvestidorProjeto.active == True
-                ).all()
-            
-            meus_projetos = [_projeto_to_dict(p) for p in projetos]
+            meus_projetos = OperacaoService.get_projetos_operacao(db, email, squad)
             
     except SQLAlchemyError as e:
         print(f"Erro ao carregar operação: {e}")

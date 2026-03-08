@@ -86,15 +86,26 @@ def _check_trigger(db, delivery_type: str, email: str, pipefy_id: int, mes: int,
 
     elif delivery_type in ("planner_monday", "config_conta"):
         # ≥4 tarefas semanais registradas para este projeto neste mês
-        # (aproximação: semanas do mês pelo ano e referência)
-        from sqlalchemy import and_
-        # Semanas do mês (aproximação: W01–W53, filtrando pelo ano e mês via created_at)
-        return db.query(OperacaoTarefa).filter(
+        # como created_at pode ser null, extraímos o mês da referência (ex: '2026-W09')
+        from datetime import datetime
+        tarefas = db.query(OperacaoTarefa).filter(
             OperacaoTarefa.projeto_pipefy_id == pipefy_id,
             OperacaoTarefa.tipo == 'semanal',
             OperacaoTarefa.ano == ano,
-            extract('month', OperacaoTarefa.created_at) == mes,
-        ).count() >= 4
+        ).all()
+        
+        count = 0
+        for t in tarefas:
+            try:
+                if t.referencia and '-W' in t.referencia:
+                    y, w = map(int, t.referencia.split('-W'))
+                    d = datetime.fromisocalendar(y, w, 1)
+                    if d.month == mes:
+                        count += 1
+            except Exception:
+                pass
+                
+        return count >= 4
 
     elif delivery_type == "forecasting":
         # ≥1 tarefa quarter registrada (não precisa estar concluída)

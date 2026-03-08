@@ -68,9 +68,29 @@ class DeliveryService:
                 active=True
             ).first()
             
-            fee_base = Decimal(str(vinculo.fee_contribuicao or 0)) if vinculo else Decimal("0")
-            if vinculo and vinculo.cientista:
-                fee_base *= Decimal("1.5")
+            # Use fee_contribuicao se existir e > 0, senão cai para fee_projeto
+            fee_base = Decimal("0")
+            if vinculo:
+                # Achar a moeda do projeto
+                from models import ProjetoAtivo, ProjetoOnetime
+                proj_ativo = db.query(ProjetoAtivo).filter_by(pipefy_id=client_id).first()
+                if not proj_ativo:
+                    proj_ativo = db.query(ProjetoOnetime).filter_by(pipefy_id=client_id).first()
+                
+                moeda = proj_ativo.moeda if proj_ativo else "BRL"
+
+                fee_contri = Decimal(str(vinculo.fee_contribuicao or 0))
+                fee_proj = Decimal(str(vinculo.fee_projeto or 0))
+                fee_base = fee_contri if fee_contri > 0 else fee_proj
+                
+                # Conversão
+                if moeda == "USD":
+                    from services.currency import CurrencyService
+                    rate = CurrencyService.get_usd_to_brl_rate()
+                    fee_base *= rate
+
+                if vinculo.cientista:
+                    fee_base *= Decimal("1.5")
 
             # 4. Verificar Gatilho (Trigger)
             triggered = DeliveryService._check_trigger(db, delivery_type, email, client_id, month, year)
@@ -175,12 +195,24 @@ class DeliveryService:
             ).count() >= 1
 
         elif delivery_type in ("planner_monday", "config_conta"):
-            return db.query(OperacaoTarefa).filter(
+            from datetime import datetime
+            tarefas = db.query(OperacaoTarefa).filter(
                 OperacaoTarefa.projeto_pipefy_id == pipefy_id,
                 OperacaoTarefa.tipo == 'semanal',
                 OperacaoTarefa.ano == ano,
-                extract('month', OperacaoTarefa.created_at) == mes,
-            ).count() >= 4
+            ).all()
+            
+            count = 0
+            for t in tarefas:
+                try:
+                    if t.referencia and '-W' in t.referencia:
+                        y, w = map(int, t.referencia.split('-W'))
+                        d = datetime.fromisocalendar(y, w, 1)
+                        if d.month == mes:
+                            count += 1
+                except Exception:
+                    pass
+            return count >= 4
 
         elif delivery_type == "forecasting":
             quarter = (mes - 1) // 3 + 1
@@ -226,4 +258,5 @@ class DeliveryService:
         ).first()
 
         if metrica:
+            metrica.fixo_mrr_atual = total_mrr
             metrica.fixo_mrr_entrega = total_mrr

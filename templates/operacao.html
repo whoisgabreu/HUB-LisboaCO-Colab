@@ -89,6 +89,8 @@
                                 <div class="op-icon-box"><i class="fas fa-bullseye"></i></div>
                                 <span>Tasks do Quarter</span>
                             </button>
+                            {% if session.get("funcao") == "Gerência" or session.get("funcao") == "Gestor de Tráfego"
+                            %}
                             <button class="op-pill-btn" onclick="switchOperacaoTab('midia')">
                                 <div class="op-icon-box"><i class="fas fa-file-invoice-dollar"></i></div>
                                 <span>Plano de Mídia</span>
@@ -97,17 +99,21 @@
                                 <div class="op-icon-box"><i class="fas fa-bolt"></i></div>
                                 <span>Otimizações</span>
                             </button>
-                            <button class="op-pill-btn" onclick="switchOperacaoTab('entregas')">
-                                <div class="op-icon-box"><i class="fas fa-check-double"></i></div>
-                                <span>Entregas do Mês</span>
-                            </button>
+                            {% endif %}
                             <button class="op-pill-btn" onclick="switchOperacaoTab('links')">
                                 <div class="op-icon-box"><i class="fas fa-link"></i></div>
                                 <span>Links Úteis</span>
                             </button>
+                            {% if session.get("funcao") == "Gerência" or session.get("funcao") == "Account"
+                            %}
                             <button class="op-pill-btn" onclick="switchOperacaoTab('checkin')">
                                 <div class="op-icon-box"><i class="fas fa-calendar-check"></i></div>
                                 <span>Checkin Semanal</span>
+                            </button>
+                            {% endif %}
+                            <button class="op-pill-btn" onclick="switchOperacaoTab('entregas')">
+                                <div class="op-icon-box"><i class="fas fa-check-double"></i></div>
+                                <span>Entregas do Mês</span>
                             </button>
                         </div>
                     </div>
@@ -293,15 +299,6 @@
                             </button>
                         </header>
 
-                        <div class="entregas-grid" id="entregas-grid">
-                            <!-- Entregas geradas dinamicamente pelo JS com base no cargo do usuário -->
-                            <div style="text-align:center;padding:3rem;color:var(--text-muted);">
-                                <i class="fas fa-spinner fa-spin"
-                                    style="font-size:1.5rem;margin-bottom:1rem;display:block;"></i>
-                                Carregando entregas do mês...
-                            </div>
-                        </div>
-
                         <div class="kpi-card-premium"
                             style="margin-top: 2rem; border-top: 2px solid var(--border-color); background: rgba(0,255,0,0.05);">
                             <div style="font-size: 0.8rem; color: #888; text-transform: uppercase;">IMPACTO NO MRR
@@ -312,6 +309,15 @@
                             <p style="font-size: 0.75rem; color: var(--text-muted);">Baseado no percentual entregue
                                 versus o fee do projeto.</p>
                         </div>
+                        <div class="entregas-grid" id="entregas-grid">
+                            <!-- Entregas geradas dinamicamente pelo JS com base no cargo do usuário -->
+                            <div style="text-align:center;padding:3rem;color:var(--text-muted);">
+                                <i class="fas fa-spinner fa-spin"
+                                    style="font-size:1.5rem;margin-bottom:1rem;display:block;"></i>
+                                Carregando entregas do mês...
+                            </div>
+                        </div>
+
                     </section>
 
                     <!-- 6. LINKS ÚTEIS -->
