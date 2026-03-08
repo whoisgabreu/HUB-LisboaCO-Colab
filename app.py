@@ -10,8 +10,17 @@ import os
 import json
 
 from database import Session, engine, Base
-from models import Investidor, Auth, ProjetoAtivo, ProjetoOnetime, ProjetoInativo, MetricaMensal, InvestidorProjeto, OperacaoTarefa, OperacaoEntregaMensal, OperacaoPlanoMidia, OperacaoOtimizacao, OperacaoCheckin
+from models import (
+    Investidor, Auth, ProjetoAtivo, ProjetoOnetime, ProjetoInativo,
+    MetricaMensal, InvestidorProjeto,
+    OperacaoTarefa, OperacaoEntregaMensal, OperacaoPlanoMidia,
+    OperacaoOtimizacao, OperacaoCheckin,
+    MonthlyDelivery, OperacaoLinkUtil
+)
 from services.remuneracao import calcular_metricas_mensais
+from services.delivery_engine import process_deliveries, process_all_deliveries_for_project
+from services.delivery_service import DeliveryService
+from services.operacao_service import OperacaoService
 
 # Cria as tabelas caso não existam no banco
 Base.metadata.create_all(engine)
@@ -24,7 +33,7 @@ scheduler = APScheduler()
 
 def job_recalcular_remuneracao():
     """Tarefa agendada para rodar diariamente."""
-    print(f"[{datetime.now()}] Iniciando recalculo automatico de remuneracao...")
+    print(f"[{dt.now()}] Iniciando recalculo automatico de remuneracao...")
     from datetime import datetime as dt
     from services.remuneracao import calcular_metricas_mensais
     try:
@@ -68,19 +77,17 @@ def check_access(roles):
 # ─── HELPERS ────────────────────────────────────────────────────────────────
 
 def recalculate_investor_mrr(db, email, mes, ano):
-    """Recalcula o MRR total do investidor somando as entregas de todos os seus projetos."""
-    entregas = db.query(OperacaoEntregaMensal).filter_by(
-        investidor_email=email, mes=mes, ano=ano
+    """Recalcula o MRR total do investidor somando as contribuições de monthly_deliveries."""
+    entregas = db.query(MonthlyDelivery).filter_by(
+        email=email, month=mes, year=ano, status='completed'
     ).all()
-    
-    total_mrr = sum(float(e.valor_contribuicao_mrr or 0) for e in entregas)
-    
+    total_mrr = sum(float(e.mrr_contribution or 0) for e in entregas)
     metrica = db.query(MetricaMensal).filter_by(
         email_investidor=email, mes=mes, ano=ano
     ).first()
-    
     if metrica:
         metrica.fixo_mrr_atual = total_mrr
+        metrica.fixo_mrr_entrega = total_mrr
         db.commit()
     return total_mrr
 
@@ -245,8 +252,9 @@ def hub_projetos():
     )
 
 
-@app.route("/hub-remuneracao", methods=["GET"])
+@app.route("/hub-remuneracao")
 @check_session
+@check_access(["Gerência"])
 def hub_remuneracao():
     try:
         with Session() as db:
@@ -258,7 +266,23 @@ def hub_remuneracao():
             clients_map = {email: count for email, count in client_counts}
 
             # 2. Busca projetos vinculados por investidor para mapeamento
-            all_vinculos = db.query(InvestidorProjeto).all()
+            # Considera apenas projetos ativos ou inativados no mês corrente
+            hoje = dt.now()
+            mes_atual = hoje.month
+            ano_atual = hoje.year
+
+            from sqlalchemy import extract, or_, and_
+            all_vinculos = db.query(InvestidorProjeto).filter(
+                or_(
+                    InvestidorProjeto.active == True,
+                    and_(
+                        InvestidorProjeto.active == False,
+                        extract('month', InvestidorProjeto.inactivated_at) == mes_atual,
+                        extract('year', InvestidorProjeto.inactivated_at) == ano_atual
+                    )
+                )
+            ).all()
+
             projetos_map = {}
             for v in all_vinculos:
                 if v.email_investidor not in projetos_map:
@@ -302,7 +326,7 @@ def hub_remuneracao():
                     "clients_count": clients_map.get(email, 0),
                     "fixed_fee": float(metrica.fixo_remuneracao_fixa or 0),
                     "projetos_vinculados": json.dumps(projetos_map.get(email, [])),
-                    "mrr": float(metrica.fixo_mrr_atual or 0),
+                    "mrr": float(metrica.fixo_mrr_entrega or 0),
                     "mrrTotal": float(metrica.fixo_mrr_projeto_total or 0),
                     "mrrEsperado": float(metrica.fixo_mrr_esperado or 0),
                     "mrrTeto": float(metrica.fixo_mrr_teto or 0),
@@ -315,12 +339,12 @@ def hub_remuneracao():
 
             investidores_dict[email]["rows"].append({
                 "month_year": f"{metrica.mes:02d}/{metrica.ano}",
-                "mrr": float(metrica.fixo_mrr_atual or 0),
+                "mrr": float(metrica.fixo_mrr_entrega or 0),
                 "mrrTotal": float(metrica.fixo_mrr_projeto_total or 0),
                 "churn": float(metrica.calc_churn_real_percentual or 0),
                 "churn_rs": float(metrica.fixo_churn_atual or 0),
                 "variable_brl": float(metrica.calc_variavel_total or 0),
-                "total_brl": float(metrica.calc_remuneracao_total or 0),
+                "total_brl": max(float(metrica.calc_remuneracao_total or 0), float(metrica.fixo_remuneracao_minima or 0)),
                 "rem_min": float(metrica.fixo_remuneracao_minima or 0),
                 "rem_max": float(metrica.fixo_remuneracao_maxima or 0),
                 "yellow_streak": metrica.yellow_streak or 0,
@@ -388,18 +412,7 @@ def operacao():
     
     try:
         with Session() as db:
-            # Busca projetos vinculados ao investidor
-            if squad == "Gerência":
-                projetos = db.query(ProjetoAtivo).all()
-            else:
-                projetos = db.query(ProjetoAtivo).join(
-                    InvestidorProjeto, ProjetoAtivo.pipefy_id == InvestidorProjeto.pipefy_id_projeto
-                ).filter(
-                    InvestidorProjeto.email_investidor == email,
-                    InvestidorProjeto.active == True
-                ).all()
-            
-            meus_projetos = [_projeto_to_dict(p) for p in projetos]
+            meus_projetos = OperacaoService.get_projetos_operacao(db, email, squad)
             
     except SQLAlchemyError as e:
         print(f"Erro ao carregar operação: {e}")
@@ -410,6 +423,7 @@ def operacao():
 
 @app.route("/criativa", methods=["GET"])
 @check_session
+@check_access(["Designer", "WebDesigner"])
 def criativa():
     return render_template("criativa.html")
 
@@ -418,6 +432,7 @@ def criativa():
 
 @app.route("/api/operacao/tarefas/<int:pipefy_id>", methods=["GET"])
 @check_session
+@check_access(["Account", "Gestor de Tráfego"])
 def get_tarefas(pipefy_id):
     tipo = request.args.get("tipo", "semanal")
     referencia = request.args.get("referencia")
@@ -439,6 +454,7 @@ def get_tarefas(pipefy_id):
 
 @app.route("/api/operacao/tarefas", methods=["POST"])
 @check_session
+@check_access(["Account", "Gestor de Tráfego"])
 def save_tarefa():
     data = request.json
     try:
@@ -459,6 +475,17 @@ def save_tarefa():
                 )
                 db.add(tarefa)
             db.commit()
+            
+            # Trigger DeliveryService for relevant types based on task type (E4)
+            email_sessao = session.get("email")
+            if tarefa.tipo == 'quarter':
+                DeliveryService.checkAndComplete(email_sessao, tarefa.projeto_pipefy_id, 'relatorio_account', dt.now().month, dt.now().year)
+                DeliveryService.checkAndComplete(email_sessao, tarefa.projeto_pipefy_id, 'relatorio_gt', dt.now().month, dt.now().year)
+                DeliveryService.checkAndComplete(email_sessao, tarefa.projeto_pipefy_id, 'forecasting', dt.now().month, dt.now().year)
+            elif tarefa.tipo == 'semanal':
+                DeliveryService.checkAndComplete(email_sessao, tarefa.projeto_pipefy_id, 'planner_monday', dt.now().month, dt.now().year)
+                DeliveryService.checkAndComplete(email_sessao, tarefa.projeto_pipefy_id, 'config_conta', dt.now().month, dt.now().year)
+
             return jsonify({"status": "success", "id": tarefa.id})
     except SQLAlchemyError as e:
         return jsonify({"error": str(e)}), 500
@@ -466,6 +493,7 @@ def save_tarefa():
 
 @app.route("/api/operacao/entregas/<int:pipefy_id>/<int:mes>/<int:ano>", methods=["GET"])
 @check_session
+@check_access(["Account", "Gestor de Tráfego"])
 def get_entregas(pipefy_id, mes, ano):
     email = session.get("email")
     try:
@@ -487,6 +515,44 @@ def get_entregas(pipefy_id, mes, ano):
             })
     except SQLAlchemyError as e:
         return jsonify({"error": str(e)}), 500
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ENDPOINT: MONTHLY DELIVERIES (ENTREGAS AUTOMÁTICAS – READ ONLY)
+# ─────────────────────────────────────────────────────────────────────────────
+
+@app.route("/api/operacao/monthly-deliveries/<int:pipefy_id>/<int:mes>/<int:ano>", methods=["GET"])
+@check_session
+@check_access(["Account", "Gestor de Tráfego"])
+def get_monthly_deliveries(pipefy_id, mes, ano):
+    """Retorna as entregas automáticas do mês para o usuário logado neste projeto."""
+    email = session.get("email")
+    try:
+        with Session() as db:
+            entregas = db.query(MonthlyDelivery).filter_by(
+                email=email,
+                client_id=pipefy_id,
+                month=mes,
+                year=ano,
+            ).all()
+            return jsonify([{
+                "id": e.id,
+                "role": e.role,
+                "delivery_type": e.delivery_type,
+                "status": e.status,
+                "fee_snapshot": float(e.fee_snapshot or 0),
+                "mrr_contribution": float(e.mrr_contribution or 0),
+                "completed_at": e.completed_at.isoformat() if e.completed_at else None,
+            } for e in entregas])
+    except SQLAlchemyError as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/operacao/entregas", methods=["POST"])
+@check_session
+def block_manual_entrega():
+    """Marcação manual de entregas foi desabilitada. Entregas são 100% automáticas."""
+    return jsonify({"error": "Marcação manual de entregas não é permitida. As entregas são geradas automaticamente pelo sistema."}), 403
 
 @app.route("/api/remuneracao/processar")
 @check_session
@@ -567,41 +633,60 @@ def atualizar_entregas_automaticas(db, pipefy_id, mes, ano, investidor_email):
 
 @app.route("/api/operacao/plano-midia", methods=["POST"])
 @check_session
+@check_access(["Gestor de Tráfego"])
 def save_plano_midia():
     data = request.json
     email = session.get("email")
+    print(f"DEBUG: save_plano_midia POST - Email: {email}, ID: {data.get('pipefy_id')}, Mes: {data.get('mes')}")
     try:
         with Session() as db:
+            # Filtrar por email também para evitar conflitos de cargos
             plano = db.query(OperacaoPlanoMidia).filter_by(
-                projeto_pipefy_id=data["pipefy_id"], mes=data["mes"], ano=data["ano"]
+                projeto_pipefy_id=data["pipefy_id"], 
+                mes=data["mes"], 
+                ano=data["ano"],
+                investidor_email=email
             ).first()
 
             if not plano:
+                print("DEBUG: Creating new plan record")
                 plano = OperacaoPlanoMidia(
                     projeto_pipefy_id=data["pipefy_id"], mes=data["mes"], ano=data["ano"],
                     investidor_email=email, created_at=dt.now()
                 )
                 db.add(plano)
+            else:
+                print("DEBUG: Updating existing plan record")
             
-            plano.dados_plano = data["dados_plano"]
+            plano.dados_plano = data.get("dados_plano", {})
             plano.updated_at = dt.now()
             db.commit()
 
-            # Trigger automação
-            atualizar_entregas_automaticas(db, data["pipefy_id"], data["mes"], data["ano"], email)
-            
-            return jsonify({"status": "success"})
+        # Trigger delivery_engine and DeliveryService (E4)
+        DeliveryService.checkAndComplete(email, data["pipefy_id"], "plano_midia", data["mes"], data["ano"])
+        res_engine = process_deliveries(email, data["pipefy_id"], data["mes"], data["ano"])
+        print(f"DEBUG: Delivery engine result: {res_engine}")
+        return jsonify({"status": "success", "engine": res_engine})
     except SQLAlchemyError as e:
         return jsonify({"error": str(e)}), 500
 
 @app.route("/api/operacao/plano-midia/<int:pipefy_id>/<int:mes>/<int:ano>", methods=["GET"])
 @check_session
+@check_access(["Account", "Gestor de Tráfego"])
 def get_plano_midia(pipefy_id, mes, ano):
     try:
         with Session() as db:
+            # Primeiro tenta buscar o plano do próprio usuário
             plano = db.query(OperacaoPlanoMidia).filter_by(
-                projeto_pipefy_id=pipefy_id, mes=mes, ano=ano
+                projeto_pipefy_id=pipefy_id, mes=mes, ano=ano,
+                investidor_email=session.get("email")
             ).first()
+
+            # Se não houver do usuário, tenta qualquer um do projeto para visualização/compartilhamento
+            if not plano:
+                plano = db.query(OperacaoPlanoMidia).filter_by(
+                    projeto_pipefy_id=pipefy_id, mes=mes, ano=ano
+                ).first()
             if plano:
                 return jsonify({
                     "id": plano.id,
@@ -614,6 +699,7 @@ def get_plano_midia(pipefy_id, mes, ano):
 
 @app.route("/api/operacao/otimizacao", methods=["POST"])
 @check_session
+@check_access(["Gestor de Tráfego"])
 def save_otimizacao_api():
     data = request.json
     email = session.get("email")
@@ -631,16 +717,17 @@ def save_otimizacao_api():
             db.add(nova)
             db.commit()
 
-            # Trigger automação
-            d = nova.data_otimizacao
-            atualizar_entregas_automaticas(db, data["pipefy_id"], d.month, d.year, email)
-
-            return jsonify({"status": "success"})
+        # Trigger delivery_engine and DeliveryService (E4)
+        d = dt.strptime(data["data"], "%Y-%m-%d")
+        DeliveryService.checkAndComplete(email, data["pipefy_id"], "otimizacao", d.month, d.year)
+        process_deliveries(email, data["pipefy_id"], d.month, d.year)
+        return jsonify({"status": "success"})
     except SQLAlchemyError as e:
         return jsonify({"error": str(e)}), 500
 
 @app.route("/api/operacao/checkin", methods=["POST"])
 @check_session
+@check_access(["Account"])
 def save_checkin():
     data = request.json
     email = session.get("email")
@@ -661,12 +748,17 @@ def save_checkin():
             )
             db.add(novo)
             db.commit()
-            return jsonify({"status": "success"})
+
+        # Trigger delivery_engine and DeliveryService (E4)
+        DeliveryService.checkAndComplete(email, data["pipefy_id"], "checkin", dt.now().month, dt.now().year)
+        process_deliveries(email, data["pipefy_id"], dt.now().month, dt.now().year)
+        return jsonify({"status": "success"})
     except SQLAlchemyError as e:
         return jsonify({"error": str(e)}), 500
 
 @app.route("/api/operacao/checkins/<int:pipefy_id>", methods=["GET"])
 @check_session
+@check_access(["Account", "Gestor de Tráfego"])
 def get_checkins(pipefy_id):
     try:
         with Session() as db:
@@ -684,6 +776,98 @@ def get_checkins(pipefy_id):
             } for c in checkins])
     except SQLAlchemyError as e:
         return jsonify({"error": str(e)}), 500
+
+
+# ─── GET OTIMIZAÇÕES ─────────────────────────────────────────────────────────
+
+@app.route("/api/operacao/otimizacoes/<int:pipefy_id>", methods=["GET"])
+@check_session
+@check_access(["Account", "Gestor de Tráfego"])
+def get_otimizacoes(pipefy_id):
+    """Lista todas as otimizações registradas para um projeto."""
+    email = session.get("email")
+    squad = session.get("squad")
+    try:
+        with Session() as db:
+            query = db.query(OperacaoOtimizacao).filter_by(projeto_pipefy_id=pipefy_id)
+            if squad != "Gerência":
+                query = query.filter_by(investidor_email=email)
+            otimizacoes = query.order_by(OperacaoOtimizacao.data_otimizacao.desc()).all()
+            return jsonify([{
+                "id": o.id,
+                "tipo": o.tipo,
+                "canal": o.canal,
+                "data": o.data_otimizacao.strftime("%d/%m/%Y") if o.data_otimizacao else "",
+                "detalhes": o.detalhes,
+                "criado_em": o.created_at.strftime("%d/%m/%Y") if o.created_at else ""
+            } for o in otimizacoes])
+    except SQLAlchemyError as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# ─── LINKS ÚTEIS ─────────────────────────────────────────────────────────────
+
+@app.route("/api/operacao/links/<int:pipefy_id>", methods=["GET"])
+@check_session
+@check_access(["Account", "Gestor de Tráfego"])
+def get_links(pipefy_id):
+    try:
+        with Session() as db:
+            links = db.query(OperacaoLinkUtil).filter_by(
+                projeto_pipefy_id=pipefy_id
+            ).order_by(OperacaoLinkUtil.created_at.desc()).all()
+            return jsonify([{
+                "id": lk.id,
+                "titulo": lk.titulo,
+                "url": lk.url,
+                "descricao": lk.descricao,
+                "icone": lk.icone or "fa-link",
+                "criado_por": lk.criado_por
+            } for lk in links])
+    except SQLAlchemyError as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/operacao/links", methods=["POST"])
+@check_session
+@check_access(["Account", "Gestor de Tráfego"])
+def save_link():
+    data = request.json
+    email = session.get("email")
+    try:
+        with Session() as db:
+            if not data.get("titulo") or not data.get("url"):
+                return jsonify({"error": "Título e URL são obrigatórios."}), 400
+            lk = OperacaoLinkUtil(
+                projeto_pipefy_id=data["pipefy_id"],
+                titulo=data["titulo"],
+                url=data["url"],
+                descricao=data.get("descricao"),
+                icone=data.get("icone", "fa-link"),
+                criado_por=email,
+                created_at=dt.now()
+            )
+            db.add(lk)
+            db.commit()
+            return jsonify({"status": "success", "id": lk.id})
+    except SQLAlchemyError as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/operacao/links/<int:link_id>", methods=["DELETE"])
+@check_session
+@check_access(["Account", "Gestor de Tráfego"])
+def delete_link(link_id):
+    try:
+        with Session() as db:
+            lk = db.get(OperacaoLinkUtil, link_id)
+            if lk:
+                db.delete(lk)
+                db.commit()
+            return jsonify({"status": "success"})
+    except SQLAlchemyError as e:
+        return jsonify({"error": str(e)}), 500
+
 
 @app.route("/cockpit", methods=["GET"])
 @check_session

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, Date, Text, DECIMAL, BigInteger, FetchedValue
+from sqlalchemy import Column, Integer, String, Boolean, Date, Text, DECIMAL, BigInteger, FetchedValue, DateTime, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB
 from database import Base
 
@@ -306,3 +306,49 @@ class OperacaoCheckin(Base):
     csat_pontuacao = Column(Integer)
     observacoes = Column(Text)
     created_at = Column(Date)
+
+
+class MonthlyDelivery(Base):
+    """
+    Tabela: plataforma_geral.monthly_deliveries
+    Entregas mensais fixas, geradas automaticamente por cargo.
+    Isoladas por: usuário + cliente + cargo + tipo + competência.
+    UNIQUE constraint garante idempotência (sem duplicatas).
+    """
+    __tablename__ = "monthly_deliveries"
+    __table_args__ = (
+        UniqueConstraint(
+            "email", "client_id", "role", "delivery_type", "month", "year",
+            name="uq_monthly_delivery_per_user_client_role"
+        ),
+        {"schema": "plataforma_geral"}
+    )
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer)                           # FK → investidores.id
+    client_id = Column(Integer, nullable=False)         # FK → projetos_ativos.pipefy_id
+    email = Column(Text, nullable=False)
+    role = Column(String(50), nullable=False)           # 'Account' | 'Gestor de Tráfego'
+    delivery_type = Column(String(100), nullable=False)  # 'checkin', 'plano_midia', etc.
+    month = Column(Integer, nullable=False)
+    year = Column(Integer, nullable=False)
+    status = Column(String(20), default='pending')      # 'pending' | 'completed'
+    completed_at = Column(DateTime)
+    fee_snapshot = Column(DECIMAL(15, 2))               # fee no momento do cálculo
+    mrr_contribution = Column(DECIMAL(15, 2))           # fee_snapshot * 0.25
+    created_at = Column(DateTime)
+
+
+class OperacaoLinkUtil(Base):
+    """Tabela: plataforma_geral.operacao_links_uteis"""
+    __tablename__ = "operacao_links_uteis"
+    __table_args__ = {"schema": "plataforma_geral"}
+
+    id = Column(Integer, primary_key=True)
+    projeto_pipefy_id = Column(Integer, nullable=False)
+    titulo = Column(String(200), nullable=False)
+    url = Column(Text, nullable=False)
+    descricao = Column(Text)
+    icone = Column(String(50), default='fa-link')
+    criado_por = Column(Text)
+    created_at = Column(DateTime)
