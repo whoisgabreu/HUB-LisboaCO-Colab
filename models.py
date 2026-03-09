@@ -20,6 +20,7 @@ class Investidor(Base):
     cpf = Column(String(11))
     telefone = Column(String(15))
     nivel = Column(Text)
+    profile_picture = Column(String(250))
 
 
 class Auth(Base):

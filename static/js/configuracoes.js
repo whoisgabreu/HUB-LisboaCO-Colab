@@ -108,19 +108,35 @@
         }
     }
 
+
+    // Alterar função para que envie a imagem para o backend /upload-profile-picture
     window.salvarFotoPerfil = function () {
         const preview = document.getElementById('previewAvatar');
+        const file = document.getElementById('uploadFoto').files[0];
         if (preview && preview.src.startsWith('data:image')) {
             try {
-                localStorage.setItem('fotoPerfil', preview.src);
-
-                // Atualizar no header imediatamente
-                const headerAvatar = document.getElementById('headerUserAvatar');
-                if (headerAvatar) headerAvatar.src = preview.src;
-
-                alert('Foto de perfil salva com sucesso!');
+                const formData = new FormData();
+                formData.append('foto', file);
+                fetch('/upload-profile-picture', {
+                    method: 'POST',
+                    body: formData
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.mensagem === 'Foto salva com sucesso') {
+                            // localStorage.setItem('fotoPerfil', data.caminho);
+                            const headerAvatar = document.getElementById('headerUserAvatar');
+                            if (headerAvatar) headerAvatar.src = data.caminho;
+                            showToast('Foto de perfil salva com sucesso!', 'sucesso');
+                        } else {
+                            showToast(data.mensagem, 'erro');
+                        }
+                    })
+                    .catch(error => {
+                        showToast('Erro ao salvar foto: ' + error.message, 'erro');
+                    });
             } catch (e) {
-                alert('Erro ao salvar foto: a imagem pode ser muito grande para o armazenamento local.');
+                showToast('Erro ao salvar foto: a imagem pode ser muito grande para o armazenamento local.', 'erro');
             }
         }
     };

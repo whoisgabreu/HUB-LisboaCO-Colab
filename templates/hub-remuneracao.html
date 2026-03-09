@@ -66,7 +66,8 @@
                     {% if investors %}
                     {% for inv in investors %}
                     <div class="project-card" data-id="{{ inv.id }}" data-name="{{ inv.name }}"
-                        data-role="{{ inv.role }}" data-squad="{{ inv.squad }}" data-step="{{ inv.step }}"
+                        data-role="{{ inv.role }}" data-squad="{{ inv.squad }}" data-email="{{ inv.email }}"
+                        data-step="{{ inv.step }}"
                         data-yellow-flag="{{ inv.rows[0].yellow_streak if inv.rows|length > 0 else '' }}"
                         data-green-flag="{{ inv.rows[0].green_streak if inv.rows|length > 0 else '' }}"
                         data-clients="{{ inv.clients_count }}" data-fixed="{{ inv.fixed_fee }}" data-mrr="{{ inv.mrr }}"
@@ -83,7 +84,14 @@
                         data-projetos-vinculados="{{ inv.projetos_vinculados }}" onclick="openRemunerationModal(this)">
                         <div class="project-header">
                             <div class="project-icon">
+                                <!-- verificar se arquivo de foto existe na pasta /static/images/profile_pictures/ -->
+                                {% if inv.profile_picture %}
+                                <img style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;"
+                                    src="/static/images/profile_pictures/{{ inv.profile_picture }}"
+                                    alt="Foto de perfil">
+                                {% else %}
                                 <i class="fa-solid fa-user-tie"></i>
+                                {% endif %}
                             </div>
                             {% if inv.rows | length > 0 %}
 

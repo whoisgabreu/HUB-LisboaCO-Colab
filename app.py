@@ -140,6 +140,40 @@ def _buscar_projetos_db(model_class, email_investidor, squad_usuario):
         print(f"Erro ao buscar projetos ({model_class.__tablename__}): {e}")
         return []
 
+# ─── CONFIGURAÇÕES ────────────────────────────────────────────────────────────
+
+UPLOAD_FOLDER = "static/images/profile_pictures"
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
+
+
+@app.route("/upload-profile-picture", methods=["POST"])
+@check_session
+def upload_profile_picture():
+
+    if "foto" not in request.files:
+        return jsonify({"erro": "Nenhum arquivo enviado"}), 400
+
+    arquivo = request.files["foto"]
+
+    if arquivo.filename == "":
+        return jsonify({"erro": "Nome de arquivo vazio"}), 400
+
+    caminho = os.path.join(app.config["UPLOAD_FOLDER"], session["email"] + ".png")
+    arquivo.save(caminho)
+
+    with Session() as db:
+        investidor = db.query(Investidor).filter_by(email=session["email"]).first()
+        if investidor:
+            investidor.profile_picture = session["email"] + ".png"
+            db.commit()
+
+    return jsonify({
+        "mensagem": "Foto salva com sucesso",
+        "arquivo": session["email"] + ".png",
+        "caminho": caminho
+    })
 
 # ─── AUTENTICAÇÃO ────────────────────────────────────────────────────────────
 
@@ -184,6 +218,9 @@ def login():
                     session["senioridade"] = user.senioridade
                     session["squad"] = user.squad
                     session["nivel_acesso"] = user.nivel_acesso
+                    session["profile_picture"] = user.profile_picture
+
+                    print(session)
 
                     return redirect(url_for("home"))
 
@@ -387,6 +424,8 @@ def hub_remuneracao():
                 investidores_dict[email] = {
                     "id": f"inv_{email.replace('@', '_').replace('.', '_')}",
                     "name": investidor.nome,
+                    "email": investidor.email,
+                    "profile_picture": investidor.profile_picture,
                     "role": investidor.funcao,
                     "squad": investidor.squad,
                     "senioridade": metrica.senioridade or investidor.senioridade,
