@@ -27,7 +27,7 @@ class Auth(Base):
     __tablename__ = "auth"
     __table_args__ = {"schema": "plataforma_geral"}
 
-    id = Column(Integer)
+    id = Column(Integer, autoincrement=True)
     email = Column(String(50), primary_key=True)
     token = Column(String(30))
 

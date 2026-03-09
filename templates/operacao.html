@@ -83,11 +83,11 @@
                         <div class="op-tabs-wrapper">
                             <button class="op-pill-btn active" onclick="switchOperacaoTab('dashboard')">
                                 <div class="op-icon-box"><i class="fas fa-tasks"></i></div>
-                                <span>Tasks da Semana</span>
+                                <span>Configurações de Conta</span>
                             </button>
                             <button class="op-pill-btn" onclick="switchOperacaoTab('metas')">
                                 <div class="op-icon-box"><i class="fas fa-bullseye"></i></div>
-                                <span>Tasks do Quarter</span>
+                                <span>Relatórios Mensais</span>
                             </button>
                             {% if session.get("funcao") == "Gerência" or session.get("funcao") == "Gestor de Tráfego"
                             %}
@@ -150,10 +150,10 @@
                         <div class="tasks-header-actions">
                             <div class="op-section-title" style="margin-bottom: 0;">
                                 <div class="op-icon-box"><i class="fas fa-calendar-week"></i></div>
-                                <h3>Tarefas Semanais</h3>
+                                <h3>Gerenciamento de Conta</h3>
                             </div>
                             <button class="btn-add-task" onclick="openGTModal('modal-nova-tarefa')"><i
-                                    class="fas fa-plus"></i> Adicionar Tarefa</button>
+                                    class="fas fa-plus"></i> Registrar Configuração</button>
                         </div>
 
                         <div class="weekly-tasks-container">
@@ -184,10 +184,10 @@
                         <header class="tasks-header-actions" style="margin-bottom: 2rem;">
                             <div class="op-section-title" style="margin-bottom: 0;">
                                 <div class="op-icon-box"><i class="fas fa-bullseye"></i></div>
-                                <h3>Tasks do Quarter</h3>
+                                <h3>Relatórios Mensais</h3>
                             </div>
                             <button class="btn-add-task" onclick="openGTModal('modal-nova-tarefa-quarter')"><i
-                                    class="fas fa-plus"></i> Adicionar Meta</button>
+                                    class="fas fa-plus"></i> Adicionar Relatório</button>
                         </header>
                         <div class="weekly-tasks-container">
                             <div class="task-list" id="quarter-task-list">
