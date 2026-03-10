@@ -61,11 +61,227 @@
                     </div>
                 </div>
 
+
+
+                <!-- ═══════════════════════════════════════════════════════════ -->
+                <!-- Seção Minha Remuneração — visível apenas se houver métricas -->
+                <!-- ═══════════════════════════════════════════════════════════ -->
+                {% if my_remuneracao %}
+                <h3 style="margin-top: 2.5rem; margin-bottom: 1.5rem; color: var(--text-main);">Minhas Métricas</h3>
+
+                <!-- Card de Identificação -->
+                <!-- <section class="remu-investor-card" style="margin-bottom: 1.5rem;">
+                    <div class="remu-investor-info">
+                        <span class="remu-investor-name">{{ my_remuneracao.name }}</span>
+                        <span class="remu-divider">|</span>
+                        <span class="remu-investor-meta">{{ my_remuneracao.role }} | {{ my_remuneracao.squad }}</span>
+                    </div>
+                </section> -->
+
+                <!-- Mini Cards de Métricas -->
+                <div class="remu-metrics">
+
+                    <!-- Clientes -->
+                    <div class="remu-metric-card" id="homeRemuClientsCard" onclick="homeOpenProjectsList()"
+                        style="cursor: pointer; transition: transform 0.2s;"
+                        onmouseover="this.style.transform='translateY(-5px)'"
+                        onmouseout="this.style.transform='translateY(0)'">
+                        <div class="remu-metric-header">
+                            <span class="remu-metric-label">Clientes</span>
+                            <i class="fa-solid fa-users remu-metric-icon"></i>
+                        </div>
+                        <div class="remu-clients-summary"
+                            style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 10px;">
+                            <div class="remu-summary-item">
+                                <span class="remu-summary-label"
+                                    style="font-size: 0.65rem; color: #888; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px; display: block; margin-bottom: 4px;">Ativos
+                                    no mês</span>
+                                <span class="remu-summary-val"
+                                    style="font-size: 1.8rem; font-weight: 800; color: #fff;">{{
+                                    my_remuneracao.clients_count }}</span>
+                            </div>
+                            <div class="remu-summary-item">
+                                <span class="remu-summary-label"
+                                    style="font-size: 0.65rem; color: #888; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px; display: block; margin-bottom: 4px;">Inativos
+                                    no mês</span>
+                                <span class="remu-summary-val"
+                                    style="font-size: 1.8rem; font-weight: 800; color: #555;">{{
+                                    [0, my_remuneracao.projetos_total - my_remuneracao.clients_count] | max
+                                    }}</span>
+                            </div>
+                        </div>
+                        <div
+                            style="margin-top: 12px; text-align: right; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 8px;">
+                            <span
+                                style="font-size: 0.7rem; color: #D61616; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">Ver
+                                listagem completa <i class="fa-solid fa-chevron-right"
+                                    style="font-size: 0.6rem; margin-left: 4px;"></i></span>
+                        </div>
+                    </div>
+
+                    <!-- Remuneração -->
+                    <div class="remu-metric-card">
+                        <div class="remu-metric-header">
+                            <span class="remu-metric-label">Remuneração</span>
+                            <i class="fa-solid fa-wallet remu-metric-icon"></i>
+                        </div>
+                        <div class="remu-values-list">
+                            <div class="remu-value-item primary">
+                                <span class="remu-value-label">Atual</span>
+                                <span class="remu-value-amount" id="homeRemAtual" style="color: #D61616;">...</span>
+                            </div>
+                            <div class="remu-value-item"
+                                style="border-top: 1px solid rgba(255, 255, 255, 0.05); padding-top: 8px;">
+                                <span class="remu-value-label">Fixa</span>
+                                <span class="remu-value-amount" id="homeFixed"
+                                    style="font-size: 1.2rem; opacity: 0.9;">...</span>
+                            </div>
+                            <div class="remu-value-grid">
+                                <div class="remu-value-item">
+                                    <span class="remu-value-label">Mínima</span>
+                                    <span class="remu-value-amount min" id="homeRemMin">...</span>
+                                </div>
+                                <div class="remu-value-item">
+                                    <span class="remu-value-label">Máxima</span>
+                                    <span class="remu-value-amount max" id="homeRemMax">...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- MRR Comparativo (preenchido via JS inline) -->
+                    <div class="remu-metric-card">
+                        <div class="remu-metric-header">
+                            <span class="remu-metric-label">MRR (Fee dos Projetos)</span>
+                            <i class="fa-solid fa-chart-line remu-metric-icon"></i>
+                        </div>
+                        <div id="homeModalMRR" class="remu-comparison-box">
+                            <!-- Preenchido via JS -->
+                        </div>
+                    </div>
+
+                    <!-- Metas de MRR (preenchido via JS inline) -->
+                    <div class="remu-metric-card">
+                        <div class="remu-metric-header">
+                            <span class="remu-metric-label">Metas de MRR</span>
+                            <i class="fa-solid fa-bullseye remu-metric-icon"></i>
+                        </div>
+                        <div class="remu-target-card" id="homeModalTargets">
+                            <!-- Preenchido via JS -->
+                        </div>
+                    </div>
+
+                </div> <!-- Fim remu-metrics -->
+
+                <!-- Tabela Histórico -->
+                <div class="remu-table-card" style="margin-top: 1.5rem;">
+                    <div class="remu-table-header">
+                        <h3>Histórico de Remuneração <span class="tooltip-remuneracao" title="Remuneração = Fixo + Variável.
+
+Variável depende de 2 fatores:
+
+1) Churn: se o churn real (Churn ÷ MRR) for menor que o limite, gera bônus proporcional à diferença.
+
+2) CSP: se o custo real (Fixo ÷ MRR) for menor que o CSP esperado, gera bônus proporcional.
+
+Variável Total = Bônus de Churn + Bônus de CSP.
+Remuneração Total = Fixo + Variável.
+
+Menor churn e maior eficiência = maior remuneração.
+                        ">i</span></h3>
+                    </div>
+                    <div class="remu-table-wrapper">
+                        <table class="remu-table">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Flag</th>
+                                    <th scope="col">Mês-Ano</th>
+                                    <th scope="col">Cargo</th>
+                                    <th scope="col">Senioridade</th>
+                                    <th scope="col">Nivel</th>
+                                    <th scope="col">Remuneração Cargo</th>
+                                    <th scope="col">MRR</th>
+                                    <th scope="col">Churn R$</th>
+                                    <th scope="col">Churn %</th>
+                                    <th scope="col">R$ Variável</th>
+                                    <th scope="col">Remuneração Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if my_remuneracao.rows %}
+                                {% for row in my_remuneracao.rows %}
+                                <tr>
+                                    <!-- FLAG -->
+                                    <td class='{{
+                                        "yellow-flag-table" if row.yellow_streak == 1
+                                        else "red-flag-table" if row.yellow_streak == 2
+                                        else "black-flag-table" if row.yellow_streak >= 3
+                                        else "green-pdc-flag-table" if row.green_streak >= 3
+                                        else "green-flag-table"
+                                    }}' title='{{ row.motivo_flag }}'>
+                                        <span>{{
+                                            "Yellow" if row.yellow_streak == 1
+                                            else "Red" if row.yellow_streak == 2
+                                            else "Black" if row.yellow_streak >= 3
+                                            else "Green PDC" if row.green_streak >= 3
+                                            else "Green"
+                                            }}</span>
+                                    </td>
+                                    <!-- MÊS/ANO -->
+                                    <td>{{ row.month_year }}</td>
+                                    <!-- CARGO -->
+                                    <td>{{ row.role }}</td>
+                                    <!-- SENIORIDADE -->
+                                    <td>{{ row.senioridade }}</td>
+                                    <!-- NIVEL -->
+                                    <td>{{ row.nivel }}</td>
+                                    <!-- REMUNERAÇÃO FIXA -->
+                                    <td><span class="monetario">R$ {{ row.fixed_fee | round(2) }}</span></td>
+                                    <!-- MRR -->
+                                    <td><span class="monetario">R$ {{ (row.mrr) | round(2) }}</span></td>
+                                    <!-- CHURN R$ -->
+                                    <td><span class="monetario">R$ {{ row.churn_rs | round(2) }}</span></td>
+                                    <!-- CHURN % -->
+                                    <td class="{{ 'remu-value-negative' if row.churn > 0 else '' }}">
+                                        {% if row.churn is number %}
+                                        {{ (row.churn * 100) | round(2) }}%
+                                        {% else %}
+                                        {{ row.churn }}
+                                        {% endif %}
+                                    </td>
+                                    <!-- VARIAVEL R$ -->
+                                    <td><span class="monetario">R$ {{ (row.variable_brl) | round(2) }}</span></td>
+                                    <!-- REMUNERAÇÃO TOTAL -->
+                                    <td style="font-weight: 600;">
+                                        R$
+                                        {% if row.total_brl < row.rem_min %} {{ row.rem_min | round(2) }} {% elif
+                                            row.total_brl> row.rem_max %} {{ row.rem_max | round(2) }}
+                                            {% else %} {{ row.total_brl | round(2) }}
+                                            {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                                {% else %}
+                                <tr>
+                                    <td colspan="11" style="text-align: center; padding: 2rem;">
+                                        Nenhum registro encontrado.
+                                    </td>
+                                </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                {% endif %}
+                <!-- ══ Fim Minha Remuneração ══════════════════════════════════ -->
+
                 <!-- Seção Atalhos -->
                 <h3 style="margin-bottom: 1.5rem; color: var(--text-main);">Atalhos</h3>
                 <div class="shortcuts-grid" id="shortcutsGrid">
                     <!-- Inseridos via JS -->
                 </div>
+
             </main>
 
         </div>
@@ -80,6 +296,135 @@
 
         const operationalData = {{ operational_data | default ('{}') | tojson | safe }};
     </script>
+
+    {% if my_remuneracao %}
+    <!-- Dados de remuneração passados do backend para JS -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const mrr = {{ my_remuneracao.mrr | tojson
+        }};
+        const mrrTotal = {{ my_remuneracao.mrrTotal | tojson }};
+        const mrrEsperado = {{ my_remuneracao.mrrEsperado | tojson }};
+        const mrrTeto = {{ my_remuneracao.mrrTeto | tojson }};
+        const churnRs = {{ my_remuneracao.churn_rs | tojson }};
+        const remAtual = {{ my_remuneracao.rem_atual | tojson }};
+        const fixed = {{ my_remuneracao.fixed_fee | tojson }};
+        const remMin = {{ my_remuneracao.rem_min | tojson }};
+        const remMax = {{ my_remuneracao.rem_max | tojson }};
+
+        const fmt = Utils.formatBRL;
+
+        // ── Card Remuneração ────────────────────────────────────────────
+        const elAtual = document.getElementById('homeRemAtual');
+        const elFixed = document.getElementById('homeFixed');
+        const elMin = document.getElementById('homeRemMin');
+        const elMax = document.getElementById('homeRemMax');
+        if (elAtual) elAtual.textContent = fmt(remAtual);
+        if (elFixed) elFixed.textContent = fmt(fixed);
+        if (elMin) elMin.textContent = fmt(remMin);
+        if (elMax) elMax.textContent = fmt(remMax);
+
+        // ── Card MRR Comparativo ────────────────────────────────────────
+        const mrrBox = document.getElementById('homeModalMRR');
+        if (mrrBox) {
+            mrrBox.innerHTML = `
+                    <div class="remu-comparison-item primary">
+                        <span class="remu-comparison-label">MRR Atual (Total - Churn)</span>
+                        <span title="Soma de todos os Fees no mês dos projetos vinculados." class="remu-comparison-val">${fmt(mrr)}</span>
+                    </div>
+                    <div class="remu-comparison-item" style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 8px;">
+                        <span class="remu-comparison-label">Churn</span>
+                        <span title="Soma de todos os Churns no mês." class="remu-comparison-val" style="color: #ff4444;">${fmt(churnRs)}</span>
+                    </div>
+                    <div class="remu-comparison-item" style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 8px;">
+                        <span class="remu-comparison-label">MRR Total</span>
+                        <span title="MRR Total do mês contando com o Churn." class="remu-comparison-val" style="font-size: 0.95rem; opacity: 0.8;">${fmt(mrrTotal + churnRs)}</span>
+                    </div>
+                `;
+        }
+
+        // ── Card Metas de MRR ───────────────────────────────────────────
+        const targetsBox = document.getElementById('homeModalTargets');
+        if (targetsBox) {
+            const deltaEsp = mrrTotal - mrrEsperado;
+            const deltaTeto = mrrTotal - mrrTeto;
+            targetsBox.innerHTML = `
+                    <div class="remu-target-item">
+                        <span class="remu-comparison-label">Esperado</span>
+                        <span class="remu-target-val">${fmt(mrrEsperado)}</span>
+                        <span class="remu-target-delta ${deltaEsp >= 0 ? 'pos' : 'neg'}">
+                            ${deltaEsp >= 0 ? 'Excedeu em' : 'Faltam'} ${fmt(Math.abs(deltaEsp))}
+                        </span>
+                    </div>
+                    <div class="remu-target-item" style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 8px;">
+                        <span class="remu-comparison-label">Teto</span>
+                        <span class="remu-target-val">${fmt(mrrTeto)}</span>
+                        <span class="remu-target-delta ${deltaTeto >= 0 ? 'pos' : 'neg'}">
+                            ${deltaTeto >= 0 ? 'Atingiu/Excedeu' : 'Faltam'} ${fmt(Math.abs(deltaTeto))}
+                        </span>
+                    </div>
+                `;
+        }
+
+        // ── Modal de listagem de projetos ───────────────────────────────
+        let homeProjectsList = [];
+        try {
+            homeProjectsList = JSON.parse({{ my_remuneracao.projetos_vinculados | tojson | safe }});
+            } catch (e) { console.error('Erro ao parsear projetos:', e); }
+
+        window.homeOpenProjectsList = function () {
+            const container = document.getElementById('homeClientsFullList');
+            if (!container) return;
+            if (homeProjectsList.length > 0) {
+                let html = `<table class="remu-mini-table"><thead><tr><th>Projeto</th><th style="text-align:right;">Fee</th></tr></thead><tbody>`;
+                homeProjectsList.forEach(p => {
+                    const badge = p.active === false ? '<span class="remu-churn-badge">Churn</span>' : '';
+                    html += `<tr>
+                            <td>
+                                <div class="remu-mini-project-name">${p.nome || 'N/A'} ${badge}</div>
+                                <div class="remu-mini-project-id">${p.id}</div>
+                            </td>
+                            <td class="remu-mini-project-fee">${fmt(p.fee)}</td>
+                        </tr>`;
+                });
+                html += '</tbody></table>';
+                container.innerHTML = html;
+            } else {
+                container.innerHTML = '<div class="remu-no-data" style="padding:2rem;text-align:center;color:#666;">Nenhum projeto vinculado</div>';
+            }
+            const modal = document.getElementById('homeClientsModal');
+            if (modal) modal.classList.add('active');
+        };
+
+        window.homeCloseProjectsList = function () {
+            const modal = document.getElementById('homeClientsModal');
+            if (modal) modal.classList.remove('active');
+        };
+
+        window.addEventListener('click', function (e) {
+            const modal = document.getElementById('homeClientsModal');
+            if (e.target === modal) homeCloseProjectsList();
+        });
+        });
+    </script>
+
+    <!-- Modal de listagem de projetos (replicado de hub-remuneracao.html) -->
+    <div id="homeClientsModal" class="remu-modal">
+        <div class="remu-modal-content">
+            <div class="remu-modal-header">
+                <h3>Listagem de Projetos</h3>
+                <button type="button" class="remu-modal-close" onclick="homeCloseProjectsList()">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="remu-modal-body">
+                <div id="homeClientsFullList" class="remu-projects-container">
+                    <!-- Preenchido via JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 
     {% include "components/modal-configuracoes.html" %}
     <script src="static/js/tema.js"></script>

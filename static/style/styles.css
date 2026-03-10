@@ -122,7 +122,7 @@ body::-webkit-scrollbar-thumb:hover {
 /* MAIN CONTENT */
 .main-container {
     padding: 2rem;
-    max-width: 1400px;
+    max-width: 1600px;
     margin: 0 auto;
     flex: 1;
     width: 100%;
@@ -1458,7 +1458,7 @@ option {
 }
 
 .remu-metric-card {
-    background: rgba(255, 255, 255, 0.03);
+    background: #17171b;
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 16px;
     padding: 1.25rem;
@@ -1591,8 +1591,6 @@ option {
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 12px;
     margin-bottom: 4rem;
-    margin-left: 2rem;
-    margin-right: 2rem;
     max-height: 500px;
     overflow-y: auto;
     overflow-x: auto;

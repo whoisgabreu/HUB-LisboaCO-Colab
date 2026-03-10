@@ -303,7 +303,108 @@ def home():
             "investors": 0,
             "squads": 0
         }
-    return render_template("index.html", operational_data=operational_data)
+
+    # ── Métricas de remuneração do usuário logado ──────────────────────────────
+    my_remuneracao = None
+    try:
+        user_email = session.get("email")
+        with Session() as db:
+            # Busca métricas do usuário logado (mais recente primeiro)
+            metricas_raw = db.query(MetricaMensal, Investidor).join(
+                Investidor, MetricaMensal.email_investidor == Investidor.email
+            ).filter(
+                MetricaMensal.email_investidor == user_email
+            ).order_by(
+                MetricaMensal.ano.desc(),
+                MetricaMensal.mes.desc()
+            ).all()
+
+            if metricas_raw:
+                hoje = dt.now()
+                mes_atual = hoje.month
+                ano_atual = hoje.year
+
+                from sqlalchemy import extract, or_, and_
+                # Projetos vinculados (ativos + churned no mês corrente)
+                vinculos = db.query(InvestidorProjeto).filter(
+                    InvestidorProjeto.email_investidor == user_email,
+                    or_(
+                        InvestidorProjeto.active == True,
+                        and_(
+                            InvestidorProjeto.active == False,
+                            extract('month', InvestidorProjeto.inactivated_at) == mes_atual,
+                            extract('year', InvestidorProjeto.inactivated_at) == ano_atual
+                        )
+                    )
+                ).all()
+
+                projetos_vinculados = [
+                    {"id": v.pipefy_id_projeto, "nome": v.nome_projeto, "fee": float(v.fee_projeto or 0), "active": v.active}
+                    for v in vinculos
+                ]
+
+                clients_count_user = db.query(InvestidorProjeto).filter_by(
+                    email_investidor=user_email, active=True
+                ).count()
+
+                # Pega os dados fixos da primeira (mais recente) métrica
+                primeira_metrica, investidor = metricas_raw[0]
+
+                rows = []
+                for metrica, _ in metricas_raw:
+                    rows.append({
+                        "month_year": f"{metrica.mes:02d}/{metrica.ano}",
+                        "mrr": float(metrica.fixo_mrr_entrega or 0),
+                        "mrrTotal": float(metrica.fixo_mrr_projeto_total or 0),
+                        "churn": float(metrica.calc_churn_real_percentual or 0),
+                        "churn_rs": float(metrica.fixo_churn_atual or 0),
+                        "variable_brl": float(metrica.calc_variavel_total or 0),
+                        "total_brl": max(float(metrica.calc_remuneracao_total or 0), float(metrica.fixo_remuneracao_minima or 0)),
+                        "rem_min": float(metrica.fixo_remuneracao_minima or 0),
+                        "rem_max": float(metrica.fixo_remuneracao_maxima or 0),
+                        "yellow_streak": metrica.yellow_streak or 0,
+                        "green_streak": metrica.green_streak or 0,
+                        "motivo_flag": metrica.motivo_flag or "",
+                        "role": investidor.funcao,
+                        "senioridade": metrica.senioridade or investidor.senioridade,
+                        "nivel": metrica.level or investidor.nivel,
+                        "fixed_fee": float(primeira_metrica.fixo_remuneracao_fixa or 0),
+                    })
+
+                # Inverte para que [-1] seja o mais recente (igual ao hub_remuneracao)
+                rows.reverse()
+
+                last_row = rows[-1] if rows else {}
+                rem_min = float(primeira_metrica.fixo_remuneracao_minima or 0)
+                rem_max = float(primeira_metrica.fixo_remuneracao_maxima or 0)
+                total_brl = last_row.get("total_brl", 0)
+                rem_atual = rem_min if total_brl < rem_min else (rem_max if total_brl > rem_max else total_brl)
+
+                my_remuneracao = {
+                    "name": investidor.nome,
+                    "role": investidor.funcao,
+                    "squad": investidor.squad,
+                    "profile_picture": investidor.profile_picture,
+                    "fixed_fee": float(primeira_metrica.fixo_remuneracao_fixa or 0),
+                    "mrr": float(primeira_metrica.fixo_mrr_entrega or 0),
+                    "mrrTotal": float(primeira_metrica.fixo_mrr_projeto_total or 0),
+                    "mrrEsperado": float(primeira_metrica.fixo_mrr_esperado or 0),
+                    "mrrTeto": float(primeira_metrica.fixo_mrr_teto or 0),
+                    "rem_min": rem_min,
+                    "rem_max": rem_max,
+                    "rem_atual": round(rem_atual, 2),
+                    "churn_rs": last_row.get("churn_rs", 0),
+                    "clients_count": clients_count_user,
+                    "projetos_total": len(projetos_vinculados),
+                    "projetos_vinculados": json.dumps(projetos_vinculados),
+                    "rows": rows,
+                }
+    except Exception as e:
+        print(f"Erro ao carregar remuneração do usuário: {e}")
+        my_remuneracao = None
+    # ── Fim métricas de remuneração ────────────────────────────────────────────
+
+    return render_template("index.html", operational_data=operational_data, my_remuneracao=my_remuneracao)
 
 
 @app.template_filter('format_date')
