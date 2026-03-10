@@ -140,6 +140,40 @@ def _buscar_projetos_db(model_class, email_investidor, squad_usuario):
         print(f"Erro ao buscar projetos ({model_class.__tablename__}): {e}")
         return []
 
+# ─── CONFIGURAÇÕES ────────────────────────────────────────────────────────────
+
+UPLOAD_FOLDER = "static/images/profile_pictures"
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
+
+
+@app.route("/upload-profile-picture", methods=["POST"])
+@check_session
+def upload_profile_picture():
+
+    if "foto" not in request.files:
+        return jsonify({"erro": "Nenhum arquivo enviado"}), 400
+
+    arquivo = request.files["foto"]
+
+    if arquivo.filename == "":
+        return jsonify({"erro": "Nome de arquivo vazio"}), 400
+
+    caminho = os.path.join(app.config["UPLOAD_FOLDER"], session["email"] + ".png")
+    arquivo.save(caminho)
+
+    with Session() as db:
+        investidor = db.query(Investidor).filter_by(email=session["email"]).first()
+        if investidor:
+            investidor.profile_picture = session["email"] + ".png"
+            db.commit()
+
+    return jsonify({
+        "mensagem": "Foto salva com sucesso",
+        "arquivo": session["email"] + ".png",
+        "caminho": caminho
+    })
 
 # ─── AUTENTICAÇÃO ────────────────────────────────────────────────────────────
 
@@ -171,7 +205,8 @@ def login():
                     if auth_entry:
                         auth_entry.token = token
                     else:
-                        auth_entry = Auth(email=user.email, token=token)
+                        max_id = db.query(Auth.id).order_by(Auth.id.desc()).first()
+                        auth_entry = Auth(id=max_id[0] + 1, email=user.email, token=token)
                         db.add(auth_entry)
                     db.commit()
 
@@ -183,6 +218,9 @@ def login():
                     session["senioridade"] = user.senioridade
                     session["squad"] = user.squad
                     session["nivel_acesso"] = user.nivel_acesso
+                    session["profile_picture"] = user.profile_picture
+
+                    print(session)
 
                     return redirect(url_for("home"))
 
@@ -192,6 +230,38 @@ def login():
 
     return render_template("login.html")
 
+
+# Rota para alterar senha sem render_template
+@app.route("/alterar-senha", methods=["POST"])
+@check_session
+def alterar_senha():
+    try:
+        with Session() as db:
+            user = db.query(Investidor).filter_by(email=session["email"]).first()
+            if not user:
+                return "Usuário não encontrado", 404
+
+            senha_atual = request.form["senha_atual"]
+            nova_senha = request.form["nova_senha"]
+            confirmar_senha = request.form["confirmar_senha"]
+
+            if not senha_atual or not nova_senha or not confirmar_senha:
+                return "Preencha todos os campos", 400
+
+            if nova_senha != confirmar_senha:
+                return "As senhas não coincidem", 400
+
+            if not check_password_hash(user.senha, senha_atual):
+                return "Senha atual incorreta", 400
+
+            user.senha = generate_password_hash(nova_senha)
+            db.commit()
+
+            return "Senha alterada com sucesso", 200
+
+    except SQLAlchemyError as e:
+        print(f"Erro ao alterar senha: {e}")
+        return "Erro ao conectar ao banco de dados", 500
 
 @app.route("/logout", methods=["GET", "POST"])
 def logout():
@@ -204,7 +274,43 @@ def logout():
 @app.route("/", methods=["GET"])
 @check_session
 def home():
-    return render_template("index.html")
+    try:
+        from services.currency import CurrencyService
+        with Session() as db:
+            clients_count = db.query(ProjetoAtivo).count()
+            investors_count = db.query(Investidor).count()
+            squads_count = db.query(ProjetoAtivo.squad_atribuida).filter(
+                ProjetoAtivo.squad_atribuida != None, 
+                ProjetoAtivo.squad_atribuida != ""
+            ).distinct().count()
+
+            projetos = db.query(ProjetoAtivo).all()
+            mrr_total = 0
+            usd_rate = None
+            for p in projetos:
+                fee = float(p.fee or 0)
+                if p.moeda and p.moeda.upper() not in ['BRL', 'R$']:
+                    if usd_rate is None:
+                        usd_rate = float(CurrencyService.get_usd_to_brl_rate())
+                    mrr_total += fee * usd_rate
+                else:
+                    mrr_total += fee
+
+            operational_data = {
+                "mrr": mrr_total,
+                "clients": clients_count,
+                "investors": investors_count,
+                "squads": squads_count
+            }
+    except Exception as e:
+        print(f"Erro ao carregar dados operacionais: {e}")
+        operational_data = {
+            "mrr": 0,
+            "clients": 0,
+            "investors": 0,
+            "squads": 0
+        }
+    return render_template("index.html", operational_data=operational_data)
 
 
 @app.template_filter('format_date')
@@ -318,6 +424,8 @@ def hub_remuneracao():
                 investidores_dict[email] = {
                     "id": f"inv_{email.replace('@', '_').replace('.', '_')}",
                     "name": investidor.nome,
+                    "email": investidor.email,
+                    "profile_picture": investidor.profile_picture,
                     "role": investidor.funcao,
                     "squad": investidor.squad,
                     "senioridade": metrica.senioridade or investidor.senioridade,

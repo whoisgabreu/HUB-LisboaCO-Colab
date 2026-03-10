@@ -28,7 +28,12 @@
                 <section id="config-perfil" class="config-section active">
                     <div class="profile-upload-container">
                         <div class="profile-avatar-wrapper">
-                            <img id="previewAvatar" src="/static/images/default-avatar.png" alt="Avatar">
+                            {% if session.profile_picture != None and session.profile_picture != '' %}
+                            <img id="previewAvatar" src="/static/images/profile_pictures/{{ session.profile_picture }}"
+                                alt="Avatar">
+                            {% else %}
+                            <i id="previewAvatar" class="fa-solid fa-user-tie"></i>
+                            {% endif %}
                             <label for="uploadFoto" class="btn-change-photo" title="Alterar foto">
                                 <i class="fas fa-camera"></i>
                             </label>
@@ -38,7 +43,8 @@
                             <h3>Minha Foto</h3>
                             <p>PNG, JPG ou WEBP. Máx. 2MB</p>
                             <div class="btn-group">
-                                <button class="btn-primary" style="padding: 0.5rem 1rem; font-size: 0.8rem;" onclick="salvarFotoPerfil()">Salvar foto</button>
+                                <button class="btn-primary" style="padding: 0.5rem 1rem; font-size: 0.8rem;"
+                                    onclick="salvarFotoPerfil()">Salvar foto</button>
                             </div>
                         </div>
                     </div>
@@ -89,7 +95,7 @@
                         </div>
                     </div>
                 </section>
-                
+
                 <!-- Aba: Aparência -->
                 <section id="config-aparencia" class="config-section">
                     <div class="config-group">
@@ -97,7 +103,8 @@
                         <div class="config-item">
                             <div class="config-item-info">
                                 <span class="config-item-label">Modo Claro</span>
-                                <span class="config-item-descricao">Ativar interface clara para melhor legibilidade.</span>
+                                <span class="config-item-descricao">Ativar interface clara para melhor
+                                    legibilidade.</span>
                             </div>
                             <label class="toggle-switch">
                                 <input type="checkbox" id="toggleTemaClaro">
@@ -133,7 +140,8 @@
                 <input type="password" id="confirmarNovaSenha">
             </div>
         </div>
-        <div class="modal-footer" style="padding: 1rem; border-top: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: flex-end; gap: 10px;">
+        <div class="modal-footer"
+            style="padding: 1rem; border-top: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: flex-end; gap: 10px;">
             <button class="btn-secondary" onclick="fecharModalTrocarSenha()">Cancelar</button>
             <button class="btn-primary" onclick="confirmarTrocaSenha()">Confirmar</button>
         </div>

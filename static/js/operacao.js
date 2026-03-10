@@ -30,22 +30,25 @@ const ROLE_DELIVERY_ORDER = {
 
 // ─── TOAST ───────────────────────────────────────────────────────────────────
 
-function showToast(message, type = 'success') {
-    const toast = document.createElement('div');
-    toast.className = `gt-toast toast-${type}`;
-    toast.innerHTML = `
-        <div class="toast-content">
-            <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i>
-            <span>${message}</span>
-        </div>
-    `;
-    document.body.appendChild(toast);
-    setTimeout(() => toast.classList.add('active'), 10);
-    setTimeout(() => {
-        toast.classList.remove('active');
-        setTimeout(() => toast.remove(), 500);
-    }, 3000);
-}
+// // Fazer a notificação toast durar mais tempo
+// function showToast(message, type = 'success') {
+//     const toast = document.createElement('div');
+//     toast.className = `gt-toast toast-${type}`;
+//     toast.innerHTML = `
+//         <div class="toast-content">
+//             <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i>
+//             <span>${message}</span>
+//         </div>
+//     `;
+//     document.body.appendChild(toast);
+//     setTimeout(() => toast.classList.add('active'), 10);
+//     setTimeout(() => {
+//         toast.classList.remove('active');
+//         setTimeout(() => toast.remove(), 500);
+//     }, 7000);
+// }
+
+// ─── MODAIS ───────────────────────────────────────────────────────────────────
 
 // ─── MODAIS ───────────────────────────────────────────────────────────────────
 
@@ -128,7 +131,7 @@ async function loadTarefas(pipefyId, tipo, listId, referencia = "") {
         const list = document.getElementById(listId);
         list.innerHTML = '';
         if (tarefas.length === 0) {
-            list.innerHTML = '<p style="color:var(--text-muted);padding:1rem;">Nenhuma tarefa registrada.</p>';
+            list.innerHTML = '<p style="color:var(--text-muted);padding:1rem;">Nenhuma registro encontrado.</p>';
             return;
         }
         tarefas.forEach(t => {

@@ -9,12 +9,7 @@ const sessionUser = {
     unit: "Lisboa&CO TechOps"
 };
 
-const operationalData = {
-    mrr: 187500.75,
-    clients: 54,
-    investors: 11,
-    squads: 6
-};
+// Fazer com que os dados operacionais reflitam os dados reais do banco de dados (injetado via template)
 
 const shortcuts = [
     { label: "Hub de Projetos", icon: "fas fa-project-diagram", url: "/hub-projetos" },
@@ -33,10 +28,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // document.getElementById('welcomeTitle').innerText = `Olá, ${sessionUser.name.split(' ')[0]}`;
 
     // Fill Operational Data
-    document.getElementById('mrrValue').innerText = Utils.formatBRL(operationalData.mrr);
-    document.getElementById('clientsValue').innerText = Utils.formatNumber(operationalData.clients);
-    document.getElementById('investorsValue').innerText = Utils.formatNumber(operationalData.investors);
-    document.getElementById('squadsValue').innerText = Utils.formatNumber(operationalData.squads);
+    if (typeof operationalData !== 'undefined' && operationalData) {
+        document.getElementById('mrrValue').innerText = Utils.formatBRL(operationalData.mrr || 0);
+        document.getElementById('clientsValue').innerText = Utils.formatNumber(operationalData.clients || 0);
+        document.getElementById('investorsValue').innerText = Utils.formatNumber(operationalData.investors || 0);
+        document.getElementById('squadsValue').innerText = Utils.formatNumber(operationalData.squads || 0);
+    }
 
     // Render Shortcuts
     renderShortcuts();

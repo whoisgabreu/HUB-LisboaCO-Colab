@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
-    rel="stylesheet">
+        rel="stylesheet">
     <!-- Global CSS -->
     <link rel="stylesheet" href="static/style/styles.css">
     <link rel="stylesheet" href="static/style/tema-claro.css">
@@ -32,7 +32,7 @@
 
         <div class="main-content">
 
-            
+
             <!-- Conteúdo Principal -->
             <main class="main-container">
                 <section class="welcome-section">
@@ -72,12 +72,13 @@
     </div>
 
     <script>
-    window.APP_CONFIG = {
-        userEmail: "{{ session.email }}",
-        userAccessLevel: "{{ session.nivel_acesso }}",
-        userToken: "{{session.token}}"
-    };
+        window.APP_CONFIG = {
+            userEmail: "{{ session.email }}",
+            userAccessLevel: "{{ session.nivel_acesso }}",
+            userToken: "{{session.token}}"
+        };
 
+        const operationalData = {{ operational_data | default ('{}') | tojson | safe }};
     </script>
 
     {% include "components/modal-configuracoes.html" %}

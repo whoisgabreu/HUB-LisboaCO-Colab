@@ -13,7 +13,7 @@ body {
     flex-direction: column;
 }
 
-body::-webkit-scrollbar{
+body::-webkit-scrollbar {
     width: 8px;
 }
 
@@ -235,6 +235,7 @@ body::-webkit-scrollbar-thumb:hover {
         opacity: 0;
         transform: translateX(30px);
     }
+
     to {
         opacity: 1;
         transform: translateX(0);
@@ -372,8 +373,13 @@ body::-webkit-scrollbar-thumb:hover {
 }
 
 @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
 }
 
 .modal-content {
@@ -393,6 +399,7 @@ body::-webkit-scrollbar-thumb:hover {
         transform: translateY(50px);
         opacity: 0;
     }
+
     to {
         transform: translateY(0);
         opacity: 1;
@@ -538,8 +545,8 @@ body::-webkit-scrollbar-thumb:hover {
     background: #00000029;
     border-radius: 8px;
     position: absolute;
-    right: 4px;
-    bottom: 4px;
+    right: 8px;
+    bottom: 8px;
     transition: 0.3s;
     cursor: pointer;
 }
@@ -642,6 +649,7 @@ body::-webkit-scrollbar-thumb:hover {
 .form-group textarea::-webkit-scrollbar-thumb:hover {
     background: rgba(255, 0, 0, 0.5);
 }
+
 /* FIM TESTE */
 .modal-footer {
     display: flex;
@@ -706,8 +714,8 @@ footer {
 }
 
 option {
-  background-color: #222;
-  color: #fff;
+    background-color: #222;
+    color: #fff;
 }
 
 
@@ -802,7 +810,8 @@ option {
 
 /* Remove o botão de logout antigo do CSS */
 .logout-btn {
-    display: none; /* Esconde o botão antigo se ainda existir */
+    display: none;
+    /* Esconde o botão antigo se ainda existir */
 }
 
 /* MODAL PEQUENO PARA SENHA */
@@ -941,7 +950,7 @@ option {
 .change-before {
     background-color: rgb(255 68 68 / 0.05);
     border: 1px solid rgba(255, 68, 68, 0.3);
-    
+
 }
 
 
@@ -1172,7 +1181,7 @@ option {
         gap: 1rem;
     }
 
-        
+
     .btn-view {
         width: 100%;
         justify-content: center;
@@ -1186,14 +1195,14 @@ option {
 
     #clientModalTitle,
     #projectModalTitle {
-            font-size: 15px
+        font-size: 15px
     }
-    
+
     .modal-footer {
         align-items: center;
         justify-content: space-evenly;
     }
-    
+
     .btn-primary,
     .btn-edit {
         width: 32%;
@@ -1204,6 +1213,7 @@ option {
     .form-grid {
         grid-template-columns: 1fr;
     }
+
     input {
         font-size: 17px;
         transform-origin: left top;
