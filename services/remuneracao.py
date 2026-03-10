@@ -2,7 +2,7 @@ from sqlalchemy import extract, and_, desc
 from database import Session
 from models import (
     Investidor, InvestidorProjeto,
-    MetricaMensal, MonthlyDelivery, RemuneracaoCargo
+    MetricaMensal, RemuneracaoCargo
 )
 from decimal import Decimal
 from datetime import datetime, date
@@ -85,15 +85,8 @@ def calcular_metricas_mensais(mes, ano):
                         if v.inactivated_at.strftime("%Y-%m") == mes_atual_str:
                             churn_atual += fee_full
 
-            # 3. MRR Trabalhado (Dashboard)
-            # Conforme solicitado, este valor vem das entregas mas NÃO é a base do cálculo SQL (fixo_mrr_atual)
-            soma_entrega = db.query(MonthlyDelivery).filter(
-                MonthlyDelivery.email == inv.email,
-                MonthlyDelivery.month == mes,
-                MonthlyDelivery.year == ano,
-                MonthlyDelivery.status == 'completed',
-            ).all()
-            mrr_trabalhado = sum(Decimal(str(e.mrr_contribution or 0)) for e in soma_entrega)
+            # 3. MRR Base: derivado exclusivamente do fee_projeto (mrr_portfolio_total)
+            # Entregas NÃO influenciam o cálculo de remuneração nesta branch.
 
             # Buscar limites do cargo
             cargo_config = cargos_index.get((inv.funcao, inv.senioridade, inv.nivel))
@@ -106,10 +99,10 @@ def calcular_metricas_mensais(mes, ano):
                 mrr_teto = cargo_config.fixo_mrr_teto or Decimal("0")
                 churn_max_valor = cargo_config.calc_churn_maximo_valor or Decimal("0")
 
-                # REGRA DE FLAG: O usuário solicitou que a flag seja baseada no MRR TRABALHADO
+                # REGRA DE FLAG: baseada no MRR do portfólio (fee_projeto)
                 is_green = (churn_atual <= churn_max_valor and 
-                            mrr_trabalhado >= mrr_min and 
-                            mrr_trabalhado <= mrr_teto)
+                            mrr_portfolio_total >= mrr_min and 
+                            mrr_portfolio_total <= mrr_teto)
                 
                 if is_green:
                     flag = "GREEN"
@@ -118,10 +111,10 @@ def calcular_metricas_mensais(mes, ano):
                     motivos = []
                     if churn_atual > churn_max_valor:
                         motivos.append(f"Churn acima do máximo ({float(churn_atual):.2f} > {float(churn_max_valor):.2f})")
-                    if mrr_trabalhado < mrr_min:
-                        motivos.append(f"MRR Trabalhado ({float(mrr_trabalhado):.2f}) abaixo do mínimo ({float(mrr_min):.2f})")
-                    if mrr_trabalhado > mrr_teto:
-                        motivos.append(f"MRR Trabalhado ({float(mrr_trabalhado):.2f}) acima do teto ({float(mrr_teto):.2f})")
+                    if mrr_portfolio_total < mrr_min:
+                        motivos.append(f"MRR Portfolio ({float(mrr_portfolio_total):.2f}) abaixo do mínimo ({float(mrr_min):.2f})")
+                    if mrr_portfolio_total > mrr_teto:
+                        motivos.append(f"MRR Portfolio ({float(mrr_portfolio_total):.2f}) acima do teto ({float(mrr_teto):.2f})")
                     motivo_flag = " | ".join(motivos) if motivos else "Abaixo do MRR mínimo"
             else:
                 motivo_flag = "Cargo/Nível não configurado"
@@ -182,14 +175,13 @@ def calcular_metricas_mensais(mes, ano):
             metrica.green_streak = green_streak
             metrica.yellow_streak = yellow_streak
             
-            # ATRIBUIÇÃO FINAL CONFORME SQL E STEP 9
-            # ATRIBUIÇÃO FINAL CONFORME LOGICA_ENTREGAS.MD (Step 7)
-            # fixo_mrr_atual: Base para o SQL (O usuário solicitou que seja o MRR Trabalhado)
-            metrica.fixo_mrr_atual = mrr_trabalhado          
-            # fixo_mrr_entrega: MRR Trabalhado para exibição no Dashboard (MRR Atual)
-            metrica.fixo_mrr_entrega = mrr_trabalhado        
-            # fixo_mrr_projeto_total: Comparativo do Portfólio
-            metrica.fixo_mrr_projeto_total = mrr_portfolio_total 
+            # ATRIBUIÇÃO FINAL — remuneração baseada exclusivamente no fee_projeto
+            # fixo_mrr_atual: MRR base para cálculo (fee dos projetos ativos)
+            metrica.fixo_mrr_atual = mrr_portfolio_total
+            # fixo_mrr_entrega: exibição no Dashboard — mesmo valor (fee dos projetos)
+            metrica.fixo_mrr_entrega = mrr_portfolio_total
+            # fixo_mrr_projeto_total: comparativo do portfólio total
+            metrica.fixo_mrr_projeto_total = mrr_portfolio_total
             metrica.fixo_churn_atual = churn_atual
             if cargo_config:
                 metrica.fixo_remuneracao_fixa = cargo_config.fixo_remuneracao_fixa

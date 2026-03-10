@@ -99,16 +99,16 @@ window.openRemunerationModal = function (card) {
     if (mrrBox) {
         mrrBox.innerHTML = `
             <div class="remu-comparison-item primary">
-                <span class="remu-comparison-label">MRR Trabalhado</span>
-                <span class="remu-comparison-val">${Utils.formatBRL(mrr)}</span>
+                <span class="remu-comparison-label">MRR Atual (Total - Churn)</span>
+                <span title="Soma de todos os Fees no mês dos projetos vinculados." class="remu-comparison-val">${Utils.formatBRL(mrr)}</span>
             </div>
             <div class="remu-comparison-item" style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 8px;">
                 <span class="remu-comparison-label">Churn</span>
-                <span class="remu-comparison-val" style="color: #ff4444;">${Utils.formatBRL(churnRs)}</span>
+                <span title="Soma de todos os Churns no mês dos projetos vinculados." class="remu-comparison-val" style="color: #ff4444;">${Utils.formatBRL(churnRs)}</span>
             </div>
             <div class="remu-comparison-item" style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 8px;">
                 <span class="remu-comparison-label">MRR Total</span>
-                <span class="remu-comparison-val" style="font-size: 0.95rem; opacity: 0.8;">${Utils.formatBRL(mrrTotal)}</span>
+                <span title="MRR Total do mês contando com o Churn." class="remu-comparison-val" style="font-size: 0.95rem; opacity: 0.8;">${Utils.formatBRL(mrrTotal + churnRs)}</span>
             </div>
         `;
     }

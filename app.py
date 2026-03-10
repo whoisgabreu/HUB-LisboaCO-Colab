@@ -77,19 +77,12 @@ def check_access(roles):
 # ─── HELPERS ────────────────────────────────────────────────────────────────
 
 def recalculate_investor_mrr(db, email, mes, ano):
-    """Recalcula o MRR total do investidor somando as contribuições de monthly_deliveries."""
-    entregas = db.query(MonthlyDelivery).filter_by(
-        email=email, month=mes, year=ano, status='completed'
-    ).all()
-    total_mrr = sum(float(e.mrr_contribution or 0) for e in entregas)
-    metrica = db.query(MetricaMensal).filter_by(
-        email_investidor=email, mes=mes, ano=ano
-    ).first()
-    if metrica:
-        metrica.fixo_mrr_atual = total_mrr
-        metrica.fixo_mrr_entrega = total_mrr
-        db.commit()
-    return total_mrr
+    """
+    NÃO-OP: remuneração agora é baseada exclusivamente no fee_projeto.
+    Entregas não influenciam o MRR armazenado.
+    O recálculo real é feito pelo scheduler diário via calcular_metricas_mensais.
+    """
+    return 0
 
 
 def _projeto_to_dict(projeto):
