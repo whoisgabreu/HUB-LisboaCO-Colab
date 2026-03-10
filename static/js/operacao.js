@@ -50,6 +50,8 @@ const ROLE_DELIVERY_ORDER = {
 
 // ─── MODAIS ───────────────────────────────────────────────────────────────────
 
+// ─── MODAIS ───────────────────────────────────────────────────────────────────
+
 function openGTModal(modalId) {
     const modal = document.getElementById(modalId);
     if (modal) {
