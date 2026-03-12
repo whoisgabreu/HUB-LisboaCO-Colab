@@ -657,3 +657,73 @@ body.tema-claro .toast {
     color: #1e293b !important;
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08) !important;
 }
+
+/* ═══ Hub Projetos Modal — Modo Claro ═══ */
+
+body.tema-claro .vinculos-actions select {
+    background-color: #f9fafb !important;
+    border-color: #d1d5db !important;
+    color: #111827 !important;
+}
+
+body.tema-claro .vinculo-item,
+body.tema-claro .note-item {
+    background-color: #f9fafb !important;
+    border-color: #e5e7eb !important;
+}
+
+body.tema-claro .note-item:hover {
+    background-color: #ffffff !important;
+    border-color: #d61616 !important;
+}
+
+body.tema-claro .vinculo-email,
+body.tema-claro .note-item-title {
+    color: #111827 !important;
+}
+
+body.tema-claro .btn-note-action {
+    color: #6b7280 !important;
+    border-color: #d1d5db !important;
+}
+
+body.tema-claro .btn-note-action:hover {
+    color: #d61616 !important;
+    background-color: rgba(214, 22, 22, 0.1) !important;
+    border-color: #d61616 !important;
+}
+
+body.tema-claro .note-item textarea {
+    background-color: #ffffff !important;
+    border-color: #d1d5db !important;
+    color: #111827 !important;
+}
+
+body.tema-claro .note-item textarea:disabled {
+    background-color: #f3f4f6 !important;
+    color: #6b7280 !important;
+    opacity: 0.8 !important;
+}
+
+body.tema-claro .note-item textarea:not(:disabled):focus {
+    border-color: #d61616 !important;
+    background-color: #ffffff !important;
+}
+
+body.tema-claro .notes-empty {
+    color: #6b7280 !important;
+}
+
+body.tema-claro .notes-header label,
+body.tema-claro .vinculos-header label {
+    color: #111827 !important;
+}
+
+body.tema-claro .notes-header label i,
+body.tema-claro .vinculos-header label i {
+    color: #d61616 !important;
+}
+
+body.tema-claro .checkbox-label {
+    color: #4b5563 !important;
+}
