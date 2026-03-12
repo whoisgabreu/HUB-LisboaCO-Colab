@@ -1,4 +1,4 @@
-from sqlalchemy import extract, and_, desc
+from sqlalchemy import extract, and_, desc, text
 from database import Session
 from models import (
     Investidor, InvestidorProjeto,
@@ -14,10 +14,21 @@ def calcular_metricas_mensais(mes, ano):
     Lógica baseada no vínculo direto em investidores_projetos.
     """
     with Session() as db:
-        # 1. Buscar Investidores (exceto Gerência)
+        # 0. Sincronizar status de atividade (Bulk Update)
+        # Garante que MetricaMensal reflita o status atual do Investidor para o filtro na UI
+        db.execute(text("""
+            UPDATE plataforma_geral.investidores_metricas_mensais_novo m
+            SET ativo = i.ativo
+            FROM plataforma_geral.investidores i
+            WHERE m.email_investidor = i.email
+        """))
+
+        # 1. Buscar Investidores (exceto Gerência via posição e apenas ATIVOS para cálculo)
+        # REGRA: Apenas investidores com 'funcao' preenchida são considerados no cálculo.
         investidores = db.query(Investidor).filter(
             Investidor.ativo == True,
-            Investidor.squad != "Gerência"
+            Investidor.funcao != None,
+            Investidor.funcao != ""
         ).all()
 
         # 2. Indexar Cargos para limites
@@ -89,7 +100,9 @@ def calcular_metricas_mensais(mes, ano):
             # Entregas NÃO influenciam o cálculo de remuneração nesta branch.
 
             # Buscar limites do cargo
-            cargo_config = cargos_index.get((inv.funcao, inv.senioridade, inv.nivel))
+            cargo_config = None
+            if inv.funcao and inv.senioridade and inv.nivel:
+                cargo_config = cargos_index.get((inv.funcao, inv.senioridade, inv.nivel))
             
             flag = "YELLOW"
             motivo_flag = ""
@@ -117,7 +130,12 @@ def calcular_metricas_mensais(mes, ano):
                         motivos.append(f"MRR Portfolio ({float(mrr_portfolio_total):.2f}) acima do teto ({float(mrr_teto):.2f})")
                     motivo_flag = " | ".join(motivos) if motivos else "Abaixo do MRR mínimo"
             else:
-                motivo_flag = "Cargo/Nível não configurado"
+                if inv.posicao == "Sócio" and not inv.funcao:
+                    # Sócios sem cargo operacional não têm flag/alerta
+                    flag = "GREEN"
+                    motivo_flag = "Sócio sem cargo operacional"
+                else:
+                    motivo_flag = "Cargo/Nível não configurado"
 
             # Lógica de Streaks
             historico = db.query(MetricaMensal).filter(
@@ -174,6 +192,7 @@ def calcular_metricas_mensais(mes, ano):
             metrica.motivo_flag = motivo_flag
             metrica.green_streak = green_streak
             metrica.yellow_streak = yellow_streak
+            metrica.ativo = True # Como veio do query de ativos, garantimos True
             
             # ATRIBUIÇÃO FINAL — remuneração baseada exclusivamente no fee_projeto
             # fixo_mrr_atual: MRR base para cálculo (fee dos projetos ativos)

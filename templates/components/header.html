@@ -23,7 +23,7 @@
         {% endif %}
         <div class="user-details">
             <div class="user-name" id="headerUserName">{{ session.nome or 'Usuário' }}</div>
-            <div class="user-role" id="headerUserRole">{{ session.funcao or 'Colaborador' }}</div>
+            <div class="user-role" id="headerUserRole">{{ session.funcao or session.posicao or 'Colaborador' }}</div>
         </div>
         <button class="user-menu-btn">
             <i class="fas fa-ellipsis-v"></i>

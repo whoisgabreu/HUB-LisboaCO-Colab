@@ -89,8 +89,7 @@
                                 <div class="op-icon-box"><i class="fas fa-bullseye"></i></div>
                                 <span>Relatórios Mensais</span>
                             </button>
-                            {% if session.get("funcao") == "Gerência" or session.get("funcao") == "Gestor de Tráfego"
-                            %}
+                            {% if session.posicao in ["Gerência", "Sócio"] or session.funcao == "Gestor de Tráfego" %}
                             <button class="op-pill-btn" onclick="switchOperacaoTab('midia')">
                                 <div class="op-icon-box"><i class="fas fa-file-invoice-dollar"></i></div>
                                 <span>Plano de Mídia</span>
@@ -104,8 +103,7 @@
                                 <div class="op-icon-box"><i class="fas fa-link"></i></div>
                                 <span>Links Úteis</span>
                             </button>
-                            {% if session.get("funcao") == "Gerência" or session.get("funcao") == "Account"
-                            %}
+                            {% if session.posicao in ["Gerência", "Sócio"] or session.funcao == "Account" %}
                             <button class="op-pill-btn" onclick="switchOperacaoTab('checkin')">
                                 <div class="op-icon-box"><i class="fas fa-calendar-check"></i></div>
                                 <span>Checkin Semanal</span>

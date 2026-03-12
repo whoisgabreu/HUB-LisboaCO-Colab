@@ -58,6 +58,15 @@
                                 {% endfor %}
                             </select>
                         </div>
+
+                        <div class="filter-item">
+                            <i class="fa-solid fa-circle-check"></i>
+                            <select id="statusFilter" onchange="filterInvestors()">
+                                <option value="">Todos (Ativos/Inativos)</option>
+                                <option value="true">Apenas Ativos</option>
+                                <option value="false">Apenas Inativos</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
 
@@ -67,6 +76,7 @@
                     {% for inv in investors %}
                     <div class="project-card" data-id="{{ inv.id }}" data-name="{{ inv.name }}"
                         data-role="{{ inv.role }}" data-squad="{{ inv.squad }}" data-email="{{ inv.email }}"
+                        data-status="{{ 'true' if inv.ativo else 'false' }}"
                         data-step="{{ inv.step }}"
                         data-yellow-flag="{{ inv.rows[0].yellow_streak if inv.rows|length > 0 else '' }}"
                         data-green-flag="{{ inv.rows[0].green_streak if inv.rows|length > 0 else '' }}"

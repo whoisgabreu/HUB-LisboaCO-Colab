@@ -45,7 +45,7 @@ class DeliveryService:
                 return {"status": "error", "message": "Usuário não encontrado."}
 
             role = investidor.funcao
-            if role not in DeliveryService.ROLES:
+            if not role or role not in DeliveryService.ROLES:
                 # Mapeamento de fallback para desenvolvedores/gerência testarem
                 if role == "Desenvolvedor":
                     role = "Gestor de Tráfego"

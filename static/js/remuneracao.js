@@ -3,18 +3,21 @@ function filterInvestors() {
     const searchTerm = document.getElementById('remuSearchInput').value.toLowerCase();
     const squadFilter = document.getElementById('squadFilter').value.toLowerCase();
     const roleFilter = document.getElementById('roleFilter').value.toLowerCase();
+    const statusFilter = document.getElementById('statusFilter').value;
     const cards = document.querySelectorAll('#investorsGrid .project-card');
 
     cards.forEach(card => {
         const name = card.getAttribute('data-name').toLowerCase();
         const squad = card.getAttribute('data-squad').toLowerCase();
         const role = card.getAttribute('data-role').toLowerCase();
+        const status = card.getAttribute('data-status');
 
         const matchesSearch = name.includes(searchTerm);
         const matchesSquad = !squadFilter || squad === squadFilter;
         const matchesRole = !roleFilter || role === roleFilter;
+        const matchesStatus = !statusFilter || status === statusFilter;
 
-        if (matchesSearch && matchesSquad && matchesRole) {
+        if (matchesSearch && matchesSquad && matchesRole && matchesStatus) {
             card.style.display = 'block';
         } else {
             card.style.display = 'none';

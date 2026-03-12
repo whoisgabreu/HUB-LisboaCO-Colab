@@ -61,8 +61,12 @@
                             <span class="field-help">O email não pode ser alterado.</span>
                         </div>
                         <div class="form-group">
-                            <label>Cargo</label>
-                            <input type="text" value="{{ session.funcao or 'Colaborador' }}" disabled>
+                            <label>Cargo/Função</label>
+                            <input type="text" value="{{ session.funcao or 'N/A' }}" disabled>
+                        </div>
+                        <div class="form-group">
+                            <label>Posição</label>
+                            <input type="text" value="{{ session.posicao or 'Colaborador' }}" disabled>
                         </div>
                         <div class="form-group">
                             <label>Squad</label>
