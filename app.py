@@ -67,8 +67,14 @@ def check_access(roles):
         @wraps(f)
         def wrapper(*args, **kwargs):
             user_role = session.get("funcao", "").strip()
-            if not any(role.lower() == user_role.lower() for role in roles) and session.get("squad") != "Gerência":
-                return render_template("index.html", error="Acesso restrito a Accounts e Gestores de Tráfego.")
+            user_posicao = session.get("posicao", "").strip()
+            
+            # Se for Gerência ou Sócio via posição, concede acesso a quase tudo
+            is_high_level = user_posicao in ["Gerência", "Sócio"]
+            
+            # Verifica se o cargo solicitado está na lista ou se é Gerência/Sócio
+            if not is_high_level and not any(role.lower() == user_role.lower() for role in roles):
+                return render_template("index.html", error="Acesso restrito.")
             return f(*args, **kwargs)
         return wrapper
     return decorator
@@ -124,7 +130,7 @@ def _buscar_projetos_db(model_class, email_investidor, squad_usuario):
     """Busca projetos no banco com a lógica do n8n: Gerência vê tudo, outros veem só o seu squad."""
     try:
         with Session() as db:
-            if squad_usuario == "Gerência":
+            if squad_usuario == "Gerência" or session.get("posicao") == "Gerência":
                 projetos = db.query(model_class).all()
             else:
                 projetos = db.query(model_class).filter_by(squad_atribuida=squad_usuario).all()
@@ -208,6 +214,7 @@ def login():
                     session["email"] = user.email
                     session["token"] = token
                     session["funcao"] = user.funcao
+                    session["posicao"] = user.posicao
                     session["senioridade"] = user.senioridade
                     session["squad"] = user.squad
                     session["nivel_acesso"] = user.nivel_acesso
@@ -365,9 +372,9 @@ def home():
                         "yellow_streak": metrica.yellow_streak or 0,
                         "green_streak": metrica.green_streak or 0,
                         "motivo_flag": metrica.motivo_flag or "",
-                        "role": investidor.funcao,
-                        "senioridade": metrica.senioridade or investidor.senioridade,
-                        "nivel": metrica.level or investidor.nivel,
+                        "role": investidor.funcao or investidor.posicao,
+                        "senioridade": metrica.senioridade or investidor.senioridade or "",
+                        "nivel": metrica.level or investidor.nivel or "",
                         "fixed_fee": float(primeira_metrica.fixo_remuneracao_fixa or 0),
                     })
 
@@ -382,7 +389,7 @@ def home():
 
                 my_remuneracao = {
                     "name": investidor.nome,
-                    "role": investidor.funcao,
+                    "role": investidor.funcao or investidor.posicao,
                     "squad": investidor.squad,
                     "profile_picture": investidor.profile_picture,
                     "fixed_fee": float(primeira_metrica.fixo_remuneracao_fixa or 0),
@@ -425,7 +432,7 @@ def hub_projetos():
     # Busca squads disponíveis para o usuário (projetos ativos onde ele está no squad)
     try:
         with Session() as db:
-            if squad == "Gerência":
+            if squad == "Gerência" or session.get("posicao") == "Gerência":
                 projetos_squad = db.query(ProjetoAtivo).all()
             else:
                 projetos_squad = db.query(ProjetoAtivo).filter_by(squad_atribuida=squad).all()
@@ -510,8 +517,8 @@ def hub_remuneracao():
         for metrica, investidor in metricas_raw:
             email = metrica.email_investidor
 
-            # Filtra squad Gerência
-            if investidor.squad and investidor.squad.lower() == "gerência":
+            # Filtra posição Gerência
+            if investidor.posicao and investidor.posicao.lower() == "gerência":
                 continue
 
             if email not in investidores_dict:
@@ -520,7 +527,7 @@ def hub_remuneracao():
                     "name": investidor.nome,
                     "email": investidor.email,
                     "profile_picture": investidor.profile_picture,
-                    "role": investidor.funcao,
+                    "role": investidor.funcao or investidor.posicao,
                     "squad": investidor.squad,
                     "senioridade": metrica.senioridade or investidor.senioridade,
                     "nivel": metrica.level or investidor.nivel,
@@ -536,6 +543,7 @@ def hub_remuneracao():
                     "rem_min": float(metrica.fixo_remuneracao_minima or 0),
                     "rem_max": float(metrica.fixo_remuneracao_maxima or 0),
                     "flag": metrica.flag,
+                    "ativo": metrica.ativo,
                     "rows": [],
                 }
 
@@ -758,7 +766,6 @@ def block_manual_entrega():
 
 @app.route("/api/remuneracao/processar")
 @check_session
-@check_access(["Admin", "Sócio", "Gerência"])
 def processar_remuneracao():
     """Endpoint para processar métricas do mês atual."""
     from datetime import datetime as dt

@@ -16,16 +16,16 @@
             <span>Hub de Projetos</span>
         </a>
 
-        {# Menu Operação: apenas Account, Gestor de Tráfego e Gerência #}
-        {% if session.squad == "Gerência" or session.funcao in ["Account", "Gestor de Tráfego"] %}
+        {# Menu Operação: Gerência, Sócio, Account e Gestor de Tráfego #}
+        {% if session.posicao in ["Gerência", "Sócio"] or session.funcao in ["Account", "Gestor de Tráfego"] %}
         <a href="/operacao" class="nav-item">
             <i class="fas fa-gears"></i>
             <span>Operação</span>
         </a>
         {% endif %}
 
-        {# Menu Remuneração: apenas Gerência #}
-        {% if session.squad == "Gerência" %}
+        {# Menu Remuneração: Gerência e Sócio #}
+        {% if session.posicao in ["Gerência", "Sócio"] %}
         <a href="/hub-remuneracao" class="nav-item">
             <i class="fas fa-wallet"></i>
             <span>Remuneração</span>

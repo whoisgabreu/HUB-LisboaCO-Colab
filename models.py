@@ -21,6 +21,7 @@ class Investidor(Base):
     telefone = Column(String(15))
     nivel = Column(Text)
     profile_picture = Column(String(250))
+    posicao = Column(String(250))
 
 
 class Auth(Base):
@@ -163,6 +164,8 @@ class MetricaMensal(Base):
     """Tabela: plataforma_geral.investidores_metricas_mensais_novo"""
     __tablename__ = "investidores_metricas_mensais_novo"
     __table_args__ = {"schema": "plataforma_geral"}
+
+    ativo = Column(Boolean)
 
     # Chave composta: email + mes + ano
     email_investidor = Column(Text, primary_key=True)
