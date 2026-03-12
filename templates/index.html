@@ -41,7 +41,7 @@
                 </section>
 
                 <!-- Seção Dados Operacionais -->
-                <h3 style="margin-bottom: 1.5rem; color: var(--text-main);">Dados Operacionais</h3>
+                <h3 style="margin-bottom: 1.5rem;">Dados Operacionais</h3>
                 <div class="metrics-grid">
                     <div class="metric-card">
                         <span class="metric-label">MRR ATUAL DA EMPRESA</span>
@@ -67,7 +67,7 @@
                 <!-- Seção Minha Remuneração — visível apenas se houver métricas -->
                 <!-- ═══════════════════════════════════════════════════════════ -->
                 {% if my_remuneracao %}
-                <h3 style="margin-top: 2.5rem; margin-bottom: 1.5rem; color: var(--text-main);">Minhas Métricas</h3>
+                <h3 style="margin-top: 2.5rem; margin-bottom: 1.5rem;">Minhas Métricas</h3>
 
                 <!-- Card de Identificação -->
                 <!-- <section class="remu-investor-card" style="margin-bottom: 1.5rem;">
@@ -96,8 +96,7 @@
                                 <span class="remu-summary-label"
                                     style="font-size: 0.65rem; color: #888; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px; display: block; margin-bottom: 4px;">Ativos
                                     no mês</span>
-                                <span class="remu-summary-val"
-                                    style="font-size: 1.8rem; font-weight: 800; color: #fff;">{{
+                                <span class="remu-summary-val">{{
                                     my_remuneracao.clients_count }}</span>
                             </div>
                             <div class="remu-summary-item">
@@ -105,13 +104,13 @@
                                     style="font-size: 0.65rem; color: #888; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px; display: block; margin-bottom: 4px;">Inativos
                                     no mês</span>
                                 <span class="remu-summary-val"
-                                    style="font-size: 1.8rem; font-weight: 800; color: #555;">{{
+                                    style="color: var(--text-muted);">{{
                                     [0, my_remuneracao.projetos_total - my_remuneracao.clients_count] | max
                                     }}</span>
                             </div>
                         </div>
                         <div
-                            style="margin-top: 12px; text-align: right; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 8px;">
+                            style="margin-top: 12px; text-align: right; border-top: 1px solid var(--border-color); padding-top: 8px;">
                             <span
                                 style="font-size: 0.7rem; color: #D61616; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">Ver
                                 listagem completa <i class="fa-solid fa-chevron-right"
@@ -131,7 +130,7 @@
                                 <span class="remu-value-amount" id="homeRemAtual" style="color: #D61616;">...</span>
                             </div>
                             <div class="remu-value-item"
-                                style="border-top: 1px solid rgba(255, 255, 255, 0.05); padding-top: 8px;">
+                                style="border-top: 1px solid var(--border-color); padding-top: 8px;">
                                 <span class="remu-value-label">Fixa</span>
                                 <span class="remu-value-amount" id="homeFixed"
                                     style="font-size: 1.2rem; opacity: 0.9;">...</span>
@@ -277,7 +276,7 @@ Menor churn e maior eficiência = maior remuneração.
                 <!-- ══ Fim Minha Remuneração ══════════════════════════════════ -->
 
                 <!-- Seção Atalhos -->
-                <h3 style="margin-bottom: 1.5rem; color: var(--text-main);">Atalhos</h3>
+                <h3 style="margin-bottom: 1.5rem;">Atalhos</h3>
                 <div class="shortcuts-grid" id="shortcutsGrid">
                     <!-- Inseridos via JS -->
                 </div>
@@ -301,8 +300,7 @@ Menor churn e maior eficiência = maior remuneração.
     <!-- Dados de remuneração passados do backend para JS -->
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            const mrr = {{ my_remuneracao.mrr | tojson
-        }};
+            const mrr = {{ my_remuneracao.mrr | tojson }};
         const mrrTotal = {{ my_remuneracao.mrrTotal | tojson }};
         const mrrEsperado = {{ my_remuneracao.mrrEsperado | tojson }};
         const mrrTeto = {{ my_remuneracao.mrrTeto | tojson }};
@@ -332,11 +330,11 @@ Menor churn e maior eficiência = maior remuneração.
                         <span class="remu-comparison-label">MRR Atual (Total - Churn)</span>
                         <span title="Soma de todos os Fees no mês dos projetos vinculados." class="remu-comparison-val">${fmt(mrr)}</span>
                     </div>
-                    <div class="remu-comparison-item" style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 8px;">
+                    <div class="remu-comparison-item" style="border-top: 1px solid var(--border-color); padding-top: 8px;">
                         <span class="remu-comparison-label">Churn</span>
                         <span title="Soma de todos os Churns no mês." class="remu-comparison-val" style="color: #ff4444;">${fmt(churnRs)}</span>
                     </div>
-                    <div class="remu-comparison-item" style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 8px;">
+                    <div class="remu-comparison-item" style="border-top: 1px solid var(--border-color); padding-top: 8px;">
                         <span class="remu-comparison-label">MRR Total</span>
                         <span title="MRR Total do mês contando com o Churn." class="remu-comparison-val" style="font-size: 0.95rem; opacity: 0.8;">${fmt(mrrTotal + churnRs)}</span>
                     </div>
@@ -356,7 +354,7 @@ Menor churn e maior eficiência = maior remuneração.
                             ${deltaEsp >= 0 ? 'Excedeu em' : 'Faltam'} ${fmt(Math.abs(deltaEsp))}
                         </span>
                     </div>
-                    <div class="remu-target-item" style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 8px;">
+                    <div class="remu-target-item" style="border-top: 1px solid var(--border-color); padding-top: 8px;">
                         <span class="remu-comparison-label">Teto</span>
                         <span class="remu-target-val">${fmt(mrrTeto)}</span>
                         <span class="remu-target-delta ${deltaTeto >= 0 ? 'pos' : 'neg'}">
@@ -367,10 +365,7 @@ Menor churn e maior eficiência = maior remuneração.
         }
 
         // ── Modal de listagem de projetos ───────────────────────────────
-        let homeProjectsList = [];
-        try {
-            homeProjectsList = JSON.parse({{ my_remuneracao.projetos_vinculados | tojson | safe }});
-            } catch (e) { console.error('Erro ao parsear projetos:', e); }
+        homeProjectsList = {{ my_remuneracao.projetos_vinculados | tojson | safe }};
 
         window.homeOpenProjectsList = function () {
             const container = document.getElementById('homeClientsFullList');
