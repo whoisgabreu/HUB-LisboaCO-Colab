@@ -3,6 +3,7 @@ let currentClientData = null;
 let currentProjectData = null;
 let currentHistorico = null;
 let isEditMode = false;
+let projectVinculosLocal = []; // ESTADO LOCAL DE VÍNCULOS
 
 /* ==============================
 UTILITÁRIOS DE MOEDA
@@ -260,6 +261,12 @@ function openProjectModal(projectData, tipoProjeto) {
 
     document.getElementById('clientModal').classList.remove('active');
     document.getElementById('projectModal').classList.add('active');
+
+    // CARREGAR VÍNCULOS E INVESTIDORES ATIVOS
+    loadProjectVinculos(projectData.pipefy_id);
+    if (window.APP_CONFIG.nivelAcesso === 'Gerência' || window.APP_CONFIG.nivelAcesso === 'Admin') {
+        loadActiveInvestors();
+    }
 }
 
 function closeProjectModal() {
@@ -284,15 +291,21 @@ function toggleEditMode() {
     isEditMode = !isEditMode;
     setEditMode(isEditMode);
     renderNotes(); // 🔥 ESSENCIAL
+    renderVinculos(); // 🔥 ESSENCIAL (Atualiza botões de remover)
 }
 
 function setEditMode(enable) {
     const inputs = document.querySelectorAll('#projectForm input, #projectForm select, #projectForm textarea');
     inputs.forEach(input => {
-        if (input.id !== 'modal_projeto_id' && input.id !== 'modal_tipo_projeto') {
+        // PERMITIR EDIÇÃO DE NOME E FEE NO HUB LOCAL
+        if (input.id !== 'modal_projeto_id' && input.id !== 'modal_tipo_projeto' && input.id !== 'modal_pipefy_id' && input.id !== 'modal_fase_pipefy') {
             input.disabled = !enable;
         }
     });
+
+    // Mostrar/esconder ações de vinculação
+    const vinculosActions = document.getElementById('vinculosActions');
+    if (vinculosActions) vinculosActions.style.display = enable ? 'flex' : 'none';
 
     const editBtn = document.getElementById('editBtn');
     const saveBtn = document.getElementById('saveBtn');
@@ -390,29 +403,13 @@ function closeHistoryModal() {
 /* ==============================
 RECARREGAR DADOS
 ================================ */
-async function recarregarDados(email) {
+async function recarregarDados() {
     try {
-        const [ativosRes, onetimeRes, inativosRes] = await Promise.all([
-            fetch(`https://n8n.v4lisboatech.com.br/webhook/list_projetos?email=${email}`, {
-                headers: { 'x-api-key': '4815162342' }
-            }),
-            fetch(`https://n8n.v4lisboatech.com.br/webhook/list_projetos_onetime?email=${email}`, {
-                headers: { 'x-api-key': '4815162342' }
-            }),
-            fetch(`https://n8n.v4lisboatech.com.br/webhook/list_projetos_inativos?email=${email}`, {
-                headers: { 'x-api-key': '4815162342' }
-            })
-        ]);
-
-        const dados = {
-            ativos: await ativosRes.json(),
-            onetime: await onetimeRes.json(),
-            inativos: await inativosRes.json()
-        };
-
+        const response = await fetch('/api/projetos/listar');
+        const dados = await response.json();
         atualizarCards(dados);
     } catch (error) {
-        console.error('Erro ao recarregar:', error);
+        console.error('Erro ao recarregar dados locais:', error);
     }
 }
 
@@ -511,17 +508,31 @@ UPDATE PROJETO (ATUALIZADO)
 async function updateProject(event) {
     event.preventDefault();
 
-    const formData = new FormData(event.target);
-    const data = Object.fromEntries(formData);
+    const form = event.target;
+    const data = {};
+    
+    // Coleta TODOS os campos, inclusive desabilitados
+    const allInputs = form.querySelectorAll('input, select, textarea');
+    allInputs.forEach(input => {
+        if (input.name) {
+            data[input.name] = input.value;
+        }
+    });
 
-    data.fee = parseCurrencyToCents(data.fee);
+    // Converte fee para número puro (Decimal no backend)
+    data.fee = parseCurrencyToCents(data.fee) / 100;
     data.usuario = window.APP_CONFIG.userEmail;
-    data.userToken = window.APP_CONFIG.userToken
-    // Coletar notas do formulário
+    data.userToken = window.APP_CONFIG.userToken;
+
+    // Coletas notas do formulário
     data.notas = collectNotesFromForm();
+
+    // Coleta dados dos investidores vinculados do estado local
+    data.investidores = projectVinculosLocal;
     
     try {
-        const response = await fetch('https://n8n.v4lisboatech.com.br/webhook/update_projeto', {
+        // 1. Atualiza no n8n (para compatibilidade externa)
+        await fetch('https://n8n.v4lisboatech.com.br/webhook/update_projeto', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -530,15 +541,26 @@ async function updateProject(event) {
             body: JSON.stringify(data)
         });
 
+        // 2. Atualiza no HUB LOCAL (Backend Flask)
+        const response = await fetch(`/api/projetos/${data.pipefy_id}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+
         if (response.ok) {
-            // alert(`Os dados do projeto ${data.produto_contratado} foram atualizados.`)
-            // backToClientModal();
-            await recarregarDados(data.usuario);
+            if (window.showToast) window.showToast("Projeto e vínculos atualizados com sucesso!", "success");
+            await recarregarDados();
             closeProjectModal();
-            // location.reload();
+        } else {
+            const err = await response.json();
+            alert(`Erro ao salvar localmente: ${err.error || 'Erro desconhecido'}`);
         }
     } catch (error) {
-        console.error('Erro:', error);
+        console.error('Erro ao atualizar projeto:', error);
+        alert('Ocorreu um erro ao salvar as alterações.');
     }
 }
 
@@ -724,7 +746,7 @@ function collectNotesFromForm() {
 
 
 /* ==============================
-EVENT LISTENERS GLOBAIS (ATUALIZADO)
+EVENT LISTENERS GLOBAIS
 ================================ */
 
 // window.addEventListener('click', function(event) {
@@ -746,3 +768,116 @@ EVENT LISTENERS GLOBAIS (ATUALIZADO)
 //         closeAddNoteModal();
 //     }
 // });
+
+/* ==============================
+VINCULAÇÃO DE INVESTIDORES
+================================ */
+
+async function loadActiveInvestors() {
+    try {
+        const response = await fetch('/api/admin/investidores-ativos');
+        const investidores = await response.json();
+        
+        const select = document.getElementById('investidorSelect');
+        if (!select) return;
+
+        select.innerHTML = '<option value="">Vincular investidor...</option>';
+        investidores.forEach(inv => {
+            const option = document.createElement('option');
+            option.value = inv.email;
+            option.textContent = `${inv.nome} (${inv.email})`;
+            select.appendChild(option);
+        });
+    } catch (error) {
+        console.error('Erro ao carregar investidores ativos:', error);
+    }
+}
+
+async function loadProjectVinculos(pipefy_id) {
+    const container = document.getElementById('vinculosContainer');
+    if (!container) return;
+
+    container.innerHTML = '<div class="loading"><i class="fa-solid fa-spinner fa-spin"></i> Carregando vínculos...</div>';
+    
+    try {
+        const response = await fetch(`/api/projetos/${pipefy_id}/vinculos`);
+        const vinculos = await response.json();
+        
+        // Inicializa estado local
+        projectVinculosLocal = vinculos;
+        renderVinculos();
+
+    } catch (error) {
+        console.error('Erro ao carregar vínculos:', error);
+        container.innerHTML = '<div class="error">Erro ao carregar vínculos.</div>';
+    }
+}
+
+function renderVinculos() {
+    const container = document.getElementById('vinculosContainer');
+    if (!container) return;
+
+    if (projectVinculosLocal.length === 0) {
+        container.innerHTML = `
+            <div class="notes-empty">
+                <i class="fa-solid fa-user-slash"></i>
+                <p>Nenhum investidor vinculado</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = projectVinculosLocal.map(v => `
+        <div class="vinculo-item">
+            <div class="vinculo-info">
+                <span class="vinculo-email">${v.email}</span>
+                <div class="vinculo-tags">
+                    ${v.cientista ? '<span class="tag-cientista">Cientista</span>' : ''}
+                    ${v.active === false ? '<span class="tag-inactive">Churn</span>' : ''}
+                </div>
+            </div>
+            <div class="vinculo-controls">
+                <button type="button" class="btn-remove-vinculo" 
+                        onclick="removerVinculoLocal('${v.email}')" 
+                        title="Remover investidor"
+                        ${!isEditMode ? 'style="display:none"' : ''}>
+                    <i class="fa-solid fa-user-minus"></i>
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
+function vincularNovoInvestidor() {
+    const email = document.getElementById('investidorSelect').value;
+    const cientista = document.getElementById('isCientista').checked;
+    
+    if (!email) {
+        alert('Selecione um investidor para vincular.');
+        return;
+    }
+
+    // Verificar se já está na lista
+    if (projectVinculosLocal.find(v => v.email === email)) {
+        alert('Este investidor já está vinculado ao projeto.');
+        return;
+    }
+    
+    // Adiciona ao estado local
+    projectVinculosLocal.push({
+        email: email,
+        cientista: cientista,
+        active: true
+    });
+
+    renderVinculos();
+    
+    // Limpa campos
+    document.getElementById('investidorSelect').value = '';
+    document.getElementById('isCientista').checked = false;
+}
+
+function removerVinculoLocal(email) {
+    projectVinculosLocal = projectVinculosLocal.filter(v => v.email !== email);
+    renderVinculos();
+}

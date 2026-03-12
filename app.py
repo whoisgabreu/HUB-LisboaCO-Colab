@@ -113,6 +113,8 @@ def _projeto_to_dict(projeto):
         "orcamento_midia_google": projeto.orcamento_midia_google,
         "data_fim": projeto.data_fim.isoformat() if projeto.data_fim else None,
         "ekyte_workspace": projeto.ekyte_workspace,
+        "extra": projeto.extra or {},
+        "notas": projeto.notas or {},
     }
 
 
@@ -1234,6 +1236,244 @@ def delete_link(link_id):
             return jsonify({"status": "success"})
     except SQLAlchemyError as e:
         return jsonify({"error": str(e)}), 500
+
+
+# ─── GESTÃO DE PROJETOS (EDIÇÃO E VINCULAÇÃO) ────────────────────────────────
+
+@app.route("/api/admin/investidores-ativos", methods=["GET"])
+@check_session
+@check_access(["Gerência"])
+def get_investidores_ativos():
+    """Retorna lista de investidores ativos para vinculação."""
+    try:
+        with Session() as db:
+            investidores = db.query(Investidor).filter_by(ativo=True).order_by(Investidor.nome).all()
+            return jsonify([{
+                "email": inv.email,
+                "nome": inv.nome
+            } for inv in investidores])
+    except SQLAlchemyError as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/projetos/<int:pipefy_id>/vinculos", methods=["GET"])
+@check_session
+def get_projeto_vinculos(pipefy_id):
+    """Retorna investidores vinculados a um projeto."""
+    try:
+        with Session() as db:
+            vinculos = db.query(InvestidorProjeto).filter_by(pipefy_id_projeto=pipefy_id).all()
+            return jsonify([{
+                "id": v.id,
+                "email": v.email_investidor,
+                "cientista": v.cientista,
+                "active": v.active,
+                "fee_contribuicao": float(v.fee_contribuicao or 0)
+            } for v in vinculos])
+    except SQLAlchemyError as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/projetos/vincular", methods=["POST"])
+@check_session
+@check_access(["Gerência"])
+def vincular_investidor():
+    """Vincula um investidor a um projeto."""
+    data = request.json
+    email_investidor = data.get("email_investidor")
+    pipefy_id = data.get("pipefy_id_projeto")
+    cientista = data.get("cientista", False)
+    
+    if not email_investidor or not pipefy_id:
+        return jsonify({"error": "E-mail e ID do projeto são obrigatórios."}), 400
+
+    try:
+        with Session() as db:
+            # Busca dados do projeto para denormalização
+            projeto = db.query(ProjetoAtivo).filter_by(pipefy_id=pipefy_id).first()
+            if not projeto:
+                projeto = db.query(ProjetoOnetime).filter_by(pipefy_id=pipefy_id).first()
+            
+            if not projeto:
+                return jsonify({"error": "Projeto não encontrado."}), 404
+
+            # Verifica se já existe vínculo
+            vinculo = db.query(InvestidorProjeto).filter_by(
+                email_investidor=email_investidor,
+                pipefy_id_projeto=pipefy_id
+            ).first()
+
+            if vinculo:
+                vinculo.active = True
+                vinculo.cientista = cientista
+                vinculo.nome_projeto = projeto.nome
+                vinculo.fee_projeto = projeto.fee
+            else:
+                max_id = db.query(InvestidorProjeto.id).order_by(InvestidorProjeto.id.desc()).first()
+                new_id = (max_id[0] + 1) if max_id else 1
+                
+                vinculo = InvestidorProjeto(
+                    id=new_id,
+                    email_investidor=email_investidor,
+                    pipefy_id_projeto=pipefy_id,
+                    active=True,
+                    cientista=cientista,
+                    nome_projeto=projeto.nome,
+                    fee_projeto=projeto.fee,
+                    created_at=dt.now().date()
+                )
+                db.add(vinculo)
+            
+            db.commit()
+            return jsonify({"status": "success", "message": "Investidor vinculado com sucesso."})
+    except SQLAlchemyError as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/projetos/<int:pipefy_id>", methods=["PUT"])
+@check_session
+@check_access(["Gerência"])
+def update_projeto_local(pipefy_id):
+    """Atualiza dados do projeto e sincroniza vínculos."""
+    data = request.json
+    try:
+        from decimal import Decimal
+        with Session() as db:
+            projeto = db.query(ProjetoAtivo).filter_by(pipefy_id=pipefy_id).first()
+            is_onetime = False
+            if not projeto:
+                projeto = db.query(ProjetoOnetime).filter_by(pipefy_id=pipefy_id).first()
+                is_onetime = True
+            
+            if not projeto:
+                return jsonify({"error": "Projeto não encontrado."}), 404
+
+            # Rastreamento de alterações para o histórico
+            changes = {}
+            fields_to_track = {
+                "nome": "Nome",
+                "fee": "Fee",
+                "moeda": "Moeda",
+                "squad_atribuida": "Squad",
+                "produto_contratado": "Produto",
+                "step": "Fase",
+                "informacoes_gerais": "Informações Gerais",
+                "ekyte_workspace": "Ekyte Workspace"
+            }
+
+            for field, label in fields_to_track.items():
+                if field in data:
+                    new_val = data[field]
+                    if field == "fee": 
+                        new_val = int(new_val)
+                    
+                    old_val = getattr(projeto, field)
+                    if str(old_val) != str(new_val):
+                        changes[field] = {
+                            "antes": str(old_val) if old_val is not None else "",
+                            "depois": str(new_val)
+                        }
+
+            # Atualiza campos básicos do projeto
+            if "nome" in data: projeto.nome = data["nome"]
+            if "fee" in data: projeto.fee = int(data["fee"])
+            if "moeda" in data: projeto.moeda = data["moeda"]
+            if "squad_atribuida" in data: projeto.squad_atribuida = data["squad_atribuida"]
+            if "produto_contratado" in data: projeto.produto_contratado = data["produto_contratado"]
+            if "step" in data: projeto.step = data["step"]
+            if "informacoes_gerais" in data: projeto.informacoes_gerais = data["informacoes_gerais"]
+            if "ekyte_workspace" in data: projeto.ekyte_workspace = data["ekyte_workspace"]
+            
+            # Atualiza notas
+            if "notas" in data:
+                projeto.notas = data["notas"]
+
+            # Registra no histórico se houver mudanças
+            if changes:
+                historico_entry = {
+                    "data": dt.now().isoformat(),
+                    "usuario": session.get("email", "Sistema"),
+                    "alteracoes": changes
+                }
+                
+                if projeto.extra is None:
+                    projeto.extra = {"historico": []}
+                elif "historico" not in projeto.extra:
+                    # Garantir que não sobrescrevemos outros dados em extra se existirem
+                    new_extra = dict(projeto.extra)
+                    new_extra["historico"] = []
+                    projeto.extra = new_extra
+                
+                # SQLAlchemy JSONB mutation tracking can be tricky, 
+                # so we re-assign to ensure it detects the change
+                new_extra = dict(projeto.extra)
+                new_extra["historico"].insert(0, historico_entry)
+                projeto.extra = new_extra
+
+            # Sincroniza vínculos (denormalização e reconciliação)
+            incoming_investidores = data.get("investidores", [])
+            current_emails = [inv.get("email") for inv in incoming_investidores if inv.get("email")]
+            
+            # 1. Remove vínculos que não estão na lista recebida
+            db.query(InvestidorProjeto).filter(
+                InvestidorProjeto.pipefy_id_projeto == pipefy_id,
+                ~InvestidorProjeto.email_investidor.in_(current_emails)
+            ).delete(synchronize_session=False)
+
+            # 2. Atualiza ou Cria novos vínculos
+            for inv_data in incoming_investidores:
+                email = inv_data.get("email")
+                if not email: continue
+                
+                v = db.query(InvestidorProjeto).filter_by(
+                    pipefy_id_projeto=pipefy_id, 
+                    email_investidor=email
+                ).first()
+                
+                cientista = inv_data.get("cientista", False)
+                
+                if v:
+                    # Atualiza existente
+                    v.nome_projeto = data.get("nome", v.nome_projeto)
+                    v.fee_projeto = Decimal(str(data.get("fee", v.fee_projeto)))
+                    v.cientista = cientista
+                else:
+                    # Cria novo
+                    novo_v = InvestidorProjeto(
+                        pipefy_id_projeto=pipefy_id,
+                        email_investidor=email,
+                        nome_projeto=data.get("nome", projeto.nome),
+                        fee_projeto=Decimal(str(data.get("fee", projeto.fee))),
+                        cientista=cientista,
+                        active=True # Padrão conforme solicitado
+                    )
+                    db.add(novo_v)
+
+            db.commit()
+            return jsonify({"status": "success", "message": "Projeto e vínculos sincronizados com sucesso."})
+    except SQLAlchemyError as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/projetos/listar", methods=["GET"])
+@check_session
+def api_listar_projetos():
+    """Lista projetos do banco local para atualização dinâmica da UI."""
+    squad = session.get("squad", "")
+    email = session.get("email", "")
+    
+    # Busca dados locais
+    ativos = _buscar_projetos_db(ProjetoAtivo, email, squad)
+    onetime = _buscar_projetos_db(ProjetoOnetime, email, squad)
+    inativos = _buscar_projetos_db(ProjetoInativo, email, squad)
+    
+    # Formata para ser compatível com o que atualizarCards espera (baseado no formato n8n legado se necessário, 
+    # mas aqui adaptamos para simplificar)
+    return jsonify({
+        "ativos": [{"projetos": p} for p in ativos],
+        "onetime": [{"projetos": p} for p in onetime],
+        "inativos": [{"projetos": p} for p in inativos]
+    })
 
 
 @app.route("/cockpit", methods=["GET"])
