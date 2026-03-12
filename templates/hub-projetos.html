@@ -13,6 +13,13 @@
     <link rel="stylesheet" href="static/style/hub-projetos.css">
     <link rel="stylesheet" href="static/style/tema-claro.css">
     <script src="static/js/hub-projetos.js" defer></script>
+    <script>
+        window.APP_CONFIG = {
+            userEmail: "{{ session.email }}",
+            userToken: "{{ session.token }}",
+            nivelAcesso: "{{ session.nivel_acesso }}"
+        };
+    </script>
     {% include "components/icon_title.html" %}
 
 
@@ -370,6 +377,27 @@
                                     <label>Informações Gerais do Projeto</label>
                                     <textarea name="informacoes_gerais" id="modal_informacoes" rows="6"
                                         disabled></textarea>
+                                </div>
+
+                                <!-- SEÇÃO DE INVESTIDORES VINCULADOS -->
+                                <div class="form-group full-width vinculados-section" id="vinculosSection">
+                                    <div class="vinculos-header">
+                                        <label><i class="fa-solid fa-users"></i> Investidores Vinculados</label>
+                                        <div class="vinculos-actions" id="vinculosActions" style="display: none;">
+                                            <select id="investidorSelect">
+                                                <option value="">Vincular investidor...</option>
+                                            </select>
+                                            <label class="checkbox-label">
+                                                <input type="checkbox" id="isCientista"> Cientista
+                                            </label>
+                                            <button type="button" class="btn-add-vinculo" onclick="vincularNovoInvestidor()">
+                                                <i class="fa-solid fa-plus"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div id="vinculosContainer" class="vinculos-container">
+                                        <!-- Vinculos serão adicionados aqui dinamicamente -->
+                                    </div>
                                 </div>
 
                                 <!-- SEÇÃO DE NOTAS CUSTOMIZADAS -->

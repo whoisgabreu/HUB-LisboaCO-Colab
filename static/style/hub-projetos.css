@@ -1236,3 +1236,138 @@ option {
     }
 
 }
+
+/* SEÇÃO DE INVESTIDORES VINCULADOS */
+.vinculados-section {
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.vinculos-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.vinculos-actions {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+}
+
+.vinculos-actions select {
+    padding: 0.5rem;
+    background-color: #1a1a1e;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    color: white;
+    font-size: 0.85rem;
+    min-width: 200px;
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    color: #a0a0a0;
+    cursor: pointer;
+}
+
+.btn-add-vinculo {
+    background-color: #d61616;
+    color: white;
+    border: none;
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: 0.2s;
+}
+
+.btn-add-vinculo:hover {
+    background-color: #911414;
+}
+
+.vinculos-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.vinculo-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background-color: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+}
+
+.vinculo-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.vinculo-email {
+    font-size: 0.9rem;
+    color: #ffffff;
+    font-weight: 500;
+}
+
+.vinculo-tags {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.tag-cientista {
+    background-color: rgba(0, 150, 255, 0.1);
+    color: #0096ff;
+    padding: 0.1rem 0.5rem;
+    border-radius: 10px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    border: 1px solid rgba(0, 150, 255, 0.3);
+}
+
+.tag-inactive {
+    background-color: rgba(107, 114, 128, 0.1);
+    color: #6b7280;
+    padding: 0.1rem 0.5rem;
+    border-radius: 10px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    border: 1px solid rgba(107, 114, 128, 0.3);
+}
+
+.vinculo-controls {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.btn-remove-vinculo {
+    background-color: transparent;
+    color: #ff4444;
+    border: 1px solid rgba(255, 68, 68, 0.2);
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: 0.2s;
+}
+
+.btn-remove-vinculo:hover {
+    background-color: rgba(255, 68, 68, 0.1);
+    border-color: #ff4444;
+}
