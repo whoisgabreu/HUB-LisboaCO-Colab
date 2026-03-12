@@ -1,4 +1,4 @@
-﻿/**
+/**
  * tema-claro.css
  * Sobrescritas de cor para o modo claro (light mode).
  * Ativado quando body possui a classe 'tema-claro'.
@@ -6,17 +6,18 @@
 
 body.tema-claro {
     /* Variáveis Base */
-    --bg-main: #f0f2f5;
+    --bg-main: #f8fafc;
     --bg-hover: #ffffff;
     --card-bg: #ffffff;
     --modal-bg: #ffffff;
-    --text-main: #1f2937;
-    --text-muted: #6b7280;
-    --border-color: #d1d5db;
+    --text-main: #1e293b;
+    --text-muted: #64748b;
+    --border-color: #e2e8f0;
+    --accent-red: #d61616;
 
     /* Overrides adicionais para componentes específicos */
-    color: #1f2937;
-    background-color: #f0f2f5;
+    color: var(--text-main);
+    background-color: var(--bg-main);
 }
 
 /* Sidebar no tema claro */
@@ -42,17 +43,20 @@ body.tema-claro .logo {
     filter: brightness(0) saturate(100%) invert(18%) sepia(88%) saturate(3620%) hue-rotate(352deg) brightness(87%) contrast(106%) !important;
 }
 
-/* Cards de Projeto e Operação */
 body.tema-claro .project-card,
 body.tema-claro .op-project-card,
 body.tema-claro .op-card-premium,
 body.tema-claro .kpi-card,
 body.tema-claro .kpi-card-premium,
 body.tema-claro .weekly-tasks-container,
-body.tema-claro .access-link-card {
+body.tema-claro .access-link-card,
+body.tema-claro .metric-card,
+body.tema-claro .remu-metric-card,
+body.tema-claro .remu-investor-card,
+body.tema-claro .remu-table-card {
     background-color: #ffffff !important;
-    border: 1px solid #d1d5db !important;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05) !important;
+    border: 1px solid #e2e8f0 !important;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1) !important;
     color: var(--text-main) !important;
 }
 
@@ -61,8 +65,19 @@ body.tema-claro .op-project-card h3,
 body.tema-claro .project-card h3,
 body.tema-claro .project-info h3,
 body.tema-claro .kpi-value,
-body.tema-claro .task-text {
-    color: #111827 !important;
+body.tema-claro .task-text,
+body.tema-claro .metric-value,
+body.tema-claro .welcome-section h2,
+body.tema-claro h3 {
+    color: #0f172a !important;
+}
+
+body.tema-claro .project-description,
+body.tema-claro .welcome-section p,
+body.tema-claro .metric-label,
+body.tema-claro .project-meta,
+body.tema-claro .remu-metric-label {
+    color: #64748b !important;
 }
 
 /* Modais no tema claro */
@@ -137,8 +152,8 @@ body.tema-claro .remu-table {
 body.tema-claro .op-table td,
 body.tema-claro .op-spreadsheet td,
 body.tema-claro .remu-table td {
-    border: 1px solid #d1d5db !important;
-    color: #374151 !important;
+    border: 1px solid #e2e8f0 !important;
+    color: #334155 !important;
 }
 
 body.tema-claro .remu-table th {
@@ -616,10 +631,29 @@ body.tema-claro .tabela-detalhe td.text-contratado {
     background-color: rgba(220, 38, 38, 0.03) !important;
 }
 
+/* Forçar cor escura em valores de métricas que podem estar inline */
+body.tema-claro .remu-summary-val,
+body.tema-claro .remu-value-amount,
+body.tema-claro .remu-comparison-val,
+body.tema-claro .remu-target-val {
+    color: #0f172a !important;
+}
+
+body.tema-claro .remu-summary-label,
+body.tema-claro .remu-value-label,
+body.tema-claro .remu-comparison-label {
+    color: #64748b !important;
+}
+
+/* Ajuste de separadores */
+body.tema-claro .remu-divider {
+    color: #cbd5e1 !important;
+}
+
 /* Toasts no Modo Claro */
 body.tema-claro .toast {
     background: #ffffff !important;
-    border-color: #d1d5db !important;
-    color: #111827 !important;
+    border-color: #e2e8f0 !important;
+    color: #1e293b !important;
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08) !important;
 }
