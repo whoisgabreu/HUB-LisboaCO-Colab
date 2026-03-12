@@ -33,7 +33,7 @@ body::-webkit-scrollbar-thumb:hover {
 /* HEADER */
 .header {
     position: sticky;
-    z-index: 999;
+    z-index: 2000;
     top: 0;
     background-color: #17171b;
     padding: 1rem 2rem;
@@ -73,6 +73,7 @@ body::-webkit-scrollbar-thumb:hover {
     padding: 0.5rem 1.5rem;
     border-radius: 8px;
     border: 1px solid rgba(255, 0, 0, 0.2);
+
 }
 
 .user-details {
@@ -1162,13 +1163,26 @@ option {
 /* RESPONSIVE */
 @media (max-width: 768px) {
     .header {
-        flex-direction: column;
+        position: sticky;
+        flex-direction: row;
         gap: 1rem;
+        justify-content: space-between;
     }
 
     .user-info {
-        width: 100%;
+        border: none;
+        background: none;
+        right: 0;
+        width: 20%;
         justify-content: space-between;
+
+        #headerUserName {
+            display: none;
+        }
+
+        #headerUserRole {
+            display: none
+        }
     }
 
     .projects-grid {

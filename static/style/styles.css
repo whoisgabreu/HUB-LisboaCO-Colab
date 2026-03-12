@@ -1346,13 +1346,26 @@ option {
 /* RESPONSIVE */
 @media (max-width: 768px) {
     .header {
-        flex-direction: column;
+        position: sticky;
+        flex-direction: row;
         gap: 1rem;
+        justify-content: space-between;
     }
 
     .user-info {
-        width: 100%;
+        border: none;
+        background: none;
+        right: 0;
+        width: 20%;
         justify-content: space-between;
+
+        #headerUserName {
+            display: none;
+        }
+
+        #headerUserRole {
+            display: none
+        }
     }
 
     .projects-grid {
@@ -1365,6 +1378,7 @@ option {
         gap: 1rem;
     }
 
+
     .btn-view {
         width: 100%;
         justify-content: center;
@@ -1372,6 +1386,8 @@ option {
 
     .modal-header {
         max-height: 90px;
+
+
     }
 
     #clientModalTitle,
@@ -1401,6 +1417,7 @@ option {
         height: 38px;
         line-height: 38px;
     }
+
 }
 
 /* HOME ADDITIONS - DO NOT CHANGE BASE THEME */
