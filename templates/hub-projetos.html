@@ -68,12 +68,10 @@
                     <div class="search-box">
                         <i class="fa-solid fa-magnifying-glass"></i>
                         {% if session.squad == "Gerência" %}
-                        <input type="text" name="busca" value="" autocomplete="off" autocorrect="off"
-                            autocapitalize="off" spellcheck="false" id="searchInput"
+                        <input type="text" id="searchInput" autocomplete="off"
                             placeholder="Buscar por cliente ou squad..." onkeyup="filterClients()">
                         {% else %}
-                        <input type="text" name="busca" value="" autocomplete="off" autocorrect="off"
-                            autocapitalize="off" spellcheck="false" id="searchInput" placeholder="Buscar por cliente..."
+                        <input type="text" id="searchInput" autocomplete="off" placeholder="Buscar por cliente..."
                             onkeyup="filterClients()">
                         {% endif %}
                     </div>
