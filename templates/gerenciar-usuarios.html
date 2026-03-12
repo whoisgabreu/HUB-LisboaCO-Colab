@@ -256,6 +256,17 @@
         </div>
     </div>
 
+    <script>
+        window.APP_CONFIG = {
+            userEmail: "{{ session.email }}",
+            userAccessLevel: "{{ session.nivel_acesso }}",
+            userToken: "{{session.token}}"
+        };
+        // Cargo do usuário injetado para o delivery engine do frontend
+        window.__USER_ROLE__ = "{{ session.funcao }}";
+    </script>
+    {% include "components/modal-configuracoes.html" %}
+    <script src="static/js/tema.js"></script>
     <script src="static/js/gerenciar-usuarios.js"></script>
 </body>
 
