@@ -34,8 +34,8 @@
                 <div class="filters">
                     <div class="search-box">
                         <i class="fa-solid fa-magnifying-glass"></i>
-                        <input type="text" id="remuSearchInput" placeholder="Buscar por investidor..."
-                            onkeyup="filterInvestors()">
+                        <input type="text" id="remuSearchInput" autocomplete="off"
+                            placeholder="Buscar por investidor..." onkeyup="filterInvestors()">
                     </div>
 
                     <div class="filter-group">
@@ -76,8 +76,7 @@
                     {% for inv in investors %}
                     <div class="project-card" data-id="{{ inv.id }}" data-name="{{ inv.name }}"
                         data-role="{{ inv.role }}" data-squad="{{ inv.squad }}" data-email="{{ inv.email }}"
-                        data-status="{{ 'true' if inv.ativo else 'false' }}"
-                        data-step="{{ inv.step }}"
+                        data-status="{{ 'true' if inv.ativo else 'false' }}" data-step="{{ inv.step }}"
                         data-yellow-flag="{{ inv.rows[0].yellow_streak if inv.rows|length > 0 else '' }}"
                         data-green-flag="{{ inv.rows[0].green_streak if inv.rows|length > 0 else '' }}"
                         data-clients="{{ inv.clients_count }}" data-fixed="{{ inv.fixed_fee }}" data-mrr="{{ inv.mrr }}"
