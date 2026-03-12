@@ -32,6 +32,14 @@
         </a>
         {% endif %}
 
+        {# Menu Admin: Apenas Admin #}
+        {% if session.nivel_acesso == "Admin" %}
+        <a href="/gerenciar-usuarios" class="nav-item">
+            <i class="fas fa-users-cog"></i>
+            <span>Gerenciar Usuários</span>
+        </a>
+        {% endif %}
+
         {% if session.email in ["martins.gabriel@v4company.com", "gabriel.lasaro@v4company.com"] %}
 
         <!-- {# Menu Criativa: apenas Designer, WebDesigner e Gerência #}

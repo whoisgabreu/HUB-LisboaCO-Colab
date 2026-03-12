@@ -587,6 +587,164 @@ def hub_remuneracao():
     )
 
 
+# ─── GERENCIAMENTO DE USUÁRIOS (ADMIN) ───────────────────────────────────────
+
+@app.route("/gerenciar-usuarios")
+@check_session
+def gerenciar_usuarios():
+    # Apenas Admin acessa essa tela
+    if session.get("nivel_acesso") != "Admin":
+        return render_template("index.html", error="Acesso restrito a administradores.")
+    
+    try:
+        with Session() as db:
+            # Buscar opções para os selects do modal
+            from models import RemuneracaoCargo
+            cargos = db.query(RemuneracaoCargo.fixo_cargo).distinct().all()
+            senioridades = db.query(RemuneracaoCargo.fixo_senioridade).distinct().all()
+            niveis = db.query(RemuneracaoCargo.fixo_level).distinct().all()
+            
+            # Posições e Squads fixas ou do banco
+            posicoes = ["Operação", "Gerência", "Meio", "Sócio"]
+            squads_db = db.query(Investidor.squad).filter(Investidor.squad != None).distinct().all()
+            squads = sorted(list(set([s[0] for s in squads_db if s[0]] + ["Gerência", "Strike Force", "Shark", "Tigers"])))
+
+            return render_template(
+                "gerenciar-usuarios.html",
+                options={
+                    "cargos": [c[0] for c in cargos],
+                    "senioridades": [s[0] for s in senioridades],
+                    "niveis": [n[0] for n in niveis],
+                    "posicoes": posicoes,
+                    "squads": squads
+                }
+            )
+    except Exception as e:
+        print(f"Erro ao carregar gerenciar usuários: {e}")
+        return redirect(url_for("home"))
+
+
+@app.route("/api/admin/usuarios", methods=["GET"])
+@check_session
+def api_get_usuarios():
+    if session.get("nivel_acesso") != "Admin":
+        return jsonify({"error": "Unauthorized"}), 403
+    
+    try:
+        with Session() as db:
+            usuarios = db.query(Investidor).order_by(Investidor.nome).all()
+            return jsonify([{
+                "id": u.id,
+                "nome": u.nome,
+                "email": u.email,
+                "funcao": u.funcao,
+                "senioridade": u.senioridade,
+                "nivel": u.nivel,
+                "squad": u.squad,
+                "posicao": u.posicao,
+                "nivel_acesso": u.nivel_acesso,
+                "ativo": u.ativo
+            } for u in usuarios])
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/admin/usuarios", methods=["POST"])
+@check_session
+def api_create_usuario():
+    if session.get("nivel_acesso") != "Admin":
+        return jsonify({"error": "Unauthorized"}), 403
+    
+    data = request.json
+    try:
+        with Session() as db:
+            # Verifica se já existe
+            exists = db.query(Investidor).filter_by(email=data["email"]).first()
+            if exists:
+                return jsonify({"error": "Usuário com este e-mail já existe."}), 400
+
+            # Gerar ID sequencial se não fornecido
+            if not data.get("id"):
+                max_id = db.query(Investidor.id).order_by(Investidor.id.desc()).first()
+                new_id = (max_id[0] + 1) if max_id else 1
+            else:
+                new_id = data["id"]
+
+            novo_user = Investidor(
+                id=new_id,
+                nome=data["nome"],
+                email=data["email"],
+                funcao=data.get("funcao"),
+                senioridade=data.get("senioridade"),
+                nivel=data.get("nivel"),
+                squad=data.get("squad"),
+                posicao=data.get("posicao"),
+                nivel_acesso=data.get("nivel_acesso", "Usuário"),
+                ativo=data.get("ativo", True),
+                senha=generate_password_hash(data.get("senha", "v4company")) # Senha padrão se não enviada
+            )
+            db.add(novo_user)
+            db.commit()
+            return jsonify({"status": "success", "message": "Usuário criado com sucesso!"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/admin/usuarios/<email>", methods=["PUT"])
+@check_session
+def api_update_usuario(email):
+    if session.get("nivel_acesso") != "Admin":
+        return jsonify({"error": "Unauthorized"}), 403
+    
+    data = request.json
+    try:
+        with Session() as db:
+            user = db.query(Investidor).filter_by(email=email).first()
+            if not user:
+                return jsonify({"error": "Usuário não encontrado."}), 404
+
+            user.nome = data.get("nome", user.nome)
+            user.funcao = data.get("funcao", user.funcao)
+            user.senioridade = data.get("senioridade", user.senioridade)
+            user.nivel = data.get("nivel", user.nivel)
+            user.squad = data.get("squad", user.squad)
+            user.posicao = data.get("posicao", user.posicao)
+            user.nivel_acesso = data.get("nivel_acesso", user.nivel_acesso)
+            user.ativo = data.get("ativo", user.ativo)
+            
+            # Se vier senha nova, atualiza
+            if data.get("senha"):
+                user.senha = generate_password_hash(data["senha"])
+
+            db.commit()
+            return jsonify({"status": "success", "message": "Usuário atualizado com sucesso!"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/admin/usuarios/reset-password", methods=["POST"])
+@check_session
+def api_reset_password():
+    if session.get("nivel_acesso") != "Admin":
+        return jsonify({"error": "Unauthorized"}), 403
+    
+    data = request.json
+    email = data.get("email")
+    nova_senha = data.get("nova_senha", "v4company")
+    
+    try:
+        with Session() as db:
+            user = db.query(Investidor).filter_by(email=email).first()
+            if not user:
+                return jsonify({"error": "Usuário não encontrado."}), 404
+            
+            user.senha = generate_password_hash(nova_senha)
+            db.commit()
+            return jsonify({"status": "success", "message": f"Senha de {email} redefinida com sucesso!"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 # ─── OUTRAS PÁGINAS ──────────────────────────────────────────────────────────
 
 @app.route("/hub-cs-cx", methods=["GET"])
