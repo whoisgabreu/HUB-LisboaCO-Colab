@@ -193,7 +193,6 @@
 
             // Remove quando a transição terminar
             toast.addEventListener('transitionend', () => {
-                alert('toast removido')
                 toast.remove();
             }, { once: true });
 

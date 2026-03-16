@@ -21,6 +21,8 @@ from services.remuneracao import calcular_metricas_mensais
 from services.delivery_engine import process_deliveries, process_all_deliveries_for_project
 from services.delivery_service import DeliveryService
 from services.operacao_service import OperacaoService
+from services.projeto_participacao_service import ProjetoParticipacaoService
+
 
 # Cria as tabelas caso não existam no banco
 Base.metadata.create_all(engine)
@@ -38,7 +40,9 @@ def job_recalcular_remuneracao():
     from services.remuneracao import calcular_metricas_mensais
     try:
         calcular_metricas_mensais(dt.now().month, dt.now().year)
+        ProjetoParticipacaoService.sincronizar_remuneracao(dt.now().month, dt.now().year)
         print("Recalculo automatico concluido com sucesso.")
+
     except Exception as e:
         print(f"Erro no agendamento: {e}")
 
@@ -931,7 +935,9 @@ def processar_remuneracao():
     from datetime import datetime as dt
     try:
         calcular_metricas_mensais(dt.now().month, dt.now().year)
+        ProjetoParticipacaoService.sincronizar_remuneracao(dt.now().month, dt.now().year)
         return jsonify({"status": "success", "message": "Métricas processadas."})
+
     except Exception as e:
         print(f"Erro ao processar remuneracao: {e}")
         return jsonify({"error": str(e)}), 500
@@ -1435,7 +1441,8 @@ def update_projeto_local(pipefy_id):
                 if v:
                     # Atualiza existente
                     v.nome_projeto = data.get("nome", v.nome_projeto)
-                    v.fee_projeto = Decimal(str(data.get("fee", v.fee_projeto)))
+                    v.fee_projeto = Decimal(str(data.get("fee", v.fee_projeto) or 0))
+
                     v.cientista = cientista
                 else:
                     # Cria novo
@@ -1443,14 +1450,24 @@ def update_projeto_local(pipefy_id):
                         pipefy_id_projeto=pipefy_id,
                         email_investidor=email,
                         nome_projeto=data.get("nome", projeto.nome),
-                        fee_projeto=Decimal(str(data.get("fee", projeto.fee))),
+                        fee_projeto=Decimal(str(data.get("fee", projeto.fee) or 0)),
                         cientista=cientista,
-                        active=True # Padrão conforme solicitado
+                        active=True,
+                        created_at=dt.now()
                     )
+
                     db.add(novo_v)
 
             db.commit()
+            
+            # Sincroniza a remuneração imediatamente para refletir as mudanças no histórico proporcional
+            try:
+                ProjetoParticipacaoService.sincronizar_remuneracao(dt.now().month, dt.now().year)
+            except Exception as e:
+                print(f"Erro na sincronização pós-update: {e}")
+
             return jsonify({"status": "success", "message": "Projeto e vínculos sincronizados com sucesso."})
+
     except SQLAlchemyError as e:
         return jsonify({"error": str(e)}), 500
 
