@@ -88,7 +88,9 @@ class ProjetoParticipacaoService:
                 projs = db.query(Model.pipefy_id, Model.moeda).filter(Model.pipefy_id.in_(proj_ids)).all()
                 for pid, moeda in projs:
                     if pid not in moedas_map:
-                        moedas_map[pid] = moeda or "BRL"
+                        m_str = str(moeda).strip().upper() if moeda else "BRL"
+                        moedas_map[pid] = "USD" if m_str == "USD" else "BRL"
+
 
             # 4. Agrupar vínculos por e-mail
 
@@ -143,10 +145,18 @@ class ProjetoParticipacaoService:
                         else:
                             v_inicio = max(v_inicio, data_inicio_ref)
 
-                    v_fim = None
-                    v_valor_prop = ProjetoParticipacaoService.calcular_valor_proporcional(
-                        v.fee_projeto, v_inicio, v_fim, mes, ano
-                    )
+                    # Regra do Proporcional:
+                    # Se está ativo, mostramos o fee completo.
+                    # Se está inativo (Churn no mês), calculamos proporcional.
+                    if v.active != False:
+                        v_valor_prop = v.fee_projeto or 0
+                        v_fim = None
+                    else:
+                        v_fim = v.inactivated_at
+                        v_valor_prop = ProjetoParticipacaoService.calcular_valor_proporcional(
+                            v.fee_projeto or 0, v_inicio, v_fim, mes, ano
+                        )
+
 
                     item = {
                         "projeto_id": p_id,
@@ -156,9 +166,10 @@ class ProjetoParticipacaoService:
                         "mes_referencia": f"{ano}-{mes:02d}",
                         "total_dias_mes": total_dias_mes,
                         "data_inicio": v_inicio.isoformat(),
-                        "data_fim": None,
-                        "ativo": True
+                        "data_fim": v_fim.isoformat() if v_fim else None,
+                        "ativo": v.active != False
                     }
+
                     novo_historico.append(item)
 
                 hoje = date.today()
@@ -207,12 +218,13 @@ class ProjetoParticipacaoService:
                 if m.historico_projetos:
                     for item in m.historico_projetos:
                         valor = Decimal(str(item.get("valor_proporcional") or 0))
-                        moeda = item.get("moeda", "BRL")
+                        m_code = str(item.get("moeda", "BRL")).strip().upper()
                         
-                        if moeda == "USD":
+                        if m_code == "USD":
                             valor = valor * rate_usd
                             
                         total_proporcional_brl += valor
+
                 
                 m.fixo_mrr_atual = total_proporcional_brl
                 m.fixo_mrr_entrega = total_proporcional_brl

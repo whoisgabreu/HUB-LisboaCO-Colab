@@ -295,12 +295,14 @@ def home():
             usd_rate = None
             for p in projetos:
                 fee = float(p.fee or 0)
-                if p.moeda and p.moeda.upper() == 'USD':
+                m_code = str(p.moeda).strip().upper() if p.moeda else "BRL"
+                if m_code == 'USD':
                     if usd_rate is None:
                         usd_rate = float(CurrencyService.get_usd_to_brl_rate())
                     mrr_total += fee * usd_rate
                 else:
                     mrr_total += fee
+
 
             operational_data = {
                 "mrr": mrr_total,
