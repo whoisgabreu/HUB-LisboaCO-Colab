@@ -204,6 +204,8 @@ class MetricaMensal(Base):
     calc_variavel_csp = Column(DECIMAL(15, 2), server_default=FetchedValue())
     calc_variavel_total = Column(DECIMAL(15, 2), server_default=FetchedValue())
     calc_remuneracao_total = Column(DECIMAL(15, 2), server_default=FetchedValue())
+    historico_projetos = Column(JSONB)
+
 
     def to_dict(self):
         """Converte para dict compatível com o formato que o template espera."""

@@ -178,3 +178,8 @@ document.addEventListener('keydown', (e) => {
         closeRemunerationModal();
     }
 });
+
+// Carregar página com filtros ativos
+document.addEventListener('DOMContentLoaded', function () {
+    filterInvestors();
+});

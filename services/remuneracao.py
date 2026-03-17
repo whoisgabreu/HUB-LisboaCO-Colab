@@ -213,4 +213,7 @@ def calcular_metricas_mensais(mes, ano):
                 metrica.fixo_remuneracao_minima = cargo_config.calc_remuneracao_minima
                 metrica.fixo_remuneracao_maxima = cargo_config.calc_remuneracao_maxima
 
+            # Flush individual para evitar bulk INSERT/UPDATE problemático com colunas GENERATED (FetchedValue)
+            db.flush()
+
         db.commit()
