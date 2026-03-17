@@ -1476,6 +1476,101 @@ def api_listar_projetos():
     })
 
 
+@app.route("/api/ranking", methods=["GET"])
+@check_session
+def api_ranking():
+    """
+    Retorna os dados dos investidores e suas métricas para o painel de ranking.
+    Busca o registro mais recente (mês/ano atual ou anterior) de cada investidor.
+    """
+    try:
+        from sqlalchemy import func, desc, case
+        from datetime import datetime, date
+        now = datetime.now()
+        mes_atual = now.month
+        ano_atual = now.year
+
+        with Session() as db:
+            # Busca todos os investidores ativos
+            investidores = db.query(Investidor).filter_by(ativo=True).all()
+            
+            # Busca as métricas do mês atual
+            metricas = db.query(MetricaMensal).filter_by(mes=mes_atual, ano=ano_atual).all()
+            
+            # Se não houver métricas para o mês atual, tenta o mês anterior
+            if not metricas:
+                mes_busca = 12 if mes_atual == 1 else mes_atual - 1
+                ano_busca = ano_atual - 1 if mes_atual == 1 else ano_atual
+                metricas = db.query(MetricaMensal).filter_by(mes=mes_busca, ano=ano_busca).all()
+            
+            metricas_map = {m.email_investidor: m for m in metricas}
+
+            # Map de Churn e Projetos (Novo cálculo real)
+            from models import InvestidorProjeto
+            churn_data = db.query(
+                InvestidorProjeto.email_investidor,
+                func.max(InvestidorProjeto.inactivated_at).label('last_churn'),
+                func.min(InvestidorProjeto.created_at).label('first_project'),
+                func.sum(case((InvestidorProjeto.active == True, 1), else_=0)).label('active_count')
+            ).group_by(InvestidorProjeto.email_investidor).all()
+            
+            churn_map = {c.email_investidor: (c.last_churn, c.first_project, int(c.active_count or 0)) for c in churn_data}
+            
+            ranking_list = []
+            for inv in investidores:
+                m = metricas_map.get(inv.email)
+                churn_info = churn_map.get(inv.email)
+                
+                # OBRIGATÓRIO: Ter pelo menos 1 projeto vinculado para aparecer no ranking
+                if not churn_info:
+                    continue
+                
+                # Lógica de Dias Sem Churn:
+                days_without_churn = 0
+                if churn_info:
+                    last_churn, first_project, active_projects = churn_info
+                    base_date = last_churn if last_churn else first_project
+                    if base_date:
+                        # base_date costuma ser date ou datetime
+                        d_base = base_date if isinstance(base_date, date) else base_date.date() if hasattr(base_date, 'date') else None
+                        if d_base:
+                            delta = now.date() - d_base
+                            days_without_churn = max(0, delta.days)
+                
+                # Mapeamento de Level para Senioridade de Mercado
+                level_map = {
+                    "L1": "Júnior", "L2": "Pleno", "L3": "Sênior", "L4": "Sênior", "L5": "Especialista"
+                }
+                raw_level = m.level if m else inv.nivel
+                display_seniority = level_map.get(raw_level, raw_level)
+
+                # Formatação de MRR para o front
+                mrr_val = float(m.fixo_mrr_atual or 0) if m else 0.0
+                mrr_formatted = f"R$ {mrr_val:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
+
+                ranking_list.append({
+                    "id": inv.id,
+                    "email": inv.email,
+                    "name": inv.nome,
+                    "role": inv.funcao or inv.posicao,
+                    "level": display_seniority,
+                    "flag": m.flag if m else "white",
+                    "daysWithoutChurn": days_without_churn,
+                    "clientsCount": active_projects,
+                    "mrr": mrr_val,
+                    "mrr_formatted": mrr_formatted,
+                    "tenure": inv.senioridade,
+                    "photo": f"static/images/profile_pictures/{inv.profile_picture}" if inv.profile_picture else None,
+                    "highlights": m.motivo_flag.split(",") if m and m.motivo_flag else ["Investidor Ativo"]
+                })
+            
+            return jsonify(ranking_list)
+            
+    except Exception as e:
+        print(f"Erro no ranking API: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/cockpit", methods=["GET"])
 @check_session
 def cockpit():
