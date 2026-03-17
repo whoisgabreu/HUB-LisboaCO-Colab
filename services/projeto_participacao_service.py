@@ -208,28 +208,34 @@ class ProjetoParticipacaoService:
 
             db.commit()
 
-            # 3. Recalcular os campos de MRR nas metricas mensais
+            # 3. Preencher fixo_mrr_entrega e fixo_mrr_projeto_total com o valor proporcional
+            #    convertido USD→BRL a partir do historico_projetos.
+            #
+            #    IMPORTANTE: fixo_mrr_atual NÃO é atualizado aqui porque ele é o denominador
+            #    de todas as colunas GENERATED (calc_churn_real_percentual, calc_delta_csp, etc.).
+            #    Atualizar fixo_mrr_atual com um valor proporcional baixo (ex: 167.59) quando
+            #    fixo_churn_atual é alto (ex: 6000) causaria overflow em NUMERIC(8,7)
+            #    (ex: 6000 / 167.59 = 35.8 > 9.9999999).
             rate_usd = CurrencyService.get_usd_to_brl_rate()
 
             metricas = db.query(MetricaMensal).filter_by(mes=mes, ano=ano).all()
             for m in metricas:
-                # Mesmo que não tenha histórico, precisamos zerar o MRR se não houver projetos
                 total_proporcional_brl = Decimal("0.00")
                 if m.historico_projetos:
                     for item in m.historico_projetos:
                         valor = Decimal(str(item.get("valor_proporcional") or 0))
                         m_code = str(item.get("moeda", "BRL")).strip().upper()
-                        
                         if m_code == "USD":
                             valor = valor * rate_usd
-                            
                         total_proporcional_brl += valor
 
-                
-                m.fixo_mrr_atual = total_proporcional_brl
+                # Arredonda para 2 casas decimais antes de gravar (ex: 167.5945712 → 167.59)
+                total_proporcional_brl = total_proporcional_brl.quantize(Decimal("0.01"))
+
+                # Apenas fixo_mrr_entrega e fixo_mrr_projeto_total — não afetam as colunas GENERATED
                 m.fixo_mrr_entrega = total_proporcional_brl
                 m.fixo_mrr_projeto_total = total_proporcional_brl
-
+                db.flush()
 
             db.commit()
             return True
