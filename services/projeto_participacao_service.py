@@ -146,16 +146,12 @@ class ProjetoParticipacaoService:
                             v_inicio = max(v_inicio, data_inicio_ref)
 
                     # Regra do Proporcional:
-                    # Se está ativo, mostramos o fee completo.
-                    # Se está inativo (Churn no mês), calculamos proporcional.
-                    if v.active != False:
-                        v_valor_prop = v.fee_projeto or 0
-                        v_fim = None
-                    else:
-                        v_fim = v.inactivated_at
-                        v_valor_prop = ProjetoParticipacaoService.calcular_valor_proporcional(
-                            v.fee_projeto or 0, v_inicio, v_fim, mes, ano
-                        )
+                    # Sempre calculamos o valor proporcional, seja o vínculo ativo ou inativo.
+                    # Se ativo (v.active != False), v_fim será None e o helper assumirá o fim do mês.
+                    v_fim = None if v.active != False else v.inactivated_at
+                    v_valor_prop = ProjetoParticipacaoService.calcular_valor_proporcional(
+                        v.fee_projeto or 0, v_inicio, v_fim, mes, ano
+                    )
 
 
                     item = {
