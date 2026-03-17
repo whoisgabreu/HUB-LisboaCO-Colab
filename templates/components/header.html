@@ -2,6 +2,12 @@
 
 {% include "components/up-button.html" %}
 
+<!-- Decoy para capturar Autofill indesejado do Chrome -->
+<div style="position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); border: 0;">
+    <input type="text" name="prevent_autofill_email" tabindex="-1">
+    <input type="password" name="prevent_autofill_password" tabindex="-1">
+</div>
+
 <header class="header">
     <div class="header-left">
         <button class="burger-menu">

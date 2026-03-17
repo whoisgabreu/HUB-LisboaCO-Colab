@@ -8,7 +8,39 @@ document.addEventListener('DOMContentLoaded', () => {
     initUserDropdown();
     initSidebarCollapse();
     highlightActiveLink();
+    disableSearchAutofill();
 });
+
+// Impede que o navegador preencha campos de busca com e-mail/senha
+function disableSearchAutofill() {
+    const inputs = document.querySelectorAll('input');
+    inputs.forEach(input => {
+        const isSearch = (input.id && input.id.toLowerCase().includes('search')) || 
+                        (input.name && input.name.toLowerCase().includes('search')) ||
+                        (input.placeholder && input.placeholder.toLowerCase().includes('buscar'));
+        
+        if (isSearch) {
+            input.setAttribute('readonly', 'readonly');
+            input.setAttribute('autocomplete', 'off'); // Muitos navegadores ainda respeitam se o campo for readonly
+            
+            const unlock = () => {
+                input.removeAttribute('readonly');
+                input.focus();
+            };
+
+            input.addEventListener('focus', unlock);
+            input.addEventListener('mousedown', unlock);
+
+            // Garante que o valor esteja limpo caso o browser tenha preenchido antes do JS rodar
+            setTimeout(() => {
+                if (input.value.includes('@')) input.value = '';
+            }, 100);
+            setTimeout(() => {
+                if (input.value.includes('@')) input.value = '';
+            }, 500);
+        }
+    });
+}
 
 // Sidebar Logic (Mobile)
 function initSidebar() {
