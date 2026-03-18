@@ -1,0 +1,490 @@
+/* cs-cockpit.css - Premium Styles for CS/CX Dashboard and Operational Cockpit */
+
+* {
+    box-sizing: border-box;
+}
+
+:root {
+    --cs-accent: #d61616;
+    --cs-bg-card: #1e1e24;
+    --cs-border: rgba(255, 255, 255, 0.1);
+    --cs-text-main: #ffffff;
+    --cs-text-muted: #a0a0a0;
+    
+    /* Cockpit Specific Colors */
+    --status-resultado: #2ecc71;
+    --status-ekyte: #3498db;
+    --status-ads: #f1c40f;
+    --status-wpp: #25d366;
+    --status-csat: #9b59b6;
+    --status-health-low: #e74c3c;
+    --status-health-mid: #f39c12;
+    --status-health-high: #27ae60;
+}
+
+/* Base Container */
+.cs-dashboard-container {
+    padding: 20px;
+}
+
+/* Tabs System */
+.cs-tabs {
+    display: flex;
+    gap: 20px;
+    border-bottom: 1px solid var(--cs-border);
+    margin-bottom: 30px;
+}
+
+.cs-tab-btn {
+    background: none;
+    border: none;
+    color: var(--cs-text-muted);
+    padding: 12px 24px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.3s;
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.cs-tab-btn:hover {
+    color: var(--cs-text-main);
+}
+
+.cs-tab-btn.active {
+    color: var(--cs-accent);
+}
+
+.cs-tab-btn.active::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: var(--cs-accent);
+    border-radius: 3px 3px 0 0;
+    box-shadow: 0 -2px 10px rgba(214, 22, 22, 0.4);
+}
+
+.cs-tab-content {
+    display: none;
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+.cs-tab-content.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Cockpit Feed */
+.cockpit-feed {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    max-width: 1000px;
+    margin: 0 auto;
+}
+
+.notification-card {
+    background: var(--cs-bg-card);
+    border: 1px solid var(--cs-border);
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    transition: 0.2s;
+    cursor: pointer;
+}
+
+.notification-card:hover {
+    border-color: var(--cs-accent);
+    transform: translateX(5px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+.notification-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    color: white;
+    flex-shrink: 0;
+}
+
+.icon-resultado { background: var(--status-resultado); box-shadow: 0 0 15px rgba(46, 204, 113, 0.2); }
+.icon-ekyte { background: var(--status-ekyte); box-shadow: 0 0 15px rgba(52, 152, 219, 0.2); }
+.icon-ads { background: var(--status-ads); box-shadow: 0 0 15px rgba(241, 196, 15, 0.2); }
+.icon-wpp { background: var(--status-wpp); box-shadow: 0 0 15px rgba(37, 211, 102, 0.2); }
+.icon-csat { background: var(--status-csat); box-shadow: 0 0 15px rgba(155, 89, 182, 0.2); }
+
+.notification-info {
+    flex: 1;
+}
+
+.notification-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 5px;
+}
+
+.notification-title {
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: var(--cs-text-main);
+}
+
+.notification-time {
+    font-size: 0.8rem;
+    color: var(--cs-text-muted);
+}
+
+.notification-body {
+    font-size: 0.9rem;
+    color: var(--cs-text-muted);
+}
+
+/* CS Dashboard Metrics */
+.cs-metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 20px;
+    margin-bottom: 40px;
+}
+
+.cs-metrics-grid.compact {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    margin-bottom: 25px;
+}
+
+.cs-metrics-grid.compact .metric-card-premium {
+    padding: 15px;
+}
+
+.cs-metrics-grid.compact .metric-card-premium i {
+    font-size: 1.2rem;
+    margin-bottom: 8px;
+}
+
+.cs-metrics-grid.compact .metric-card-premium .value {
+    font-size: 1.3rem;
+}
+
+.metric-card-premium {
+    background: var(--cs-bg-card);
+    border: 1px solid var(--cs-border);
+    border-radius: 16px;
+    padding: 24px;
+    text-align: center;
+    transition: 0.3s;
+}
+
+.metric-card-premium:hover {
+    border-color: var(--cs-accent);
+    box-shadow: 0 10px 30px rgba(214, 22, 22, 0.1);
+}
+
+.metric-card-premium i {
+    font-size: 2rem;
+    color: var(--cs-accent);
+    margin-bottom: 15px;
+}
+
+.metric-card-premium h3 {
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--cs-text-muted);
+    margin-bottom: 10px;
+}
+
+.metric-card-premium .value {
+    font-size: 2rem;
+    font-weight: 900;
+    color: var(--cs-text-main);
+}
+
+/* Planner Monday Evaluations */
+.planner-section {
+    background: var(--cs-bg-card);
+    border: 1px solid var(--cs-border);
+    border-radius: 16px;
+    padding: 25px;
+}
+
+.planner-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.planner-filters {
+    display: flex;
+    gap: 10px;
+}
+
+.planner-filter-select {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--cs-border);
+    border-radius: 8px;
+    color: white;
+    padding: 8px 15px;
+    font-size: 0.85rem;
+}
+
+.planner-table-container {
+    overflow-x: auto;
+}
+
+.planner-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.planner-table th {
+    text-align: left;
+    padding: 15px;
+    background: rgba(255, 255, 255, 0.02);
+    color: var(--cs-text-muted);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border-bottom: 2px solid var(--cs-border);
+}
+
+.planner-table td {
+    padding: 15px;
+    border-bottom: 1px solid var(--cs-border);
+    vertical-align: middle;
+}
+
+.planner-score-badge {
+    padding: 4px 12px;
+    border-radius: 50px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.score-1, .score-2 { background: rgba(231, 76, 60, 0.15); color: #e74c3c; }
+.score-3 { background: rgba(243, 156, 18, 0.15); color: #f39c12; }
+.score-4 { background: rgba(39, 174, 96, 0.15); color: #27ae60; }
+.score-5 { background: rgba(46, 204, 113, 0.15); color: #2ecc71; box-shadow: 0 0 10px rgba(46, 204, 113, 0.2); }
+
+/* Tema Claro Overrides */
+body.tema-claro .cs-tab-btn {
+    color: #64748b;
+}
+
+body.tema-claro .cs-tab-btn:hover {
+    color: #1e293b;
+}
+
+body.tema-claro .cs-tab-btn.active {
+    color: var(--cs-accent);
+}
+
+body.tema-claro .notification-card,
+body.tema-claro .metric-card-premium,
+body.tema-claro .planner-section {
+    background: #ffffff;
+    border-color: #e2e8f0;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+body.tema-claro .notification-card:hover,
+body.tema-claro .metric-card-premium:hover {
+    border-color: var(--cs-accent);
+    box-shadow: 0 10px 15px -3px rgba(214, 22, 22, 0.1);
+}
+
+body.tema-claro .notification-title,
+body.tema-claro .metric-card-premium .value {
+    color: #1e293b;
+}
+
+body.tema-claro .notification-body,
+body.tema-claro .notification-time,
+body.tema-claro .metric-card-premium h3,
+body.tema-claro .planner-table th {
+    color: #64748b;
+}
+
+body.tema-claro .planner-filter-select {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+    color: #1e293b;
+}
+
+body.tema-claro .planner-table td {
+    color: #334155;
+    border-bottom-color: #f1f5f9;
+}
+
+/* Layout Adicional de Gráficos e Métricas */
+.charts-row {
+    display: grid;
+    grid-template-columns: 1fr; /* Um gráfico por linha para evitar cortes */
+    gap: 30px;
+    margin-bottom: 35px;
+}
+
+.chart-container-premium {
+    background: var(--cs-bg-card);
+    border: 1px solid var(--cs-border);
+    border-radius: 16px;
+    padding: 30px;
+    padding-bottom: 40px; /* Mais espaço para o eixo X */
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    height: 480px; /* Altura ideal para visualização sem cortes */
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: visible; /* IMPORTANTE: Deixar visible para as tooltips do Chart.js aparecerem */
+}
+
+.ltv-layout {
+    flex-direction: row;
+    gap: 30px;
+}
+
+.chart-main {
+    flex: 2; /* Main chart area takes more space */
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-width: 0; 
+}
+
+.chart-main canvas, 
+.chart-container-premium canvas {
+    flex: 1;
+    max-height: 350px !important;
+    width: 100% !important;
+}
+
+.chart-side-info {
+    flex: 1;
+    border-left: 1px solid var(--cs-border);
+    padding-left: 20px;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto; /* Permite rolagem se a lista for longa */
+    max-height: 100%;
+}
+
+.chart-side-info::-webkit-scrollbar {
+    width: 4px;
+}
+
+.chart-side-info::-webkit-scrollbar-thumb {
+    background: var(--cs-border);
+    border-radius: 10px;
+}
+
+.chart-side-info h5 {
+    font-size: 0.85rem;
+    color: var(--cs-text-muted);
+    text-transform: uppercase;
+    margin-bottom: 12px;
+    letter-spacing: 1px;
+    position: sticky;
+    top: 0;
+    background: var(--cs-bg-card);
+    padding-bottom: 5px;
+}
+
+/* Garante que o canvas não "vaze" */
+canvas {
+    max-width: 100%;
+    max-height: 100% !important;
+}
+
+.premium-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    font-size: 0.85rem;
+}
+
+.premium-list li {
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.premium-list li span.val {
+    color: var(--cs-accent);
+    font-weight: 700;
+}
+
+.chart-header {
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--cs-border);
+    padding-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.churn-meta-info span {
+    font-size: 0.75rem;
+    background: rgba(214, 22, 22, 0.15);
+    color: var(--cs-accent);
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-weight: 600;
+}
+
+.chart-header h4 {
+    margin: 0;
+    font-size: 1rem;
+    color: var(--cs-text-main);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.chart-header h4 i {
+    color: var(--cs-accent);
+}
+
+.metrics-secondary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+/* Tema Claro Overrides Adicionais */
+body.tema-claro .chart-container-premium {
+    background: #ffffff;
+    border-color: #e2e8f0;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+body.tema-claro .chart-header {
+    border-bottom-color: #f1f5f9;
+}
+
+body.tema-claro .chart-header h4 {
+    color: #1e293b;
+}

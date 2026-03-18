@@ -13,6 +13,7 @@
     rel="stylesheet">
     <link rel="stylesheet" href="static/style/styles.css">
     <link rel="stylesheet" href="static/style/tema-claro.css">
+    <link rel="stylesheet" href="static/style/cs-cockpit.css">
     {% include "components/icon_title.html" %}
 </head>
 
@@ -24,22 +25,21 @@
 
     <div class="app-container">
         <div class="sidebar-overlay"></div>
-
-
         <main class="main-container">
             <section class="welcome-section">
-                <h2>Cockpit</h2>
-                <p>Esta página está em construção.</p>
+                <h2>Cockpit Operacional</h2>
+                <p>Alertas e notificações críticas da operação em tempo real.</p>
             </section>
-            <div class="empty-state">
-                <i class="fas fa-tools"></i>
-                <p>Em breve você terá acesso a todas as ferramentas de gestão de projetos aqui.</p>
+            
+            <div id="cockpitTab" class="cs-tab-content active">
+                {% include "components/cockpit_feed.html" %}
             </div>
         </main>
     </div>
 
     <script src="static/js/app.js"></script>
     <script src="static/js/placeholders.js"></script>
+    <script src="static/js/cs-dashboard.js"></script>
     {% include "components/modal-configuracoes.html" %}
     <script src="static/js/tema.js"></script>
 </body>
