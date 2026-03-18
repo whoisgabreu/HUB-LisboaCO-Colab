@@ -149,8 +149,14 @@ class ProjetoParticipacaoService:
                     # Sempre calculamos o valor proporcional, seja o vínculo ativo ou inativo.
                     # Se ativo (v.active != False), v_fim será None e o helper assumirá o fim do mês.
                     v_fim = None if v.active != False else v.inactivated_at
+                    
+                    # Regra do Cientista: 1.5x no fee base para cálculo do proporcional
+                    fee_base = Decimal(str(v.fee_projeto or 0))
+                    if v.cientista:
+                        fee_base *= Decimal("1.5")
+                        
                     v_valor_prop = ProjetoParticipacaoService.calcular_valor_proporcional(
-                        v.fee_projeto or 0, v_inicio, v_fim, mes, ano
+                        fee_base, v_inicio, v_fim, mes, ano
                     )
 
 
@@ -163,7 +169,8 @@ class ProjetoParticipacaoService:
                         "total_dias_mes": total_dias_mes,
                         "data_inicio": v_inicio.isoformat(),
                         "data_fim": v_fim.isoformat() if v_fim else None,
-                        "ativo": v.active != False
+                        "ativo": v.active != False,
+                        "cientista": v.cientista or False
                     }
 
                     novo_historico.append(item)
