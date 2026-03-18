@@ -11,6 +11,8 @@
     rel="stylesheet">
     <link rel="stylesheet" href="static/style/styles.css">
     <link rel="stylesheet" href="static/style/tema-claro.css">
+    <link rel="stylesheet" href="static/style/cs-cockpit.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     {% include "components/icon_title.html" %}
 </head>
 
@@ -24,20 +26,90 @@
         <div class="sidebar-overlay"></div>
         <main class="main-container">
             <section class="welcome-section">
-                <h2>CS/CX</h2>
-                <p>Esta página está em construção.</p>
+                <h2>Sucesso do Cliente</h2>
+                <p>Gestão de performance e métricas de satisfação estratégica.</p>
             </section>
-            <div class="empty-state">
-                <i class="fas fa-tools"></i>
-                <p>Em breve você terá acesso a todas as ferramentas de gestão de projetos aqui.</p>
+
+            <!-- Métricas Compactas -->
+            <div class="cs-metrics-grid compact" id="csMetrics">
+                <!-- Gerado via JS -->
+            </div>
+
+            <!-- Seção de Gráficos -->
+            <div class="charts-row">
+                <div class="chart-container-premium ltv-layout">
+                    <div class="chart-main">
+                        <div class="chart-header">
+                            <h4><i class="fas fa-chart-line"></i> Evolução LTV</h4>
+                        </div>
+                        <canvas id="ltvChart"></canvas>
+                    </div>
+                    <div class="chart-side-info">
+                        <h5>Top LTV (Ranking)</h5>
+                        <ul id="topLtvList" class="premium-list">
+                            <!-- Gerado via JS -->
+                        </ul>
+                    </div>
+                </div>
+                <div class="chart-container-premium">
+                    <div class="chart-header">
+                        <h4><i class="fas fa-chart-bar"></i> Churn (Empresas)</h4>
+                        <div class="churn-meta-info">
+                            <span id="churnPercentLabel">0.0% Churn Rate</span>
+                        </div>
+                    </div>
+                    <canvas id="churnChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Conteúdo Dashboard CS -->
+            <div id="dashboardTab" class="cs-tab-content active">
+                <div class="metrics-secondary-grid" id="secondaryMetrics">
+                    <!-- Métricas menores (Phase, Cohort, CSP) via JS -->
+                </div>
+
+                <!-- Seção Planner Monday -->
+                <div class="planner-section">
+                    <div class="planner-header">
+                        <h3>Avaliações Planner Monday</h3>
+                        <div class="planner-filters">
+                            <select class="planner-filter-select">
+                                <option value="">Todos os Squads</option>
+                                <option value="alpha">Alpha</option>
+                                <option value="beta">Beta</option>
+                            </select>
+                            <select class="planner-filter-select">
+                                <option value="">Todos os Períodos</option>
+                                <option value="mar-2024">Março 2024</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="planner-table-container">
+                        <table class="planner-table">
+                            <thead>
+                                <tr>
+                                    <th>Squad</th>
+                                    <th>Conta/Projeto</th>
+                                    <th>Account Planner</th>
+                                    <th>Score Planner</th>
+                                    <th>Status Envio</th>
+                                </tr>
+                            </thead>
+                            <tbody id="plannerTableBody">
+                                <!-- Gerado via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </main>
     </div>
 
     <script src="static/js/app.js"></script>
     <script src="static/js/placeholders.js"></script>
+    <script src="static/js/cs-dashboard.js"></script>
     {% include "components/modal-configuracoes.html" %}
     <script src="static/js/tema.js"></script>
 </body>
 
-</html>
+</html>
