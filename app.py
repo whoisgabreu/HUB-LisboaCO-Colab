@@ -1556,14 +1556,11 @@ def api_ranking():
                             delta = now.date() - d_base
                             days_without_churn = max(0, delta.days)
                 
-                # Mapeamento de Level para Senioridade de Mercado
-                level_map = {
-                    "L1": "Júnior", "L2": "Pleno", "L3": "Sênior", "L4": "Sênior", "L5": "Especialista"
-                }
-                raw_level = m.level if m else inv.nivel
-                display_seniority = level_map.get(raw_level, raw_level)
+                # Mapeamento de Senioridade e Level
+                raw_level = m.level if m else (inv.nivel or "L1")
+                seniority_display = f"{inv.senioridade or 'Investidor'} | {raw_level}"
 
-                # Formatação de MRR para o front
+                # Formatação de MRR
                 mrr_val = float(m.fixo_mrr_atual or 0) if m else 0.0
                 mrr_formatted = f"R$ {mrr_val:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
 
@@ -1572,7 +1569,8 @@ def api_ranking():
                     "email": inv.email,
                     "name": inv.nome,
                     "role": inv.funcao or inv.posicao,
-                    "level": display_seniority,
+                    "level": seniority_display,
+                    "level_raw": raw_level,
                     "flag": m.flag if m else "white",
                     "daysWithoutChurn": days_without_churn,
                     "clientsCount": active_projects,

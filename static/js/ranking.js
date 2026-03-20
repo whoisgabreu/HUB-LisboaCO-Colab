@@ -119,14 +119,14 @@ function applyFilters() {
         } else {
             const churnDiff = (parseInt(b.daysWithoutChurn) || 0) - (parseInt(a.daysWithoutChurn) || 0);
             if (churnDiff !== 0) return churnDiff;
-            return (parseInt(b.clientsCount) || 0) - (parseInt(a.clientsCount) || 0); // Desempate por clientes
+            return (parseFloat(b.mrr) || 0) - (parseFloat(a.mrr) || 0); // Desempate por MRR (Solicitado)
         }
     });
 
-    renderRanking(sorted);
+    renderRanking(sorted, sortBy);
 }
 
-function renderRanking(data) {
+function renderRanking(data, sortBy = 'daysWithoutChurn') {
     const grid = document.getElementById('rankingGrid');
     if (!grid) return;
 
@@ -154,6 +154,9 @@ function renderRanking(data) {
         if (investor === podium[1]) pos = 2;
         if (investor === podium[2]) pos = 3;
 
+        const isMRR = sortBy === 'mrr';
+        const metricVal = isMRR ? investor.mrr_formatted : `${investor.daysWithoutChurn} DIAS`;
+
         return `
                 <div class="podium-column pos-${pos}" onclick="openInvestorDetails(${investor.id})">
                     <div class="podium-photo-wrap">
@@ -165,7 +168,7 @@ function renderRanking(data) {
                         <div class="bar-number">${pos}</div>
                         <div class="bar-info">
                             <h3 class="bar-name">${investor.name.split(' ')[0]}</h3>
-                            <div class="bar-metric">${investor.daysWithoutChurn} DIAS</div>
+                            <div class="bar-metric">${metricVal}</div>
                         </div>
                     </div>
                 </div>
@@ -175,25 +178,31 @@ function renderRanking(data) {
         
         <div class="ranking-list-grid">
             <h2 style="color: white; font-weight: 900; font-size: 1.5rem; margin-bottom: 20px; border-left: 4px solid var(--ranking-accent); padding-left: 15px;">TOP RETENÇÃO</h2>
-            ${rest.map((investor, index) => `
-                <div class="ranking-card" onclick="openInvestorDetails(${investor.id})">
-                    <div class="rank-number">#${index + 4}</div>
-                    <div class="card-header">
-                        <div class="flag-badge ${investor.flag}"></div>
-                        <img src="${investor.photo || 'static/images/profile_pictures/default.png'}" alt="${investor.name}" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(investor.name)}&background=random&color=fff&size=512'">
-                    </div>
-                    <div class="card-overlay-info">
-                        <h3 class="card-name">${investor.name}</h3>
-                        <div class="card-tenure">${investor.level || 'Investidor'} | ${investor.tenure || ''}</div>
-                    </div>
-                    <div class="card-body">
-                        <span class="list-metric-label">MRR GESTÃO</span>
-                        <div class="card-price-container">
-                            ${investor.mrr_formatted}
+            ${rest.map((investor, index) => {
+                const isMRR = sortBy === 'mrr';
+                const metricLabel = isMRR ? "MRR GESTÃO" : "DIAS SEM CHURN";
+                const metricValue = isMRR ? investor.mrr_formatted : `${investor.daysWithoutChurn} DIAS`;
+
+                return `
+                    <div class="ranking-card" onclick="openInvestorDetails(${investor.id})">
+                        <div class="rank-number">#${index + 4}</div>
+                        <div class="card-header">
+                            <div class="flag-badge ${investor.flag}"></div>
+                            <img src="${investor.photo || 'static/images/profile_pictures/default.png'}" alt="${investor.name}" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(investor.name)}&background=random&color=fff&size=512'">
+                        </div>
+                        <div class="card-overlay-info">
+                            <h3 class="card-name">${investor.name}</h3>
+                            <div class="card-tenure">${investor.level}</div>
+                        </div>
+                        <div class="card-body">
+                            <span class="list-metric-label">${metricLabel}</span>
+                            <div class="card-price-container">
+                                ${metricValue}
+                            </div>
                         </div>
                     </div>
-                </div>
-            `).join('')}
+                `;
+            }).join('')}
         </div>
     `;
 
