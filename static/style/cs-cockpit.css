@@ -84,6 +84,7 @@
     to { opacity: 1; transform: translateY(0); }
 }
 
+<<<<<<< HEAD
 /* ─── COCKPIT FEED ───────────────────────────────────────────────────────── */
 
 .cockpit-feed {
@@ -191,6 +192,77 @@
 .cockpit-card-body {
     font-size: 0.875rem;
     color: var(--text-muted);
+=======
+/* Cockpit Feed */
+.cockpit-feed {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    max-width: 1000px;
+    margin: 0 auto;
+}
+
+.notification-card {
+    background: var(--cs-bg-card);
+    border: 1px solid var(--cs-border);
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    transition: 0.2s;
+    cursor: pointer;
+}
+
+.notification-card:hover {
+    border-color: var(--cs-accent);
+    transform: translateX(5px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+.notification-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    color: white;
+    flex-shrink: 0;
+}
+
+.icon-resultado { background: var(--status-resultado); box-shadow: 0 0 15px rgba(46, 204, 113, 0.2); }
+.icon-ekyte { background: var(--status-ekyte); box-shadow: 0 0 15px rgba(52, 152, 219, 0.2); }
+.icon-ads { background: var(--status-ads); box-shadow: 0 0 15px rgba(241, 196, 15, 0.2); }
+.icon-wpp { background: var(--status-wpp); box-shadow: 0 0 15px rgba(37, 211, 102, 0.2); }
+.icon-csat { background: var(--status-csat); box-shadow: 0 0 15px rgba(155, 89, 182, 0.2); }
+
+.notification-info {
+    flex: 1;
+}
+
+.notification-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 5px;
+}
+
+.notification-title {
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: var(--cs-text-main);
+}
+
+.notification-time {
+    font-size: 0.8rem;
+    color: var(--cs-text-muted);
+}
+
+.notification-body {
+    font-size: 0.9rem;
+    color: var(--cs-text-muted);
+>>>>>>> 4d6360c19ebc8f29b528a4d0513e24c63ba50bf9
 }
 
 /* CS Dashboard Metrics */
@@ -526,6 +598,7 @@ body.tema-claro .chart-header {
 body.tema-claro .chart-header h4 {
     color: #1e293b;
 }
+<<<<<<< HEAD
 
 /* ─── COCKPIT TOOLBAR ─────────────────────────────────────────────────────── */
 
@@ -772,3 +845,5 @@ body.tema-claro .cockpit-toggle-btn:hover { border-color: var(--accent-red); col
 
 body.tema-claro .cockpit-stats-row .cockpit-filter-chips { border-left-color: #e2e8f0; }
 body.tema-claro .cockpit-empty { color: #94a3b8; }
+=======
+>>>>>>> 4d6360c19ebc8f29b528a4d0513e24c63ba50bf9

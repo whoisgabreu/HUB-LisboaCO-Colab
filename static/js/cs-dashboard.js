@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 /* cs - dashboard.js - Logic for CS / CX Dashboard with REAL Data */
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -49,12 +50,38 @@ function initCharts(apiData) {
                 datasets: [{
                     label: 'LTV Médio / Quarter (R$)',
                     data: historical.quarterly.ltv,
+=======
+/* cs-dashboard.js - Logic for CS/CX Dashboard with Absolute Data Sketch */
+
+document.addEventListener('DOMContentLoaded', function() {
+    initCharts();
+    renderCockpitFeed();
+    renderCSMetrics();
+    renderPlannerEvaluations();
+});
+
+// Chart.js Initialization
+function initCharts() {
+    const ltvCtx = document.getElementById('ltvChart');
+    if (ltvCtx) {
+        new Chart(ltvCtx, {
+            type: 'line',
+            data: {
+                labels: ['Out', 'Nov', 'Dez', 'Jan', 'Fev', 'Mar'],
+                datasets: [{
+                    label: 'LTV Médio (R$)',
+                    data: [12000, 12500, 13200, 14100, 14800, 15200],
+>>>>>>> 4d6360c19ebc8f29b528a4d0513e24c63ba50bf9
                     borderColor: '#d61616',
                     backgroundColor: 'rgba(214, 22, 22, 0.1)',
                     borderWidth: 3,
                     fill: true,
                     tension: 0.4,
+<<<<<<< HEAD
                     pointRadius: 6,
+=======
+                    pointRadius: 4,
+>>>>>>> 4d6360c19ebc8f29b528a4d0513e24c63ba50bf9
                     pointBackgroundColor: '#d61616'
                 }]
             },
@@ -62,7 +89,11 @@ function initCharts(apiData) {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
+<<<<<<< HEAD
                     legend: { display: true, labels: { color: '#a0a0a0' } }
+=======
+                    legend: { display: false }
+>>>>>>> 4d6360c19ebc8f29b528a4d0513e24c63ba50bf9
                 },
                 scales: {
                     y: {
@@ -77,6 +108,7 @@ function initCharts(apiData) {
                 }
             }
         });
+<<<<<<< HEAD
     }
 
     // 2. Gráfico de Churn (MENSAL 2026)
@@ -89,23 +121,51 @@ function initCharts(apiData) {
         const lastMonthRate = ((apiData.churn_count / apiData.clients) * 100).toFixed(1);
         const labelEl = document.getElementById('churnPercentLabel');
         if (labelEl) labelEl.textContent = `${lastMonthRate}% Churn Rate (atualmente em Mar/26)`;
+=======
+
+        renderTopLtv();
+    }
+
+    const churnCtx = document.getElementById('churnChart');
+    if (churnCtx) {
+        // Mock data for absolute company counts
+        const activeClients = [85, 92, 98, 105, 112, 120];
+        const churnCounts = [3, 2, 4, 3, 2, 3];
+        const lastMonthRate = ((churnCounts[5] / activeClients[5]) * 100).toFixed(1);
+        
+        const labelEl = document.getElementById('churnPercentLabel');
+        if (labelEl) labelEl.textContent = `${lastMonthRate}% Churn Rate (atual)`;
+>>>>>>> 4d6360c19ebc8f29b528a4d0513e24c63ba50bf9
 
         new Chart(churnCtx, {
             type: 'bar',
             data: {
+<<<<<<< HEAD
                 labels: historical.monthly.labels,
                 datasets: [
                     {
                         label: 'Empresas Ativas',
                         data: historical.monthly.active,
+=======
+                labels: ['Out', 'Nov', 'Dez', 'Jan', 'Fev', 'Mar'],
+                datasets: [
+                    {
+                        label: 'Empresas Ativas',
+                        data: activeClients,
+>>>>>>> 4d6360c19ebc8f29b528a4d0513e24c63ba50bf9
                         backgroundColor: 'rgba(214, 22, 22, 0.3)',
                         borderColor: '#d61616',
                         borderWidth: 1,
                         borderRadius: 5
                     },
                     {
+<<<<<<< HEAD
                         label: 'Churns (Cantidade)',
                         data: historical.monthly.churn,
+=======
+                        label: 'Churns (Qtd)',
+                        data: churnCounts,
+>>>>>>> 4d6360c19ebc8f29b528a4d0513e24c63ba50bf9
                         backgroundColor: '#d61616',
                         borderRadius: 5
                     }
@@ -115,16 +175,27 @@ function initCharts(apiData) {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
+<<<<<<< HEAD
                     legend: {
+=======
+                    legend: { 
+>>>>>>> 4d6360c19ebc8f29b528a4d0513e24c63ba50bf9
                         position: 'top',
                         labels: { color: '#a0a0a0', boxWidth: 12 }
                     },
                     tooltip: {
                         callbacks: {
+<<<<<<< HEAD
                             afterLabel: function (context) {
                                 if (context.datasetIndex === 1) {
                                     const index = context.dataIndex;
                                     const rate = ((historical.monthly.churn[index] / historical.monthly.active[index]) * 100).toFixed(1);
+=======
+                            afterLabel: function(context) {
+                                if (context.datasetIndex === 1) { // dataset de churn
+                                    const index = context.dataIndex;
+                                    const rate = ((churnCounts[index] / activeClients[index]) * 100).toFixed(1);
+>>>>>>> 4d6360c19ebc8f29b528a4d0513e24c63ba50bf9
                                     return `Taxa: ${rate}%`;
                                 }
                             }
@@ -147,10 +218,25 @@ function initCharts(apiData) {
     }
 }
 
+<<<<<<< HEAD
 function renderTopLtv(topProjects) {
     const listContainer = document.getElementById('topLtvList');
     if (!listContainer) return;
 
+=======
+function renderTopLtv() {
+    const listContainer = document.getElementById('topLtvList');
+    if (!listContainer) return;
+
+    const topProjects = [
+        { name: 'V4 Lisboa - Hub', val: 'R$ 152k' },
+        { name: 'Solar Energy Pro', val: 'R$ 128k' },
+        { name: 'Tech Solutions LTDA', val: 'R$ 95k' },
+        { name: 'Padaria Central', val: 'R$ 72k' },
+        { name: 'Restaurante Solar', val: 'R$ 58k' }
+    ];
+
+>>>>>>> 4d6360c19ebc8f29b528a4d0513e24c63ba50bf9
     listContainer.innerHTML = topProjects.map(p => `
         <li>
             <span>${p.name}</span>
@@ -159,16 +245,70 @@ function renderTopLtv(topProjects) {
     `).join('');
 }
 
+<<<<<<< HEAD
 // Render Metrics Header
 function renderCSMetrics(data) {
+=======
+// Mock Data for Cockpit Feed
+const cockpitData = [
+    { type: 'resultado', title: 'Meta de MRR Atingida', body: 'O projeto V4 Company - Unidade Lisboa atingiu 105% da meta mensal.', time: '10 min atrás' },
+    { type: 'ekyte', title: 'Planejamento Ekyte Atrasado', body: '5 projetos estão com o planejamento estratégico pendente no Ekyte.', time: '1 hora atrás' },
+    { type: 'ads', title: 'Queda de Performance - Meta Ads', body: 'O cliente "Restaurante Solar" teve queda de 20% no ROAS nas últimas 24h.', time: '3 horas atrás' },
+    { type: 'wpp', title: 'Grupo Silencioso (+48h)', body: 'Nenhuma interação no grupo do cliente "Tech Solutions" há mais de 2 dias.', time: '5 horas atrás' },
+    { type: 'csat', title: 'Novo CSAT Recebido: 9.5', body: 'Excelente feedback do cliente "Padaria Central" após o check-in quinzenal.', time: 'Ontem' },
+    { type: 'health-low', title: 'Health Score Crítico', body: 'Investidor João Silva possui 3 projetos com Health Score abaixo de 40.', time: 'Ontem' }
+];
+
+function renderCockpitFeed() {
+    const feedContainer = document.getElementById('cockpitFeed');
+    if (!feedContainer) return;
+
+    feedContainer.innerHTML = cockpitData.map(item => `
+        <div class="notification-card">
+            <div class="notification-icon icon-${item.type}">
+                <i class="fas ${getIcon(item.type)}"></i>
+            </div>
+            <div class="notification-info">
+                <div class="notification-header">
+                    <span class="notification-title">${item.title}</span>
+                    <span class="notification-time">${item.time}</span>
+                </div>
+                <div class="notification-body">${item.body}</div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function getIcon(type) {
+    const icons = {
+        'resultado': 'fa-chart-line',
+        'ekyte': 'fa-project-diagram',
+        'ads': 'fa-ad',
+        'wpp': 'fa-comments',
+        'csat': 'fa-star',
+        'health-low': 'fa-heart-broken'
+    };
+    return icons[type] || 'fa-bell';
+}
+
+// Mock Data for CS Metrics
+function renderCSMetrics() {
+>>>>>>> 4d6360c19ebc8f29b528a4d0513e24c63ba50bf9
     const metricsContainer = document.getElementById('csMetrics');
     if (!metricsContainer) return;
 
     const mainMetrics = [
+<<<<<<< HEAD
         { label: 'MRR Total', value: `R$ ${data.mrr.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`, icon: 'fa-money-bill-trend-up' },
         { label: 'Churn do Mês', value: data.churn_count.toString(), icon: 'fa-user-minus' },
         { label: 'LTV Médio', value: `R$ ${data.ltv_avg.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`, icon: 'fa-clock-rotate-left' },
         { label: 'Health Score', value: `${data.health_score}%`, icon: 'fa-heart-pulse' }
+=======
+        { label: 'MRR Total', value: 'R$ 450.000', icon: 'fa-money-bill-trend-up' },
+        { label: 'Churn Rate', value: '2.4%', icon: 'fa-user-minus' },
+        { label: 'LTV Médio', value: 'R$ 15.200', icon: 'fa-clock-rotate-left' },
+        { label: 'Health Score', value: '82', icon: 'fa-heart-pulse' }
+>>>>>>> 4d6360c19ebc8f29b528a4d0513e24c63ba50bf9
     ];
 
     metricsContainer.innerHTML = mainMetrics.map(m => `
@@ -182,9 +322,15 @@ function renderCSMetrics(data) {
     const secondaryContainer = document.getElementById('secondaryMetrics');
     if (secondaryContainer) {
         const secondaryMetrics = [
+<<<<<<< HEAD
             { label: 'Clientes Ativos', value: data.clients.toString(), icon: 'fa-layer-group' },
             { label: 'Projetos por Cohort', value: 'Mar/24: 08', icon: 'fa-calendar-check' }, // Mock por enquanto
             { label: '%CSP Médio', value: '92%', icon: 'fa-percentage' } // Mock por enquanto
+=======
+            { label: 'Projetos por Fase', value: '12 Onboarding', icon: 'fa-layer-group' },
+            { label: 'Projetos por Cohort', value: 'Mar/24: 08', icon: 'fa-calendar-check' },
+            { label: '%CSP Médio', value: '92%', icon: 'fa-percentage' }
+>>>>>>> 4d6360c19ebc8f29b528a4d0513e24c63ba50bf9
         ];
 
         secondaryContainer.innerHTML = secondaryMetrics.map(m => `
@@ -197,6 +343,7 @@ function renderCSMetrics(data) {
     }
 }
 
+<<<<<<< HEAD
 const COCKPIT_DATA = [
     { type: 'health-low', severity: 'critical', client: 'João Silva', title: 'Health Score Crítico', body: '3 projetos com Health Score abaixo de 40.', time: 'Ontem' },
     { type: 'ads', severity: 'critical', client: 'Restaurante Solar', title: 'Queda de Performance — Meta Ads', body: 'Queda de 20% no ROAS nas últimas 24h.', time: '3h atrás' },
@@ -357,6 +504,17 @@ function renderPlannerEvaluations() {
         { squad: 'Alpha', account: 'Restaurante Solar', planner: 'Enzo Maas', score: 3, status: 'Enviado' }
     ];
 
+=======
+// Mock Data for Planner Monday
+const plannerData = [
+    { squad: 'Alpha', account: 'Tech Solutions', planner: 'Enzo Maas', score: 5, status: 'Enviado' },
+    { squad: 'Beta', account: 'Solar Energy', planner: 'Rebeca Lima', score: 4, status: 'Enviado' },
+    { squad: 'Gamma', account: 'Padaria Central', planner: 'Isaac Pontes', score: 2, status: 'Pendente' },
+    { squad: 'Alpha', account: 'Restaurante Solar', planner: 'Enzo Maas', score: 3, status: 'Enviado' }
+];
+
+function renderPlannerEvaluations() {
+>>>>>>> 4d6360c19ebc8f29b528a4d0513e24c63ba50bf9
     const tableBody = document.getElementById('plannerTableBody');
     if (!tableBody) return;
 

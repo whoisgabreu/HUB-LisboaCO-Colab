@@ -1590,6 +1590,7 @@ def api_ranking():
         return jsonify({"error": str(e)}), 500
 
 
+<<<<<<< HEAD
 @app.route("/api/cs/metrics", methods=["GET"])
 @check_session
 def get_cs_metrics():
@@ -1752,6 +1753,8 @@ def get_cs_metrics():
         return jsonify({"error": str(e)}), 500
 
 
+=======
+>>>>>>> 4d6360c19ebc8f29b528a4d0513e24c63ba50bf9
 @app.route("/cockpit", methods=["GET"])
 @check_session
 def cockpit():
