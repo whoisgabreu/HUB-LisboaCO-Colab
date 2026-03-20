@@ -119,7 +119,7 @@ function applyFilters() {
         } else {
             const churnDiff = (parseInt(b.daysWithoutChurn) || 0) - (parseInt(a.daysWithoutChurn) || 0);
             if (churnDiff !== 0) return churnDiff;
-            return (parseInt(b.clientsCount) || 0) - (parseInt(a.clientsCount) || 0); // Desempate por clientes
+            return (parseFloat(b.mrr) || 0) - (parseFloat(a.mrr) || 0); // Desempate por MRR (Solicitado)
         }
     });
 
@@ -184,12 +184,12 @@ function renderRanking(data) {
                     </div>
                     <div class="card-overlay-info">
                         <h3 class="card-name">${investor.name}</h3>
-                        <div class="card-tenure">${investor.level || 'Investidor'} | ${investor.tenure || ''}</div>
+                        <div class="card-tenure">${investor.level}</div>
                     </div>
                     <div class="card-body">
-                        <span class="list-metric-label">MRR GESTÃO</span>
+                        <span class="list-metric-label">DIAS SEM CHURN</span>
                         <div class="card-price-container">
-                            ${investor.mrr_formatted}
+                            ${investor.daysWithoutChurn} DIAS
                         </div>
                     </div>
                 </div>
