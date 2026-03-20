@@ -114,6 +114,9 @@
         showLoader();
     });
 
+    // Timeout de segurança: esconde o loader após 6s caso o window.load não dispare
+    setTimeout(hideLoader, 6000);
+
     // // Intercepta cliques em links (<a>)
     // document.addEventListener("click", (e) => {
     //     const link = e.target.closest("a");

@@ -1590,6 +1590,168 @@ def api_ranking():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/cs/metrics", methods=["GET"])
+@check_session
+def get_cs_metrics():
+    try:
+        from services.currency import CurrencyService
+        from sqlalchemy import extract
+        from datetime import datetime as dt
+        
+        now = dt.now()
+        with Session() as db:
+            # 1. MRR e Clientes Ativos
+            projetos_ativos = db.query(ProjetoAtivo).all()
+            clients_count = len(projetos_ativos)
+            mrr_total = 0
+            usd_rate = float(CurrencyService.get_usd_to_brl_rate())
+            
+            ltv_ranking = []
+            
+            for p in projetos_ativos:
+                fee = float(p.fee or 0)
+                m_code = str(p.moeda).strip().upper() if p.moeda else "BRL"
+                converted_fee = fee * usd_rate if m_code == 'USD' else fee
+                mrr_total += converted_fee
+                
+                # Cálculo simples de LTV: fee atual * meses de casa
+                meses = 1
+                if p.data_de_inicio:
+                    delta = now.date() - p.data_de_inicio
+                    meses = max(1, delta.days // 30)
+                
+                ltv_valor = converted_fee * meses
+                ltv_ranking.append({"name": p.nome, "val": ltv_valor})
+            
+            # Ordenar Top 5 LTV
+            ltv_ranking.sort(key=lambda x: x["val"], reverse=True)
+            top_ltv = [{"name": x["name"], "val": f"R$ {x['val']/1000:.1f}k"} for x in ltv_ranking[:5]]
+
+            # 2. Churn (Empresas inativadas no mês atual)
+            churn_count = db.query(InvestidorProjeto).filter(
+                InvestidorProjeto.active == False,
+                extract('month', InvestidorProjeto.inactivated_at) == now.month,
+                extract('year', InvestidorProjeto.inactivated_at) == now.year
+            ).count()
+
+            # 3. Health Score Médio (Baseado nas Flags das Metricas Mensais)
+            from models import MetricaMensal
+            metricas = db.query(MetricaMensal).filter(
+                MetricaMensal.mes == now.month,
+                MetricaMensal.ano == now.year
+            ).all()
+            
+            avg_health = 80 # Default
+            if metricas:
+                greens = sum(1 for m in metricas if m.flag == 'GREEN')
+                avg_health = int((greens / len(metricas)) * 100)
+
+            # 4. Construção de Histórico Real (Empresas Únicas)
+            from sqlalchemy import distinct, func, or_
+            
+            monthly_labels = ['Jan', 'Fev', 'Mar']
+            monthly_active = []
+            monthly_churn = []
+            history_mrr_trends = [] # para o gráfico de LTV
+            
+            # Quarters: visão maior para o LTV
+            quarter_labels = ['2025-Q3', '2025-Q4', '2026-Q1']
+            quarter_ltv = []
+            
+            # Dados Mensais (Focados em Empresa Única) - Jan/Fev/Mar 2026
+            for m in [1, 2, 3]:
+                if m <= now.month:
+                    # 1. Empresas Ativas (Snaphost)
+                    # Contamos IDs únicos de projetos que existiam/existem vinculados a profissionais
+                    if m == now.month:
+                        active_count = len(projetos_ativos)
+                    else:
+                        # Para meses passados, estimamos via InvestidorProjeto
+                        from datetime import date
+                        import calendar
+                        last_day = calendar.monthrange(2026, m)[1]
+                        last_date = date(2026, m, last_day)
+                        
+                        active_count = db.query(distinct(InvestidorProjeto.pipefy_id_projeto)).filter(
+                            InvestidorProjeto.created_at <= last_date,
+                            or_(
+                                InvestidorProjeto.active == True,
+                                InvestidorProjeto.inactivated_at > last_date
+                            )
+                        ).count()
+                    
+                    # 2. Churn (Empresas Únicas Inativadas no mês m)
+                    churn_unique = db.query(distinct(InvestidorProjeto.pipefy_id_projeto)).filter(
+                        InvestidorProjeto.active == False,
+                        extract('month', InvestidorProjeto.inactivated_at) == m,
+                        extract('year', InvestidorProjeto.inactivated_at) == 2026
+                    ).count()
+                    
+                    monthly_active.append(active_count)
+                    monthly_churn.append(churn_unique)
+                    
+                    # MRR do mês para o gráfico de LTV (Ticket Médio)
+                    if m == now.month:
+                        m_mrr = mrr_total
+                    else:
+                        m_mrr = db.query(func.sum(MetricaMensal.fixo_mrr_atual)).filter(
+                            MetricaMensal.mes == m, MetricaMensal.ano == 2026
+                        ).scalar() or 0
+                    
+                    avg_ticket = float(m_mrr) / active_count if active_count > 0 else 0
+                    history_mrr_trends.append(avg_ticket)
+
+            # 5. Dados por Quarter (LTV de Longo Prazo)
+            quarters_cfg = [
+                (2025, [7, 8, 9], '2025-Q3'),
+                (2025, [10, 11, 12], '2025-Q4'),
+                (2026, [1, 2, 3], '2026-Q1')
+            ]
+            
+            for q_ano, q_meses, q_label in quarters_cfg:
+                if q_ano == 2026:
+                    q_val = sum(history_mrr_trends) / len(history_mrr_trends) if history_mrr_trends else 0
+                else:
+                    # Cálculo robusto para 2025
+                    mrr_q = db.query(func.avg(MetricaMensal.fixo_mrr_atual)).filter(
+                        MetricaMensal.ano == q_ano, MetricaMensal.mes.in_(q_meses)
+                    ).scalar() or 0
+                    
+                    from datetime import date
+                    max_date = date(q_ano, q_meses[-1], 28)
+                    count_q = db.query(func.count(distinct(ProjetoAtivo.pipefy_id))).filter(
+                        ProjetoAtivo.data_de_inicio <= max_date
+                    ).scalar() or 1
+                    
+                    q_val = float(mrr_q) / count_q if count_q > 0 else 0
+                
+                quarter_ltv.append(q_val)
+
+            return jsonify({
+                "mrr": mrr_total,
+                "clients": clients_count,
+                "churn_count": churn_count,
+                "ltv_avg": mrr_total / clients_count if clients_count > 0 else 0,
+                "top_ltv": top_ltv,
+                "health_score": avg_health,
+                "history": {
+                    "monthly": {
+                        "labels": monthly_labels[:len(monthly_active)],
+                        "active": monthly_active,
+                        "churn": monthly_churn
+                    },
+                    "quarterly": {
+                        "labels": quarter_labels,
+                        "ltv": quarter_ltv
+                    }
+                }
+            })
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/cockpit", methods=["GET"])
 @check_session
 def cockpit():
