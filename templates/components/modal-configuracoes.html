@@ -28,11 +28,12 @@
                 <section id="config-perfil" class="config-section active">
                     <div class="profile-upload-container">
                         <div class="profile-avatar-wrapper">
-                            {% if session.profile_picture != None and session.profile_picture != '' %}
-                            <img id="previewAvatar" src="/static/images/profile_pictures/{{ session.profile_picture }}"
-                                alt="Avatar">
+                            {% if user.profile_picture %}
+                            <img id="previewAvatar" src="/static/images/profile_pictures/{{ user.profile_picture }}"
+                                 alt="Avatar" class="avatar-img">
                             {% else %}
-                            <i id="previewAvatar" class="fa-solid fa-user-tie"></i>
+                            <img id="previewAvatar" src="https://ui-avatars.com/api/?name={{ user.nome|urlencode }}&background=D61616&color=fff"
+                                 alt="Avatar" class="avatar-img">
                             {% endif %}
                             <label for="uploadFoto" class="btn-change-photo" title="Alterar foto">
                                 <i class="fas fa-camera"></i>
@@ -50,27 +51,29 @@
                     </div>
 
                     <div class="form-grid">
-                        <div class="form-group">
-                            <label>Nome</label>
-                            <input type="text" value="{{ session.nome or 'Usuário' }}" disabled>
-                            <span class="field-help">O nome não pode ser alterado.</span>
+                        <div class="info-group">
+                            <label>Nome Completo</label>
+                            <input type="text" value="{{ user.nome|default:'Usuário' }}" disabled>
                         </div>
-                        <div class="form-group">
-                            <label>E-mail</label>
-                            <input type="email" value="{{ session.email or 'usuario@exemplo.com' }}" disabled>
-                            <span class="field-help">O email não pode ser alterado.</span>
+
+                        <div class="info-group">
+                            <label>E-mail Corporativo</label>
+                            <input type="email" value="{{ user.email|default:'usuario@exemplo.com' }}" disabled>
                         </div>
-                        <div class="form-group">
-                            <label>Cargo/Função</label>
-                            <input type="text" value="{{ session.funcao or 'N/A' }}" disabled>
+
+                        <div class="info-group">
+                            <label>Função</label>
+                            <input type="text" value="{{ user.funcao|default:'N/A' }}" disabled>
                         </div>
-                        <div class="form-group">
+
+                        <div class="info-group">
                             <label>Posição</label>
-                            <input type="text" value="{{ session.posicao or 'Colaborador' }}" disabled>
+                            <input type="text" value="{{ user.posicao|default:'Colaborador' }}" disabled>
                         </div>
-                        <div class="form-group">
+
+                        <div class="info-group">
                             <label>Squad</label>
-                            <input type="text" value="{{ session.squad or 'Squad' }}" disabled>
+                            <input type="text" value="{{ user.squad|default:'Squad' }}" disabled>
                         </div>
                     </div>
                 </section>

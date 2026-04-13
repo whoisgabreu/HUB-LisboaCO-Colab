@@ -1,43 +1,34 @@
-from sqlalchemy.orm import Session
-from models import InvestidorProjeto, ProjetoAtivo, ProjetoOnetime
+from projetos.models import InvestidorProjeto, ProjetoAtivo, ProjetoOnetime
 
 class OperacaoService:
     @staticmethod
-    def get_projetos_operacao(db: Session, email: str, squad: str) -> list:
+    def get_projetos_operacao(email: str, squad: str) -> list:
         """
         Retorna todos os projetos vinculados e ativos ao usuário para a tela de operação.
-        Considera Projetos Ativos, Onetime e Inativos.
+        Migrado para Django ORM.
         """
         todas_tabelas = [ProjetoAtivo, ProjetoOnetime]
         meus_projetos_dict = {}
 
         if squad == "Gerência":
-            # Para gerência, buscar de todas as tabelas
             for model in todas_tabelas:
-                projetos = db.query(model).all()
+                projetos = model.objects.all()
                 for p in projetos:
                     if p.pipefy_id not in meus_projetos_dict:
                         meus_projetos_dict[p.pipefy_id] = p
         else:
-            # Busca vínculos ativos do investidor
-            vinculos = db.query(InvestidorProjeto).filter(
-                InvestidorProjeto.email_investidor == email,
-                InvestidorProjeto.active == True
-            ).all()
-            
-            # Extrai os IDs dos projetos vinculados
-            ids_vinculados = [v.pipefy_id_projeto for v in vinculos]
+            ids_vinculados = InvestidorProjeto.objects.filter(
+                email_investidor=email,
+                active=True
+            ).values_list('pipefy_id_projeto', flat=True)
             
             if ids_vinculados:
                 for model in todas_tabelas:
-                    projetos = db.query(model).filter(model.pipefy_id.in_(ids_vinculados)).all()
+                    projetos = model.objects.filter(pipefy_id__in=ids_vinculados)
                     for p in projetos:
                         if p.pipefy_id not in meus_projetos_dict:
                             meus_projetos_dict[p.pipefy_id] = p
 
-        # Prepara a lista a ser retornada compatível com _projeto_to_dict em app.py
-        # Como _projeto_to_dict é definido em app.py, nós retornamos os objetos models em si,
-        # ou construímos os dicionários aqui mesmo. Para isolar bem, vamos construir aqui.
         meus_projetos = []
         for p in meus_projetos_dict.values():
             meus_projetos.append({
@@ -49,7 +40,7 @@ class OperacaoService:
                 "moeda": getattr(p, "moeda", ""),
                 "squad_atribuida": getattr(p, "squad_atribuida", ""),
                 "produto_contratado": getattr(p, "produto_contratado", ""),
-                "data_de_inicio": p.data_de_inicio.isoformat() if getattr(p, "data_de_inicio", None) else None,
+                "data_de_inicio": p.data_de_inicio.isoformat() if p.data_de_inicio else None,
                 "cohort": getattr(p, "cohort", ""),
                 "meta_account_id": getattr(p, "meta_account_id", ""),
                 "google_account_id": getattr(p, "google_account_id", ""),
@@ -58,7 +49,7 @@ class OperacaoService:
                 "informacoes_gerais": getattr(p, "informacoes_gerais", ""),
                 "orcamento_midia_meta": getattr(p, "orcamento_midia_meta", 0),
                 "orcamento_midia_google": getattr(p, "orcamento_midia_google", 0),
-                "data_fim": p.data_fim.isoformat() if getattr(p, "data_fim", None) else None,
+                "data_fim": p.data_fim.isoformat() if p.data_fim else None,
                 "ekyte_workspace": getattr(p, "ekyte_workspace", ""),
             })
 

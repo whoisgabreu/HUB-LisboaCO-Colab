@@ -1,23 +1,20 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="pt-BR">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
-    rel="stylesheet">
-    <link rel="stylesheet" href="static/style/styles.css">
-    <link rel="stylesheet" href="static/style/tema-claro.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'style/styles.css' %}">
+    <link rel="stylesheet" href="{% static 'style/tema-claro.css' %}">
     {% include "components/icon_title.html" %}
 </head>
 
 <body>
-
     {% include "components/header.html" %}
-
     {% include "components/sidebar.html" %}
 
     <div class="app-container">
@@ -27,17 +24,15 @@
                 <h2>Painel de Atribuição</h2>
                 <p>Esta página está em construção.</p>
             </section>
-            <div class="empty-state">
-                <i class="fas fa-tools"></i>
-                <p>Em breve você terá acesso a todas as ferramentas de gestão de projetos aqui.</p>
+            <div class="empty-state" style="text-align: center; padding: 3rem;">
+                <i class="fas fa-tools" style="font-size: 3rem; color: var(--text-muted); margin-bottom: 1rem; display: block;"></i>
+                <p>Em breve você terá acesso a todas as ferramentas de atribuição aqui.</p>
             </div>
         </main>
     </div>
 
-    <script src="static/js/app.js"></script>
-    <script src="static/js/placeholders.js"></script>
+    <script src="{% static 'js/app.js' %}"></script>
     {% include "components/modal-configuracoes.html" %}
-    <script src="static/js/tema.js"></script>
+    <script src="{% static 'js/tema.js' %}"></script>
 </body>
-
 </html>

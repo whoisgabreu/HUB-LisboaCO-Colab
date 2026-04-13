@@ -1,6 +1,6 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="pt-BR">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,13 +8,12 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
-        rel="stylesheet">
-    <link rel="stylesheet" href="static/style/styles.css">
-    <link rel="stylesheet" href="static/style/criativa.css">
-    <link rel="stylesheet" href="static/style/tema-claro.css">
-    <script src="static/js/app.js" defer></script>
-    <script src="static/js/criativa.js" defer></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'style/styles.css' %}">
+    <link rel="stylesheet" href="{% static 'style/criativa.css' %}">
+    <link rel="stylesheet" href="{% static 'style/tema-claro.css' %}">
+    <script src="{% static 'js/app.js' %}" defer></script>
+    <script src="{% static 'js/criativa.js' %}" defer></script>
     {% include "components/icon_title.html" %}
 </head>
 
@@ -26,241 +25,78 @@
         <div class="sidebar-overlay"></div>
         <main class="main-container">
             <div class="criativa-container">
-
-                <!-- CABEÇALHO -->
                 <header class="criativa-header">
                     <div class="criativa-title">
-                        <h2><i class="fas fa-palette" style="color: #D61616; margin-right: 10px;"></i>Gestão Criativa
-                        </h2>
+                        <h2><i class="fas fa-palette" style="color: #D61616; margin-right: 10px;"></i>Gestão Criativa</h2>
                         <p>Controle de produção e entregas criativas por projeto</p>
                     </div>
                 </header>
 
-                <!-- TOOLBAR: Filtro + Botões de Navegação -->
                 <div class="criativa-toolbar">
                     <div class="criativa-toolbar-left">
                         <div class="search-box" style="max-width: 400px;">
                             <i class="fa-solid fa-magnifying-glass"></i>
-                            <input type="text" name="busca" value="" autocomplete="off" autocorrect="off"
-                                autocapitalize="off" spellcheck="false" id="criativaSearchInput"
-                                placeholder="Filtrar por cliente..." onkeyup="filterCriativoTable()">
+                            <input type="text" id="criativaSearchInput" placeholder="Filtrar por cliente..." onkeyup="filterCriativoTable()">
                         </div>
                     </div>
                     <div class="criativa-toolbar-right">
                         <button class="criativa-nav-btn" id="btn-add-entrega" onclick="openNovaEntregaModal()">
                             <i class="fas fa-plus-circle"></i> Adicionar Entrega
                         </button>
-                        <button class="criativa-nav-btn active" id="btn-view-clientes"
-                            onclick="switchCriativaView('clientes')">
+                        <button class="criativa-nav-btn active" id="btn-view-clientes" onclick="switchCriativaView('clientes')">
                             <i class="fas fa-users"></i> Clientes
                         </button>
-                        <button class="criativa-nav-btn" id="btn-view-entregas"
-                            onclick="switchCriativaView('entregas')">
+                        <button class="criativa-nav-btn" id="btn-view-entregas" onclick="switchCriativaView('entregas')">
                             <i class="fas fa-list-check"></i> Tela Entregas
                         </button>
                     </div>
                 </div>
 
-                <!-- ═══ VIEW 1: CLIENTES (Visão geral da tabela) ═══ -->
+                <!-- VIEW 1: CLIENTES -->
                 <div id="criativa-view-clientes" class="criativa-view active">
-
-                    <!-- KPIs Resumo -->
-                    <div class="criativa-kpis">
-                        <div class="criativa-kpi-card">
-                            <div class="criativa-kpi-icon"><i class="fas fa-users"></i></div>
-                            <div class="criativa-kpi-info">
-                                <span class="criativa-kpi-label">Total Clientes</span>
-                                <span class="criativa-kpi-value" id="kpi-total-clientes">5</span>
-                            </div>
-                        </div>
-                        <div class="criativa-kpi-card">
-                            <div class="criativa-kpi-icon"><i class="fas fa-image"></i></div>
-                            <div class="criativa-kpi-info">
-                                <span class="criativa-kpi-label">Criativos Entregues</span>
-                                <span class="criativa-kpi-value" id="kpi-total-criativos">50</span>
-                            </div>
-                        </div>
-                        <div class="criativa-kpi-card">
-                            <div class="criativa-kpi-icon"><i class="fas fa-video"></i></div>
-                            <div class="criativa-kpi-info">
-                                <span class="criativa-kpi-label">Vídeos Entregues</span>
-                                <span class="criativa-kpi-value" id="kpi-total-videos">25</span>
-                            </div>
-                        </div>
+                    <div class="criativa-kpis" id="criativa-kpis-container">
+                        <!-- Preenchido via JS -->
                     </div>
-
-                    <!-- Tabela Principal -->
                     <div class="criativa-table-card">
-                        <div class="criativa-table-header">
-                            <h3><i class="fas fa-table"></i> Painel de Produção Criativa</h3>
-                        </div>
+                        <div class="criativa-table-header"><h3><i class="fas fa-table"></i> Painel de Produção Criativa</h3></div>
                         <div class="criativa-table-scroll">
                             <table class="criativa-table" id="criativa-table">
                                 <thead>
                                     <tr>
-                                        <th>Cliente</th>
-                                        <th>Fee</th>
-                                        <th class="text-contratado">Criativos Contrat.</th>
-                                        <th class="text-entregue">Criativos Entreg.</th>
-                                        <th class="text-contratado">LPs Contrat.</th>
-                                        <th class="text-entregue">LPs Entreg.</th>
-                                        <th class="text-contratado">Vídeos Contrat.</th>
-                                        <th class="text-entregue">Vídeos Entreg.</th>
-                                        <th class="text-contratado">Copys</th>
-                                        <th>Total</th>
+                                        <th>Cliente</th><th>Fee</th><th class="text-contratado">Criativos Contrat.</th><th class="text-entregue">Criativos Entreg.</th>
+                                        <th class="text-contratado">LPs Contrat.</th><th class="text-entregue">LPs Entreg.</th>
+                                        <th class="text-contratado">Vídeos Contrat.</th><th class="text-entregue">Vídeos Entreg.</th>
+                                        <th class="text-contratado">Copys</th><th>Total</th>
                                     </tr>
                                 </thead>
                                 <tbody id="criativa-table-body">
-                                    <tr>
-                                        <td class="cell-cliente"><strong>Cliente Alpha</strong></td>
-                                        <td>R$ 3.500</td>
-                                        <td class="text-contratado">10</td>
-                                        <td class="text-entregue">8</td>
-                                        <td class="text-contratado">3</td>
-                                        <td class="text-entregue">2</td>
-                                        <td class="text-contratado">5</td>
-                                        <td class="text-entregue">4</td>
-                                        <td class="text-contratado">12</td>
-                                        <td class="cell-total"><strong>26</strong></td>
-                                    </tr>
-                                    <tr>
-                                        <td class="cell-cliente"><strong>Cliente Beta</strong></td>
-                                        <td>R$ 5.000</td>
-                                        <td class="text-contratado">15</td>
-                                        <td class="text-entregue">12</td>
-                                        <td class="text-contratado">4</td>
-                                        <td class="text-entregue">3</td>
-                                        <td class="text-contratado">8</td>
-                                        <td class="text-entregue">6</td>
-                                        <td class="text-contratado">18</td>
-                                        <td class="cell-total"><strong>39</strong></td>
-                                    </tr>
-                                    <tr>
-                                        <td class="cell-cliente"><strong>Cliente Gamma</strong></td>
-                                        <td>R$ 2.800</td>
-                                        <td class="text-contratado">8</td>
-                                        <td class="text-entregue">5</td>
-                                        <td class="text-contratado">2</td>
-                                        <td class="text-entregue">1</td>
-                                        <td class="text-contratado">3</td>
-                                        <td class="text-entregue">2</td>
-                                        <td class="text-contratado">8</td>
-                                        <td class="cell-total"><strong>16</strong></td>
-                                    </tr>
-                                    <tr>
-                                        <td class="cell-cliente"><strong>Cliente Delta</strong></td>
-                                        <td>R$ 7.200</td>
-                                        <td class="text-contratado">20</td>
-                                        <td class="text-entregue">15</td>
-                                        <td class="text-contratado">5</td>
-                                        <td class="text-entregue">4</td>
-                                        <td class="text-contratado">10</td>
-                                        <td class="text-entregue">8</td>
-                                        <td class="text-contratado">24</td>
-                                        <td class="cell-total"><strong>51</strong></td>
-                                    </tr>
-                                    <tr>
-                                        <td class="cell-cliente"><strong>Cliente Epsilon</strong></td>
-                                        <td>R$ 4.100</td>
-                                        <td class="text-contratado">12</td>
-                                        <td class="text-entregue">10</td>
-                                        <td class="text-contratado">3</td>
-                                        <td class="text-entregue">2</td>
-                                        <td class="text-contratado">6</td>
-                                        <td class="text-entregue">5</td>
-                                        <td class="text-contratado">15</td>
-                                        <td class="cell-total"><strong>32</strong></td>
-                                    </tr>
-                                    <tr class="criativa-total-row">
-                                        <td><strong>TOTAL</strong></td>
-                                        <td><strong>R$ 22.600</strong></td>
-                                        <td class="text-contratado"><strong>65</strong></td>
-                                        <td class="text-entregue"><strong>50</strong></td>
-                                        <td class="text-contratado"><strong>17</strong></td>
-                                        <td class="text-entregue"><strong>12</strong></td>
-                                        <td class="text-contratado"><strong>32</strong></td>
-                                        <td class="text-entregue"><strong>25</strong></td>
-                                        <td class="text-contratado"><strong>77</strong></td>
-                                        <td class="cell-total"><strong>164</strong></td>
-                                    </tr>
+                                    <!-- Preenchido via JS -->
                                 </tbody>
                             </table>
                         </div>
                     </div>
                 </div>
 
-                <!-- ═══ VIEW 2: TELA DE ENTREGAS CRIATIVAS ═══ -->
+                <!-- VIEW 2: TELA DE ENTREGAS -->
                 <div id="criativa-view-entregas" class="criativa-view">
-
-                    <header
-                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                    <header style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
                         <div class="op-section-title" style="margin-bottom: 0;">
                             <div class="op-icon-box"><i class="fas fa-check-double"></i></div>
-                            <h3>Entregas do Mês <span id="criativa-display-entregas-date"
-                                    style="color: #D61616; font-weight: 600; font-size: 0.9rem; margin-left: 10px;"></span>
-                            </h3>
+                            <h3>Entregas do Mês <span id="criativa-display-entregas-date" style="color: #D61616; font-weight: 600; font-size: 0.9rem; margin-left: 10px;"></span></h3>
                         </div>
                         <button class="history-dropdown-btn" onclick="openHistoricoModal()">
-                            <i class="fas fa-history"></i> Histórico de Entregas <i class="fas fa-chevron-down"
-                                style="font-size: 0.7rem;"></i>
+                            <i class="fas fa-history"></i> Histórico de Entregas <i class="fas fa-chevron-down" style="font-size: 0.7rem;"></i>
                         </button>
                     </header>
-
-                    <div class="entregas-grid">
-                        <!-- Checkbox 1: 25% -->
-                        <div class="entrega-card manual-toggle" id="criativa-entrega-1"
-                            onclick="toggleCriativaEntrega(1)">
-                            <div class="entrega-check"><i class="fas fa-check"></i></div>
-                            <div class="entrega-info">
-                                <h4>Entrega 01 (25%)</h4>
-                                <p>Clique para marcar conclusão</p>
-                            </div>
-                        </div>
-
-                        <!-- Checkbox 2: 25% -->
-                        <div class="entrega-card manual-toggle" id="criativa-entrega-2"
-                            onclick="toggleCriativaEntrega(2)">
-                            <div class="entrega-check"><i class="fas fa-check"></i></div>
-                            <div class="entrega-info">
-                                <h4>Entrega 02 (25%)</h4>
-                                <p>Clique para marcar conclusão</p>
-                            </div>
-                        </div>
-
-                        <!-- Checkbox 3: 25% -->
-                        <div class="entrega-card manual-toggle" id="criativa-entrega-3"
-                            onclick="toggleCriativaEntrega(3)">
-                            <div class="entrega-check"><i class="fas fa-check"></i></div>
-                            <div class="entrega-info">
-                                <h4>Entrega 03 (25%)</h4>
-                                <p>Clique para marcar conclusão</p>
-                            </div>
-                        </div>
-
-                        <!-- Checkbox 4: 25% -->
-                        <div class="entrega-card manual-toggle" id="criativa-entrega-4"
-                            onclick="toggleCriativaEntrega(4)">
-                            <div class="entrega-check"><i class="fas fa-check"></i></div>
-                            <div class="entrega-info">
-                                <h4>Entrega 04 (25%)</h4>
-                                <p>Clique para marcar conclusão</p>
-                            </div>
-                        </div>
+                    <div class="entregas-grid" id="criativa-entregas-grid">
+                        <!-- Preenchido via JS -->
                     </div>
-
-                    <!-- Impacto no MRR -->
-                    <div class="kpi-card-premium"
-                        style="margin-top: 2rem; border-top: 2px solid var(--border-color); background: rgba(0,255,0,0.05);">
-                        <div style="font-size: 0.8rem; color: #888; text-transform: uppercase;">IMPACTO NO MRR
-                            ESTIMADO</div>
-                        <div id="criativa-mrr-impact"
-                            style="font-size: 1.8rem; font-weight: 700; margin: 0.5rem 0; color: #28a745;">R$ 0,00
-                        </div>
-                        <p style="font-size: 0.75rem; color: var(--text-muted);">Baseado no percentual entregue
-                            versus o fee do projeto.</p>
+                    <div class="kpi-card-premium" style="margin-top: 2rem; border-top: 2px solid var(--border-color); background: rgba(0,255,0,0.05);">
+                        <div style="font-size: 0.8rem; color: #888; text-transform: uppercase;">IMPACTO NO MRR ESTIMADO</div>
+                        <div id="criativa-mrr-impact" style="font-size: 1.8rem; font-weight: 700; margin: 0.5rem 0; color: #28a745;">R$ 0,00</div>
+                        <p style="font-size: 0.75rem; color: var(--text-muted);">Baseado no percentual entregue versus o fee do projeto.</p>
                     </div>
                 </div>
-
             </div>
         </main>
     </div>
@@ -268,75 +104,45 @@
     <!-- MODAL: Adicionar Entrega -->
     <div id="modal-nova-entrega" class="modal">
         <div class="modal-content" style="max-width: 500px;">
-            <div class="modal-header">
-                <h3><i class="fas fa-plus-circle"></i> Nova Entrega Criativa</h3>
-                <button class="close-modal" onclick="closeNovaEntregaModal()">&times;</button>
-            </div>
+            <div class="modal-header"><h3><i class="fas fa-plus-circle"></i> Nova Entrega Criativa</h3><button class="close-modal" onclick="closeNovaEntregaModal()">&times;</button></div>
             <div class="modal-body">
                 <form id="form-nova-entrega" onsubmit="saveNovaEntrega(event)">
+                    {% csrf_token %}
                     <div class="form-group">
                         <label for="entrega-projeto">Projeto/Cliente</label>
-                        <select id="entrega-projeto" required>
-                            <option value="">Selecione um cliente...</option>
-                            <option value="Alpha">Cliente Alpha</option>
-                            <option value="Beta">Cliente Beta</option>
-                            <option value="Gamma">Cliente Gamma</option>
-                            <option value="Delta">Cliente Delta</option>
-                            <option value="Epsilon">Cliente Epsilon</option>
-                        </select>
+                        <select id="entrega-projeto" required><option value="">Selecione um cliente...</option></select>
                     </div>
                     <div class="form-group">
                         <label for="entrega-tipo">Tipo de Entrega</label>
                         <select id="entrega-tipo" required>
-                            <option value="">Selecione o tipo...</option>
-                            <option value="criativo">Criativo Estático</option>
-                            <option value="lp">Landing Page</option>
-                            <option value="video">Vídeo</option>
-                            <option value="copy">Copy</option>
+                            <option value="">Selecione o tipo...</option><option value="criativo">Criativo Estático</option>
+                            <option value="lp">Landing Page</option><option value="video"> Vídeo</option><option value="copy">Copy</option>
                         </select>
                     </div>
-                    <div class="form-group">
-                        <label for="entrega-quantidade">Quantidade</label>
-                        <input type="number" id="entrega-quantidade" min="1" value="1" required>
-                    </div>
-                    <div class="modal-footer" style="padding: 1.5rem 0 0 0;">
-                        <button type="button" class="btn-cancel" onclick="closeNovaEntregaModal()">Cancelar</button>
-                        <button type="submit" class="btn-save">Salvar Entrega</button>
-                    </div>
+                    <div class="form-group"><label for="entrega-quantidade">Quantidade</label><input type="number" id="entrega-quantidade" min="1" value="1" required></div>
+                    <div class="modal-footer" style="padding: 1.5rem 0 0 0;"><button type="button" class="btn-cancel" onclick="closeNovaEntregaModal()">Cancelar</button><button type="submit" class="btn-save">Salvar Entrega</button></div>
                 </form>
             </div>
         </div>
     </div>
 
-    <!-- MODAL: Histórico de Entregas -->
+    <!-- MODAL: Histórico -->
     <div id="modal-historico-criativa" class="modal">
         <div class="modal-content" style="max-width: 650px;">
-            <div class="modal-header">
-                <h3><i class="fas fa-history"></i> Histórico de Entregas</h3>
-                <button class="close-modal" onclick="closeHistoricoModal()">&times;</button>
-            </div>
-            <div class="modal-body">
-                <!-- Conteúdo gerado dinamicamente via JS -->
-                <div style="text-align: center; padding: 2rem; color: #888;">
-                    <i class="fas fa-spinner fa-spin" style="font-size: 2rem; margin-bottom: 1rem;"></i>
-                    <p>Carregando histórico...</p>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn-cancel" onclick="closeHistoricoModal()">Fechar</button>
-            </div>
+            <div class="modal-header"><h3><i class="fas fa-history"></i> Histórico de Entregas</h3><button class="close-modal" onclick="closeHistoricoModal()">&times;</button></div>
+            <div class="modal-body" id="historico-criativa-body"><div style="text-align: center; padding: 2rem; color: #888;"><i class="fas fa-spinner fa-spin" style="font-size: 2rem; margin-bottom: 1rem;"></i><p>Carregando histórico...</p></div></div>
+            <div class="modal-footer"><button type="button" class="btn-cancel" onclick="closeHistoricoModal()">Fechar</button></div>
         </div>
     </div>
 
     <script>
         window.APP_CONFIG = {
-            userEmail: "{{ session.email }}",
-            userAccessLevel: "{{ session.nivel_acesso }}",
-            userToken: "{{session.token}}"
+            userEmail: "{{ user.email }}",
+            userToken: "{{ request.session.token|default:'' }}",
+            nivelAcesso: "{{ user.nivel_acesso|default:'User' }}"
         };
     </script>
     {% include "components/modal-configuracoes.html" %}
-    <script src="static/js/tema.js"></script>
+    <script src="{% static 'js/tema.js' %}"></script>
 </body>
-
 </html>

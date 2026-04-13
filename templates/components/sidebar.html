@@ -1,76 +1,70 @@
 <nav class="sidebar">
     <div class="sidebar-top">
-        <!-- <img class="logo" src="/assets/v4-logo.png" alt="V4"> -->
         <button id="sidebarCollapseBtn" class="sidebar-collapse-btn">
             <i class="fas fa-chevron-left"></i>
         </button>
     </div>
 
     <div class="sidebar-nav">
-        <a href="/" class="nav-item">
+        <a href="{% url 'home' %}" class="nav-item">
             <i class="fas fa-home"></i>
             <span>Home</span>
         </a>
-        <a href="/painel-ranking" class="nav-item">
+        <a href="{% url 'painel_ranking' %}" class="nav-item">
             <i class="fas fa-trophy"></i>
             <span>Painel de Ranking</span>
         </a>
-        <a href="/hub-projetos" class="nav-item">
+        <a href="{% url 'hub_projetos' %}" class="nav-item">
             <i class="fas fa-project-diagram"></i>
             <span>Hub de Projetos</span>
         </a>
 
         {# Menu Operação: Gerência, Sócio, Account e Gestor de Tráfego #}
-        {% if session.posicao in ["Gerência", "Sócio"] or session.funcao in ["Account", "Gestor de Tráfego"] %}
-        <a href="/operacao" class="nav-item">
+        {% if user.posicao in "Gerência Sócio" or user.funcao in "Account Gestor de Tráfego" %}
+        <a href="{% url 'operacao' %}" class="nav-item">
             <i class="fas fa-gears"></i>
             <span>Operação</span>
         </a>
         {% endif %}
 
         {# Menu Remuneração: Gerência e Sócio #}
-        {% if session.posicao in ["Gerência", "Sócio"] %}
-        <a href="/hub-remuneracao" class="nav-item">
+        {% if user.posicao in "Gerência Sócio" %}
+        <a href="{% url 'hub_remuneracao' %}" class="nav-item">
             <i class="fas fa-wallet"></i>
             <span>Remuneração</span>
         </a>
         {% endif %}
 
         {# Menu Admin: Apenas Admin #}
-        {% if session.nivel_acesso == "Admin" %}
-        <a href="/gerenciar-usuarios" class="nav-item">
+        {% if user.nivel_acesso == "Admin" %}
+        <a href="{% url 'gerenciar_usuarios' %}" class="nav-item">
             <i class="fas fa-users-cog"></i>
             <span>Gerenciar Usuários</span>
         </a>
         {% endif %}
 
-        {% if session.email in ["martins.gabriel@v4company.com", "gabriel.lasaro@v4company.com"] %}
-
-        <!-- {# Menu Criativa: apenas Designer, WebDesigner e Gerência #}
-        {% if session.squad == "Gerência" or session.funcao in ["Designer", "WebDesigner"] %} -->
-        <a href="/criativa" class="nav-item">
+        {# Hardcoded Access para e-mails específicos #}
+        {% if user.email in "martins.gabriel@v4company.com gabriel.lasaro@v4company.com" %}
+        <a href="{% url 'criativa' %}" class="nav-item">
             <i class="fas fa-palette"></i>
             <span>Criativa</span>
         </a>
-        <!-- {% endif %} -->
-
-        <a href="/hub-cs-cx" class="nav-item">
+        <a href="{% url 'hub_cs_cx' %}" class="nav-item">
             <i class="fas fa-users"></i>
             <span>Hub de CS/CX</span>
         </a>
-        <a href="/painel-atribuicao" class="nav-item">
+        <a href="{% url 'painel_atribuicao' %}" class="nav-item">
             <i class="fas fa-tasks"></i>
             <span>Painel de Atribuição</span>
         </a>
-        <a href="/vendas" class="nav-item">
+        <a href="{% url 'vendas' %}" class="nav-item">
             <i class="fas fa-shopping-cart"></i>
             <span>Vendas</span>
         </a>
-        <a href="/cockpit" class="nav-item">
+        <a href="{% url 'cockpit' %}" class="nav-item">
             <i class="fas fa-tachometer-alt"></i>
             <span>Cockpit</span>
         </a>
         {% endif %}
     </div>
-
 </nav>

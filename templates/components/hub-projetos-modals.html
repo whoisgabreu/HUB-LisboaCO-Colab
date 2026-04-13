@@ -1,0 +1,233 @@
+<!-- MODAL DE LISTA DE PROJETOS DO CLIENTE -->
+<div id="clientModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="clientModalTitle">Projetos do Cliente</h2>
+            <button class="close-btn" onclick="closeClientModal()">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="projects-list" id="projectsList"></div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL DE DETALHES/EDIÇÃO DO PROJETO -->
+<div id="projectModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <button class="back-btn" onclick="backToClientModal()">
+                <i class="fa-solid fa-arrow-left"></i>
+            </button>
+            <h2 id="projectModalTitle">Detalhes do Projeto</h2>
+            <div class="header-actions">
+                <button class="add-note-btn" onclick="openAddNoteModal()" title="Adicionar Nota">
+                    <i class="fa-solid fa-note-sticky"></i>
+                </button>
+                <button class="history-btn" id="historyBtn" onclick="openHistoryModal()" title="Ver Histórico">
+                    <i class="fa-solid fa-clock-rotate-left"></i>
+                </button>
+                <button class="close-btn" onclick="closeProjectModal()">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+        </div>
+
+        <form id="projectForm" onsubmit="updateProject(event)">
+            <div class="modal-body">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Nome do Projeto</label>
+                        <input type="text" name="nome" id="modal_nome" required disabled>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Step</label>
+                        <select name="step" id="modal_step" disabled>
+                            <option value="">Selecione...</option>
+                            <option value="Saber">Saber</option>
+                            <option value="Ter">Ter</option>
+                            <option value="Executar">Executar</option>
+                            <option value="Potencializar">Potencializar</option>
+                        </select>
+                    </div>
+
+                    <div class="input-with-icon">
+                        <div class="form-group">
+                            <label>Pipefy ID</label>
+                            <input type="text" name="pipefy_id" id="modal_pipefy_id" disabled>
+                            <div id="pipefyButton" title="Abrir no Pipefy"><i class="fa-solid fa-link"></i></div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Documento</label>
+                        <input type="text" name="documento" id="modal_documento" disabled>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Fee</label>
+                        <input type="text" name="fee" id="modal_fee" disabled>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Moeda</label>
+                        <select name="moeda" id="modal_moeda" disabled>
+                            <option value="BRL">BRL</option>
+                            <option value="USD">USD</option>
+                            <option value="EUR">EUR</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Squad Atribuída</label>
+                        <select name="squad_atribuida" id="modal_squad" disabled>
+                            {% for squad in squads %}
+                            <option value='{{ squad }}'>{{ squad }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Produto Contratado</label>
+                        <input type="text" name="produto_contratado" id="modal_produto" disabled>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Data de Início</label>
+                        <input type="date" name="data_de_inicio" id="modal_data_inicio" disabled>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Data Fim</label>
+                        <input type="date" name="data_fim" id="modal_data_fim" disabled>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Cohort</label>
+                        <select name="cohort" id="modal_cohort" disabled>
+                            <option value="PDV - Ponto de Venda">PDV - Ponto de Venda</option>
+                            <option value="E-Commerce">E-Commerce</option>
+                            <option value="Inside Sales">Inside Sales</option>
+                            <option value="Info Produto">Info Produto</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Meta Account ID</label>
+                        <input type="text" name="meta_account_id" id="modal_meta_account" disabled>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Google Account ID</label>
+                        <input type="text" name="google_account_id" id="modal_google_account" disabled>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Orçamento de Mídia - Meta</label>
+                        <input type="text" name="orcamento_midia_meta" id="modal_orcamento_midia_meta" disabled>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Orçamento de Mídia - Google</label>
+                        <input type="text" name="orcamento_midia_google" id="modal_orcamento_midia_google" disabled>
+                    </div>
+
+                    <div class="form-group full-width">
+                        <label>Fase do Pipefy</label>
+                        <input type="text" name="fase_do_pipefy" id="modal_fase_pipefy" disabled>
+                    </div>
+
+                    <div class="form-group full-width">
+                        <label>URL Webhook GChat</label>
+                        <input type="url" name="url_webhook_gchat" id="modal_webhook_url" disabled>
+                    </div>
+
+                    <div class="form-group full-width">
+                        <label>Ekyte Workspace</label>
+                        <input type="text" name="ekyte_workspace" id="modal_ekyte_workspace" disabled>
+                    </div>
+
+                    <div class="form-group full-width">
+                        <label>Informações Gerais do Projeto</label>
+                        <textarea name="informacoes_gerais" id="modal_informacoes" rows="6" disabled></textarea>
+                    </div>
+
+                    <!-- VÍNCULOS -->
+                    <div class="form-group full-width vinculados-section" id="vinculosSection">
+                        <div class="vinculos-header">
+                            <label><i class="fa-solid fa-users"></i> Investidores Vinculados</label>
+                            <div class="vinculos-actions" id="vinculosActions" style="display: none;">
+                                <select id="investidorSelect"><option value="">Vincular investidor...</option></select>
+                                <label class="checkbox-label"><input type="checkbox" id="isCientista"> Cientista</label>
+                                <button type="button" class="btn-add-vinculo" onclick="vincularNovoInvestidor()"><i class="fa-solid fa-plus"></i></button>
+                            </div>
+                        </div>
+                        <div id="vinculosContainer" class="vinculos-container"></div>
+                    </div>
+
+                    <!-- NOTAS -->
+                    <div class="form-group full-width notes-section" id="notesSection">
+                        <div class="notes-header">
+                            <label><i class="fa-solid fa-note-sticky"></i> Notas e Anotações</label>
+                        </div>
+                        <div id="notesContainer" class="notes-container"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="backToClientModal()">Voltar</button>
+                {% if user.nivel_acesso != "Usuário" %}
+                <button type="button" class="btn-edit" id="editBtn" onclick="toggleEditMode()">
+                    <i class="fa-solid fa-pen-to-square"></i> Editar
+                </button>
+                <button type="submit" class="btn-primary" id="saveBtn" style="display: none;">
+                    <i class="fa-solid fa-floppy-disk"></i> Salvar
+                </button>
+                {% endif %}
+            </div>
+            <input type="hidden" name="projeto_id" id="modal_projeto_id">
+            <input type="hidden" name="tipo_projeto" id="modal_tipo_projeto">
+        </form>
+    </div>
+</div>
+
+<!-- MODAL DE HISTÓRICO -->
+<div id="historyModal" class="modal">
+    <div class="modal-content modal-large">
+        <div class="modal-header">
+            <h2><i class="fa-solid fa-clock-rotate-left"></i> Histórico de Alterações</h2>
+            <button class="close-btn" onclick="closeHistoryModal()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="modal-body">
+            <div id="historyContent" class="history-timeline"></div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-secondary" onclick="closeHistoryModal()">Fechar</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL DE ADICIONAR NOTA -->
+<div id="addNoteModal" class="modal">
+    <div class="modal-content modal-small">
+        <div class="modal-header">
+            <h2>Nova Nota</h2>
+            <button class="close-btn" onclick="closeAddNoteModal()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <form id="addNoteForm" onsubmit="addNote(event)">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Nome da Nota *</label>
+                    <input type="text" id="note_name" required placeholder="Ex: Análise de Mercado">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeAddNoteModal()">Cancelar</button>
+                <button type="submit" class="btn-primary"><i class="fa-solid fa-plus"></i> Adicionar Nota</button>
+            </div>
+        </form>
+    </div>
+</div>

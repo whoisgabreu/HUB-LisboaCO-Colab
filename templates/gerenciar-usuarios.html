@@ -1,29 +1,28 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="pt-BR">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciamento de Usuários - Hub Lisboa&CO</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
-        rel="stylesheet">
-    <link rel="stylesheet" href="static/style/styles.css">
-    <link rel="stylesheet" href="static/style/tema-claro.css">
-    <link rel="stylesheet" href="static/style/gerenciar-usuarios.css">
-    <script src="static/js/app.js" defer></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'style/styles.css' %}">
+    <link rel="stylesheet" href="{% static 'style/tema-claro.css' %}">
+    <link rel="stylesheet" href="{% static 'style/gerenciar-usuarios.css' %}">
+    <script src="{% static 'js/app.js' %}" defer></script>
+    <script src="{% static 'js/gerenciar-usuarios.js' %}" defer></script>
     {% include "components/icon_title.html" %}
 </head>
 
 <body>
-
     {% include "components/header.html" %}
     {% include "components/sidebar.html" %}
 
     <div class="app-shell">
         <div class="sidebar-overlay"></div>
-
         <div class="main-content">
             <main class="main-container" id="admin-user-page">
                 <section class="welcome-section">
@@ -38,38 +37,29 @@
                     </div>
                 </section>
 
-                <!-- FILTROS -->
                 <div class="filters">
                     <div class="search-box">
                         <i class="fa-solid fa-magnifying-glass"></i>
-                        <input type="text" id="userSearchInput" placeholder="Buscar por nome ou e-mail..."
-                            onkeyup="filterUsers()">
+                        <input type="text" id="userSearchInput" placeholder="Buscar por nome ou e-mail..." onkeyup="filterUsers()">
                     </div>
-
                     <div class="filter-group">
                         <div class="filter-item">
                             <i class="fa-solid fa-sitemap"></i>
                             <select id="squadFilter" onchange="filterUsers()">
                                 <option value="">Todas as Squads</option>
-                                {% for squad in options.squads %}
-                                <option value="{{ squad|lower }}">{{ squad }}</option>
-                                {% endfor %}
+                                {% for squad in options.squads %}<option value="{{ squad|lower }}">{{ squad }}</option>{% endfor %}
                             </select>
                         </div>
-
                         <div class="filter-item">
                             <i class="fa-solid fa-layer-group"></i>
                             <select id="posicaoFilter" onchange="filterUsers()">
                                 <option value="">Todas as Posições</option>
-                                {% for pos in options.posicoes %}
-                                <option value="{{ pos|lower }}">{{ pos }}</option>
-                                {% endfor %}
+                                {% for pos in options.posicoes %}<option value="{{ pos|lower }}">{{ pos }}</option>{% endfor %}
                             </select>
                         </div>
                     </div>
                 </div>
 
-                <!-- LISTA DE USUÁRIOS -->
                 <div class="users-card">
                     <div class="table-responsive">
                         <table class="users-table">
@@ -83,9 +73,7 @@
                                     <th>Ações</th>
                                 </tr>
                             </thead>
-                            <tbody id="usersTableBody">
-                                <!-- Preenchido via JS -->
-                            </tbody>
+                            <tbody id="usersTableBody"></tbody>
                         </table>
                     </div>
                 </div>
@@ -102,55 +90,35 @@
             </div>
             <div class="remu-modal-body">
                 <form id="userForm" class="admin-form">
+                    {% csrf_token %}
                     <input type="hidden" id="originalEmail">
                     
-                    <!-- SEÇÃO: DADOS PESSOAIS -->
                     <div class="form-section">
-                        <div class="section-header">
-                            <i class="fas fa-user"></i>
-                            <h4>Dados Pessoais</h4>
-                        </div>
+                        <div class="section-header"><i class="fas fa-user"></i><h4>Dados Pessoais</h4></div>
                         <div class="form-row">
-                            <div class="form-group">
-                                <label>Nome Completo</label>
-                                <input type="text" id="userName" required placeholder="Ex: João Silva">
-                            </div>
-                            <div class="form-group">
-                                <label>E-mail</label>
-                                <input type="email" id="userEmail" required placeholder="usuario@v4company.com">
-                            </div>
+                            <div class="form-group"><label>Nome Completo</label><input type="text" id="userName" required></div>
+                            <div class="form-group"><label>E-mail</label><input type="email" id="userEmail" required></div>
                         </div>
                         <div class="form-row" id="passwordGroup">
-                            <div class="form-group full-width">
-                                <label>Senha Inicial</label>
-                                <input type="password" id="userPassword" placeholder="Deixe em branco para 'v4company'">
-                            </div>
+                            <div class="form-group full-width"><label>Senha Inicial</label><input type="password" id="userPassword" placeholder="Deixe em branco para 'v4company'"></div>
                         </div>
                     </div>
 
-                    <!-- SEÇÃO: CARGO E FUNÇÃO -->
                     <div class="form-section">
-                        <div class="section-header">
-                            <i class="fas fa-briefcase"></i>
-                            <h4>Cargo e Função</h4>
-                        </div>
+                        <div class="section-header"><i class="fas fa-briefcase"></i><h4>Cargo e Função</h4></div>
                         <div class="form-row">
                             <div class="form-group">
                                 <label>Cargo/Função</label>
                                 <select id="userFuncao">
                                     <option value="">Selecione...</option>
-                                    {% for cargo in options.cargos %}
-                                    <option value="{{ cargo }}">{{ cargo }}</option>
-                                    {% endfor %}
+                                    {% for cargo in options.cargos %}<option value="{{ cargo }}">{{ cargo }}</option>{% endfor %}
                                 </select>
                             </div>
                             <div class="form-group">
                                 <label>Senioridade</label>
                                 <select id="userSenioridade">
                                     <option value="">Selecione...</option>
-                                    {% for sen in options.senioridades %}
-                                    <option value="{{ sen }}">{{ sen }}</option>
-                                    {% endfor %}
+                                    {% for sen in options.senioridades %}<option value="{{ sen }}">{{ sen }}</option>{% endfor %}
                                 </select>
                             </div>
                         </div>
@@ -159,63 +127,45 @@
                                 <label>Nível</label>
                                 <select id="userNivel">
                                     <option value="">Selecione...</option>
-                                    {% for niv in options.niveis %}
-                                    <option value="{{ niv }}">{{ niv }}</option>
-                                    {% endfor %}
+                                    {% for niv in options.niveis %}<option value="{{ niv }}">{{ niv }}</option>{% endfor %}
                                 </select>
                             </div>
                             <div class="form-group">
                                 <label>Squad</label>
                                 <select id="userSquad" required>
                                     <option value="">Selecione...</option>
-                                    {% for squad in options.squads %}
-                                    <option value="{{ squad }}">{{ squad }}</option>
-                                    {% endfor %}
+                                    {% for squad in options.squads %}<option value="{{ squad }}">{{ squad }}</option>{% endfor %}
                                 </select>
                             </div>
                         </div>
                     </div>
 
-                    <!-- SEÇÃO: ACESSO E STATUS -->
                     <div class="form-section highlight">
-                        <div class="section-header">
-                            <i class="fas fa-shield-alt"></i>
-                            <h4>Acesso e Status</h4>
-                        </div>
+                        <div class="section-header"><i class="fas fa-shield-alt"></i><h4>Acesso e Status</h4></div>
                         <div class="form-row">
                             <div class="form-group">
                                 <label>Posição</label>
                                 <select id="userPosicao" required>
                                     <option value="">Selecione...</option>
-                                    {% for pos in options.posicoes %}
-                                    <option value="{{ pos }}">{{ pos }}</option>
-                                    {% endfor %}
+                                    {% for pos in options.posicoes %}<option value="{{ pos }}">{{ pos }}</option>{% endfor %}
                                 </select>
                             </div>
                             <div class="form-group">
                                 <label>Perfil de Acesso</label>
-                                <select id="userNivelAcesso" required>
-                                    <option value="Usuário">Usuário</option>
-                                    <option value="Admin">Admin</option>
-                                </select>
+                                <select id="userNivelAcesso" required><option value="Usuário">Usuário</option><option value="Admin">Admin</option></select>
                             </div>
                         </div>
                         <div class="form-row">
                             <div class="form-group full-width">
                                 <label>Status da Conta</label>
-                                <select id="userAtivo">
-                                    <option value="true">Ativo - Usuário pode acessar o sistema</option>
-                                    <option value="false">Inativo - Acesso bloqueado</option>
-                                </select>
+                                <select id="userAtivo"><option value="true">Ativo</option><option value="false">Inativo</option></select>
                             </div>
                         </div>
                     </div>
 
                     <div class="modal-footer">
                         <button type="button" class="btn-secondary" onclick="closeUserModal()">Cancelar</button>
-                        <button type="submit" class="btn-primary">
-                            <i class="fas fa-save"></i> Salvar Usuário
-                        </button>
+                        <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Salvar Usuário</button>
                     </div>
                 </form>
             </div>
@@ -225,31 +175,19 @@
     <!-- MODAL: RESET DE SENHA -->
     <div id="resetPasswordModal" class="remu-modal">
         <div class="remu-modal-content" style="max-width: 450px;">
-            <div class="remu-modal-header">
-                <h3>Redefinir Senha</h3>
-                <button class="remu-modal-close" onclick="closeResetModal()">&times;</button>
-            </div>
+            <div class="remu-modal-header"><h3>Redefinir Senha</h3><button class="remu-modal-close" onclick="closeResetModal()">&times;</button></div>
             <div class="remu-modal-body">
                 <form id="resetPasswordForm" class="admin-form">
+                    {% csrf_token %}
                     <input type="hidden" id="resetEmail">
                     <div class="form-section">
-                        <div class="section-header">
-                            <i class="fas fa-key"></i>
-                            <h4>Nova Senha</h4>
-                        </div>
-                        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px;">
-                            Digite a nova senha para o usuário <strong id="resetTargetEmail"></strong>
-                        </p>
-                        <div class="form-group">
-                            <label>Senha</label>
-                            <input type="password" id="newPassword" required placeholder="Digite a nova senha" value="v4company">
-                        </div>
+                        <div class="section-header"><i class="fas fa-key"></i><h4>Nova Senha</h4></div>
+                        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px;">Digite a nova senha para <strong id="resetTargetEmail"></strong></p>
+                        <div class="form-group"><label>Senha</label><input type="password" id="newPassword" required value="v4company"></div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn-secondary" onclick="closeResetModal()">Cancelar</button>
-                        <button type="submit" class="btn-primary" style="background: #f1c40f; color: #000; border-color: #f1c40f;">
-                            <i class="fas fa-sync-alt"></i> Confirmar Redefinição
-                        </button>
+                        <button type="submit" class="btn-primary" style="background: #f1c40f; color: #000; border-color: #f1c40f;"><i class="fas fa-sync-alt"></i> Redefinir</button>
                     </div>
                 </form>
             </div>
@@ -258,16 +196,11 @@
 
     <script>
         window.APP_CONFIG = {
-            userEmail: "{{ session.email }}",
-            userAccessLevel: "{{ session.nivel_acesso }}",
-            userToken: "{{session.token}}"
+            userEmail: "{{ user.email }}",
+            userToken: "{{ request.session.token|default:'' }}",
+            nivelAcesso: "{{ user.nivel_acesso|default:'User' }}"
         };
-        // Cargo do usuário injetado para o delivery engine do frontend
-        window.__USER_ROLE__ = "{{ session.funcao }}";
     </script>
-    {% include "components/modal-configuracoes.html" %}
-    <script src="static/js/tema.js"></script>
-    <script src="static/js/gerenciar-usuarios.js"></script>
+    <script src="{% static 'js/tema.js' %}"></script>
 </body>
-
 </html>

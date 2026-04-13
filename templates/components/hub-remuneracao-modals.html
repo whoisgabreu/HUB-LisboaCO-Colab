@@ -1,0 +1,132 @@
+<!-- MODAL DE DETALHES DE REMUNERAÇÃO -->
+<div id="remunerationModal" class="remu-modal">
+    <div class="remu-modal-content">
+        <div class="remu-modal-header">
+            <div class="remu-user-identification">
+                <h3 id="modalName">Nome do Investidor</h3>
+                <p id="modalRoleSquad">Cargo | Squad</p>
+            </div>
+            <button type="button" class="remu-modal-close" onclick="closeRemunerationModal()">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <div class="remu-modal-body">
+            <!-- Grid de Métricas Rápidas -->
+            <div class="remu-metrics-grid">
+                <div class="remu-metric-card" onclick="openClientsListModal()" style="cursor: pointer;">
+                    <div class="remu-metric-header">
+                        <span class="remu-metric-label">Clientes</span>
+                        <i class="fa-solid fa-users remu-metric-icon"></i>
+                    </div>
+                    <div class="remu-clients-summary">
+                        <div class="remu-summary-item">
+                            <span class="remu-summary-label">Ativos</span>
+                            <span class="remu-summary-val" id="modalClientsActive">0</span>
+                        </div>
+                        <div class="remu-summary-item">
+                            <span class="remu-summary-label">Inativos</span>
+                            <span class="remu-summary-val" id="modalClientsInactive">0</span>
+                        </div>
+                    </div>
+                    <div class="remu-card-footer">
+                        <span>Ver todos <i class="fa-solid fa-chevron-right"></i></span>
+                    </div>
+                </div>
+
+                <div class="remu-metric-card">
+                    <div class="remu-metric-header">
+                        <span class="remu-metric-label">Remuneração</span>
+                        <i class="fa-solid fa-wallet remu-metric-icon"></i>
+                    </div>
+                    <div class="remu-values-list">
+                        <div class="remu-value-item primary">
+                            <span class="remu-value-label">Atual</span>
+                            <span class="remu-value-amount" id="modalRemAtual">R$ 0,00</span>
+                        </div>
+                        <div class="remu-value-item secondary">
+                            <span class="remu-value-label">Fixa</span>
+                            <span class="remu-value-amount" id="modalFixed">R$ 0,00</span>
+                        </div>
+                        <div class="remu-value-grid">
+                            <div class="remu-value-item">
+                                <span class="remu-value-label">Mínima</span>
+                                <span class="remu-value-amount min" id="modalRemMin">R$ 0,00</span>
+                            </div>
+                            <div class="remu-value-item">
+                                <span class="remu-value-label">Máxima</span>
+                                <span class="remu-value-amount max" id="modalRemMax">R$ 0,00</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="remu-metric-card">
+                    <div class="remu-metric-header">
+                        <span class="remu-metric-label">MRR (Fee Projetos)</span>
+                        <i class="fa-solid fa-chart-line remu-metric-icon"></i>
+                    </div>
+                    <div id="modalMRR" class="remu-comparison-box">
+                        <!-- Preenchido via JS -->
+                    </div>
+                </div>
+
+                <div class="remu-metric-card">
+                    <div class="remu-metric-header">
+                        <span class="remu-metric-label">Metas de MRR</span>
+                        <i class="fa-solid fa-bullseye remu-metric-icon"></i>
+                    </div>
+                    <div id="modalTargets" class="remu-target-card">
+                        <!-- Preenchido via JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabela de Histórico -->
+            <div class="remu-history-section">
+                <div class="remu-section-header">
+                    <h4>Histórico de Performance</h4>
+                </div>
+                <div class="remu-table-wrapper">
+                    <table class="remu-table">
+                        <thead>
+                            <tr>
+                                <th>Flag</th>
+                                <th>Mês-Ano</th>
+                                <th>Cargo</th>
+                                <th>Senioridade</th>
+                                <th>Nível</th>
+                                <th>Remu. Cargo</th>
+                                <th>MRR</th>
+                                <th>Churn R$</th>
+                                <th>Churn %</th>
+                                <th>Variable R$</th>
+                                <th>Total R$</th>
+                            </tr>
+                        </thead>
+                        <tbody id="modalTableBody">
+                            <!-- Preenchido via JS via Template -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL DE LISTAGEM DE PROJETOS -->
+<div id="clientsListModal" class="remu-modal">
+    <div class="remu-modal-content remu-modal-small">
+        <div class="remu-modal-header">
+            <h3>Projetos Vinculados</h3>
+            <button type="button" class="remu-modal-close" onclick="document.getElementById('clientsListModal').classList.remove('active')">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div class="remu-modal-body">
+            <div id="modalClientsFullList" class="remu-projects-container">
+                <!-- Preenchido via JS -->
+            </div>
+        </div>
+    </div>
+</div>

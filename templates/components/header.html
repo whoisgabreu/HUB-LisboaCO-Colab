@@ -1,8 +1,7 @@
+{% load static %}
 {% include "components/loader.html" %}
-
 {% include "components/up-button.html" %}
 
-<!-- Decoy para capturar Autofill indesejado do Chrome -->
 <div style="position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); border: 0;">
     <input type="text" name="prevent_autofill_email" tabindex="-1">
     <input type="password" name="prevent_autofill_password" tabindex="-1">
@@ -13,28 +12,26 @@
         <button class="burger-menu">
             <i class="fas fa-bars"></i>
         </button>
-        <img class="logo" src="/static/images/v4-logo.png" alt="V4">
+        <img class="logo" src="{% static 'images/v4-logo.png' %}" alt="V4">
         <div class="header-title">
             <h1>Hub Lisboa&CO</h1>
-            <!-- <div class="header-subtitle">Lisboa&CO TechOps</div> -->
         </div>
     </div>
 
     <div class="user-info">
-        {% if session.profile_picture != None and session.profile_picture != '' %}
-        <img id="headerUserAvatar" src="/static/images/profile_pictures/{{ session.profile_picture }}" alt="Avatar"
+        {% if user.profile_picture %}
+        <img id="headerUserAvatar" src="{% static 'images/profile_pictures/' %}{{ user.profile_picture }}" alt="Avatar"
             class="user-avatar-header">
         {% else %}
         <i id="headerUserAvatar" class="fa-solid fa-user-tie"></i>
         {% endif %}
         <div class="user-details">
-            <div class="user-name" id="headerUserName">{{ session.nome or 'Usuário' }}</div>
-            <div class="user-role" id="headerUserRole">{{ session.funcao or session.posicao or 'Colaborador' }}</div>
+            <div class="user-name" id="headerUserName">{{ user.nome|default:'Usuário' }}</div>
+            <div class="user-role" id="headerUserRole">{{ user.funcao|default:user.posicao|default:'Colaborador' }}</div>
         </div>
         <button class="user-menu-btn">
             <i class="fas fa-ellipsis-v"></i>
         </button>
-        <!-- Dropdown Reutilizável -->
         <div class="user-dropdown">
             <a href="#" class="dropdown-item" onclick="abrirModalConfiguracoes(event, 'perfil')"><i
                     class="fas fa-user-circle"></i> Perfil</a>
@@ -43,7 +40,7 @@
             <a href="#" class="dropdown-item" onclick="abrirModalConfiguracoes(event, 'perfil')"><i
                     class="fas fa-cog"></i> Configurações</a>
             <div class="dropdown-divider"></div>
-            <a href="/logout" class="dropdown-item logout-item"><i class="fas fa-sign-out-alt"></i> Sair</a>
+            <a href="{% url 'logout' %}" class="dropdown-item logout-item"><i class="fas fa-sign-out-alt"></i> Sair</a>
         </div>
     </div>
 </header>

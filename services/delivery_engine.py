@@ -1,98 +1,67 @@
-"""
-services/delivery_engine.py
-============================
-Motor de automação de entregas mensais.
-Responsável por:
-  - Verificar gatilhos por cargo (Account ou Gestor de Tráfego)
-  - Completar entregas na tabela monthly_deliveries de forma idempotente
-  - Recalcular MRR na MetricaMensal após conclusão de entrega
-
-Regra financeira:
-    MRR_trabalhado(user, client, month) = (entregas_concluidas / 4) * fee_contribuicao
-
-Isolamento garantido por: email + client_id + role + delivery_type + month + year
-"""
-
 from datetime import datetime
 from decimal import Decimal
-from sqlalchemy import extract
-
-from database import Session
-from models import (
-    MonthlyDelivery, Investidor, InvestidorProjeto,
-    OperacaoCheckin, OperacaoPlanoMidia, OperacaoOtimizacao,
-    OperacaoTarefa, MetricaMensal, ProjetoAtivo
+from django.db import transaction
+from django.db.models import Count, Q
+from django.utils import timezone
+from users.models import Investidor
+from projetos.models import InvestidorProjeto, ProjetoAtivo
+from operacao.models import (
+    MonthlyDelivery, OperacaoCheckin, OperacaoPlanoMidia, 
+    OperacaoOtimizacao, OperacaoTarefa
 )
-
-# ──────────────────────────────────────────────────────────────────────────────
-# DEFINIÇÃO DE ENTREGAS POR CARGO
-# ──────────────────────────────────────────────────────────────────────────────
+from remuneracao.models import MetricaMensal
 
 DELIVERY_TYPES = {
     "Account": [
-        "checkin",           # ≥1 checkin registrado no mês vigente
-        "relatorio_account", # ≥1 tarefa quarter concluída no mês
-        "planner_monday",    # ≥4 tarefas semanais registradas no mês
-        "forecasting",       # ≥1 tarefa quarter registrada no mês (qualquer tipo)
+        "checkin",
+        "relatorio_account",
+        "planner_monday",
+        "forecasting",
     ],
     "Gestor de Tráfego": [
-        "plano_midia",       # ≥1 OperacaoPlanoMidia salvo no mês/ano
-        "otimizacao",        # ≥1 OperacaoOtimizacao registrada no mês/ano
-        "relatorio_gt",      # ≥1 tarefa quarter concluída no mês
-        "config_conta",      # ≥4 tarefas semanais registradas no mês
+        "plano_midia",
+        "otimizacao",
+        "relatorio_gt",
+        "config_conta",
     ]
 }
 
 DELIVERY_LABELS = {
-    # Account
     "checkin": "Check-in Semanal",
     "relatorio_account": "Relatório Mensal do Account",
     "planner_monday": "Planner Monday Semanal",
     "forecasting": "Atualização do Forecasting com Metas",
-    # Gestor de Tráfego
     "plano_midia": "Plano de Mídia",
     "otimizacao": "Documento de Otimização",
     "relatorio_gt": "Relatório Mensal do Gestor de Tráfego",
     "config_conta": "Configurações de Conta",
 }
 
-
-# ──────────────────────────────────────────────────────────────────────────────
-# VERIFICAÇÃO DE GATILHOS
-# ──────────────────────────────────────────────────────────────────────────────
-
-def _check_trigger(db, delivery_type: str, email: str, pipefy_id: int, mes: int, ano: int) -> bool:
-    """Retorna True se o gatilho para o delivery_type foi acionado."""
-
+def _check_trigger(delivery_type: str, email: str, pipefy_id: int, mes: int, ano: int) -> bool:
     if delivery_type == "checkin":
-        # ≥1 checkin do usuário neste projeto no mês/ano
-        return db.query(OperacaoCheckin).filter(
-            OperacaoCheckin.investidor_email == email,
-            OperacaoCheckin.projeto_pipefy_id == pipefy_id,
-            extract('year', OperacaoCheckin.created_at) == ano,
-            extract('month', OperacaoCheckin.created_at) == mes,
+        return OperacaoCheckin.objects.filter(
+            investidor_email=email,
+            projeto_pipefy_id=pipefy_id,
+            created_at__year=ano,
+            created_at__month=mes,
         ).count() >= 1
 
     elif delivery_type in ("relatorio_account", "relatorio_gt"):
-        # ≥1 tarefa quarter CONCLUÍDA para este projeto neste mês/ano
         quarter = (mes - 1) // 3 + 1
         ref = f"{ano}-Q{quarter}"
-        return db.query(OperacaoTarefa).filter(
-            OperacaoTarefa.projeto_pipefy_id == pipefy_id,
-            OperacaoTarefa.tipo == 'quarter',
-            OperacaoTarefa.referencia == ref,
-            OperacaoTarefa.concluida == True,
+        return OperacaoTarefa.objects.filter(
+            projeto_pipefy_id=pipefy_id,
+            tipo='quarter',
+            referencia=ref,
+            concluida=True,
         ).count() >= 1
 
     elif delivery_type in ("planner_monday", "config_conta"):
-        # ≥4 tarefas semanais registradas para este projeto neste mês
-        # como created_at pode ser null, extraímos o mês da referência (ex: '2026-W09')
-        from datetime import datetime
-        tarefas = db.query(OperacaoTarefa).filter(
-            OperacaoTarefa.projeto_pipefy_id == pipefy_id,
-            OperacaoTarefa.tipo == 'semanal',
-            OperacaoTarefa.ano == ano,
-        ).all()
+        tarefas = OperacaoTarefa.objects.filter(
+            projeto_pipefy_id=pipefy_id,
+            tipo='semanal',
+            ano=ano,
+        )
         
         count = 0
         for t in tarefas:
@@ -104,106 +73,68 @@ def _check_trigger(db, delivery_type: str, email: str, pipefy_id: int, mes: int,
                         count += 1
             except Exception:
                 pass
-                
         return count >= 4
 
     elif delivery_type == "forecasting":
-        # ≥1 tarefa quarter registrada (não precisa estar concluída)
         quarter = (mes - 1) // 3 + 1
         ref = f"{ano}-Q{quarter}"
-        return db.query(OperacaoTarefa).filter(
-            OperacaoTarefa.projeto_pipefy_id == pipefy_id,
-            OperacaoTarefa.tipo == 'quarter',
-            OperacaoTarefa.referencia == ref,
+        return OperacaoTarefa.objects.filter(
+            projeto_pipefy_id=pipefy_id,
+            tipo='quarter',
+            referencia=ref,
         ).count() >= 1
 
     elif delivery_type == "plano_midia":
-        # ≥1 plano de mídia salvo no mês/ano
-        return db.query(OperacaoPlanoMidia).filter(
-            OperacaoPlanoMidia.investidor_email == email,
-            OperacaoPlanoMidia.projeto_pipefy_id == pipefy_id,
-            OperacaoPlanoMidia.mes == mes,
-            OperacaoPlanoMidia.ano == ano,
+        return OperacaoPlanoMidia.objects.filter(
+            investidor_email=email,
+            projeto_pipefy_id=pipefy_id,
+            mes=mes,
+            ano=ano,
         ).count() >= 1
 
     elif delivery_type == "otimizacao":
-        # ≥1 otimização registrada no mês/ano
-        return db.query(OperacaoOtimizacao).filter(
-            OperacaoOtimizacao.investidor_email == email,
-            OperacaoOtimizacao.projeto_pipefy_id == pipefy_id,
-            extract('month', OperacaoOtimizacao.data_otimizacao) == mes,
-            extract('year', OperacaoOtimizacao.data_otimizacao) == ano,
+        return OperacaoOtimizacao.objects.filter(
+            investidor_email=email,
+            projeto_pipefy_id=pipefy_id,
+            data_otimizacao__month=mes,
+            data_otimizacao__year=ano,
         ).count() >= 1
 
     return False
 
-
-# ──────────────────────────────────────────────────────────────────────────────
-# RECÁLCULO DE MRR
-# ──────────────────────────────────────────────────────────────────────────────
-
-def _recalculate_mrr_entrega(db, email: str, mes: int, ano: int):
-    """Soma as mrr_contribution de todas as entregas completed do usuário no mês e atualiza MetricaMensal."""
-    entregas = db.query(MonthlyDelivery).filter(
-        MonthlyDelivery.email == email,
-        MonthlyDelivery.month == mes,
-        MonthlyDelivery.year == ano,
-        MonthlyDelivery.status == 'completed',
-    ).all()
-
+def _recalculate_mrr_entrega(email: str, mes: int, ano: int):
+    entregas = MonthlyDelivery.objects.filter(
+        email=email,
+        month=mes,
+        year=ano,
+        status='completed',
+    )
     total_mrr = sum(Decimal(str(e.mrr_contribution or 0)) for e in entregas)
-
-    metrica = db.query(MetricaMensal).filter_by(
-        email_investidor=email, mes=mes, ano=ano
-    ).first()
-
-    if metrica:
-        metrica.fixo_mrr_entrega = total_mrr
-
-
-# ──────────────────────────────────────────────────────────────────────────────
-# FUNÇÃO PRINCIPAL: PROCESSAR TODOS OS GATILHOS DE UM USUÁRIO+PROJETO
-# ──────────────────────────────────────────────────────────────────────────────
+    MetricaMensal.objects.filter(email_investidor=email, mes=mes, ano=ano).update(fixo_mrr_entrega=total_mrr)
 
 def process_deliveries(email: str, pipefy_id: int, mes: int, ano: int):
-    """
-    Verifica todos os gatilhos para um usuário + projeto + mês e atualiza
-    a tabela monthly_deliveries de forma idempotente.
-    Protege meses fechados (não recalcula meses anteriores ao corrente).
-    """
-    print(f"DEBUG: process_deliveries called for {email}, project {pipefy_id}, {mes}/{ano}")
-    from datetime import datetime as dt
-    now = dt.now()
-    # Não recalcular meses fechados
+    now = datetime.now()
     if ano < now.year or (ano == now.year and mes < now.month):
-        print(f"DEBUG: Skipping process_deliveries - closed month: {mes}/{ano}")
         return {"status": "skipped", "reason": "mes_fechado"}
 
-    with Session() as db:
-        # Buscar usuário e seu cargo
-        investidor = db.query(Investidor).filter(Investidor.email.ilike(email)).first()
+    with transaction.atomic():
+        investidor = Investidor.objects.filter(email__iexact=email).first()
         if not investidor:
-            print(f"DEBUG: User {email} not found in Investidor table")
             return {"status": "error", "reason": "usuario_nao_encontrado"}
 
         role = investidor.funcao
-        print(f"DEBUG: User role: {role}")
-        
-        # Mapeamento expandido para testes
         role_map = {
             "Account": "Account",
             "Gestor de Tráfego": "Gestor de Tráfego",
-            "Desenvolvedor": "Gestor de Tráfego" # Para testes do Gabriel
+            "Desenvolvedor": "Gestor de Tráfego"
         }
         active_role = role_map.get(role, role)
         delivery_types = DELIVERY_TYPES.get(active_role, [])
 
         if not delivery_types:
-            print(f"DEBUG: No delivery types for role {role}")
             return {"status": "skipped", "reason": f"cargo_sem_entregas: {role}"}
 
-        # Buscar vinculo e fee_contribuicao
-        vinculo = db.query(InvestidorProjeto).filter_by(
+        vinculo = InvestidorProjeto.objects.filter(
             email_investidor=email,
             pipefy_id_projeto=pipefy_id,
             active=True
@@ -214,55 +145,41 @@ def process_deliveries(email: str, pipefy_id: int, mes: int, ano: int):
 
         results = {}
         for dtype in delivery_types:
-            triggered = _check_trigger(db, dtype, email, pipefy_id, mes, ano)
+            triggered = _check_trigger(dtype, email, pipefy_id, mes, ano)
 
-            # Upsert idempotente via UNIQUE constraint
-            existing = db.query(MonthlyDelivery).filter_by(
+            existing, created = MonthlyDelivery.objects.get_or_create(
                 email=email,
                 client_id=pipefy_id,
                 role=role,
                 delivery_type=dtype,
                 month=mes,
                 year=ano,
-            ).first()
-
-            if not existing:
-                existing = MonthlyDelivery(
-                    user_id=investidor.id,
-                    client_id=pipefy_id,
-                    email=email,
-                    role=role,
-                    delivery_type=dtype,
-                    month=mes,
-                    year=ano,
-                    fee_snapshot=fee,
-                    created_at=dt.now(),
-                )
-                db.add(existing)
+                defaults={
+                    'user_id': investidor.id,
+                    'fee_snapshot': fee,
+                    'created_at': timezone.now(),
+                }
+            )
 
             new_status = 'completed' if triggered else 'pending'
             if existing.status != new_status:
                 existing.status = new_status
-                existing.completed_at = dt.now() if triggered else None
+                existing.completed_at = timezone.now() if triggered else None
                 existing.fee_snapshot = fee
                 existing.mrr_contribution = mrr_por_entrega if triggered else Decimal("0")
+                existing.save()
 
             results[dtype] = new_status
 
-        _recalculate_mrr_entrega(db, email, mes, ano)
-        db.commit()
+        _recalculate_mrr_entrega(email, mes, ano)
 
     return {"status": "ok", "role": role, "deliveries": results}
 
-
 def process_all_deliveries_for_project(pipefy_id: int, mes: int, ano: int):
-    """Processa entregas de todos os investidores vinculados a um projeto."""
-    with Session() as db:
-        vinculos = db.query(InvestidorProjeto).filter_by(
-            pipefy_id_projeto=pipefy_id,
-            active=True
-        ).all()
-        emails = [v.email_investidor for v in vinculos]
+    emails = InvestidorProjeto.objects.filter(
+        pipefy_id_projeto=pipefy_id,
+        active=True
+    ).values_list('email_investidor', flat=True)
 
     for email in emails:
         process_deliveries(email, pipefy_id, mes, ano)

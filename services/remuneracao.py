@@ -1,38 +1,37 @@
-from sqlalchemy import extract, and_, desc, text
-from database import Session
-from models import (
-    Investidor, InvestidorProjeto,
-    MetricaMensal, RemuneracaoCargo
-)
+from django.db import connection, transaction
+from django.db.models import F, Q
 from decimal import Decimal
 from datetime import datetime, date
-import json
+from django.utils import timezone
+from users.models import Investidor
+from projetos.models import InvestidorProjeto, ProjetoAtivo, ProjetoOnetime
+from remuneracao.models import MetricaMensal, RemuneracaoCargo
+from services.currency import CurrencyService
 
 def calcular_metricas_mensais(mes, ano):
     """
     Serviço de remuneração centralizado e padronizado em Unidades (Reais).
     Lógica baseada no vínculo direto em investidores_projetos.
+    Migrado de Flask/SQLAlchemy para Django ORM.
     """
-    with Session() as db:
+    with transaction.atomic():
         # 0. Sincronizar status de atividade (Bulk Update)
-        # Garante que MetricaMensal reflita o status atual do Investidor para o filtro na UI
-        db.execute(text("""
-            UPDATE plataforma_geral.investidores_metricas_mensais_novo m
-            SET ativo = i.ativo
-            FROM plataforma_geral.investidores i
-            WHERE m.email_investidor = i.email
-        """))
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                UPDATE plataforma_geral.investidores_metricas_mensais_novo m
+                SET ativo = i.ativo
+                FROM plataforma_geral.investidores i
+                WHERE m.email_investidor = i.email
+            """)
 
         # 1. Buscar Investidores (exceto Gerência via posição e apenas ATIVOS para cálculo)
-        # REGRA: Apenas investidores com 'funcao' preenchida são considerados no cálculo.
-        investidores = db.query(Investidor).filter(
-            Investidor.ativo == True,
-            Investidor.funcao != None,
-            Investidor.funcao != ""
-        ).all()
+        investidores = Investidor.objects.filter(
+            ativo=True,
+            funcao__isnull=False
+        ).exclude(funcao="")
 
         # 2. Indexar Cargos para limites
-        cargos_all = db.query(RemuneracaoCargo).all()
+        cargos_all = RemuneracaoCargo.objects.all()
         cargos_index = {
             (c.fixo_cargo, c.fixo_senioridade, c.fixo_level): c
             for c in cargos_all
@@ -42,46 +41,33 @@ def calcular_metricas_mensais(mes, ano):
         mes_atual_str = f"{ano}-{mes:02d}"
 
         for inv in investidores:
-            # 1. MRR Total da Carteira (Gross Fees Potencial)
-            # Conforme Step 9: fixo_mrr_atual é a soma de todos os fees ativos.
             mrr_portfolio_total = Decimal("0.0")
-            
-            # 2. Churn
             churn_atual = Decimal("0.0")
-            
             detalhes = []
 
-            # Buscar vínculos para calcular o MRR Total e detalhamento
-            vinculos = db.query(InvestidorProjeto).filter(
-                InvestidorProjeto.email_investidor == inv.email
-            ).all()
+            # 3. Buscar vínculos para calcular o MRR Total e detalhamento
+            vinculos = InvestidorProjeto.objects.filter(email_investidor=inv.email)
             
             for v in vinculos:
                 # Achar a moeda do projeto
-                from models import ProjetoAtivo, ProjetoOnetime
-                proj_ativo = db.query(ProjetoAtivo).filter_by(pipefy_id=v.pipefy_id_projeto).first()
-                if not proj_ativo:
-                    proj_ativo = db.query(ProjetoOnetime).filter_by(pipefy_id=v.pipefy_id_projeto).first()
+                proj = ProjetoAtivo.objects.filter(pipefy_id=v.pipefy_id_projeto).first()
+                if not proj:
+                    proj = ProjetoOnetime.objects.filter(pipefy_id=v.pipefy_id_projeto).first()
                 
-                moeda = proj_ativo.moeda if proj_ativo else "BRL"
-
-                # O Fee do projeto bruto (Total Portfolio)
+                moeda = proj.moeda if proj else "BRL"
                 fee_full = Decimal(str(v.fee_projeto or 0))
 
                 # Conversão
                 if moeda == "USD":
-                    from services.currency import CurrencyService
                     rate = CurrencyService.get_usd_to_brl_rate()
                     fee_full *= rate
                 
-                # Regra do Cientista (aplica multiplicador sobre o fee base para o portfólio)
+                # Regra do Cientista
                 if v.cientista:
                     fee_full *= Decimal("1.5")
                 
                 if v.active:
                     mrr_portfolio_total += fee_full
-                    
-                    # Detalhes (snapshot para o JSON)
                     detalhes.append({
                         "id": v.pipefy_id_projeto,
                         "nome": v.nome_projeto,
@@ -92,27 +78,19 @@ def calcular_metricas_mensais(mes, ano):
                     })
                 else:
                     # Churn: se inativado no mês atual
-                    if v.inactivated_at:
-                        if v.inactivated_at.strftime("%Y-%m") == mes_atual_str:
-                            churn_atual += fee_full
+                    if v.inactivated_at and v.inactivated_at.strftime("%Y-%m") == mes_atual_str:
+                        churn_atual += fee_full
 
-            # 3. MRR Base: derivado exclusivamente do fee_projeto (mrr_portfolio_total)
-            # Entregas NÃO influenciam o cálculo de remuneração nesta branch.
-
-            # Buscar limites do cargo
-            cargo_config = None
-            if inv.funcao and inv.senioridade and inv.nivel:
-                cargo_config = cargos_index.get((inv.funcao, inv.senioridade, inv.nivel))
+            # 4. Buscar limites do cargo
+            cargo_config = cargos_index.get((inv.funcao, inv.senioridade, inv.nivel))
             
             flag = "YELLOW"
             motivo_flag = ""
             if cargo_config:
                 mrr_min = cargo_config.calc_mrr_minima or Decimal("0")
-                mrr_esperado = cargo_config.fixo_mrr_esperado or Decimal("0")
                 mrr_teto = cargo_config.fixo_mrr_teto or Decimal("0")
                 churn_max_valor = cargo_config.calc_churn_maximo_valor or Decimal("0")
 
-                # REGRA DE FLAG: baseada no MRR do portfólio (fee_projeto)
                 is_green = (churn_atual <= churn_max_valor and 
                             mrr_portfolio_total >= mrr_min and 
                             mrr_portfolio_total <= mrr_teto)
@@ -131,16 +109,15 @@ def calcular_metricas_mensais(mes, ano):
                     motivo_flag = " | ".join(motivos) if motivos else "Abaixo do MRR mínimo"
             else:
                 if inv.posicao == "Sócio" and not inv.funcao:
-                    # Sócios sem cargo operacional não têm flag/alerta
                     flag = "GREEN"
                     motivo_flag = "Sócio sem cargo operacional"
                 else:
                     motivo_flag = "Cargo/Nível não configurado"
 
-            # Lógica de Streaks
-            historico = db.query(MetricaMensal).filter(
-                MetricaMensal.email_investidor == inv.email
-            ).order_by(desc(MetricaMensal.ano), desc(MetricaMensal.mes)).first()
+            # 5. Lógica de Streaks
+            historico = MetricaMensal.objects.filter(
+                email_investidor=inv.email
+            ).order_by('-ano', '-mes').first()
 
             green_streak = 0
             yellow_streak = 0
@@ -168,20 +145,12 @@ def calcular_metricas_mensais(mes, ano):
                     green_streak = 1 if flag == "GREEN" else 0
                     yellow_streak = 1 if flag == "YELLOW" else 0
 
-            # Upsert na MetricaMensal
-            metrica = db.query(MetricaMensal).filter(
-                MetricaMensal.email_investidor == inv.email,
-                MetricaMensal.mes == mes,
-                MetricaMensal.ano == ano
-            ).first()
-
-            if not metrica:
-                metrica = MetricaMensal(
-                    email_investidor=inv.email,
-                    mes=mes,
-                    ano=ano
-                )
-                db.add(metrica)
+            # 6. Upsert na MetricaMensal
+            metrica, created = MetricaMensal.objects.get_or_create(
+                email_investidor=inv.email,
+                mes=mes,
+                ano=ano
+            )
 
             # Preencher campos
             metrica.detalhes = {"produtos": detalhes}
@@ -192,16 +161,13 @@ def calcular_metricas_mensais(mes, ano):
             metrica.motivo_flag = motivo_flag
             metrica.green_streak = green_streak
             metrica.yellow_streak = yellow_streak
-            metrica.ativo = True # Como veio do query de ativos, garantimos True
+            metrica.ativo = True
             
-            # ATRIBUIÇÃO FINAL — remuneração baseada exclusivamente no fee_projeto
-            # fixo_mrr_atual: MRR base para cálculo (fee dos projetos ativos)
             metrica.fixo_mrr_atual = mrr_portfolio_total
-            # fixo_mrr_entrega: exibição no Dashboard — mesmo valor (fee dos projetos)
             metrica.fixo_mrr_entrega = mrr_portfolio_total
-            # fixo_mrr_projeto_total: comparativo do portfólio total
             metrica.fixo_mrr_projeto_total = mrr_portfolio_total
             metrica.fixo_churn_atual = churn_atual
+            
             if cargo_config:
                 metrica.fixo_remuneracao_fixa = cargo_config.fixo_remuneracao_fixa
                 metrica.fixo_csp_esperado = cargo_config.calc_csp_esperado
@@ -213,7 +179,4 @@ def calcular_metricas_mensais(mes, ano):
                 metrica.fixo_remuneracao_minima = cargo_config.calc_remuneracao_minima
                 metrica.fixo_remuneracao_maxima = cargo_config.calc_remuneracao_maxima
 
-            # Flush individual para evitar bulk INSERT/UPDATE problemático com colunas GENERATED (FetchedValue)
-            db.flush()
-
-        db.commit()
+            metrica.save()

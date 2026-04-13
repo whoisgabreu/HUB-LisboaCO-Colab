@@ -1,0 +1,206 @@
+<!-- Modal: Nova Tarefa -->
+<div id="modal-nova-tarefa" class="gt-modal">
+    <div class="gt-modal-content">
+        <div class="gt-modal-header">
+            <h3 class="gt-modal-title">Nova Tarefa Semanal</h3>
+            <button class="gt-modal-close" onclick="closeGTModal('modal-nova-tarefa')">&times;</button>
+        </div>
+        <div class="gt-form-group">
+            <label class="gt-form-label">Descrição da Tarefa</label>
+            <input type="text" id="task-desc-input" class="gt-form-input" placeholder="Ex: Subir novos criativos...">
+        </div>
+        <div class="gt-form-footer">
+            <button class="btn-gt-cancel" onclick="closeGTModal('modal-nova-tarefa')">Cancelar</button>
+            <button class="btn-gt-confirm" onclick="addNewTask('semanal')">Salvar Tarefa</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Nova Meta do Quarter -->
+<div id="modal-nova-tarefa-quarter" class="gt-modal">
+    <div class="gt-modal-content">
+        <div class="gt-modal-header">
+            <h3 class="gt-modal-title">Nova Meta Estratégica</h3>
+            <button class="gt-modal-close" onclick="closeGTModal('modal-nova-tarefa-quarter')">&times;</button>
+        </div>
+        <div class="gt-form-group">
+            <label class="gt-form-label">Nome da Meta ou Objetivo</label>
+            <input type="text" id="task-quarter-input" class="gt-form-input" placeholder="Ex: Aumentar faturamento via Meta Ads...">
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 15px;">
+            <div class="gt-form-group">
+                <label class="gt-form-label">Tipo de Meta</label>
+                <select id="goal-type-select" class="gt-form-select">
+                    <option value="faturamento">💰 Faturamento</option>
+                    <option value="leads">🎯 Leads (MQL/SQL)</option>
+                    <option value="vendas">🛒 Número de Vendas</option>
+                    <option value="engajamento">📈 Seguidor / Engajamento</option>
+                    <option value="outros">🎨 Outros</option>
+                </select>
+            </div>
+            <div class="gt-form-group">
+                <label class="gt-form-label">Valor Alvo (Target)</label>
+                <input type="number" id="goal-target-value" class="gt-form-input" placeholder="0">
+            </div>
+        </div>
+        <div class="gt-form-group" style="margin-top: 15px;">
+            <label class="gt-form-label">Periodicidade</label>
+            <select id="goal-period-select" class="gt-form-select">
+                <option value="mensal">Mensal</option>
+                <option value="trimestral" selected>Trimestral (Quarter)</option>
+            </select>
+        </div>
+        <div class="gt-form-footer">
+            <button class="btn-gt-cancel" onclick="closeGTModal('modal-nova-tarefa-quarter')">Cancelar</button>
+            <button class="btn-gt-confirm" onclick="addNewTask('quarter')">Salvar Meta</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Novo Plano de Mídia -->
+<div id="modal-novo-plano" class="gt-modal">
+    <div class="gt-modal-content" id="plan-wizard-container" style="max-width: 900px; padding: 0; overflow: hidden;">
+        <div id="plan-step-1" class="plan-wizard-step active">
+            <div class="wizard-header">
+                <button class="gt-modal-close" style="top: 25px; right: 25px;" onclick="closeGTModal('modal-novo-plano')">&times;</button>
+                <h3 class="gt-modal-title">Criar Plano de Mídia</h3>
+            </div>
+            <div style="padding: 2.5rem; display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div class="gt-form-group">
+                    <label class="gt-form-label" style="font-weight: 600;">Mês *</label>
+                    <select id="wizard-month" class="gt-wizard-select">
+                        <option value="Janeiro">Janeiro</option><option value="Fevereiro">Fevereiro</option>
+                        <option value="Março">Março</option><option value="Abril">Abril</option>
+                        <option value="Maio">Maio</option><option value="Junho">Junho</option>
+                        <option value="Julho">Julho</option><option value="Agosto">Agosto</option>
+                        <option value="Setembro">Setembro</option><option value="Outubro">Outubro</option>
+                        <option value="Novembro">Novembro</option><option value="Dezembro">Dezembro</option>
+                    </select>
+                </div>
+                <div class="gt-form-group">
+                    <label class="gt-form-label" style="font-weight: 600;">Ano *</label>
+                    <select id="wizard-year" class="gt-wizard-select">
+                        <option value="2025">2025</option><option value="2026" selected>2026</option><option value="2027">2027</option>
+                    </select>
+                </div>
+            </div>
+            <div class="gt-form-footer" style="background: none; border-top: none; padding: 0 2.5rem 2.5rem;">
+                <button class="btn-gt-cancel" style="border: 1px solid var(--border-color);" onclick="closeGTModal('modal-novo-plano')">Cancelar</button>
+                <button class="btn-gt-confirm" style="background: #D61616; border-radius: 8px; padding: 12px 30px;" onclick="goToPlanStep2()">Criar</button>
+            </div>
+        </div>
+        <div id="plan-step-2" class="plan-wizard-step">
+            <div style="padding: 1.5rem; border-bottom: 1px solid var(--border-color); position: relative;">
+                <button class="gt-modal-close" style="top: 15px; right: 20px;" onclick="closeGTModal('modal-novo-plano')">&times;</button>
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <div style="background: rgba(214, 22, 22, 0.1); color: var(--accent-red); width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;"><i class="far fa-calendar-alt"></i></div>
+                    <div><h4 id="display-wizard-date" style="margin: 0;">Fevereiro 2026</h4><p style="color: var(--text-muted); font-size: 0.8rem; margin: 0;">Define a distribuição do budget mensal por canal e campanha</p></div>
+                </div>
+            </div>
+            <div style="padding: 1.5rem;">
+                <div style="display: flex; gap: 15px; align-items: flex-end; margin-bottom: 2rem;">
+                    <div class="gt-form-group" style="flex: 1; margin: 0;"><label class="gt-form-label" style="font-size: 0.75rem; font-weight: 700;">Budget Mensal</label><input type="number" id="wizard-total-budget" class="gt-wizard-input" value="0" oninput="calculateEditorValues()"></div>
+                    <button type="button" class="btn-add-line-wizard" onclick="addEditorRow()"><i class="fas fa-plus"></i> Adicionar Campanha</button>
+                </div>
+                <div class="wizard-table-container">
+                    <table class="wizard-editor-table">
+                        <thead><tr><th style="width: 20%;">Canal</th><th style="width: 35%;">Campanhas</th><th style="width: 12%;">% Budget</th><th style="width: 15%;">R$ Budget</th><th style="width: 15%;">Budget/dia</th><th style="width: 3%;"></th></tr></thead>
+                        <tbody id="wizard-editor-body"></tbody>
+                        <tfoot><tr class="wizard-total-row"><td colspan="2">Total</td><td id="wizard-total-percent">0%</td><td id="wizard-total-cash">R$ 0,00</td><td id="wizard-total-day">R$ 0,00</td><td></td></tr></tfoot>
+                    </table>
+                </div>
+            </div>
+            <div style="padding: 1.5rem; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between;">
+                <button class="btn-gt-cancel" style="border: 1px solid var(--border-color);" onclick="backToPlanStep1()">Voltar</button>
+                <button class="btn-wizard-save" onclick="saveFinalPlan()">Salvar Plano de Mídia</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Nova Otimização -->
+<div id="modal-nova-otimizacao" class="gt-modal">
+    <div class="gt-modal-content">
+        <div class="gt-modal-header"><h3 class="gt-modal-title">Registrar Otimização Detalhada</h3><button class="gt-modal-close" onclick="closeGTModal('modal-nova-otimizacao')">&times;</button></div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+            <div class="gt-form-group"><label class="gt-form-label">O que será otimizado?</label><select id="opt-type" class="gt-form-select"><option value="Campanha">Campanha</option><option value="Criativo">Criativo</option><option value="GTM">Google Tag Manager</option><option value="Analytics">GA4 / Analytics</option><option value="LP">Landing Page / Site</option><option value="Públicos">Públicos / Segmentação</option></select></div>
+            <div class="gt-form-group"><label class="gt-form-label">Canal / Recurso</label><select id="opt-channel" class="gt-form-select"><option value="Meta Ads">Meta Ads</option><option value="Google Ads">Google Ads</option><option value="LP/Site">Landing Page</option><option value="Geral">Geral Ecossistema</option></select></div>
+        </div>
+        <div class="gt-form-group" style="margin-top: 15px;"><label class="gt-form-label">Data da Otimização</label><input type="date" id="opt-date" class="gt-form-input" style="width: 100%;"></div>
+        <div class="gt-form-group"><label class="gt-form-label">Detalhes da Intervenção</label><textarea id="opt-details" class="gt-form-textarea" rows="4" placeholder="Ex: Alteração de CPA desejado..."></textarea></div>
+        <div class="gt-form-footer"><button class="btn-gt-cancel" onclick="closeGTModal('modal-nova-otimizacao')">Cancelar</button><button class="btn-gt-confirm" onclick="saveOtimizacao()">Salvar Registro</button></div>
+    </div>
+</div>
+
+<!-- Modal: Histórico de Planos -->
+<div id="modal-historico-planos" class="gt-modal">
+    <div class="gt-modal-content" style="max-width: 800px;">
+        <div class="gt-modal-header"><h3 class="gt-modal-title">Histórico de Planos de Mídia</h3><button class="gt-modal-close" onclick="closeGTModal('modal-historico-planos')">&times;</button></div>
+        <div class="history-accordion" id="plans-history-container">
+            <!-- Preenchido via JS -->
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Novo Checkin -->
+<div id="modal-novo-checkin" class="gt-modal">
+    <div class="gt-modal-content" style="max-width: 600px; padding: 0; overflow: hidden; border-radius: 16px;">
+        <div class="gt-modal-header" style="padding: 2rem; background: var(--bg-hover); border-bottom: 1px solid var(--border-color);">
+            <div><h3 class="gt-modal-title" style="margin-bottom: 5px;">Check-in Semanal de Qualidade</h3><p style="font-size: 0.85rem; color: var(--text-muted); margin: 0;">Validação semanal obrigatória do Account para garantia do MRR</p></div>
+            <button class="gt-modal-close" onclick="closeGTModal('modal-novo-checkin')">&times;</button>
+        </div>
+        <div style="padding: 2rem; max-height: 70vh; overflow-y: auto;">
+            <div class="gt-form-group" style="margin-bottom: 2rem;"><label class="gt-form-label" style="font-weight: 700; color: var(--text-main); font-size: 0.95rem;">* Stakeholder participou do Check-in?</label><select id="checkin-compareceu" class="gt-wizard-select" style="margin-top: 10px;"><option value="true" selected>Sim</option><option value="false">Não</option></select></div>
+            <div class="gt-form-group" style="margin-bottom: 2rem;"><label class="gt-form-label" style="font-weight: 700; color: var(--text-main); font-size: 0.95rem;">* As campanhas estão ativas?</label><select id="checkin-campanhas-ativas" class="gt-wizard-select"><option value="true" selected>Sim</option><option value="false">Não</option></select></div>
+            <div class="gt-form-group" style="margin-bottom: 2rem;"><label class="gt-form-label" style="font-weight: 700; color: var(--text-main); font-size: 0.95rem;">* Houve algum gap de comunicação?</label><select id="checkin-gap-comunicacao" class="gt-wizard-select"><option value="false" selected>Não</option><option value="true">Sim</option></select></div>
+            <div class="gt-form-group" style="margin-bottom: 2rem;"><label class="gt-form-label" style="font-weight: 700; color: var(--text-main); font-size: 0.95rem;">* O cliente reclamou de algum ponto do projeto?</label><select id="checkin-cliente-reclamou" class="gt-wizard-select"><option value="false" selected>Não</option><option value="true">Sim</option></select></div>
+            <div class="gt-form-group"><label class="gt-form-label" style="font-weight: 700; color: var(--text-main); font-size: 0.95rem;">Observações / Próximos Passos</label><textarea id="checkin-obs" class="gt-form-textarea" rows="4" placeholder="O que foi discutido no checkin?"></textarea></div>
+        </div>
+        <div class="gt-form-footer" style="padding: 1.5rem 2rem; background: var(--bg-hover); border-top: 1px solid var(--border-color);"><button class="btn-gt-cancel" onclick="closeGTModal('modal-novo-checkin')" style="border: 1px solid var(--border-color);">Cancelar</button><button class="btn-gt-confirm" onclick="saveCheckin()" style="background: #D61616; border-radius: 8px; padding: 12px 30px;">Salvar Check-in</button></div>
+    </div>
+</div>
+
+<!-- Modal: Histórico de Entregas -->
+<div id="modal-historico-entregas" class="gt-modal">
+    <div class="gt-modal-content" style="max-width: 800px;">
+        <div class="gt-modal-header"><h3 class="gt-modal-title">Histórico de Entregas Mensais</h3><button class="gt-modal-close" onclick="closeGTModal('modal-historico-entregas')">&times;</button></div>
+        <div class="history-accordion" id="delivery-history-container">
+            <!-- Preenchido via JS -->
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Novo Link Útil -->
+<div id="modal-novo-link" class="gt-modal">
+    <div class="gt-modal-content" style="max-width: 520px;">
+        <div class="gt-modal-header"><h3 class="gt-modal-title">Adicionar Link Útil</h3><button class="gt-modal-close" onclick="closeGTModal('modal-novo-link')">&times;</button></div>
+        <div class="gt-form-group"><label class="gt-form-label">Título do Link *</label><input type="text" id="link-titulo" class="gt-form-input" placeholder="Ex: BM do Meta..."></div>
+        <div class="gt-form-group"><label class="gt-form-label">URL *</label><input type="url" id="link-url" class="gt-form-input" placeholder="https://..."></div>
+        <div class="gt-form-group"><label class="gt-form-label">Descrição (Opcional)</label><textarea id="link-descricao" class="gt-form-input" style="height: 80px;" placeholder="Resumo..."></textarea></div>
+        <div class="gt-form-group"><label class="gt-form-label">Ícone</label><select id="link-icone" class="gt-form-select"><option value="fa-link">🔗 Link Genérico</option><option value="fa-ad">📢 Anúncios</option><option value="fa-chart-bar">📊 Relatórios</option><option value="fa-google">🔍 Google</option><option value="fa-facebook">📘 Meta</option><option value="fa-file-alt">📄 Docs</option><option value="fa-cog">⚙️ Configs</option><option value="fa-shopping-cart">🛒 E-commerce</option><option value="fa-envelope">✉️ CRM</option><option value="fa-globe">🌐 Web</option></select></div>
+        <div class="gt-form-footer"><button class="btn-gt-cancel" onclick="closeGTModal('modal-novo-link')">Cancelar</button><button class="btn-gt-confirm" onclick="saveLink()">Salvar Link</button></div>
+    </div>
+</div>
+
+<!-- Modal: Metas Unificado -->
+<div id="modal-metas-unificado" class="gt-modal">
+    <div class="gt-modal-content" style="max-width: 650px; padding: 0; overflow: hidden;">
+        <div class="gt-modal-header" style="padding: 2rem; background: var(--bg-hover); border-bottom: 1px solid var(--border-color);">
+            <div><h3 class="gt-modal-title" style="margin-bottom: 5px;">Planejamento de Metas</h3><p style="font-size: 0.85rem; color: var(--text-muted); margin: 0;">Defina o Objetivo Primário e os KRs auxiliares.</p></div>
+            <button class="gt-modal-close" onclick="closeGTModal('modal-metas-unificado')">&times;</button>
+        </div>
+        <div style="padding: 2rem; max-height: 65vh; overflow-y: auto;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 2rem;">
+                <div class="gt-form-group"><label class="gt-form-label">Período Selecionado</label><select id="unified-goal-period" class="gt-form-select"><option value="trimestral">Trimestral (Atual)</option><option value="mensal" selected>Mensal (Atual)</option></select></div>
+                <div class="gt-form-group"><label class="gt-form-label">Tipo do Objetivo</label><select id="unified-goal-type" class="gt-form-select"><option value="faturamento" selected>Faturamento (R$)</option><option value="leads">Leads / MQL</option><option value="vendas">Número de Vendas</option><option value="engajamento">Engajamento</option><option value="outros">Outro</option></select></div>
+            </div>
+            <div class="gt-form-group" style="margin-bottom: 2rem;"><label class="gt-form-label">Objetivo Primário do Período *</label><input type="text" id="unified-goal-name" class="gt-form-input" placeholder="Ex: Atingir R$ 100k..."></div>
+            <div class="gt-form-group" style="margin-bottom: 2rem;"><label class="gt-form-label">Valor Alvo do Objetivo</label><input type="number" id="unified-goal-target" class="gt-form-input" placeholder="Ex: 100000"></div>
+            <div style="border-top: 1px solid var(--border-color); padding-top: 2rem; margin-top: 1rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;"><h4 style="font-size: 0.95rem; margin: 0; color: #fff;"><i class="fas fa-list-check" style="color: var(--accent-red);"></i> Key Results (KRs)</h4><button type="button" class="btn-add-task" onclick="addKRRowModal()" style="padding: 6px 12px; font-size: 0.75rem;"><i class="fas fa-plus"></i> Adicionar KR</button></div>
+                <div id="unified-krs-container" style="display: flex; flex-direction: column; gap: 12px;"></div>
+            </div>
+        </div>
+        <div class="gt-form-footer" style="padding: 1.5rem 2rem; background: var(--bg-hover); border-top: 1px solid var(--border-color);"><button class="btn-gt-cancel" onclick="closeGTModal('modal-metas-unificado')">Cancelar</button><button class="btn-gt-confirm" onclick="saveUnifiedGoalsSnapshot()" style="background: var(--accent-red); border: none; padding: 12px 30px; border-radius: 8px; font-weight: 600;">Salvar Planejamento</button></div>
+    </div>
+</div>

@@ -1,28 +1,26 @@
+{% load static %}
+{% load core_filters %}
 <!DOCTYPE html>
 <html lang="pt-BR">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Remuneração - Hub Lisboa&CO</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
-        rel="stylesheet">
-    <link rel="stylesheet" href="static/style/styles.css">
-    <link rel="stylesheet" href="static/style/tema-claro.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'style/styles.css' %}">
+    <link rel="stylesheet" href="{% static 'style/tema-claro.css' %}">
     {% include "components/icon_title.html" %}
 </head>
 
 <body>
-
     {% include "components/header.html" %}
-
     {% include "components/sidebar.html" %}
 
     <div class="app-shell">
         <div class="sidebar-overlay"></div>
-
         <div class="main-content">
             <main class="main-container">
                 <section class="welcome-section">
@@ -30,13 +28,10 @@
                     <p>Acompanhe indicadores e histórico por investidor.</p>
                 </section>
 
-                <!-- FILTROS REDESENHADOS -->
                 <div class="filters">
                     <div class="search-box">
                         <i class="fa-solid fa-magnifying-glass"></i>
-                        <input type="text" name="busca" value="" autocomplete="off" autocorrect="off"
-                            autocapitalize="off" spellcheck="false" id="remuSearchInput"
-                            placeholder="Buscar por investidor..." onkeyup="filterInvestors()">
+                        <input type="text" id="remuSearchInput" placeholder="Buscar por investidor..." onkeyup="filterInvestors()">
                     </div>
 
                     <div class="filter-group">
@@ -44,26 +39,19 @@
                             <i class="fa-solid fa-sitemap"></i>
                             <select id="squadFilter" onchange="filterInvestors()">
                                 <option value="">Todas as Squads</option>
-                                {% for squad in squads %}
-                                <option value="{{ squad|lower }}">{{ squad }}</option>
-                                {% endfor %}
+                                {% for squad in squads %}<option value="{{ squad|lower }}">{{ squad }}</option>{% endfor %}
                             </select>
                         </div>
-
                         <div class="filter-item">
                             <i class="fa-solid fa-user-tag"></i>
                             <select id="roleFilter" onchange="filterInvestors()">
                                 <option value="">Todos os Cargos</option>
-                                {% for role in roles %}
-                                <option value="{{ role|lower }}">{{ role }}</option>
-                                {% endfor %}
+                                {% for role in roles %}<option value="{{ role|lower }}">{{ role }}</option>{% endfor %}
                             </select>
                         </div>
-
                         <div class="filter-item">
                             <i class="fa-solid fa-circle-check"></i>
                             <select id="statusFilter" onchange="filterInvestors()">
-                                <!-- <option value="">Todos (Ativos/Inativos)</option> -->
                                 <option value="true">Apenas Ativos</option>
                                 <option value="false">Apenas Inativos</option>
                             </select>
@@ -71,407 +59,115 @@
                     </div>
                 </div>
 
-                <!-- Grid de Investidores -->
                 <div class="projects-grid" id="investorsGrid">
                     {% if investors %}
                     {% for inv in investors %}
-                    <div class="project-card" data-id="{{ inv.id }}" data-name="{{ inv.name }}"
-                        data-role="{{ inv.role }}" data-squad="{{ inv.squad }}" data-email="{{ inv.email }}"
-                        data-status="{{ 'true' if inv.ativo else 'false' }}" data-step="{{ inv.step }}"
-                        data-yellow-flag="{{ inv.rows[0].yellow_streak if inv.rows|length > 0 else '' }}"
-                        data-green-flag="{{ inv.rows[0].green_streak if inv.rows|length > 0 else '' }}"
-                        data-clients="{{ inv.clients_count }}" data-fixed="{{ inv.fixed_fee }}" data-mrr="{{ inv.mrr }}"
-                        data-mrr-total="{{ inv.mrrTotal }}" data-mrr-esperado="{{ inv.mrrEsperado }}"
-                        data-mrr-teto="{{ inv.mrrTeto }}" data-roi="{{ inv.roi }}" data-rem-min="{{ inv.rem_min }}"
-                        data-rem-max="{{ inv.rem_max }}" data-rem-atual="{{ 
-    (
-        inv.rows[-1].rem_min if inv.rows[-1].total_brl < inv.rows[-1].rem_min
-        else inv.rows[-1].rem_max if inv.rows[-1].total_brl > inv.rows[-1].rem_max
-        else inv.rows[-1].total_brl
-    ) | round(2)
-    if inv.rows|length > 0 else 0
-}}" data-churn-rs="{{ inv.rows[-1].churn_rs if inv.rows|length > 0 else 0 }}"
-                        data-projetos-vinculados="{{ inv.projetos_vinculados }}" onclick="openRemunerationModal(this)">
+                    <div class="project-card" 
+                        data-id="{{ inv.id }}" 
+                        data-name="{{ inv.name }}"
+                        data-role="{{ inv.role }}" 
+                        data-squad="{{ inv.squad }}" 
+                        data-email="{{ inv.email }}"
+                        data-status="{{ inv.ativo|lower }}"
+                        data-clients="{{ inv.clients_count }}" 
+                        data-fixed="{{ inv.fixed_fee }}" 
+                        data-mrr="{{ inv.mrr }}"
+                        data-mrr-total="{{ inv.mrrTotal }}" 
+                        data-mrr-esperado="{{ inv.mrrEsperado }}"
+                        data-mrr-teto="{{ inv.mrrTeto }}" 
+                        data-rem-min="{{ inv.rem_min }}"
+                        data-rem-max="{{ inv.rem_max }}" 
+                        data-rem-atual="{{ inv.rem_atual|floatformat:2 }}"
+                        data-churn-rs="{{ inv.churn_rs|floatformat:2 }}"
+                        data-projetos-vinculados='{{ inv.projetos_vinculados|to_json }}' 
+                        onclick="openRemunerationModal(this)">
+                        
                         <div class="project-header">
                             <div class="project-icon">
-                                <!-- verificar se arquivo de foto existe na pasta /static/images/profile_pictures/ -->
                                 {% if inv.profile_picture %}
-                                <img style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;"
-                                    src="/static/images/profile_pictures/{{ inv.profile_picture }}"
-                                    alt="Foto de perfil">
+                                <img style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;" src="{% static 'images/profile_pictures/' %}{{ inv.profile_picture }}" alt="Foto">
                                 {% else %}
                                 <i class="fa-solid fa-user-tie"></i>
                                 {% endif %}
                             </div>
-                            {% if inv.rows | length > 0 %}
-
-                            <span class='project-status {{
-                                "yellow-flag" if inv.rows[-1].yellow_streak == 1
-                                else "red-flag" if inv.rows[-1].yellow_streak == 2
-                                else "black-flag" if inv.rows[-1].yellow_streak >= 3
-                                else "green-pdc-flag" if inv.rows[-1].green_streak >= 3
-                                else "green-flag"
-                            }}'>
-
-                                {{
-                                "Yellow" if inv.rows[-1].yellow_streak == 1
-                                else "Red" if inv.rows[-1].yellow_streak == 2
-                                else "Black" if inv.rows[-1].yellow_streak >= 3
-                                else "Green PDC" if inv.rows[-1].green_streak >= 3
-                                else "Green"
-                                }}
+                            {% with last_row=inv.rows|last %}
+                            {% if last_row %}
+                            <span class='project-status {% if last_row.yellow_streak == 1 %}yellow-flag{% elif last_row.yellow_streak == 2 %}red-flag{% elif last_row.yellow_streak >= 3 %}black-flag{% elif last_row.green_streak >= 3 %}green-pdc-flag{% else %}green-flag{% endif %}'>
+                                {% if last_row.yellow_streak == 1 %}Yellow{% elif last_row.yellow_streak == 2 %}Red{% elif last_row.yellow_streak >= 3 %}Black{% elif last_row.green_streak >= 3 %}Green PDC{% else %}Green{% endif %}
                             </span>
-
                             {% endif %}
-
-
+                            {% endwith %}
                         </div>
                         <h3 class="project-title">{{ inv.name }}</h3>
-                        <p class="project-description">
-                            <strong>Cargo:</strong> {{ inv.role }} | <strong>Squad:</strong> {{ inv.squad }}
-                        </p>
-                        <div class="project-meta">
-                            <span>
-                                <i class="fa-solid fa-users"></i>
-                                {{ inv.clients_count }} Clientes
-                            </span>
-                        </div>
+                        <p class="project-description"><strong>Cargo:</strong> {{ inv.role }} | <strong>Squad:</strong> {{ inv.squad }}</p>
+                        <div class="project-meta"><span><i class="fa-solid fa-users"></i> {{ inv.clients_count }} Clientes</span></div>
 
-                        <!-- Template de dados da tabela -->
                         <template id="tmpl-{{ inv.id }}">
                             {% if inv.rows %}
                             {% for row in inv.rows %}
                             <tr>
-                                <!-- FLAG -->
-                                <td class='{{
-                                    "yellow-flag-table" if row.yellow_streak == 1
-                                    else "red-flag-table" if row.yellow_streak == 2
-                                    else "black-flag-table" if row.yellow_streak >= 3
-                                    else "green-pdc-flag-table" if row.green_streak >= 3
-                                    else "green-flag-table"
-                                }}' title='{{ row.motivo_flag }}'>
-                                    <span>
-                                        {{
-                                        "Yellow" if row.yellow_streak == 1
-                                        else "Red" if row.yellow_streak == 2
-                                        else "Black" if row.yellow_streak >= 3
-                                        else "Green PDC" if row.green_streak >= 3
-                                        else "Green"
-                                        }}
-                                    </span>
+                                <td class="{% if row.yellow_streak == 1 %}yellow-flag-table{% elif row.yellow_streak == 2 %}red-flag-table{% elif row.yellow_streak >= 3 %}black-flag-table{% elif row.green_streak >= 3 %}green-pdc-flag-table{% else %}green-flag-table{% endif %}" title="{{ row.motivo_flag }}">
+                                    <span>{% if row.yellow_streak == 1 %}Yellow{% elif row.yellow_streak == 2 %}Red{% elif row.yellow_streak >= 3 %}Black{% elif row.green_streak >= 3 %}Green PDC{% else %}Green{% endif %}</span>
                                 </td>
-                                <!-- MÊS/ANO -->
                                 <td>{{ row.month_year }}</td>
-                                <!-- CARGO -->
                                 <td>{{ inv.role }}</td>
-                                <!-- SENIORIDADE -->
-                                <td>{{ inv.senioridade }}</td>
-                                <!-- Nivel -->
+                                <td>{{ row.senioridade }}</td>
                                 <td>{{ inv.nivel }}</td>
-                                <!-- REMUNERAÇÃO -->
-                                <td><span class="monetario">R$ {{ inv.fixed_fee | round(2) }}</span></td>
-                                <!-- MRR -->
-                                <td><span class="monetario">R$ {{ (row.mrr) | round(2) }}</span></td>
-                                <!-- CHURN R$ -->
-                                <td><span class="monetario">R$ {{ row.churn_rs | round(2) }}</span></td>
-                                <!-- CHURN % -->
-                                <td class="{{ 'remu-value-negative' if row.churn > 0 else '' }}">
-                                    {% if row.churn is number %}
-                                    {{ (row.churn * 100) | round(2) }}%
-                                    {% else %}
-                                    {{ row.churn }}
-                                    {% endif %}
-                                </td>
-                                <!-- VARIAVEL R$ -->
-                                <td><span class="monetario">R$ {{ (row.variable_brl) | round(2) }}</span></td>
-                                <!-- REMUNERAÇÃO TOTAL -->
-                                <td style="font-weight: 600;">
-                                    R$
-                                    {% if row.total_brl < row.rem_min %} {{ row.rem_min | round(2) }} {% elif
-                                        row.total_brl> row.rem_max %}
-                                        {{ row.rem_max | round(2) }}
-                                        {% else %}
-                                        {{ row.total_brl | round(2) }}
-                                        {% endif %}
-                                </td>
+                                <td><span class="monetario">R$ {{ inv.fixed_fee|floatformat:2 }}</span></td>
+                                <td><span class="monetario">R$ {{ row.mrr|floatformat:2 }}</span></td>
+                                <td><span class="monetario">R$ {{ row.churn_rs|floatformat:2 }}</span></td>
+                                <td class="{% if row.churn > 0 %}remu-value-negative{% endif %}">{{ row.churn|floatformat:2 }}%</td>
+                                <td><span class="monetario">R$ {{ row.variable_brl|floatformat:2 }}</span></td>
+                                <td style="font-weight: 600;">R$ {{ row.total_brl|floatformat:2 }}</td>
                             </tr>
                             {% endfor %}
                             {% else %}
-                            <tr>
-                                <td colspan="11" style="text-align: center; padding: 2rem;">
-                                    Nenhum registro encontrado.
-                                </td>
-                            </tr>
+                            <tr><td colspan="11" style="text-align: center; padding: 2rem;">Nenhum registro encontrado.</td></tr>
                             {% endif %}
                         </template>
                     </div>
                     {% endfor %}
                     {% else %}
-                    <div class="empty-state">
-                        <i class="fa-solid fa-inbox"></i>
-                        <h3>Nenhum investidor encontrado</h3>
-                        <p>Não há dados de remuneração disponíveis no momento.</p>
-                    </div>
+                    <div class="empty-state"><i class="fa-solid fa-inbox"></i><h3>Nenhum investidor encontrado</h3></div>
                     {% endif %}
                 </div>
             </main>
         </div>
     </div>
 
-    <!-- MODAL DE DETALHES DE REMUNERAÇÃO -->
-    <div id="remunerationModal" class="modal">
-        <div class="modal-content modal-remu">
-            <div class="modal-header">
-                <h2 id="modalTitle">Detalhes de Remuneração</h2>
-                <button class="close-btn" onclick="closeRemunerationModal()">
-                    <i class="fa-solid fa-xmark"></i>
-                </button>
-            </div>
+    <!-- MODALS -->
+    {% include "components/hub-remuneracao-modals.html" %}
 
-            <div class="modal-body">
-                <!-- Card de Identificação no Modal -->
-                <section class="remu-investor-card">
-                    <div class="remu-investor-info">
-                        <span class="remu-investor-name" id="modalName">...</span>
-                        <span class="remu-divider">|</span>
-                        <span class="remu-investor-meta" id="modalRoleSquad">...</span>
-                    </div>
-                    <!-- <div class="remu-step-tag" id="modalStep">
-                        Step: ...
-                    </div> -->
-                </section>
-
-                <!-- Mini Cards de Métricas Redenhados -->
-                <div class="remu-metrics">
-                    <!-- Clientes -->
-                    <!-- Clientes (Refinado Fase 15) -->
-                    <div class="remu-metric-card" onclick="openClientsListModal()"
-                        style="cursor: pointer; transition: transform 0.2s;"
-                        onmouseover="this.style.transform='translateY(-5px)'"
-                        onmouseout="this.style.transform='translateY(0)'">
-                        <div class="remu-metric-header">
-                            <span class="remu-metric-label">Clientes</span>
-                            <i class="fa-solid fa-users remu-metric-icon"></i>
-                        </div>
-                        <div class="remu-clients-summary"
-                            style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 10px;">
-                            <div class="remu-summary-item">
-                                <span class="remu-summary-label"
-                                    style="font-size: 0.65rem; color: #888; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px; display: block; margin-bottom: 4px;">Ativos
-                                    no mês</span>
-                                <span id="modalClientsActive" class="remu-summary-val">0</span>
-                            </div>
-                            <div class="remu-summary-item">
-                                <span class="remu-summary-label"
-                                    style="font-size: 0.65rem; color: #888; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px; display: block; margin-bottom: 4px;">Inativos
-                                    no mês</span>
-                                <span id="modalClientsInactive" class="remu-summary-val">0</span>
-                            </div>
-                        </div>
-                        <div
-                            style="margin-top: 12px; text-align: right; border-top: 1px solid var(--border-color); padding-top: 8px;">
-                            <span
-                                style="font-size: 0.7rem; color: #D61616; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">Ver
-                                listagem completa <i class="fa-solid fa-chevron-right"
-                                    style="font-size: 0.6rem; margin-left: 4px;"></i></span>
-                        </div>
-                    </div>
-
-                    <!-- Remuneração -->
-                    <div class="remu-metric-card">
-                        <div class="remu-metric-header">
-                            <span class="remu-metric-label">Remuneração</span>
-                            <i class="fa-solid fa-wallet remu-metric-icon"></i>
-                        </div>
-
-                        <div class="remu-values-list">
-                            <div class="remu-value-item primary">
-                                <span class="remu-value-label">Atual</span>
-                                <span class="remu-value-amount" id="modalRemAtual" style="color: #D61616;">R$
-                                    0,00</span>
-                            </div>
-
-                            <div class="remu-value-item"
-                                style="border-top: 1px solid var(--border-color); padding-top: 8px;">
-                                <span class="remu-value-label">Fixa</span>
-                                <span class="remu-value-amount" id="modalFixed"
-                                    style="font-size: 1.2rem; opacity: 0.9;">R$ 0,00</span>
-                            </div>
-
-                            <div class="remu-value-grid">
-                                <div class="remu-value-item">
-                                    <span class="remu-value-label">Mínima</span>
-                                    <span class="remu-value-amount min" id="modalRemMin">R$ 0,00</span>
-                                </div>
-                                <div class="remu-value-item">
-                                    <span class="remu-value-label">Máxima</span>
-                                    <span class="remu-value-amount max" id="modalRemMax">R$ 0,00</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- MRR Comparativo (Preenchido via JS) -->
-                    <div class="remu-metric-card" id="modalMRRCard">
-                        <div class="remu-metric-header">
-                            <span class="remu-metric-label">MRR (Fee dos Projetos)</span>
-                            <i class="fa-solid fa-chart-line remu-metric-icon"></i>
-                        </div>
-                        <div id="modalMRR" class="remu-comparison-box">
-                            <!-- Injetado via JS -->
-                        </div>
-                    </div>
-
-                    <!-- Metas (Esperado/Teto) (Preenchido via JS) -->
-                    <div class="remu-metric-card">
-                        <div class="remu-metric-header">
-                            <span class="remu-metric-label">Metas de MRR</span>
-                            <i class="fa-solid fa-bullseye remu-metric-icon"></i>
-                        </div>
-                        <div class="remu-target-card" id="modalTargets">
-                            <!-- Injetado via JS -->
-                        </div>
-                    </div>
-                </div> <!-- Fim de remu-metrics -->
-
-                <!-- O ROI Médio está oculto conforme solicitação anterior, mas mantido comentado -->
-                <!-- <div class="remu-metric-card">
-                    <div class="remu-metric-header">
-                        <span class="remu-metric-label">ROI Médio</span>
-                        <i class="fa-solid fa-percentage remu-metric-icon"></i>
-                    </div>
-                    <span class="remu-metric-value" id="modalROI">0%</span>
-                </div> -->
-            </div> <!-- Fim de modal-body -->
-
-            <!-- Tabela -->
-            <div class="remu-table-card">
-                <div class="remu-table-header">
-                    <h3>Histórico de Remuneração <span class="tooltip-remuneracao" title="Remuneração = Fixo + Variável.
-
-Variável depende de 2 fatores:
-
-1) Churn: se o churn real (Churn ÷ MRR) for menor que o limite, gera bônus proporcional à diferença.
-
-2) CSP: se o custo real (Fixo ÷ MRR) for menor que o CSP esperado, gera bônus proporcional.
-
-Variável Total = Bônus de Churn + Bônus de CSP.
-Remuneração Total = Fixo + Variável.
-
-Menor churn e maior eficiência = maior remuneração.
-                        ">i</span></h3>
-
-                </div>
-                <div class="remu-table-wrapper">
-                    <table class="remu-table">
-                        <thead>
-                            <tr>
-                                <th scope="col">Flag</th>
-                                <th scope="col">Mês-Ano</th>
-                                <th scope="col">Cargo</th>
-                                <th scope="col">Senioridade</th>
-                                <th scope="col">Nivel</th>
-                                <th scope="col">Remuneração Cargo</th>
-                                <th scope="col">MRR</th>
-                                <th scope="col">Churn R$</th>
-                                <th scope="col">Churn %</th>
-                                <th scope="col">R$ Variável</th>
-                                <th scope="col">Remuneração Total</th>
-                            </tr>
-                        </thead>
-                        <tbody id="modalTableBody">
-                            <!-- Preenchido via JS -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script src="static/js/app.js"></script>
-    <script src="static/js/remuneracao.js"></script>
-
-    <!-- MODAL DE LISTAGEM DE CLIENTES (FASE 15+) -->
-    <div id="clientsListModal" class="remu-modal">
-        <div class="remu-modal-content">
-            <div class="remu-modal-header">
-                <h3>Listagem de Projetos</h3>
-                <button type="button" class="remu-modal-close" onclick="closeClientsListModal()">
-                    <i class="fa-solid fa-xmark"></i>
-                </button>
-            </div>
-            <div class="remu-modal-body">
-                <div id="modalClientsFullList" class="remu-projects-container">
-                    <!-- Preenchido via JS -->
-                </div>
-            </div>
-        </div>
-    </div>
-
+    <script src="{% static 'js/app.js' %}"></script>
+    <script src="{% static 'js/remuneracao.js' %}"></script>
     <script>
-        // Lógica para o Card de Clientes e Modal de Listagem Detail (Fase 15)
         let currentProjectsList = [];
-
-        // Estender a função openRemunerationModal para processar os novos dados do card
         if (typeof window.openRemunerationModal === 'function') {
             const originalOpenRemunerationModal = window.openRemunerationModal;
             window.openRemunerationModal = function (card) {
                 originalOpenRemunerationModal(card);
                 try {
-                    const badge = document.getElementById('modalClientsBadge');
-                    if (badge) badge.style.display = 'none';
-
                     const activeCount = parseInt(card.getAttribute('data-clients') || 0);
                     const rawProjects = card.getAttribute('data-projetos-vinculados') || '[]';
                     currentProjectsList = JSON.parse(rawProjects);
-
-                    const totalCount = currentProjectsList.length;
-                    const inactiveCount = Math.max(0, totalCount - activeCount);
-
-                    const activeEl = document.getElementById('modalClientsActive');
-                    const inactiveEl = document.getElementById('modalClientsInactive');
-                    if (activeEl) activeEl.textContent = activeCount;
-                    if (inactiveEl) inactiveEl.textContent = inactiveCount;
-                } catch (e) { console.error("Erro na Fase 15:", e); }
+                    const inactiveCount = Math.max(0, currentProjectsList.length - activeCount);
+                    document.getElementById('modalClientsActive').textContent = activeCount;
+                    document.getElementById('modalClientsInactive').textContent = inactiveCount;
+                } catch (e) { console.error(e); }
             };
         }
-
         function openClientsListModal() {
             const container = document.getElementById('modalClientsFullList');
-            if (!container) return;
-            if (currentProjectsList.length > 0) {
-                let tableHtml = `<table class="remu-mini-table"><thead><tr><th>Projeto</th><th style="text-align: right;">Fee</th></tr></thead><tbody>`;
-                currentProjectsList.forEach(p => {
-                    const churnBadge = p.active === false ? '<span class="remu-churn-badge">Churn</span>' : '';
-                    tableHtml += `
-                        <tr>
-                            <td>
-                                <div class="remu-mini-project-name">${p.nome || 'N/A'} ${churnBadge}</div>
-                                <div class="remu-mini-project-id">${p.id}</div>
-                            </td>
-                            <td class="remu-mini-project-fee">${window.Utils ? Utils.formatBRL(p.fee) : p.fee}</td>
-                        </tr>`;
-                });
-                tableHtml += `</tbody></table>`;
-                container.innerHTML = tableHtml;
-            } else { container.innerHTML = '<div class="remu-no-data" style="padding: 2rem; text-align: center; color: #666;">Nenhum projeto vinculado</div>'; }
-            const modal = document.getElementById('clientsListModal');
-            if (modal) modal.classList.add('active');
+            if (!container || currentProjectsList.length === 0) return;
+            let html = `<table class="remu-mini-table"><thead><tr><th>Projeto</th><th style="text-align:right;">Fee</th></tr></thead><tbody>`;
+            currentProjectsList.forEach(p => {
+                html += `<tr><td><div class="remu-mini-project-name">${p.nome || 'N/A'} ${p.active === false ? '<span class="remu-churn-badge">Churn</span>' : ''}</div><div class="remu-mini-project-id">${p.id}</div></td><td class="remu-mini-project-fee">${Utils.formatBRL(p.fee)}</td></tr>`;
+            });
+            container.innerHTML = html + '</tbody></table>';
+            document.getElementById('clientsListModal').classList.add('active');
         }
-
-        function closeClientsListModal() {
-            const modal = document.getElementById('clientsListModal');
-            if (modal) modal.classList.remove('active');
-        }
-
-        window.addEventListener('click', (e) => {
-            const modal = document.getElementById('clientsListModal');
-            if (e.target === modal) closeClientsListModal();
-        });
     </script>
-
     {% include "components/modal-configuracoes.html" %}
-    <script src="static/js/tema.js"></script>
+    <script src="{% static 'js/tema.js' %}"></script>
 </body>
-
 </html>

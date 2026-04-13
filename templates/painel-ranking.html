@@ -1,24 +1,22 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="pt-BR">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ranking de Performance - Hub Lisboa&CO</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
-        rel="stylesheet">
-    <link rel="stylesheet" href="static/style/styles.css">
-    <link rel="stylesheet" href="static/style/tema-claro.css">
-    <link rel="stylesheet" href="static/style/ranking.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'style/styles.css' %}">
+    <link rel="stylesheet" href="{% static 'style/tema-claro.css' %}">
+    <link rel="stylesheet" href="{% static 'style/ranking.css' %}">
     {% include "components/icon_title.html" %}
 </head>
 
 <body>
-
     {% include "components/header.html" %}
-
     {% include "components/sidebar.html" %}
 
     <div class="app-container">
@@ -29,7 +27,6 @@
                     <h1>Ranking de Performance</h1>
                     <p>Métricas consolidadas dos investidores.</p>
                 </div>
-
                 <div class="ranking-controls">
                     <div class="sort-wrapper">
                         <label><i class="fas fa-sort-amount-down"></i> ORDENAR POR</label>
@@ -38,7 +35,6 @@
                             <option value="mrr">Maior MRR</option>
                         </select>
                     </div>
-
                     <div class="filter-pill-box">
                         <select id="filterRole">
                             <option value="all">Cargos</option>
@@ -62,19 +58,13 @@
                         </select>
                         <div class="search-mini">
                             <i class="fas fa-search"></i>
-                            <input type="text" id="rankingSearch" name="rankingSearch" placeholder="Buscar..."
-                                autocomplete="new-password">
+                            <input type="text" id="rankingSearch" name="rankingSearch" placeholder="Buscar..." autocomplete="new-password">
                         </div>
                     </div>
                 </div>
             </header>
-
             <div id="rankingGrid" class="ranking-grid">
-                <!-- Cards serão renderizados via JS -->
-                <div class="loader-container">
-                    <div class="premium-loader"></div>
-                    <p>Carregando ranking...</p>
-                </div>
+                <div class="loader-container"><div class="premium-loader"></div><p>Carregando ranking...</p></div>
             </div>
         </main>
     </div>
@@ -83,74 +73,40 @@
     <div id="rankingModal" class="ranking-modal">
         <div class="ranking-modal-content">
             <span class="modal-close"><i class="fas fa-times"></i></span>
-
             <div class="modal-profile">
                 <img src="" alt="Foto" class="modal-profile-img">
                 <div class="modal-profile-overlay">
-                    <div class="modal-meta-line">
-                        <span class="modal-tag"></span>
-                        <span class="modal-tenure-tag"></span>
-                    </div>
+                    <div class="modal-meta-line"><span class="modal-tag"></span><span class="modal-tenure-tag"></span></div>
                     <h2 class="modal-name-title"></h2>
                     <p class="modal-sub-title"></p>
-
-                    <div class="modal-highlights">
-                        <h4 class="highlights-title">DESTAQUES</h4>
-                        <ul class="highlights-list"></ul>
-                    </div>
+                    <div class="modal-highlights"><h4 class="highlights-title">DESTAQUES</h4><ul class="highlights-list"></ul></div>
                 </div>
             </div>
-
             <div class="modal-performance">
                 <h3 class="perf-section-title">PERFORMANCE CORE</h3>
                 <div class="perf-grid">
-                    <div class="perf-box">
-                        <i class="fas fa-users"></i>
-                        <div class="perf-col">
-                            <div class="perf-box-val"></div>
-                            <div class="perf-box-label">CLIENTES</div>
-                        </div>
-                    </div>
-                    <div class="perf-box">
-                        <i class="fas fa-calendar-check"></i>
-                        <div class="perf-col">
-                            <div class="perf-box-val"></div>
-                            <div class="perf-box-label">DIAS SEM CHURN</div>
-                        </div>
-                    </div>
-                    <div class="perf-box">
-                        <i class="fas fa-wallet"></i>
-                        <div class="perf-col">
-                            <div class="perf-box-val"></div>
-                            <div class="perf-box-label">MRR ATUAL</div>
-                        </div>
-                    </div>
-                    <div class="perf-box" style="display: none;">
-                        <i class="fas fa-info-circle"></i>
-                        <div class="perf-col">
-                            <div class="perf-box-val"></div>
-                            <div class="perf-box-label">-</div>
-                        </div>
-                    </div>
+                    <div class="perf-box"><i class="fas fa-users"></i><div class="perf-col"><div class="perf-box-val"></div><div class="perf-box-label">CLIENTES</div></div></div>
+                    <div class="perf-box"><i class="fas fa-calendar-check"></i><div class="perf-col"><div class="perf-box-val"></div><div class="perf-box-label">DIAS SEM CHURN</div></div></div>
+                    <div class="perf-box"><i class="fas fa-wallet"></i><div class="perf-col"><div class="perf-box-val"></div><div class="perf-box-label">MRR ATUAL</div></div></div>
                 </div>
-
                 <div class="price-sim-container">
                     <h3 class="perf-section-title">RESUMO DE CARTEIRA</h3>
-                    <div class="sim-row total">
-                        <span>MRR TOTAL</span>
-                        <span class="final-price"></span>
-                    </div>
+                    <div class="sim-row total"><span>MRR TOTAL</span><span class="final-price"></span></div>
                     <button class="hire-btn"></button>
                 </div>
             </div>
         </div>
     </div>
 
-    <script src="static/js/app.js"></script>
-    <script src="static/js/placeholders.js"></script>
-    <script src="static/js/ranking.js"></script>
+    <script src="{% static 'js/app.js' %}"></script>
+    <script src="{% static 'js/ranking.js' %}"></script>
     {% include "components/modal-configuracoes.html" %}
-    <script src="static/js/tema.js"></script>
+    <script src="{% static 'js/tema.js' %}"></script>
+    <script>
+        window.APP_CONFIG = {
+            userEmail: "{{ user.email }}",
+            userToken: "{{ request.session.token|default:'' }}"
+        };
+    </script>
 </body>
-
 </html>
