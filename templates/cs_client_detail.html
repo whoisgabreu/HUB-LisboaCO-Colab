@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firebull - Detalhes do Cliente | HUB Lisboa</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="static/style/styles.css">
+    <link rel="stylesheet" href="static/style/tema-claro.css">
+    {% include "components/icon_title.html" %}
+
+    <style>
+        :root {
+            --primary-cs: #378ADD;
+            --secondary-cs: #64748b;
+            --success-cs: #1D9E75;
+            --warning-cs: #EF9F27;
+            --danger-cs: #E24B4A;
+        }
+
+        .client-detail-content {
+            display: flex;
+            flex-direction: column;
+            gap: 2.5rem;
+        }
+
+        .client-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1.5rem;
+        }
+
+        .client-card {
+            background: var(--bg-hover);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+
+        .kpi-label {
+            color: var(--text-muted);
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 0.5rem;
+        }
+
+        .kpi-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .kpi-subtext {
+            font-size: 11px;
+            margin-top: 0.25rem;
+            color: var(--text-muted);
+        }
+
+        .chart-card {
+            height: 350px;
+            position: relative;
+        }
+
+        .chart-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            color: var(--text-main);
+        }
+
+        .service-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: var(--primary-cs);
+        }
+
+        .service-name {
+            font-weight: 600;
+            margin: 1rem 0 0.25rem 0;
+        }
+
+        .badge {
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        /* Status de Saúde Qualitativos */
+        .badge-safe { background: rgba(29, 158, 117, 0.1); color: #1D9E75; border: 1px solid rgba(29, 158, 117, 0.2); }
+        .badge-care { background: rgba(239, 159, 39, 0.1); color: #EF9F27; border: 1px solid rgba(239, 159, 39, 0.2); }
+        .badge-danger { background: rgba(226, 75, 74, 0.1); color: #E24B4A; border: 1px solid rgba(226, 75, 74, 0.2); }
+        .badge-critical { background: rgba(155, 28, 28, 0.1); color: #9B1C1C; border: 1px solid rgba(155, 28, 28, 0.2); }
+        .badge-churn { background: rgba(0, 0, 0, 0.4); color: #ffffff; border: 1px solid rgba(255, 255, 255, 0.2); }
+        body.tema-claro .badge-churn { background: rgba(0, 0, 0, 0.1); color: #000000; border: 1px solid rgba(0, 0, 0, 0.2); }
+
+
+        .engagement-item { display: flex; justify-content: space-between; padding: 1rem 0; border-bottom: 1px solid var(--border-color); }
+        .engagement-item:last-child { border-bottom: none; }
+        .engagement-label { color: var(--text-muted); font-size: 13px; }
+
+        .engagement-value {
+            font-weight: 500;
+            font-size: 13px;
+        }
+
+        .timeline-item {
+            display: flex;
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+            position: relative;
+        }
+
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: 7px;
+            top: 20px;
+            bottom: -20px;
+            width: 2px;
+            background: var(--border-color);
+        }
+
+        .timeline-item:last-child::before {
+            display: none;
+        }
+
+        .timeline-dot {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--primary-cs);
+            border: 3px solid var(--bg-hover);
+            z-index: 1;
+            margin-top: 4px;
+        }
+
+        .timeline-date {
+            font-size: 11px;
+            color: var(--text-muted);
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .timeline-title {
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .btn-back {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .btn-back:hover {
+            background: var(--border-color);
+        }
+
+        .btn-primary-cs {
+            background: var(--primary-cs);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+            font-size: 13px;
+        }
+
+        .btn-secondary-cs {
+            background: transparent;
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+            font-size: 13px;
+        }
+
+        .btn-primary-cs:hover {
+            filter: brightness(1.1);
+        }
+
+        body.tema-claro .client-card {
+            background: #ffffff !important;
+            border-color: #e2e8f0 !important;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1) !important;
+        }
+
+        body.tema-claro .kpi-label,
+        body.tema-claro .timeline-date {
+            color: #64748b !important;
+        }
+
+        body.tema-claro .engagement-item {
+            border-color: #f1f5f9;
+        }
+
+        /* Melhorias Equipe do Projeto */
+        .team-squad-block {
+            background: rgba(55, 138, 221, 0.08);
+            border-radius: 12px;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            border: 1px solid rgba(55, 138, 221, 0.2);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        
+        body.tema-claro .team-squad-block {
+            background: #f8fafc;
+            border-color: #e2e8f0;
+        }
+
+        .squad-icon {
+            width: 32px;
+            height: 32px;
+            background: var(--primary-cs);
+            color: white;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+
+        .member-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--border-color);
+            overflow: hidden;
+            border: 2px solid var(--bg-hover);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .badge-cientista {
+            background: rgba(147, 51, 234, 0.1);
+            color: #9333ea;
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+            text-transform: uppercase;
+            border: 1px solid rgba(147, 51, 234, 0.2);
+            margin-left: 0.5rem;
+        }
+    </style>
+</head>
+
+<body>
+    {% include "components/header.html" %}
+    {% include "components/sidebar.html" %}
+
+    <div class="app-container">
+        <div class="sidebar-overlay"></div>
+        <main class="main-container">
+            <!-- Header -->
+            <header
+                style="margin-bottom: 2.5rem; display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 1rem;">
+                <div>
+                    <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem;">
+                        <a href="/hub-cs-cx" class="btn-back"><i class="fas fa-arrow-left"></i></a>
+                        <h2 style="margin: 0;">{{ cliente.nome if cliente else 'Cliente' }}</h2>
+                        <span class="badge badge-safe">SAFE</span>
+                    </div>
+                    {% set months_pt = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"] %}
+                    {% set meses = cliente.tempo_de_casa_meses if cliente.tempo_de_casa_meses is defined else (range(5, 60) | random) %}
+                    <p style="color: var(--text-muted); margin: 0; font-size: 13px;">
+                        ID: #{{ cliente.pipefy_id if cliente else '---' }} • 
+                        Parceria desde {{ months_pt[cliente.data_de_inicio.month - 1] if cliente and cliente.data_de_inicio else '---' }} de {{ cliente.data_de_inicio.year if cliente and cliente.data_de_inicio else '' }} 
+                        <span style="opacity: 0.7;">({{ meses }} meses)</span>
+                    </p>
+                </div>
+                <div style="display: flex; gap: 1rem;">
+                    <!-- Botões removidos conforme solicitado -->
+                </div>
+            </header>
+
+            <div class="client-detail-content">
+                <!-- KPIs -->
+                <div class="client-grid">
+                    <div class="client-card">
+                        <div class="kpi-label">MRR Atual</div>
+                        <div class="kpi-value">R$ {{ "{:,.0f}".format(cliente.mrr_total or 0).replace(',', '.') }}</div>
+                        <div class="kpi-subtext">{{ cliente.produto_contratado or 'Serviço Ativo' }}</div>
+                    </div>
+                    <div class="client-card">
+                        <div class="kpi-label">LTV Acumulado</div>
+                        <div class="kpi-value">R$ {{ "{:,.0f}".format(cliente.ltv_total or 0).replace(',', '.') }}</div>
+                        <div class="kpi-subtext">{{ cliente.tempo_de_casa_meses }} meses de contrato</div>
+                    </div>
+                    <div class="client-card">
+                        <div class="kpi-label">NPS (Último)</div>
+                        <div class="kpi-value">{{ nps_valor }}</div>
+                        <div class="kpi-subtext">Semana: {{ nps_data }}</div>
+                    </div>
+                </div>
+
+                <!-- Charts -->
+                <div class="client-grid" style="grid-template-columns: 1fr 1fr;">
+                    <div class="client-card chart-card">
+                        <div class="chart-title">Evolução do LTV</div>
+                        <canvas id="clientMrrChart"></canvas>
+                    </div>
+                    <div class="client-card chart-card">
+                        <div class="chart-title">Health Score</div>
+                        <canvas id="clientHealthChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Services -->
+                <section>
+                    <div class="chart-title" style="margin-bottom: 1.5rem;">Contratos e Módulos Ativos</div>
+                    <div class="client-grid" style="grid-template-columns: repeat(3, 1fr);">
+                        {% for projeto in cliente.projetos_ativos %}
+                        <div class="client-card">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div class="service-icon"><i class="fas fa-file-contract"></i></div>
+                                <span class="badge"
+                                    style="background: rgba(29,158,117,0.1); color: #1D9E75;">Ativo</span>
+                            </div>
+                            <div class="service-name">Módulo: {{ projeto.produto_contratado or 'Consultoria' }}</div>
+                            <p style="font-size: 13px; color: var(--text-muted); margin: 0;">Iniciado em {{ projeto.data_de_inicio.strftime('%m/%Y') if projeto.data_de_inicio else '---' }}</p>
+                        </div>
+                        {% else %}
+                        <p style="font-size: 13px; color: var(--text-muted);">Nenhum contrato ativo encontrado.</p>
+                        {% endfor %}
+                    </div>
+                </section>
+
+                <!-- Activity -->
+                <div class="client-grid" style="grid-template-columns: 1fr 1fr;">
+                    <div class="client-card">
+                        <div class="chart-title" style="display: flex; align-items: center; gap: 0.5rem;">
+                            <i class="fas fa-users" style="color: var(--primary-cs);"></i> Equipe do Projeto
+                        </div>
+
+                        <div class="team-squad-block">
+                            <div class="squad-icon"><i class="fas fa-layer-group"></i></div>
+                            <div>
+                                <div class="kpi-label" style="margin: 0; font-size: 11px;">Squad Atribuída</div>
+                                <div style="font-weight: 700; color: var(--primary-cs); font-size: 15px;">{{ cliente.squad_atribuida or 'Não Definida' }}</div>
+                            </div>
+                        </div>
+
+                        <div class="kpi-label" style="margin-bottom: 1rem;">Membros Ativos</div>
+                        <div style="display: flex; flex-direction: column; gap: 1rem;">
+                            {% for membro in equipe %}
+                            <div style="display: flex; align-items: center; gap: 1rem; padding: 0.5rem; border-radius: 10px; transition: background 0.2s; cursor: default;" onmouseover="this.style.background='var(--bg-hover)'" onmouseout="this.style.background='transparent'">
+                                <div class="member-avatar">
+                                    {% if membro.profile_picture %}
+                                    <img src="static/images/profile_pictures/{{ membro.profile_picture }}" alt="{{ membro.nome }}" style="width: 100%; height: 100%; object-fit: cover;">
+                                    {% else %}
+                                    <div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600; color: var(--text-muted);">{{ membro.nome[:1] }}</div>
+                                    {% endif %}
+                                </div>
+                                <div style="flex: 1;">
+                                    <div style="display: flex; align-items: center;">
+                                        <div style="font-size: 14px; font-weight: 600; color: var(--text-main);">{{ membro.nome }}</div>
+                                        {% if membro.cientista %}
+                                        <span class="badge-cientista">Cientista</span>
+                                        {% endif %}
+                                    </div>
+                                    <div style="font-size: 12px; color: var(--text-muted); margin-top: 1px;">{{ membro.funcao }}</div>
+                                </div>
+                            </div>
+                            {% else %}
+                            <div style="text-align: center; padding: 2rem 0; color: var(--text-muted);">
+                                <i class="fas fa-user-slash" style="font-size: 24px; opacity: 0.3; margin-bottom: 0.5rem; display: block;"></i>
+                                <p style="font-size: 12px; margin: 0;">Nenhum membro vinculado.</p>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="client-card">
+                        <div class="chart-title">Entregas Operacionais</div>
+                        <div class="engagement-item" style="padding: 0.75rem 0;">
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <i class="fas fa-check-circle" style="color: var(--success-cs);"></i>
+                                <span class="engagement-label">Check-in Semanal</span>
+                            </div>
+                            <span class="badge" style="background: rgba(29,158,117,0.1); color: #1D9E75;">Concluído</span>
+                        </div>
+                        <div class="engagement-item" style="padding: 0.75rem 0;">
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <i class="fas fa-check-circle" style="color: var(--success-cs);"></i>
+                                <span class="engagement-label">Plano de Mídia Mensal</span>
+                            </div>
+                            <span class="badge" style="background: rgba(29,158,117,0.1); color: #1D9E75;">Concluído</span>
+                        </div>
+                        <div class="engagement-item" style="padding: 0.75rem 0;">
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <i class="fas fa-clock" style="color: var(--warning-cs);"></i>
+                                <span class="engagement-label">Otimizações Bi-semanais</span>
+                            </div>
+                            <span class="badge" style="background: rgba(239,159,39,0.1); color: #EF9F27;">Em Aberto</span>
+                        </div>
+                        <div class="engagement-item" style="padding: 0.75rem 0; border-bottom: none;">
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <i class="fas fa-calendar" style="color: var(--text-muted);"></i>
+                                <span class="engagement-label">Reunião de Resultados</span>
+                            </div>
+                            <span class="badge" style="background: rgba(255,255,255,0.05); color: var(--text-muted);">Agendada</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+    <script>
+        function forceHideLoader() {
+            const loader = document.querySelector('.loader');
+            if (loader) { loader.style.opacity = '0'; setTimeout(() => loader.style.display = 'none', 400); }
+        }
+        setTimeout(forceHideLoader, 3000);
+
+        document.addEventListener('DOMContentLoaded', function () {
+            if (typeof Chart === 'undefined') return forceHideLoader();
+            Chart.defaults.color = '#a0a0a0';
+            Chart.defaults.font.family = 'Poppins';
+
+            // Dados vindos do Backend (JSON parsed)
+            const labelsLtv = JSON.parse('{{ labels_ltv | tojson | safe }}');
+            const dadosLtv = JSON.parse('{{ dados_ltv | tojson | safe }}');
+            const labelsHealth = JSON.parse('{{ labels_health | tojson | safe }}');
+            const dadosHealth = JSON.parse('{{ dados_health | tojson | safe }}');
+
+            try {
+                new Chart(document.getElementById('clientMrrChart'), {
+                    type: 'line',
+                    data: {
+                        labels: labelsLtv,
+                        datasets: [{ 
+                            label: 'LTV Evolução', 
+                            data: dadosLtv, 
+                            borderColor: '#378ADD', 
+                            fill: true, 
+                            backgroundColor: 'rgba(55, 138, 221, 0.05)', 
+                            tension: 0.3 
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        layout: { padding: { left: 15, right: 25, top: 10, bottom: 25 } },
+                        plugins: { legend: { display: false } },
+                        scales: { x: { offset: true, ticks: { padding: 5 } }, y: { ticks: { padding: 5 } } }
+                    }
+                });
+
+                new Chart(document.getElementById('clientHealthChart'), {
+                    type: 'line',
+                    data: {
+                        labels: labelsHealth,
+                        datasets: [{ 
+                            label: 'Health', 
+                            data: dadosHealth, 
+                            borderColor: '#1D9E75', 
+                            fill: true, 
+                            backgroundColor: 'rgba(29, 158, 117, 0.05)', 
+                            tension: 0.3 
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        layout: { padding: { left: 15, right: 25, top: 10, bottom: 25 } },
+                        plugins: { legend: { display: false } },
+                        scales: { x: { offset: true, ticks: { padding: 5 } }, y: { min: 50, max: 100, ticks: { padding: 5 } } }
+                    }
+                });
+            } catch (e) { 
+                console.error("Erro ao renderizar gráficos:", e); 
+            }
+        });
+    </script>
+
+    <script src="static/js/app.js"></script>
+    <script src="static/js/placeholders.js"></script>
+    {% include "components/modal-configuracoes.html" %}
+    <script src="static/js/tema.js"></script>
+</body>
+
+</html>

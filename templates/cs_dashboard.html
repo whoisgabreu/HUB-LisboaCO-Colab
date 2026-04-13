@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CS Dashboard | HUB Lisboa</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="static/style/styles.css">
+    <link rel="stylesheet" href="static/style/tema-claro.css">
+    {% include "components/icon_title.html" %}
+
+    <style>
+        :root {
+            --primary-cs: #378ADD;
+            --success-cs: #1D9E75;
+            --warning-cs: #EF9F27;
+            --danger-cs: #E24B4A;
+        }
+
+        .cs-dashboard-content {
+            display: flex;
+            flex-direction: column;
+            gap: 2.5rem;
+        }
+
+        .cs-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1.5rem;
+        }
+
+        .cs-card {
+            background: var(--bg-hover);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+            transition: all 0.2s;
+        }
+
+        .kpi-label { color: var(--text-muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.5rem; }
+        .kpis-main { display: flex; align-items: baseline; gap: 8px; }
+        .kpi-value { font-size: 26px; font-weight: 700; color: var(--text-main); }
+        .kpi-variation { font-size: 13px; font-weight: 600; }
+        .variation-up { color: var(--success-cs); }
+        .variation-down { color: var(--danger-cs); }
+        .kpi-subtext { font-size: 11px; color: var(--text-muted); margin-top: 0.5rem; }
+
+        .chart-card { height: 320px; position: relative; }
+        .chart-title { font-size: 14px; font-weight: 600; margin-bottom: 1.5rem; color: var(--text-main); }
+
+        /* Table Styling */
+        .cs-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+        .cs-table th {
+            text-align: left;
+            padding: 1.25rem 1rem;
+            color: var(--text-muted);
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            border-bottom: 1px solid var(--border-color);
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .cs-table td {
+            padding: 1.25rem 1rem;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 13px;
+            color: var(--text-main);
+        }
+
+        .cs-table tr:hover {
+            background: rgba(255, 255, 255, 0.04);
+            cursor: pointer;
+        }
+
+        .cs-table tr td:first-child { border-top-left-radius: 8px; border-bottom-left-radius: 8px; }
+        .cs-table tr td:last-child { border-top-right-radius: 8px; border-bottom-right-radius: 8px; }
+
+        .cs-table tr:last-child td { border-bottom: none; }
+
+        .badge { padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 500; }
+        .badge-health-high { background: rgba(29, 158, 117, 0.1); color: #1D9E75; border: 1px solid rgba(29, 158, 117, 0.2); }
+        
+        /* Novos Status de Saúde */
+        .badge-safe { background: rgba(29, 158, 117, 0.1); color: #1D9E75; border: 1px solid rgba(29, 158, 117, 0.2); }
+        .badge-care { background: rgba(239, 159, 39, 0.1); color: #EF9F27; border: 1px solid rgba(239, 159, 39, 0.2); }
+        .badge-danger { background: rgba(226, 75, 74, 0.1); color: #E24B4A; border: 1px solid rgba(226, 75, 74, 0.2); }
+        .badge-critical { background: rgba(155, 28, 28, 0.1); color: #9B1C1C; border: 1px solid rgba(155, 28, 28, 0.2); }
+        .badge-churn { background: rgba(0, 0, 0, 0.4); color: #ffffff; border: 1px solid rgba(255, 255, 255, 0.2); }
+        body.tema-claro .badge-churn { background: rgba(0, 0, 0, 0.1); color: #000000; border: 1px solid rgba(0, 0, 0, 0.2); }
+
+        .pagination-container { display: flex; justify-content: flex-end; align-items: center; gap: 1rem; margin-top: 1.5rem; }
+        .btn-page { background: var(--bg-hover); border: 1px solid var(--border-color); color: var(--text-main); padding: 0.5rem 1rem; border-radius: 8px; cursor: pointer; transition: 0.2s; font-size: 13px; display: flex; align-items: center; gap: 0.5rem; }
+        .btn-page:hover:not(:disabled) { background: var(--border-color); }
+        .btn-page:disabled { opacity: 0.4; cursor: not_allowed; }
+        .page-info { font-size: 13px; color: var(--text-muted); }
+        .badge-health-mid { background: rgba(239, 159, 39, 0.1); color: #EF9F27; border: 1px solid rgba(239, 159, 39, 0.2); }
+        .badge-health-low { background: rgba(226, 75, 74, 0.1); color: #E24B4A; border: 1px solid rgba(226, 75, 74, 0.2); }
+
+        .cs-alert-card { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.5rem; border-radius: 10px; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color); border-left: 4px solid #ccc; margin-bottom: 0.75rem; }
+        .alert-red { border-left-color: var(--danger-cs); }
+        .alert-amber { border-left-color: var(--warning-cs); }
+        .alert-green { border-left-color: var(--success-cs); }
+
+        .btn-action { padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border-color); background: transparent; color: var(--text-main); font-size: 12px; cursor: pointer; transition: 0.2s; }
+        .btn-action:hover { background: var(--border-color); }
+
+        .search-input { background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-color); border-radius: 8px; padding: 0.6rem 1rem; color: var(--text-main); width: 300px; font-size: 13px; }
+
+        body.tema-claro .cs-card { background: #ffffff !important; border-color: #e2e8f0 !important; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1) !important; }
+        body.tema-claro .search-input { background: #f8fafc !important; color: #1e293b !important; }
+
+        @media (max-width: 1200px) {
+            .cs-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (max-width: 600px) {
+            .cs-grid { grid-template-columns: 1fr; }
+            .search-input { width: 100%; }
+        }
+    </style>
+</head>
+
+<body>
+    {% include "components/header.html" %}
+    {% include "components/sidebar.html" %}
+
+    <div class="app-container">
+        <div class="sidebar-overlay"></div>
+        <main class="main-container">
+            <header style="margin-bottom: 2.5rem;">
+                <h2 style="margin: 0;">Customer Success</h2>
+                <p style="color: var(--text-muted); margin: 5px 0 0 0;">Painel de Gestão e Saúde da Carteira · Março 2026</p>
+            </header>
+
+            <div class="cs-dashboard-content">
+                <!-- Main KPIs -->
+                <div class="cs-grid">
+                    <div class="cs-card">
+                        <div class="kpi-label">NPS Geral</div>
+                        <div class="kpis-main">
+                            <span class="kpi-value">{{ nps_avg }}</span>
+                            <span class="kpi-variation variation-up"><i class="fas fa-arrow-up"></i> 0.4</span>
+                        </div>
+                        <div class="kpi-subtext">Base: Últimos 90 dias</div>
+                    </div>
+                    <div class="cs-card">
+                        <div class="kpi-label">Churn Rate (Mock)</div>
+                        <div class="kpis-main">
+                            <span class="kpi-value">3.2%</span>
+                            <span class="kpi-variation variation-down"><i class="fas fa-arrow-up"></i> 0.4%</span>
+                        </div>
+                        <div class="kpi-subtext">Meta: < 2.5%</div>
+                    </div>
+                    <div class="cs-card">
+                        <div class="kpi-label">Clientes Ativos</div>
+                        <div class="kpis-main">
+                            <span class="kpi-value">{{ active_clients }}</span>
+                        </div>
+                        <div class="kpi-subtext">Na carteira atual</div>
+                    </div>
+                    <div class="cs-card">
+                        <div class="kpi-label">MRR Carteira</div>
+                        <div class="kpis-main">
+                            <span class="kpi-value">R$ {{ "{:,.0f}".format(mrr_total).replace(',', '.') }}</span>
+                        </div>
+                        <div class="kpi-subtext">Total Projetos Ativos</div>
+                    </div>
+                </div>
+
+                <!-- Secondary Grid Charts (2x2) -->
+                <div class="cs-grid" style="grid-template-columns: repeat(2, 1fr);">
+                    <!-- MRR Evolution -->
+                    <div class="cs-card chart-card">
+                        <div class="chart-title">Evolução do MRR (R$k)</div>
+                        <canvas id="mrrEvolutionChart"></canvas>
+                    </div>
+                    <!-- Churn Evolution -->
+                    <div class="cs-card chart-card">
+                        <div class="chart-title">Churn Mensal (%)</div>
+                        <canvas id="churnEvolutionChart"></canvas>
+                    </div>
+                    <!-- NPS Evolution -->
+                    <div class="cs-card chart-card">
+                        <div class="chart-title">Evolução NPS</div>
+                        <canvas id="npsEvolutionChart"></canvas>
+                    </div>
+                <!-- Health Distribution (REMOVED as per user request) -->
+                <div class="cs-card chart-card">
+                    <div class="chart-title">Análise de Performance</div>
+                    <div style="display: flex; flex-direction: column; justify-content: center; height: calc(100% - 40px); gap: 1rem;">
+                        <div style="background: rgba(55,138,221,0.05); border-radius: 12px; padding: 1.5rem; text-align: center; border: 1px dashed var(--border-color);">
+                            <i class="fas fa-chart-line" style="font-size: 2rem; color: var(--primary-cs); margin-bottom: 1rem; display: block;"></i>
+                            <span style="font-size: 13px; color: var(--text-muted);">Métricas operacionais adicionais em breve...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+                <!-- Ranking Table -->
+                <div class="cs-card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
+                        <div class="chart-title" style="margin: 0;">Ranking de Clientes por Retenção</div>
+                        <input type="text" id="rankingSearch" class="search-input" placeholder="Pesquisar cliente...">
+                    </div>
+                    <div style="overflow-x: auto;">
+                        <table class="cs-table">
+                            <thead>
+                                <tr>
+                                    <th width="40">#</th>
+                                    <th>Cliente</th>
+                                    <th>Contratado</th>
+                                    <th>MRR</th>
+                                    <th>LTV Acumulado</th>
+                                    <th>Health</th>
+                                    <th>Tempo de Casa</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for cliente in ranking %}
+                                <tr class="ranking-row" onclick="window.location.href='/hub-cs-cx?view=detail&client={{ cliente.pipefy_id }}'">
+                                    <td>{{ loop.index }}</td>
+                                    <td style="font-weight: 600;">{{ cliente.nome }}</td>
+                                    <td><span class="badge" style="background: rgba(255,255,255,0.05);">{{ cliente.produto_contratado or 'Serviço Ativo' }}</span></td>
+                                    <td style="font-weight: 600;">R$ {{ "{:,.0f}".format(cliente.fee or 0).replace(',', '.') }}</td>
+                                    <td style="color: var(--primary-cs); font-weight: 600;">R$ {{ "{:,.0f}".format(cliente.ltv_real or 0).replace(',', '.') }}</td>
+                                    <td>
+                                        {% set h = 75 + (loop.index % 25) %}
+                                        {% if h >= 95 %}<span class="badge badge-safe">SAFE</span>
+                                        {% elif h >= 90 %}<span class="badge badge-care">CARE</span>
+                                        {% elif h >= 85 %}<span class="badge badge-danger">DANGER</span>
+                                        {% elif h >= 80 %}<span class="badge badge-critical">DANGER CRÍTICO</span>
+                                        {% else %}<span class="badge badge-churn">CHURN</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ cliente.tempo_de_casa_meses_ranking }} meses</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="pagination-container">
+                        <span class="page-info">Página <span id="currentPage">1</span> de <span id="totalPages">1</span></span>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <button id="prevPage" class="btn-page"><i class="fas fa-chevron-left"></i> Anterior</button>
+                            <button id="nextPage" class="btn-page">Próximo <i class="fas fa-chevron-right"></i></button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CX Indicators -->
+                <div>
+                    <div class="chart-title" style="margin-bottom: 1.5rem;">Experiência do Cliente (CX)</div>
+                    <div class="cs-grid" style="grid-template-columns: 1fr;">
+                        <div class="cs-card">
+                            <div class="kpi-label">CSAT (Satisfação Geral)</div>
+                            <div class="kpis-main">
+                                <span class="kpi-value">92%</span>
+                                <span class="kpi-variation variation-up"><i class="fas fa-arrow-up"></i> 5%</span>
+                            </div>
+                            <div class="kpi-subtext">Meta: > 85% · Baseado em {{ active_clients }} feedbacks</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+    <script>
+        function forceHideLoader() {
+            const loader = document.querySelector('.loader');
+            if (loader) { loader.style.opacity = '0'; setTimeout(() => loader.style.display = 'none', 400); }
+        }
+        setTimeout(forceHideLoader, 3000);
+
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof Chart === 'undefined') return forceHideLoader();
+            Chart.defaults.color = '#a1a1aa';
+            Chart.defaults.font.family = 'Poppins';
+
+            try {
+                // MRR Evolution
+                new Chart(document.getElementById('mrrEvolutionChart'), {
+                    type: 'line',
+                    data: {
+                        labels: ['Out', 'Nov', 'Dez', 'Jan', 'Fev', 'Mar'],
+                        datasets: [{
+                            label: 'MRR',
+                            data: [145, 158, 162, 175, 173, 187],
+                            borderColor: '#378ADD',
+                            backgroundColor: 'rgba(55, 138, 221, 0.05)',
+                            fill: true,
+                            tension: 0.3
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        layout: { padding: { left: 15, right: 25, top: 10, bottom: 25 } },
+                        plugins: { legend: { display: false } },
+                        scales: { 
+                            x: { offset: true, ticks: { padding: 5 } },
+                            y: { beginAtZero: false, ticks: { padding: 5, callback: v => 'R$ ' + v + 'k' } } 
+                        }
+                    }
+                });
+
+                // Churn Evolution
+                new Chart(document.getElementById('churnEvolutionChart'), {
+                    type: 'line',
+                    data: {
+                        labels: ['Out', 'Nov', 'Dez', 'Jan', 'Fev', 'Mar'],
+                        datasets: [{
+                            label: 'Churn %',
+                            data: [2.1, 1.8, 2.5, 2.0, 2.8, 3.2],
+                            borderColor: '#E24B4A',
+                            backgroundColor: 'rgba(226, 75, 74, 0.05)',
+                            fill: true,
+                            tension: 0.3
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        layout: { padding: { left: 15, right: 25, top: 10, bottom: 25 } },
+                        plugins: { legend: { display: false } },
+                        scales: { 
+                            x: { offset: true, ticks: { padding: 5 } },
+                            y: { beginAtZero: true, ticks: { padding: 5, callback: v => v + '%' } } 
+                        }
+                    }
+                });
+
+                // NPS Evolution
+                new Chart(document.getElementById('npsEvolutionChart'), {
+                    type: 'bar',
+                    data: {
+                        labels: ['Out', 'Nov', 'Dez', 'Jan', 'Fev', 'Mar'],
+                        datasets: [{
+                            label: 'NPS',
+                            data: [65, 68, 62, 70, 68, 72],
+                            backgroundColor: '#378ADD',
+                            borderRadius: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        layout: { padding: { left: 15, right: 25, top: 10, bottom: 25 } },
+                        plugins: { legend: { display: false } },
+                        scales: { 
+                            x: { offset: true, ticks: { padding: 5 } },
+                            y: { beginAtZero: true, max: 100, ticks: { padding: 5 } } 
+                        }
+                    }
+                });
+
+                // Health Donut
+                new Chart(document.getElementById('healthDonutChart'), {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Saudável', 'Atenção', 'Risco'],
+                        datasets: [{
+                            data: [38, 16, 8],
+                            backgroundColor: ['#1D9E75', '#EF9F27', '#E24B4A'],
+                            borderWidth: 0,
+                            cutout: '75%'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        layout: { padding: 15 },
+                        plugins: { legend: { display: false } }
+                    }
+                });
+
+                // Lógica de Pesquisa e Paginação na Tabela
+                const searchInput = document.getElementById('rankingSearch');
+                const tableRows = Array.from(document.querySelectorAll('.ranking-row'));
+                const itemsPerPage = 10;
+                let currentPage = 1;
+                let filteredRows = tableRows;
+
+                function updateTable() {
+                    const start = (currentPage - 1) * itemsPerPage;
+                    const end = start + itemsPerPage;
+                    
+                    tableRows.forEach(row => row.style.display = 'none');
+                    
+                    filteredRows.slice(start, end).forEach(row => {
+                        row.style.display = '';
+                    });
+
+                    const totalPages = Math.ceil(filteredRows.length / itemsPerPage) || 1;
+                    document.getElementById('currentPage').textContent = currentPage;
+                    document.getElementById('totalPages').textContent = totalPages;
+                    document.getElementById('prevPage').disabled = currentPage === 1;
+                    document.getElementById('nextPage').disabled = currentPage === totalPages;
+                }
+
+                if (searchInput) {
+                    searchInput.addEventListener('input', function() {
+                        const query = this.value.toLowerCase();
+                        filteredRows = tableRows.filter(row => {
+                            const clientName = row.querySelector('td:nth-child(2)').textContent.toLowerCase();
+                            return clientName.includes(query);
+                        });
+                        currentPage = 1;
+                        updateTable();
+                    });
+                }
+
+                document.getElementById('prevPage').addEventListener('click', () => {
+                    if (currentPage > 1) { currentPage--; updateTable(); }
+                });
+
+                document.getElementById('nextPage').addEventListener('click', () => {
+                    const totalPages = Math.ceil(filteredRows.length / itemsPerPage);
+                    if (currentPage < totalPages) { currentPage++; updateTable(); }
+                });
+
+                updateTable();
+            } catch (e) { console.error(e); }
+        });
+    </script>
+
+    <script src="static/js/app.js"></script>
+    <script src="static/js/placeholders.js"></script>
+    {% include "components/modal-configuracoes.html" %}
+    <script src="static/js/tema.js"></script>
+</body>
+
+</html>
