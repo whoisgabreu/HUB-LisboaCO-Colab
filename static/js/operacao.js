@@ -13,13 +13,13 @@ let currentYear = new Date().getFullYear();
 const DELIVERY_LABELS = {
     // Account
     checkin: { label: "Check-in Semanal", desc: "Automático ao registrar checkin no mês" },
-    relatorio_account: { label: "Relatório Mensal do Account", desc: "Automático ao concluir tarefa do Quarter" },
+    relatorio_account: { label: "Definição de Meta (Account)", desc: "Automático ao concluir meta estratégica" },
     planner_monday: { label: "Planner Monday Semanal", desc: "Automático ao registrar ≥4 tarefas semanais" },
-    forecasting: { label: "Atualização do Forecasting com Metas", desc: "Automático ao registrar tarefa do Quarter" },
+    forecasting: { label: "Atualização do Forecasting com Metas", desc: "Automático ao registrar meta estratégica" },
     // Gestor de Tráfego
     plano_midia: { label: "Plano de Mídia", desc: "Automático ao salvar plano de mídia" },
     otimizacao: { label: "Documento de Otimização", desc: "Automático ao registrar otimização" },
-    relatorio_gt: { label: "Relatório Mensal do Gestor de Tráfego", desc: "Automático ao concluir tarefa do Quarter" },
+    relatorio_gt: { label: "Definição de Meta (GT)", desc: "Automático ao concluir meta estratégica" },
     config_conta: { label: "Configurações de Conta", desc: "Automático ao registrar ≥4 tarefas semanais" },
 };
 
@@ -115,8 +115,16 @@ async function loadProjectData() {
     const pipefyId = currentProject.pipefy_id;
 
     loadTarefas(pipefyId, 'semanal', 'main-task-list');
+    
+    // Carrega o snapshot de metas (Default: Trimestral do período atual)
     const q = `Q${Math.floor((currentMonth - 1) / 3) + 1}`;
-    loadTarefas(pipefyId, 'quarter', 'quarter-task-list', `${currentYear}-${q}`);
+    const ref = `${currentYear}-${q}`;
+    loadTarefas(pipefyId, 'goal_snapshot', 'quarter-task-list', ref);
+    
+    // Reseta o seletor visual para Trimestral
+    const filter = document.getElementById('meta-period-filter');
+    if (filter) filter.value = 'quarter';
+
     loadPlanoMidia(pipefyId, currentMonth, currentYear);
     loadEntregas(pipefyId, currentMonth, currentYear);
 }
@@ -128,10 +136,17 @@ async function loadTarefas(pipefyId, tipo, listId, referencia = "") {
     try {
         const res = await fetch(url);
         const tarefas = await res.json();
+        
+        if (tipo === 'goal_snapshot') {
+            renderMetasDashboard(tarefas, referencia);
+            return;
+        }
+
         const list = document.getElementById(listId);
+        if (!list) return;
         list.innerHTML = '';
         if (tarefas.length === 0) {
-            list.innerHTML = '<p style="color:var(--text-muted);padding:1rem;">Nenhuma registro encontrado.</p>';
+            list.innerHTML = '<p style="color:var(--text-muted);padding:1rem;">Nenhum registro encontrado.</p>';
             return;
         }
         tarefas.forEach(t => {
@@ -146,6 +161,296 @@ async function loadTarefas(pipefyId, tipo, listId, referencia = "") {
         });
     } catch (e) { console.error("Erro ao carregar tasks:", e); }
 }
+
+function renderMetasDashboard(metas, referencia = "") {
+    const mainGoalContainer = document.getElementById('main-goal-card-container');
+    const subGoalsList = document.getElementById('quarter-task-list');
+    const totalProgressEl = document.getElementById('total-progress-percent');
+    const periodLabelEl = document.getElementById('display-period-label');
+    
+    if (!mainGoalContainer || !subGoalsList) return;
+
+    // Atualiza Label do Período
+    if (periodLabelEl) {
+        if (referencia === "quarter") periodLabelEl.innerText = "TRIMESTRE ATUAL";
+        else if (referencia.includes('-Q')) periodLabelEl.innerText = `TRIMESTRE: ${referencia.split('-')[1]}`;
+        else if (referencia.includes('-M')) {
+            const months = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+            const parts = referencia.split('-M');
+            const mIdx = parseInt(parts[1]) - 1;
+            periodLabelEl.innerText = `MÊS: ${months[mIdx].toUpperCase()} ${parts[0]}`;
+        } else {
+            periodLabelEl.innerText = "PERÍODO ATIVO";
+        }
+    }
+
+    if (!metas || metas.length === 0) {
+        if (totalProgressEl) totalProgressEl.innerText = '0%';
+        mainGoalContainer.innerHTML = `
+            <div class="op-card-premium main-goal-card empty" style="background: rgba(255,255,255,0.01); border: 1px dashed var(--border-color); height: 150px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; border-radius: 16px;">
+                <i class="fas fa-bullseye" style="font-size: 2rem; color: var(--border-color); margin-bottom: 0.5rem;"></i>
+                <p style="color: var(--text-muted); font-size: 0.9rem;">Nenhum planejamento definido para este período.</p>
+                <button class="btn-add-task" style="margin-top: 1rem; font-size: 0.75rem;" onclick="openMetaUnificadoModal()">+ Iniciar Planejamento</button>
+            </div>`;
+        subGoalsList.innerHTML = '';
+        return;
+    }
+
+    // O novo formato usa um único objeto (Snapshot)
+    const snapshot = metas[0];
+    let data = {};
+    try {
+        data = JSON.parse(snapshot.descricao);
+    } catch(e) {
+        console.error("Erro ao processar snapshot de meta:", e);
+        return;
+    }
+
+    // Cálculo de Progresso Geral
+    const krs = data.krs || [];
+    const totalItems = 1 + krs.length; // Objetivo Principal + KRs
+    const completedMain = snapshot.concluida ? 1 : 0;
+    const completedKRs = krs.filter(k => k.concluida).length;
+    const totalPercent = Math.round(((completedMain + completedKRs) / totalItems) * 100);
+    
+    if (totalProgressEl) {
+        totalProgressEl.innerText = `${totalPercent}%`;
+        totalProgressEl.style.color = totalPercent >= 100 ? '#4caf50' : (totalPercent >= 50 ? '#ff9800' : 'var(--accent-red)');
+    }
+
+    const goalTypeIcons = {
+        faturamento: 'fa-dollar-sign',
+        leads: 'fa-bullseye',
+        vendas: 'fa-shopping-cart',
+        engajamento: 'fa-chart-line',
+        outros: 'fa-rocket'
+    };
+
+    const progress = snapshot.concluida ? 100 : 0;
+    
+    // Renderiza Meta Principal
+    mainGoalContainer.innerHTML = `
+        <div class="op-card-premium main-goal-card highlight" style="position: relative; overflow: hidden; background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(0,0,0,0.4) 100%); border: 1px solid var(--accent-red); padding: 2rem; border-radius: 20px; min-height: 180px; display: flex; flex-direction: column; justify-content: center;">
+            <div style="position: absolute; top: -10px; right: -10px; font-size: 6rem; color: rgba(214, 22, 22, 0.08); transform: rotate(-10deg); pointer-events: none;">
+                <i class="fas ${goalTypeIcons[data.tipo_meta] || 'fa-rocket'}"></i>
+            </div>
+            
+            <div style="z-index: 1;">
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 0.5rem;">
+                    <span class="badge-gt" style="background: var(--accent-red); display: inline-block;">OBJETIVO PRIMÁRIO</span>
+                </div>
+                <h2 style="font-size: 1.8rem; margin: 0.5rem 0; color: #fff;">${data.nome}</h2>
+                ${data.valor_alvo ? `<p style="color: #fff; font-size: 1rem; font-weight: 600; opacity: 0.8;">Alvo: ${data.tipo_meta === 'faturamento' ? 'R$ ' : ''}${parseFloat(data.valor_alvo).toLocaleString('pt-BR')}</p>` : ''}
+                
+                <div style="margin-top: 1.5rem;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.4rem; font-size: 0.85rem;">
+                        <span style="color: #aaa;">Status da Meta</span>
+                        <span style="color: ${snapshot.concluida ? '#4caf50' : 'var(--accent-red)'}; font-weight: 700;">${snapshot.concluida ? 'Concluída' : 'Em andamento'}</span>
+                    </div>
+                    <div style="height: 6px; background: rgba(255,255,255,0.1); border-radius: 10px; overflow: hidden;">
+                        <div style="height: 100%; width: ${progress}%; background: var(--accent-red); box-shadow: 0 0 10px var(--accent-red); transition: width 1s ease-in-out;"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="position: absolute; top: 15px; right: 15px; display: flex; gap: 10px; z-index: 2;">
+                <button onclick="openMetaUnificadoModal(${snapshot.id})" class="btn-icon-subtle" title="Editar Planejamento"><i class="fas fa-edit"></i></button>
+                <button onclick="toggleUnifiedMainGoal(${snapshot.id}, ${snapshot.concluida})" style="background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); color: #fff; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; transition: all 0.3s;" title="Marcar como Concluída" onmouseover="this.style.background='var(--accent-red)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'">
+                    <i class="fas fa-check"></i>
+                </button>
+            </div>
+        </div>`;
+
+    // Render Key Results (KRs)
+    subGoalsList.innerHTML = '';
+    if (krs.length === 0) {
+        subGoalsList.innerHTML = '<p style="color:var(--text-muted);padding:1rem;font-size:0.9rem;text-align:center;">Nenhum Key Result definido para este planejamento.</p>';
+    } else {
+        krs.forEach((kr, idx) => {
+            const krItem = document.createElement('div');
+            krItem.className = `task-item goal-kr-item ${kr.concluida ? 'completed' : ''}`;
+            krItem.style.marginBottom = '0.8rem';
+            krItem.style.padding = '1rem';
+            krItem.style.background = 'rgba(255,255,255,0.02)';
+            krItem.style.borderRadius = '12px';
+            krItem.style.border = '1px solid var(--border-color)';
+            krItem.style.display = 'flex';
+            krItem.style.alignItems = 'center';
+            krItem.style.gap = '1.2rem';
+
+            krItem.innerHTML = `
+                <div class="task-checkbox" onclick="toggleUnifiedKR(${snapshot.id}, ${idx})" style="width: 26px; height: 26px; min-width: 26px; font-size: 0.75rem;"><i class="fas fa-check"></i></div>
+                <div style="flex: 1;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px;">
+                        <div>
+                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 2px;">
+                                <i class="fas fa-bullseye" style="color: var(--accent-red); font-size: 0.8rem;"></i>
+                                <span style="font-size: 0.65rem; color: #888; text-transform: uppercase; font-weight: 600;">KR #0${idx + 1}</span>
+                            </div>
+                            <div class="task-text" style="font-weight: 500; font-size: 0.95rem; color: #eee;">${kr.titulo}</div>
+                        </div>
+                        ${kr.alvo ? `<div style="text-align: right;"><span style="font-size: 0.8rem; font-weight: 700; color: #fff;">${parseFloat(kr.alvo).toLocaleString('pt-BR')}</span><div style="font-size: 0.6rem; color: #888; text-transform: uppercase;">Meta</div></div>` : ''}
+                    </div>
+                </div>
+            `;
+            subGoalsList.appendChild(krItem);
+        });
+    }
+}
+
+let activeSnapshotId = null;
+
+function openMetaUnificadoModal(id = null) {
+    activeSnapshotId = id;
+    const container = document.getElementById('unified-krs-container');
+    container.innerHTML = '';
+    
+    // Clear form
+    document.getElementById('unified-goal-name').value = '';
+    document.getElementById('unified-goal-target').value = '';
+    document.getElementById('unified-goal-type').value = 'faturamento';
+    
+    if (id) {
+        // Modo Edição: Carregar dados existentes
+        fetch(`/api/operacao/tarefas/${currentProject.pipefy_id}?tipo=goal_snapshot`)
+            .then(res => res.json())
+            .then(metas => {
+                const s = metas.find(m => m.id === id);
+                if (s) {
+                    const data = JSON.parse(s.descricao);
+                    document.getElementById('unified-goal-name').value = data.nome;
+                    document.getElementById('unified-goal-target').value = data.valor_alvo || '';
+                    document.getElementById('unified-goal-type').value = data.tipo_meta || 'faturamento';
+                    if (data.krs) {
+                        data.krs.forEach(k => addKRRowModal(k.titulo, k.alvo, k.concluida));
+                    }
+                }
+            });
+    } else {
+        // Adiciona um KR vazio por padrão
+        addKRRowModal();
+    }
+    
+    openGTModal('modal-metas-unificado');
+}
+
+function addKRRowModal(titulo = "", alvo = "", concluida = false) {
+    const container = document.getElementById('unified-krs-container');
+    const row = document.createElement('div');
+    row.className = 'kr-input-row';
+    row.style.display = 'grid';
+    row.style.gridTemplateColumns = '1fr 120px 40px';
+    row.style.gap = '10px';
+    row.style.alignItems = 'center';
+    row.dataset.concluida = concluida;
+    
+    row.innerHTML = `
+        <input type="text" class="gt-form-input kr-title" placeholder="Descreva o Resultado Chave" value="${titulo}" style="padding: 8px 12px; font-size: 0.85rem;">
+        <input type="number" class="gt-form-input kr-target" placeholder="Alvo" value="${alvo}" style="padding: 8px 12px; font-size: 0.85rem;">
+        <button onclick="this.parentElement.remove()" style="background: none; border: none; color: #888; cursor: pointer;" title="Remover KR"><i class="fas fa-times"></i></button>
+    `;
+    container.appendChild(row);
+}
+
+async function saveUnifiedGoalsSnapshot() {
+    const nome = document.getElementById('unified-goal-name').value;
+    const target = document.getElementById('unified-goal-target').value;
+    const type = document.getElementById('unified-goal-type').value;
+    const periodType = document.getElementById('unified-goal-period').value;
+    
+    if (!nome) { showToast('Nome do objetivo é obrigatório', 'error'); return; }
+
+    const krs = [];
+    document.querySelectorAll('.kr-input-row').forEach(row => {
+        const title = row.querySelector('.kr-title').value;
+        const krTarget = row.querySelector('.kr-target').value;
+        if (title) {
+            krs.push({ titulo: title, alvo: krTarget, concluida: row.dataset.concluida === 'true' });
+        }
+    });
+
+    const snapshotData = {
+        nome,
+        valor_alvo: target,
+        tipo_meta: type,
+        periodo: periodType,
+        krs: krs,
+        versao: '3.0'
+    };
+
+    let referencia = "";
+    if (periodType === 'mensal') {
+        referencia = `${currentYear}-M${String(currentMonth).padStart(2, '0')}`;
+    } else {
+        referencia = `${currentYear}-Q${Math.floor((currentMonth - 1) / 3) + 1}`;
+    }
+
+    const payload = {
+        id: activeSnapshotId,
+        pipefy_id: currentProject.pipefy_id,
+        tipo: 'goal_snapshot',
+        descricao: JSON.stringify(snapshotData),
+        referencia: referencia,
+        ano: currentYear
+    };
+
+    try {
+        const res = await fetch('/api/operacao/tarefas', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+            showToast('Planejamento salvo com sucesso!');
+            closeGTModal('modal-metas-unificado');
+            handlePeriodFilterChange(document.getElementById('meta-period-filter'));
+        }
+    } catch (e) { console.error(e); }
+}
+
+async function handlePeriodFilterChange(select) {
+    const val = select.value;
+    let referencia = val;
+    if (val === 'quarter') {
+        referencia = `${currentYear}-Q${Math.floor((currentMonth - 1) / 3) + 1}`;
+    }
+    loadTarefas(currentProject.pipefy_id, 'goal_snapshot', 'quarter-task-list', referencia);
+}
+
+async function toggleUnifiedMainGoal(id, currentStatus) {
+    try {
+        await fetch('/api/operacao/tarefas', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: id, concluida: !currentStatus })
+        });
+        handlePeriodFilterChange(document.getElementById('meta-period-filter'));
+    } catch (e) { console.error(e); }
+}
+
+async function toggleUnifiedKR(id, krIndex) {
+    // 1. Get current data
+    const res = await fetch(`/api/operacao/tarefas/${currentProject.pipefy_id}?tipo=goal_snapshot`);
+    const metas = await res.json();
+    const snapshot = metas.find(m => m.id === id);
+    if (!snapshot) return;
+
+    const data = JSON.parse(snapshot.descricao);
+    if (data.krs && data.krs[krIndex]) {
+        data.krs[krIndex].concluida = !data.krs[krIndex].concluida;
+    }
+
+    // 2. Save back
+    try {
+        await fetch('/api/operacao/tarefas', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: id, descricao: JSON.stringify(data) })
+        });
+        handlePeriodFilterChange(document.getElementById('meta-period-filter'));
+    } catch (e) { console.error(e); }
+}
+
 
 async function addNewTask(tipo = 'semanal') {
     const inputId = tipo === 'semanal' ? 'task-desc-input' : 'task-quarter-input';
@@ -163,10 +468,26 @@ async function addNewTask(tipo = 'semanal') {
         referencia = `${currentYear}-Q${Math.floor((currentMonth - 1) / 3) + 1}`;
     }
 
-    const payload = {
+    let payload = {
         pipefy_id: currentProject.pipefy_id,
         tipo, descricao: descInput.value, referencia, ano: currentYear
     };
+
+    // Para metas (quarter), incluímos os campos estruturados no campo descricao como JSON
+    if (tipo === 'quarter') {
+        const goalType = document.getElementById('goal-type-select').value;
+        const goalTarget = document.getElementById('goal-target-value').value || 0;
+        const goalPeriod = document.getElementById('goal-period-select').value;
+        
+        const structuredData = {
+            nome: descInput.value,
+            tipo_meta: goalType,
+            valor_alvo: goalTarget,
+            periodo: goalPeriod,
+            versao: '2.0' // Para identificar JSON futuramente
+        };
+        payload.descricao = JSON.stringify(structuredData);
+    }
 
     try {
         const res = await fetch('/api/operacao/tarefas', {
@@ -175,8 +496,12 @@ async function addNewTask(tipo = 'semanal') {
             body: JSON.stringify(payload)
         });
         if (res.ok) {
-            showToast('Tarefa salva!');
+            showToast('Meta salva!');
             descInput.value = '';
+            if (tipo === 'quarter') {
+                const targetInput = document.getElementById('goal-target-value');
+                if (targetInput) targetInput.value = '';
+            }
             closeGTModal(modalId);
             // Após salvar tarefa, reprocessar entregas (afeta planner_monday, forecasting, relatorio)
             await fetch(`/api/operacao/monthly-deliveries/${currentProject.pipefy_id}/${currentMonth}/${currentYear}`);

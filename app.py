@@ -755,12 +755,6 @@ def api_reset_password():
 
 # ─── OUTRAS PÁGINAS ──────────────────────────────────────────────────────────
 
-@app.route("/hub-cs-cx", methods=["GET"])
-@check_session
-def hub_cs_cx():
-    return render_template("hub-cs-cx.html")
-
-
 @app.route("/painel-atribuicao", methods=["GET"])
 @check_session
 def painel_atribuicao():
@@ -1543,14 +1537,12 @@ def api_ranking():
                 # OBRIGATÓRIO: Ter pelo menos 1 projeto vinculado para aparecer no ranking
                 if not churn_info:
                     continue
-                
                 # Lógica de Dias Sem Churn:
                 days_without_churn = 0
                 if churn_info:
                     last_churn, first_project, active_projects = churn_info
                     base_date = last_churn if last_churn else first_project
                     if base_date:
-                        # base_date costuma ser date ou datetime
                         d_base = base_date if isinstance(base_date, date) else base_date.date() if hasattr(base_date, 'date') else None
                         if d_base:
                             delta = now.date() - d_base
@@ -1587,6 +1579,153 @@ def api_ranking():
         print(f"Erro no ranking API: {e}")
         return jsonify({"error": str(e)}), 500
 
+
+@app.route("/hub-cs-cx")
+@check_session
+@check_access(["Gerência", "Sócio", "Account", "Customer Success"])
+def hub_cs_cx():
+    view = request.args.get("view", "dashboard")
+    client_id = request.args.get("client")
+    
+    try:
+        from sqlalchemy import func
+        from datetime import date, datetime
+        from services.currency import CurrencyService
+
+        with Session() as db:
+            # 1. KPIs Gerais (Dashboard) - Sincronizado com a Home
+            usd_rate = float(CurrencyService.get_usd_to_brl_rate())
+            
+            projetos_todos = db.query(ProjetoAtivo).all()
+            mrr_total = 0
+            for p in projetos_todos:
+                fee_p = float(p.fee or 0)
+                if str(p.moeda).strip().upper() == "USD":
+                    mrr_total += fee_p * usd_rate
+                else:
+                    mrr_total += fee_p
+            
+            active_clients = db.query(ProjetoAtivo).count()
+            nps_avg = db.query(func.avg(OperacaoCheckin.csat_pontuacao)).filter(OperacaoCheckin.csat_pontuacao != None).scalar() or 0
+            
+            # 2. Dados para o Ranking
+            ranking = db.query(ProjetoAtivo).order_by(ProjetoAtivo.data_de_inicio.asc()).all()
+            today = date.today()
+            
+            def calculate_meses_to(start_date, end_date):
+                if not start_date: return 0
+                try:
+                    if isinstance(start_date, str):
+                        start_date = datetime.strptime(start_date[:10], "%Y-%m-%d").date()
+                    if isinstance(start_date, datetime):
+                        start_date = start_date.date()
+                    if not isinstance(start_date, date):
+                        return 0
+                    if start_date > end_date: return 0
+                    diff = end_date - start_date
+                    return max(1, diff.days // 30)
+                except:
+                    return 0
+
+            for p in ranking:
+                p.tempo_de_casa_meses_ranking = calculate_meses_to(p.data_de_inicio, today)
+                fee_p = float(p.fee or 0)
+                if str(p.moeda).strip().upper() == "USD":
+                    p.ltv_real = fee_p * usd_rate * p.tempo_de_casa_meses_ranking
+                else:
+                    p.ltv_real = fee_p * p.tempo_de_casa_meses_ranking
+            
+            if view == "detail" and client_id:
+                try: cid = int(client_id)
+                except: cid = 0
+
+                projetos_cliente = db.query(ProjetoAtivo).filter(ProjetoAtivo.pipefy_id == cid).all()
+                cliente = projetos_cliente[0] if projetos_cliente else None
+                
+                if not cliente:
+                    return redirect(url_for("hub_cs_cx"))
+                
+                # Senioridade Real (desde o primeiro projeto histórico com o mesmo nome)
+                data_primeiro = db.query(func.min(ProjetoAtivo.data_de_inicio)).filter(ProjetoAtivo.nome == cliente.nome).scalar()
+                # Verifica também nos inativos se houver
+                data_primeiro_inativo = db.query(func.min(ProjetoInativo.data_de_inicio)).filter(ProjetoInativo.nome == cliente.nome).scalar()
+                if data_primeiro_inativo and (not data_primeiro or data_primeiro_inativo < data_primeiro):
+                    data_primeiro = data_primeiro_inativo
+                
+                cliente.tempo_de_casa_meses = calculate_meses_to(data_primeiro or cliente.data_de_inicio, today)
+                
+                # Agrega métricas da conta com conversão
+                cliente.mrr_total = 0
+                for p in projetos_cliente:
+                    fee_p = float(p.fee or 0)
+                    if str(p.moeda).strip().upper() == "USD":
+                        cliente.mrr_total += fee_p * usd_rate
+                    else:
+                        cliente.mrr_total += fee_p
+
+                # Cálculo Real de LTV Histórico por Semestre (Ativos + Inativos)
+                projetos_inativos = db.query(ProjetoInativo).filter(ProjetoInativo.nome == cliente.nome).all()
+                todos_historico = projetos_cliente + projetos_inativos
+                
+                labels_ltv = ["2024-S1", "2024-S2", "2025-S1"]
+                marcos = [date(2024, 6, 30), date(2024, 12, 31), today]
+                dados_ltv = []
+                
+                for marco in marcos:
+                    ltv_no_marco = 0
+                    for p in todos_historico:
+                        p_fim = p.data_fim if p.data_fim else today
+                        data_limite = min(marco, today, p_fim)
+                        
+                        meses_marco = calculate_meses_to(p.data_de_inicio, data_limite)
+                        fee_p = float(p.fee or 0)
+                        if str(p.moeda).strip().upper() == "USD":
+                            ltv_no_marco += fee_p * usd_rate * meses_marco
+                        else:
+                            ltv_no_marco += fee_p * meses_marco
+                    dados_ltv.append(round(ltv_no_marco, 2))
+                
+                cliente.ltv_total = dados_ltv[-1]
+                cliente.projetos_ativos = projetos_cliente
+
+                equipe = db.query(
+                    Investidor.nome, 
+                    Investidor.funcao, 
+                    Investidor.profile_picture,
+                    InvestidorProjeto.cientista
+                ).join(Investidor, Investidor.email == InvestidorProjeto.email_investidor)\
+                 .filter(InvestidorProjeto.pipefy_id_projeto == cid, InvestidorProjeto.active == True).all()
+
+                # Health Score Dinâmico (Últimas 4 semanas de checkin)
+                checkins = db.query(OperacaoCheckin).filter(
+                    OperacaoCheckin.projeto_pipefy_id == cid
+                ).order_by(OperacaoCheckin.semana_ano.desc()).limit(4).all()
+                
+                labels_health = ["Sem 1", "Sem 2", "Sem 3", "Sem 4"]
+                dados_health = [80] * 4 # Default
+                
+                if checkins:
+                    checkins.reverse()
+                    for i, chk in enumerate(checkins):
+                        if i < 4:
+                            dados_health[i] = chk.csat_pontuacao or 80
+                
+                return render_template("cs_client_detail.html", 
+                                     cliente=cliente, equipe=equipe,
+                                     labels_ltv=labels_ltv, dados_ltv=dados_ltv,
+                                     labels_health=labels_health, dados_health=dados_health)
+            
+            return render_template("cs_dashboard.html", 
+                                 mrr_total=float(mrr_total),
+                                 active_clients=active_clients,
+                                 nps_avg=round(float(nps_avg), 1),
+                                 ranking=ranking)
+                                 
+    except Exception as e:
+        import traceback
+        print(f"Erro crítico no hub-cs-cx: {e}")
+        traceback.print_exc()
+        return render_template("cs_dashboard.html", mrr_total=0, active_clients=0, nps_avg=0, ranking=[])
 
 @app.route("/cockpit", methods=["GET"])
 @check_session
