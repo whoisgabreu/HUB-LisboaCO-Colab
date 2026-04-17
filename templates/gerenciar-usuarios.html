@@ -38,6 +38,18 @@
                     </div>
                 </section>
 
+                <!-- ABAS: ATIVOS / INATIVOS -->
+                <div class="user-tab-nav">
+                    <button id="tab-ativos" class="user-tab active" onclick="switchTab('ativos')">
+                        <i class="fas fa-user-check"></i> Ativos
+                        <span class="user-tab-count" id="count-ativos">0</span>
+                    </button>
+                    <button id="tab-inativos" class="user-tab" onclick="switchTab('inativos')">
+                        <i class="fas fa-user-slash"></i> Inativos
+                        <span class="user-tab-count" id="count-inativos">0</span>
+                    </button>
+                </div>
+
                 <!-- FILTROS -->
                 <div class="filters">
                     <div class="search-box">

@@ -1,6 +1,7 @@
 // GERENCIAMENTO DE USUÁRIOS JS
 
 let allUsers = [];
+let currentTab = 'ativos';
 
 document.addEventListener('DOMContentLoaded', () => {
     loadUsers();
@@ -10,28 +11,48 @@ async function loadUsers() {
     try {
         const response = await fetch('/api/admin/usuarios');
         allUsers = await response.json();
-        renderUsers(allUsers);
+        updateTabCounts();
+        filterUsers();
     } catch (e) {
         console.error("Erro ao carregar usuários:", e);
     }
+}
+
+function updateTabCounts() {
+    const ativos   = allUsers.filter(u => u.ativo).length;
+    const inativos = allUsers.filter(u => !u.ativo).length;
+    document.getElementById('count-ativos').textContent   = ativos;
+    document.getElementById('count-inativos').textContent = inativos;
+}
+
+function switchTab(tab) {
+    currentTab = tab;
+    document.querySelectorAll('.user-tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('tab-' + tab).classList.add('active');
+    filterUsers();
 }
 
 function renderUsers(users) {
     const tbody = document.getElementById('usersTableBody');
     tbody.innerHTML = '';
 
+    if (!users.length) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--text-muted);">Nenhum usuário encontrado.</td></tr>`;
+        return;
+    }
+
     users.forEach(u => {
         const tr = document.createElement('tr');
         tr.className = u.ativo ? '' : 'inactive-row';
-        tr.setAttribute('data-name', u.nome);
-        tr.setAttribute('data-email', u.email);
-        tr.setAttribute('data-squad', u.squad || '');
-        tr.setAttribute('data-posicao', u.posicao || '');
+
+        const avatarInner = u.profile_picture
+            ? `<img src="/static/images/profile_pictures/${u.profile_picture}" alt="${u.nome}">`
+            : `<span>${u.nome.charAt(0).toUpperCase()}</span>`;
 
         tr.innerHTML = `
             <td>
                 <div class="user-info-cell">
-                    <div class="user-avatar">${u.nome.charAt(0)}</div>
+                    <div class="user-avatar ${u.profile_picture ? 'has-photo' : ''}">${avatarInner}</div>
                     <div class="user-details">
                         <span class="user-name">${u.nome}</span>
                         <span class="user-email">${u.email}</span>
@@ -44,8 +65,8 @@ function renderUsers(users) {
             </td>
             <td>${u.posicao || 'N/A'}</td>
             <td>
-                <span class="access-badge ${u.nivel_acesso.toLowerCase() === 'admin' ? 'admin' : ''}">
-                    ${u.nivel_acesso}
+                <span class="access-badge ${(u.nivel_acesso || '').toLowerCase() === 'admin' ? 'admin' : ''}">
+                    ${u.nivel_acesso || 'N/A'}
                 </span>
             </td>
             <td>
@@ -70,18 +91,18 @@ function renderUsers(users) {
 }
 
 function filterUsers() {
-    const searchTerm = document.getElementById('userSearchInput').value.toLowerCase();
-    const squadFilter = document.getElementById('squadFilter').value.toLowerCase();
+    const searchTerm    = document.getElementById('userSearchInput').value.toLowerCase();
+    const squadFilter   = document.getElementById('squadFilter').value.toLowerCase();
     const posicaoFilter = document.getElementById('posicaoFilter').value.toLowerCase();
-    
+
     const filtered = allUsers.filter(u => {
-        const matchesSearch = u.nome.toLowerCase().includes(searchTerm) || u.email.toLowerCase().includes(searchTerm);
-        const matchesSquad = !squadFilter || (u.squad && u.squad.toLowerCase() === squadFilter);
+        const matchesTab     = currentTab === 'ativos' ? u.ativo : !u.ativo;
+        const matchesSearch  = u.nome.toLowerCase().includes(searchTerm) || u.email.toLowerCase().includes(searchTerm);
+        const matchesSquad   = !squadFilter   || (u.squad   && u.squad.toLowerCase()   === squadFilter);
         const matchesPosicao = !posicaoFilter || (u.posicao && u.posicao.toLowerCase() === posicaoFilter);
-        
-        return matchesSearch && matchesSquad && matchesPosicao;
+        return matchesTab && matchesSearch && matchesSquad && matchesPosicao;
     });
-    
+
     renderUsers(filtered);
 }
 

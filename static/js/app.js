@@ -233,7 +233,9 @@ function showToast(message, type = 'success') {
 
     container.appendChild(toast);
 
-    // Remove após 3 segundos
+    // Erros ficam mais tempo para garantir leitura
+    const duracao = type === 'error' ? 5000 : 4000;
+
     setTimeout(() => {
         toast.classList.add('hiding');
         setTimeout(() => {
@@ -241,8 +243,8 @@ function showToast(message, type = 'success') {
             if (container.childNodes.length === 0) {
                 container.remove();
             }
-        }, 300);
-    }, 3000);
+        }, 350);
+    }, duracao);
 }
 
 window.Utils = Utils;

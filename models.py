@@ -205,6 +205,7 @@ class MetricaMensal(Base):
     calc_variavel_total = Column(DECIMAL(15, 2), server_default=FetchedValue())
     calc_remuneracao_total = Column(DECIMAL(15, 2), server_default=FetchedValue())
     historico_projetos = Column(JSONB)
+    entregas_criativos = Column(JSONB)  # Array de entregas criativas por projeto
 
 
     def to_dict(self):
@@ -343,6 +344,23 @@ class MonthlyDelivery(Base):
     fee_snapshot = Column(DECIMAL(15, 2))               # fee no momento do cálculo
     mrr_contribution = Column(DECIMAL(15, 2))           # fee_snapshot * 0.25
     created_at = Column(DateTime)
+
+
+class EntregaCriativa(Base):
+    """
+    Tabela: plataforma_geral.investidores_entregas_mensais_novos
+    Armazena as entregas criativas (criativos, vídeos, LPs, copys) por designer, mês e ano.
+    O campo entregas_criativos é um array JSONB com uma entrada por projeto:
+    [{"cliente": str, "projeto_id": str, "criativos": {...}, "videos": {...}, "lp": {...}}]
+    """
+    __tablename__ = "investidores_entregas_mensais_novos"
+    __table_args__ = {"schema": "plataforma_geral"}
+
+    email_investidor = Column(Text, primary_key=True)
+    mes = Column(Integer, primary_key=True)
+    ano = Column(Integer, primary_key=True)
+    entregas_criativos = Column(JSONB, default=list)
+    updated_at = Column(DateTime)
 
 
 class OperacaoLinkUtil(Base):

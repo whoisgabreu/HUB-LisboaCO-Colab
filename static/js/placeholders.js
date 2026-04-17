@@ -1,20 +1,5 @@
 /**
  * placeholders.js - Logic for development pages
+ * Os dados do header já são renderizados pelo servidor (Jinja2 / session).
+ * Este arquivo não sobrescreve mais o header — mantido apenas por compatibilidade.
  */
-
-document.addEventListener('DOMContentLoaded', () => {
-    // Fill common user info even on placeholder pages
-    const sessionUser = {
-        name: "Gabriel Henrique",
-        role: "Assistente Tech - Gerência - Admin"
-    };
-
-    const headerName = document.getElementById('headerUserName');
-    if (headerName) headerName.innerText = sessionUser.name;
-
-    const headerRole = document.getElementById('headerUserRole');
-    if (headerRole) headerRole.innerText = sessionUser.role;
-
-    const sidebarName = document.getElementById('sidebarUserName');
-    if (sidebarName) sidebarName.innerText = sessionUser.name;
-});
