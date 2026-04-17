@@ -1371,3 +1371,52 @@ option {
     background-color: rgba(255, 68, 68, 0.1);
     border-color: #ff4444;
 }
+
+/* Tag de data de início no vínculo */
+.tag-data-inicio {
+    background-color: rgba(255, 255, 255, 0.05);
+    color: #9ca3af;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 0.1rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.72rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    user-select: none;
+}
+
+.tag-data-inicio i {
+    color: #9ca3af;
+}
+
+/* Versão clicável (modo edição) */
+.tag-data-inicio.tag-data-editavel {
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.tag-data-inicio.tag-data-editavel:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+    color: var(--text-color, #e5e7eb);
+}
+
+/* Input de data no vincular — discreto, sem label */
+.vincular-data-input {
+    padding: 0.45rem 0.5rem;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 6px;
+    color: var(--text-muted, #9ca3af);
+    font-family: inherit;
+    font-size: 0.8rem;
+    cursor: pointer;
+    width: 130px;
+}
+
+.vincular-data-input:focus {
+    outline: none;
+    border-color: rgba(255,255,255,0.25);
+    color: var(--text-color, #e5e7eb);
+}

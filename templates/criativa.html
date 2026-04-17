@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="static/style/criativa.css">
     <link rel="stylesheet" href="static/style/tema-claro.css">
     <script src="static/js/app.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="static/js/criativa.js" defer></script>
     {% include "components/icon_title.html" %}
 </head>
@@ -34,296 +35,269 @@
                         </h2>
                         <p>Controle de produção e entregas criativas por projeto</p>
                     </div>
+                    <form id="form-periodo" class="criativa-periodo-form" method="get" action="/criativa">
+                        <select id="sel-mes" name="mes" class="criativa-periodo-select" onchange="handlePeriodoChange()">
+                            {% for m in range(1, 13) %}
+                            <option value="{{ m }}" {% if m == mes %}selected{% endif %}>
+                                {{ ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"][m-1] }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <select id="sel-ano" name="ano" class="criativa-periodo-select" onchange="handlePeriodoChange()">
+                            {% for y in range(2024, 2028) %}
+                            <option value="{{ y }}" {% if y == ano %}selected{% endif %}>{{ y }}</option>
+                            {% endfor %}
+                        </select>
+                    </form>
                 </header>
 
-                <!-- TOOLBAR: Filtro + Botões de Navegação -->
-                <div class="criativa-toolbar">
-                    <div class="criativa-toolbar-left">
-                        <div class="search-box" style="max-width: 400px;">
-                            <i class="fa-solid fa-magnifying-glass"></i>
-                            <input type="text" name="busca" value="" autocomplete="off" autocorrect="off"
-                                autocapitalize="off" spellcheck="false" id="criativaSearchInput"
-                                placeholder="Filtrar por cliente..." onkeyup="filterCriativoTable()">
+
+                <!-- ═══ VIEW 3: EQUIPE CRIATIVA ═══ -->
+                <div id="criativa-view-equipe" class="criativa-view active">
+
+                    {% if squads %}
+                        {% for squad_nome, membros in squads.items() %}
+                        <div class="criativa-squad-section">
+                            <div class="criativa-squad-label">
+                                <i class="fas fa-shield-alt"></i> {{ squad_nome }}
+                            </div>
+                            <div class="projects-grid">
+                                {% for d in membros %}
+                                <div class="project-card"
+                                    data-designer-name="{{ d.nome }}"
+                                    data-designer-role="{{ d.funcao }}{% if d.senioridade %} {{ d.senioridade }}{% endif %}"
+                                    data-designer-photo="{{ d.profile_picture }}"
+                                    data-designer-squad="{{ d.squad }}"
+                                    data-designer-email="{{ d.email }}"
+                                    data-designer-clientes="{{ d.clientes | length }}"
+                                    data-designer-clientes-json='{{ d.clientes_json | tojson }}'
+                                    onclick="openDesignerDetalhe(this)">
+                                    <div class="project-header">
+                                        <div class="project-icon">
+                                            {% if d.profile_picture %}
+                                            <img src="/static/images/profile_pictures/{{ d.profile_picture }}"
+                                                alt="{{ d.nome }}"
+                                                style="width:100%;height:100%;object-fit:cover;border-radius:inherit;">
+                                            {% else %}
+                                            <i class="fa-solid fa-user-tie"></i>
+                                            {% endif %}
+                                        </div>
+                                        <span class="project-status status-ativo">{{ d.funcao }}</span>
+                                    </div>
+                                    <h3 class="project-title">{{ d.nome }}</h3>
+                                    <p class="project-description">{{ d.senioridade or d.funcao }}</p>
+                                    <div class="project-meta">
+                                        <span><i class="fas fa-shield-alt"></i> {{ d.squad }}</span>
+                                        <span><i class="fas fa-users"></i> {{ d.clientes | length }} clientes</span>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
                         </div>
-                    </div>
-                    <div class="criativa-toolbar-right">
-                        <button class="criativa-nav-btn" id="btn-add-entrega" onclick="openNovaEntregaModal()">
-                            <i class="fas fa-plus-circle"></i> Adicionar Entrega
-                        </button>
-                        <button class="criativa-nav-btn active" id="btn-view-clientes"
-                            onclick="switchCriativaView('clientes')">
-                            <i class="fas fa-users"></i> Clientes
-                        </button>
-                        <button class="criativa-nav-btn" id="btn-view-entregas"
-                            onclick="switchCriativaView('entregas')">
-                            <i class="fas fa-list-check"></i> Tela Entregas
-                        </button>
-                    </div>
+                        {% endfor %}
+                    {% else %}
+                        <p style="color: var(--text-muted); padding: 1rem;">Nenhum designer encontrado.</p>
+                    {% endif %}
+
                 </div>
 
-                <!-- ═══ VIEW 1: CLIENTES (Visão geral da tabela) ═══ -->
-                <div id="criativa-view-clientes" class="criativa-view active">
+                <!-- ═══ VIEW 4: DETALHE DO DESIGNER — Gráficos ═══ -->
+                <div id="criativa-view-designer-detalhe" class="criativa-view">
 
-                    <!-- KPIs Resumo -->
-                    <div class="criativa-kpis">
-                        <div class="criativa-kpi-card">
-                            <div class="criativa-kpi-icon"><i class="fas fa-users"></i></div>
-                            <div class="criativa-kpi-info">
-                                <span class="criativa-kpi-label">Total Clientes</span>
-                                <span class="criativa-kpi-value" id="kpi-total-clientes">5</span>
+                    <!-- Cabeçalho com info do designer e botão voltar -->
+                    <div class="designer-detalhe-header">
+                        <div class="designer-detalhe-info">
+                            <div class="designer-detalhe-avatar" id="detalhe-avatar">
+                                <i class="fa-solid fa-user-tie"></i>
+                            </div>
+                            <div>
+                                <h3 id="detalhe-nome">Designer</h3>
+                                <p id="detalhe-cargo">Cargo</p>
                             </div>
                         </div>
-                        <div class="criativa-kpi-card">
-                            <div class="criativa-kpi-icon"><i class="fas fa-image"></i></div>
-                            <div class="criativa-kpi-info">
-                                <span class="criativa-kpi-label">Criativos Entregues</span>
-                                <span class="criativa-kpi-value" id="kpi-total-criativos">50</span>
+                        <button class="criativa-nav-btn" onclick="voltarParaEquipe()">
+                            <i class="fas fa-arrow-left"></i> Voltar para Equipe
+                        </button>
+                    </div>
+
+                    <!-- KPIs do Designer -->
+                    <div class="designer-detalhe-kpis">
+                        <div class="designer-kpi">
+                            <div class="designer-kpi-icon"><i class="fas fa-image"></i></div>
+                            <div class="designer-kpi-data">
+                                <span class="designer-kpi-label">Criativos</span>
+                                <span class="designer-kpi-value" id="detalhe-kpi-criativos">0/0</span>
                             </div>
                         </div>
-                        <div class="criativa-kpi-card">
-                            <div class="criativa-kpi-icon"><i class="fas fa-video"></i></div>
-                            <div class="criativa-kpi-info">
-                                <span class="criativa-kpi-label">Vídeos Entregues</span>
-                                <span class="criativa-kpi-value" id="kpi-total-videos">25</span>
+                        <div class="designer-kpi">
+                            <div class="designer-kpi-icon"><i class="fas fa-video"></i></div>
+                            <div class="designer-kpi-data">
+                                <span class="designer-kpi-label">Vídeos</span>
+                                <span class="designer-kpi-value" id="detalhe-kpi-videos">0/0</span>
+                            </div>
+                        </div>
+                        <div class="designer-kpi">
+                            <div class="designer-kpi-icon"><i class="fas fa-laptop-code"></i></div>
+                            <div class="designer-kpi-data">
+                                <span class="designer-kpi-label">Landing Pages</span>
+                                <span class="designer-kpi-value" id="detalhe-kpi-lps">0/0</span>
+                            </div>
+                        </div>
+                        <div class="designer-kpi conclusao">
+                            <div class="designer-kpi-icon conclusao-icon"><i class="fas fa-chart-pie"></i></div>
+                            <div class="designer-kpi-data">
+                                <span class="designer-kpi-label">Conclusão Geral</span>
+                                <span class="designer-kpi-value" id="detalhe-kpi-conclusao">0%</span>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Tabela Principal -->
-                    <div class="criativa-table-card">
+                    <!-- Gráficos principais: barras + doughnut -->
+                    <div class="designer-detalhe-charts">
+                        <div class="designer-chart-card">
+                            <h4><i class="fas fa-chart-bar"></i> Contratado vs Entregue</h4>
+                            <div class="chart-wrapper">
+                                <canvas id="chart-contratado-entregue"></canvas>
+                            </div>
+                        </div>
+                        <div class="designer-chart-card">
+                            <h4><i class="fas fa-chart-pie"></i> Taxa de Conclusão</h4>
+                            <div class="chart-wrapper doughnut-wrapper">
+                                <canvas id="chart-conclusao"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tabela de clientes -->
+                    <div class="criativa-table-card" style="margin-top: 1.5rem;">
                         <div class="criativa-table-header">
-                            <h3><i class="fas fa-table"></i> Painel de Produção Criativa</h3>
+                            <h3><i class="fas fa-users"></i> Clientes</h3>
                         </div>
                         <div class="criativa-table-scroll">
-                            <table class="criativa-table" id="criativa-table">
+                            <table class="criativa-table" id="detalhe-clientes-table">
                                 <thead>
                                     <tr>
-                                        <th>Cliente</th>
-                                        <th>Fee</th>
-                                        <th class="text-contratado">Criativos Contrat.</th>
-                                        <th class="text-entregue">Criativos Entreg.</th>
-                                        <th class="text-contratado">LPs Contrat.</th>
-                                        <th class="text-entregue">LPs Entreg.</th>
-                                        <th class="text-contratado">Vídeos Contrat.</th>
-                                        <th class="text-entregue">Vídeos Entreg.</th>
-                                        <th class="text-contratado">Copys</th>
-                                        <th>Total</th>
+                                        <th style="text-align:left;">Cliente</th>
+                                        <th class="text-contratado">Criativos C.</th>
+                                        <th class="text-entregue">Criativos E.</th>
+                                        <th class="text-contratado">LPs C.</th>
+                                        <th class="text-entregue">LPs E.</th>
+                                        <th class="text-contratado">Vídeos C.</th>
+                                        <th class="text-entregue">Vídeos E.</th>
+                                        <th>Links</th>
+                                        <th id="th-contratados" style="display:none;"></th>
                                     </tr>
                                 </thead>
-                                <tbody id="criativa-table-body">
-                                    <tr>
-                                        <td class="cell-cliente"><strong>Cliente Alpha</strong></td>
-                                        <td>R$ 3.500</td>
-                                        <td class="text-contratado">10</td>
-                                        <td class="text-entregue">8</td>
-                                        <td class="text-contratado">3</td>
-                                        <td class="text-entregue">2</td>
-                                        <td class="text-contratado">5</td>
-                                        <td class="text-entregue">4</td>
-                                        <td class="text-contratado">12</td>
-                                        <td class="cell-total"><strong>26</strong></td>
-                                    </tr>
-                                    <tr>
-                                        <td class="cell-cliente"><strong>Cliente Beta</strong></td>
-                                        <td>R$ 5.000</td>
-                                        <td class="text-contratado">15</td>
-                                        <td class="text-entregue">12</td>
-                                        <td class="text-contratado">4</td>
-                                        <td class="text-entregue">3</td>
-                                        <td class="text-contratado">8</td>
-                                        <td class="text-entregue">6</td>
-                                        <td class="text-contratado">18</td>
-                                        <td class="cell-total"><strong>39</strong></td>
-                                    </tr>
-                                    <tr>
-                                        <td class="cell-cliente"><strong>Cliente Gamma</strong></td>
-                                        <td>R$ 2.800</td>
-                                        <td class="text-contratado">8</td>
-                                        <td class="text-entregue">5</td>
-                                        <td class="text-contratado">2</td>
-                                        <td class="text-entregue">1</td>
-                                        <td class="text-contratado">3</td>
-                                        <td class="text-entregue">2</td>
-                                        <td class="text-contratado">8</td>
-                                        <td class="cell-total"><strong>16</strong></td>
-                                    </tr>
-                                    <tr>
-                                        <td class="cell-cliente"><strong>Cliente Delta</strong></td>
-                                        <td>R$ 7.200</td>
-                                        <td class="text-contratado">20</td>
-                                        <td class="text-entregue">15</td>
-                                        <td class="text-contratado">5</td>
-                                        <td class="text-entregue">4</td>
-                                        <td class="text-contratado">10</td>
-                                        <td class="text-entregue">8</td>
-                                        <td class="text-contratado">24</td>
-                                        <td class="cell-total"><strong>51</strong></td>
-                                    </tr>
-                                    <tr>
-                                        <td class="cell-cliente"><strong>Cliente Epsilon</strong></td>
-                                        <td>R$ 4.100</td>
-                                        <td class="text-contratado">12</td>
-                                        <td class="text-entregue">10</td>
-                                        <td class="text-contratado">3</td>
-                                        <td class="text-entregue">2</td>
-                                        <td class="text-contratado">6</td>
-                                        <td class="text-entregue">5</td>
-                                        <td class="text-contratado">15</td>
-                                        <td class="cell-total"><strong>32</strong></td>
-                                    </tr>
-                                    <tr class="criativa-total-row">
-                                        <td><strong>TOTAL</strong></td>
-                                        <td><strong>R$ 22.600</strong></td>
-                                        <td class="text-contratado"><strong>65</strong></td>
-                                        <td class="text-entregue"><strong>50</strong></td>
-                                        <td class="text-contratado"><strong>17</strong></td>
-                                        <td class="text-entregue"><strong>12</strong></td>
-                                        <td class="text-contratado"><strong>32</strong></td>
-                                        <td class="text-entregue"><strong>25</strong></td>
-                                        <td class="text-contratado"><strong>77</strong></td>
-                                        <td class="cell-total"><strong>164</strong></td>
-                                    </tr>
-                                </tbody>
+                                <tbody id="detalhe-clientes-tbody"></tbody>
                             </table>
                         </div>
                     </div>
-                </div>
 
-                <!-- ═══ VIEW 2: TELA DE ENTREGAS CRIATIVAS ═══ -->
-                <div id="criativa-view-entregas" class="criativa-view">
-
-                    <header
-                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-                        <div class="op-section-title" style="margin-bottom: 0;">
-                            <div class="op-icon-box"><i class="fas fa-check-double"></i></div>
-                            <h3>Entregas do Mês <span id="criativa-display-entregas-date"
-                                    style="color: #D61616; font-weight: 600; font-size: 0.9rem; margin-left: 10px;"></span>
-                            </h3>
-                        </div>
-                        <button class="history-dropdown-btn" onclick="openHistoricoModal()">
-                            <i class="fas fa-history"></i> Histórico de Entregas <i class="fas fa-chevron-down"
-                                style="font-size: 0.7rem;"></i>
-                        </button>
-                    </header>
-
-                    <div class="entregas-grid">
-                        <!-- Checkbox 1: 25% -->
-                        <div class="entrega-card manual-toggle" id="criativa-entrega-1"
-                            onclick="toggleCriativaEntrega(1)">
-                            <div class="entrega-check"><i class="fas fa-check"></i></div>
-                            <div class="entrega-info">
-                                <h4>Entrega 01 (25%)</h4>
-                                <p>Clique para marcar conclusão</p>
-                            </div>
-                        </div>
-
-                        <!-- Checkbox 2: 25% -->
-                        <div class="entrega-card manual-toggle" id="criativa-entrega-2"
-                            onclick="toggleCriativaEntrega(2)">
-                            <div class="entrega-check"><i class="fas fa-check"></i></div>
-                            <div class="entrega-info">
-                                <h4>Entrega 02 (25%)</h4>
-                                <p>Clique para marcar conclusão</p>
-                            </div>
-                        </div>
-
-                        <!-- Checkbox 3: 25% -->
-                        <div class="entrega-card manual-toggle" id="criativa-entrega-3"
-                            onclick="toggleCriativaEntrega(3)">
-                            <div class="entrega-check"><i class="fas fa-check"></i></div>
-                            <div class="entrega-info">
-                                <h4>Entrega 03 (25%)</h4>
-                                <p>Clique para marcar conclusão</p>
-                            </div>
-                        </div>
-
-                        <!-- Checkbox 4: 25% -->
-                        <div class="entrega-card manual-toggle" id="criativa-entrega-4"
-                            onclick="toggleCriativaEntrega(4)">
-                            <div class="entrega-check"><i class="fas fa-check"></i></div>
-                            <div class="entrega-info">
-                                <h4>Entrega 04 (25%)</h4>
-                                <p>Clique para marcar conclusão</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Impacto no MRR -->
-                    <div class="kpi-card-premium"
-                        style="margin-top: 2rem; border-top: 2px solid var(--border-color); background: rgba(0,255,0,0.05);">
-                        <div style="font-size: 0.8rem; color: #888; text-transform: uppercase;">IMPACTO NO MRR
-                            ESTIMADO</div>
-                        <div id="criativa-mrr-impact"
-                            style="font-size: 1.8rem; font-weight: 700; margin: 0.5rem 0; color: #28a745;">R$ 0,00
-                        </div>
-                        <p style="font-size: 0.75rem; color: var(--text-muted);">Baseado no percentual entregue
-                            versus o fee do projeto.</p>
-                    </div>
                 </div>
 
             </div>
         </main>
     </div>
 
-    <!-- MODAL: Adicionar Entrega -->
-    <div id="modal-nova-entrega" class="modal">
-        <div class="modal-content" style="max-width: 500px;">
+    <!-- MODAL: Configurar Contratados (Coordenador) -->
+    <div id="modal-contratados" class="modal">
+        <div class="modal-content" style="max-width: 520px;">
             <div class="modal-header">
-                <h3><i class="fas fa-plus-circle"></i> Nova Entrega Criativa</h3>
-                <button class="close-modal" onclick="closeNovaEntregaModal()">&times;</button>
+                <h3><i class="fas fa-clipboard-list"></i> Configurar Contratados</h3>
+                <button class="close-modal" onclick="closeContratadosModal()">&times;</button>
             </div>
             <div class="modal-body">
-                <form id="form-nova-entrega" onsubmit="saveNovaEntrega(event)">
-                    <div class="form-group">
-                        <label for="entrega-projeto">Projeto/Cliente</label>
-                        <select id="entrega-projeto" required>
-                            <option value="">Selecione um cliente...</option>
-                            <option value="Alpha">Cliente Alpha</option>
-                            <option value="Beta">Cliente Beta</option>
-                            <option value="Gamma">Cliente Gamma</option>
-                            <option value="Delta">Cliente Delta</option>
-                            <option value="Epsilon">Cliente Epsilon</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="entrega-tipo">Tipo de Entrega</label>
-                        <select id="entrega-tipo" required>
-                            <option value="">Selecione o tipo...</option>
-                            <option value="criativo">Criativo Estático</option>
-                            <option value="lp">Landing Page</option>
-                            <option value="video">Vídeo</option>
-                            <option value="copy">Copy</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="entrega-quantidade">Quantidade</label>
-                        <input type="number" id="entrega-quantidade" min="1" value="1" required>
+                <p id="modal-contratados-cliente" style="font-weight:600; color:var(--text-main); margin-bottom:1.2rem;"></p>
+                <form id="form-contratados" onsubmit="saveContratados(event)">
+                    <input type="hidden" id="mc-projeto-id">
+                    <input type="hidden" id="mc-cliente-nome">
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+                        <div class="form-group">
+                            <label>Criativos contratados</label>
+                            <input type="number" id="mc-criativos" min="0" value="0" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Vídeos contratados</label>
+                            <input type="number" id="mc-videos" min="0" value="0" required>
+                        </div>
+                        <div class="form-group">
+                            <label>LPs contratadas</label>
+                            <input type="number" id="mc-lp" min="0" value="0" required>
+                        </div>
                     </div>
                     <div class="modal-footer" style="padding: 1.5rem 0 0 0;">
-                        <button type="button" class="btn-cancel" onclick="closeNovaEntregaModal()">Cancelar</button>
-                        <button type="submit" class="btn-save">Salvar Entrega</button>
+                        <button type="button" class="btn-cancel" onclick="closeContratadosModal()">Cancelar</button>
+                        <button type="submit" class="btn-save" id="btn-save-contratados">Salvar</button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
 
-    <!-- MODAL: Histórico de Entregas -->
-    <div id="modal-historico-criativa" class="modal">
-        <div class="modal-content" style="max-width: 650px;">
+    <!-- MODAL: Link de Criativos -->
+    <div id="modal-link-criativo" class="modal">
+        <div class="modal-content" style="max-width: 480px;">
             <div class="modal-header">
-                <h3><i class="fas fa-history"></i> Histórico de Entregas</h3>
-                <button class="close-modal" onclick="closeHistoricoModal()">&times;</button>
+                <h3><i class="fas fa-link"></i> Link dos Criativos</h3>
+                <button class="close-modal" onclick="closeLinkModal()">&times;</button>
             </div>
             <div class="modal-body">
-                <!-- Conteúdo gerado dinamicamente via JS -->
-                <div style="text-align: center; padding: 2rem; color: #888;">
-                    <i class="fas fa-spinner fa-spin" style="font-size: 2rem; margin-bottom: 1rem;"></i>
-                    <p>Carregando histórico...</p>
+                <p id="modal-link-cliente" style="font-weight:600; color:var(--text-main); margin-bottom:1.2rem;"></p>
+                <form id="form-link-criativo" onsubmit="saveLinkCriativo(event)">
+                    <input type="hidden" id="lc-projeto-id">
+                    <input type="hidden" id="lc-cliente-nome">
+                    <div class="form-group">
+                        <label for="lc-link">Link dos criativos</label>
+                        <input type="url" id="lc-link" placeholder="https://drive.google.com/...">
+                    </div>
+                    <div class="modal-footer" style="padding: 1.5rem 0 0 0;">
+                        <button type="button" class="btn-cancel" onclick="closeLinkModal()">Cancelar</button>
+                        <button type="submit" class="btn-save" id="btn-save-link">Salvar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Designer — Entregas por Cliente -->
+    <div id="modal-designer" class="modal">
+        <div class="modal-content" style="max-width: 720px;">
+            <div class="modal-header">
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <div class="criativa-modal-avatar" id="designer-modal-avatar">
+                        <i class="fa-solid fa-user-tie"></i>
+                    </div>
+                    <div>
+                        <h3 id="designer-modal-name" style="margin: 0; font-size: 1.2rem; color: var(--text-main);"></h3>
+                        <p id="designer-modal-role" style="margin: 0; font-size: 0.82rem; color: var(--text-muted);"></p>
+                    </div>
+                </div>
+                <button class="close-modal" onclick="closeDesignerModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 1rem; font-weight: 600;">
+                    Entregas por Cliente
+                </div>
+                <div class="criativa-table-scroll">
+                    <table class="criativa-table" id="designer-modal-table">
+                        <thead>
+                            <tr>
+                                <th style="text-align:left; padding-left: 1rem;">Cliente</th>
+                                <th class="text-contratado">Criativos C.</th>
+                                <th class="text-entregue">Criativos E.</th>
+                                <th class="text-contratado">Vídeos C.</th>
+                                <th class="text-entregue">Vídeos E.</th>
+                                <th class="text-contratado">LPs C.</th>
+                                <th class="text-entregue">LPs E.</th>
+                            </tr>
+                        </thead>
+                        <tbody id="designer-modal-tbody">
+                        </tbody>
+                    </table>
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn-cancel" onclick="closeHistoricoModal()">Fechar</button>
+                <button type="button" class="btn-cancel" onclick="closeDesignerModal()">Fechar</button>
             </div>
         </div>
     </div>
@@ -332,7 +306,11 @@
         window.APP_CONFIG = {
             userEmail: "{{ session.email }}",
             userAccessLevel: "{{ session.nivel_acesso }}",
-            userToken: "{{session.token}}"
+            userPosicao: "{{ session.get('posicao', '') }}",
+            userFuncao: "{{ session.get('funcao', '') }}",
+            userToken: "{{session.token}}",
+            mes: {{ mes }},
+            ano: {{ ano }}
         };
     </script>
     {% include "components/modal-configuracoes.html" %}

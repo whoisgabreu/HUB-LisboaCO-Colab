@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep:*)",
+      "Bash(python -c ':*)",
+      "Bash(python -m venv .venv)",
+      "Bash(.venv/Scripts/python -c ' *)"
+    ]
+  }
+}

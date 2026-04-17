@@ -1,5 +1,58 @@
 /* ESTILOS PARA GERENCIAMENTO DE USUÁRIOS */
 
+/* ═══ Abas Ativos / Inativos ═══ */
+#admin-user-page .user-tab-nav {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 0;
+}
+
+#admin-user-page .user-tab {
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    padding: 10px 20px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.88rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s;
+    margin-bottom: -1px;
+}
+
+#admin-user-page .user-tab:hover {
+    color: var(--text-color);
+}
+
+#admin-user-page .user-tab.active {
+    color: var(--primary-color, #D61616);
+    border-bottom-color: var(--primary-color, #D61616);
+    font-weight: 600;
+}
+
+#admin-user-page .user-tab-count {
+    background: var(--bg-secondary, rgba(255,255,255,0.08));
+    border-radius: 20px;
+    padding: 1px 8px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    min-width: 22px;
+    text-align: center;
+}
+
+#admin-user-page .user-tab.active .user-tab-count {
+    background: rgba(214, 22, 22, 0.15);
+    color: var(--primary-color, #D61616);
+}
+
+
+
 #admin-user-page .welcome-header {
     display: flex;
     justify-content: space-between;
@@ -58,6 +111,20 @@
     justify-content: center;
     font-weight: 600;
     color: var(--primary-color);
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+#admin-user-page .user-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: inherit;
+}
+
+#admin-user-page .inactive-row .user-avatar {
+    opacity: 0.5;
+    filter: grayscale(60%);
 }
 
 #admin-user-page .user-details .user-name {

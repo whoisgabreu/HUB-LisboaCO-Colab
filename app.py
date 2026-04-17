@@ -5,6 +5,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from collections import defaultdict
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm.attributes import flag_modified
 from datetime import datetime as dt
 import os
 import json
@@ -15,7 +16,7 @@ from models import (
     MetricaMensal, InvestidorProjeto,
     OperacaoTarefa, OperacaoEntregaMensal, OperacaoPlanoMidia,
     OperacaoOtimizacao, OperacaoCheckin,
-    MonthlyDelivery, OperacaoLinkUtil
+    MonthlyDelivery, OperacaoLinkUtil, EntregaCriativa
 )
 from services.remuneracao import calcular_metricas_mensais
 from services.delivery_engine import process_deliveries, process_all_deliveries_for_project
@@ -24,8 +25,7 @@ from services.operacao_service import OperacaoService
 from services.projeto_participacao_service import ProjetoParticipacaoService
 
 
-# Cria as tabelas caso não existam no banco
-Base.metadata.create_all(engine)
+
 
 app = Flask(__name__)
 app.secret_key = os.urandom(10).hex()
@@ -85,6 +85,100 @@ def check_access(roles):
 
 
 # ─── HELPERS ────────────────────────────────────────────────────────────────
+
+# ── Helpers: Gestão de Entregas Criativas ────────────────────────────────────
+
+def get_entregas_by_projeto(entregas_list, projeto_id):
+    """Retorna o objeto de entrega para um projeto_id dentro do array JSONB."""
+    for e in (entregas_list or []):
+        if str(e.get("projeto_id")) == str(projeto_id):
+            return e
+    return None
+
+
+def _build_entrega_entry(projeto_id, cliente_nome):
+    """Cria um objeto de entrega zerado para um projeto."""
+    return {
+        "cliente": cliente_nome,
+        "projeto_id": str(projeto_id),
+        "link_criativos": "",
+        "criativos": {"contratados": 0, "entregues": 0},
+        "videos": {"contratados": 0, "entregues": 0},
+        "lp": {"contratados": 0, "entregues": 0},
+    }
+
+
+def _update_entrega_field(entregas_list, projeto_id, cliente_nome, categoria, campo, valor):
+    """Atualiza contratados ou entregues de uma categoria no array JSONB sem sobrescrever o todo."""
+    entregas_list = list(entregas_list or [])
+    idx = next(
+        (i for i, e in enumerate(entregas_list) if str(e.get("projeto_id")) == str(projeto_id)),
+        None
+    )
+    if idx is None:
+        entry = _build_entrega_entry(projeto_id, cliente_nome)
+        entregas_list.append(entry)
+        idx = len(entregas_list) - 1
+
+    # Deep-copy da entrada para acionar detecção de mutação do SQLAlchemy
+    entry = {k: (dict(v) if isinstance(v, dict) else v) for k, v in entregas_list[idx].items()}
+    cat = entry.get(categoria, {"contratados": 0, "entregues": 0})
+    cat = dict(cat)
+    cat[campo] = max(0, int(valor))
+    entry[categoria] = cat
+    entregas_list[idx] = entry
+    return entregas_list
+
+
+def update_contratados(entregas_list, projeto_id, cliente_nome, categoria, valor):
+    """Atualiza a quantidade contratada para uma categoria (uso do Coordenador)."""
+    return _update_entrega_field(entregas_list, projeto_id, cliente_nome, categoria, "contratados", valor)
+
+
+def update_entregues(entregas_list, projeto_id, cliente_nome, categoria, valor):
+    """Atualiza a quantidade entregue para uma categoria (uso do Time Operacional)."""
+    return _update_entrega_field(entregas_list, projeto_id, cliente_nome, categoria, "entregues", valor)
+
+
+def update_link_criativo(entregas_list, projeto_id, cliente_nome, link):
+    """Atualiza o link de criativos para um projeto no array JSONB."""
+    entregas_list = list(entregas_list or [])
+    idx = next(
+        (i for i, e in enumerate(entregas_list) if str(e.get("projeto_id")) == str(projeto_id)),
+        None
+    )
+    if idx is None:
+        entry = _build_entrega_entry(projeto_id, cliente_nome)
+        entry["link_criativos"] = link
+        entregas_list.append(entry)
+    else:
+        entry = {k: (dict(v) if isinstance(v, dict) else v) for k, v in entregas_list[idx].items()}
+        entry["link_criativos"] = link
+        entregas_list[idx] = entry
+    return entregas_list
+
+
+def _get_or_create_entrega_record(db, email, mes, ano):
+    """
+    Busca ou cria o registro em investidores_metricas_mensais_novo para email/mês/ano.
+    Se não existir ainda (mês sem cálculo de métricas), cria registro mínimo —
+    as colunas financeiras serão preenchidas pelo scheduler quando necessário.
+    """
+    record = db.query(MetricaMensal).filter_by(
+        email_investidor=email, mes=mes, ano=ano
+    ).first()
+    if record is None:
+        record = MetricaMensal(
+            email_investidor=email,
+            mes=mes,
+            ano=ano,
+            entregas_criativos=[],
+        )
+        db.add(record)
+        db.flush()
+    return record
+
+# ─────────────────────────────────────────────────────────────────────────────
 
 def recalculate_investor_mrr(db, email, mes, ano):
     """
@@ -651,7 +745,8 @@ def api_get_usuarios():
                 "squad": u.squad,
                 "posicao": u.posicao,
                 "nivel_acesso": u.nivel_acesso,
-                "ativo": u.ativo
+                "ativo": u.ativo,
+                "profile_picture": u.profile_picture or ""
             } for u in usuarios])
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -795,7 +890,241 @@ def operacao():
 @check_session
 @check_access(["Designer", "WebDesigner"])
 def criativa():
-    return render_template("criativa.html")
+    mes = request.args.get("mes", type=int) or dt.now().month
+    ano = request.args.get("ano", type=int) or dt.now().year
+
+    try:
+        with Session() as db:
+            designers = db.query(Investidor).filter(
+                Investidor.funcao.ilike("Designer") | Investidor.funcao.ilike("WebDesigner"),
+                Investidor.ativo == True
+            ).order_by(Investidor.squad, Investidor.nome).all()
+
+            # Clientes ativos por designer com projeto_id
+            projetos_rows = db.query(InvestidorProjeto).filter(
+                InvestidorProjeto.active == True
+            ).all()
+
+            clientes_por_email = {}  # email → [{nome, projeto_id}]
+            for p in projetos_rows:
+                email = p.email_investidor
+                nome = (p.nome_projeto or "").strip()
+                projeto_id = p.pipefy_id_projeto
+                if not nome or not projeto_id:
+                    continue
+                if email not in clientes_por_email:
+                    clientes_por_email[email] = []
+                if not any(c["projeto_id"] == projeto_id for c in clientes_por_email[email]):
+                    clientes_por_email[email].append({"nome": nome, "projeto_id": projeto_id})
+
+            # Carrega entregas_criativos de investidores_metricas_mensais_novo
+            emails = [d.email for d in designers if d.email]
+            entregas_map = {}  # email → lista de objetos de entrega
+            if emails:
+                entregas_rows = db.query(MetricaMensal).filter(
+                    MetricaMensal.email_investidor.in_(emails),
+                    MetricaMensal.mes == mes,
+                    MetricaMensal.ano == ano,
+                ).all()
+                for ec in entregas_rows:
+                    entregas_map[ec.email_investidor] = ec.entregas_criativos or []
+
+            squads = {}
+            for d in designers:
+                squad = d.squad or "Sem Squad"
+                clientes = sorted(
+                    clientes_por_email.get(d.email, []),
+                    key=lambda x: x["nome"]
+                )
+                entregas_designer = entregas_map.get(d.email, [])
+
+                clientes_json = []
+                for c in clientes:
+                    entry = get_entregas_by_projeto(entregas_designer, c["projeto_id"])
+                    clientes_json.append({
+                        "nome": c["nome"],
+                        "projeto_id": c["projeto_id"],
+                        "link_criativos": entry.get("link_criativos", "") if entry else "",
+                        "criativos_c": entry["criativos"]["contratados"] if entry else 0,
+                        "criativos_e": entry["criativos"]["entregues"] if entry else 0,
+                        "videos_c": entry["videos"]["contratados"] if entry else 0,
+                        "videos_e": entry["videos"]["entregues"] if entry else 0,
+                        "lps_c": entry["lp"]["contratados"] if entry else 0,
+                        "lps_e": entry["lp"]["entregues"] if entry else 0,
+                    })
+
+                if squad not in squads:
+                    squads[squad] = []
+                squads[squad].append({
+                    "nome": d.nome,
+                    "funcao": d.funcao,
+                    "senioridade": d.senioridade or "",
+                    "profile_picture": d.profile_picture or "",
+                    "email": d.email or "",
+                    "squad": squad,
+                    "clientes": [c["nome"] for c in clientes],
+                    "clientes_json": clientes_json,
+                })
+    except Exception as e:
+        print(f"Erro ao carregar designers: {e}")
+        squads = {}
+
+    return render_template("criativa.html", squads=squads, mes=mes, ano=ano)
+
+
+# ─── APIs CRIATIVA ───────────────────────────────────────────────────────────
+
+@app.route("/api/criativa/entregas/<email>/<int:mes>/<int:ano>", methods=["GET"])
+@check_session
+@check_access(["Designer", "WebDesigner"])
+def get_entregas_criativa(email, mes, ano):
+    """Retorna entregas_criativos de investidores_metricas_mensais_novo para o designer/mês/ano."""
+    try:
+        with Session() as db:
+            record = db.query(MetricaMensal).filter_by(
+                email_investidor=email, mes=mes, ano=ano
+            ).first()
+            return jsonify(record.entregas_criativos if record else [])
+    except SQLAlchemyError as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/criativa/entregas/contratados", methods=["PUT"])
+@check_session
+def update_criativa_contratados():
+    """
+    Define os quantitativos contratados para um projeto/designer.
+    Acesso restrito a Gerência, Sócio e Admin.
+    Payload: {email_investidor, mes, ano, projeto_id, cliente, criativos, videos, lp}
+    """
+    user_posicao = session.get("posicao", "")
+    user_nivel = session.get("nivel_acesso", "")
+    if user_posicao not in ("Gerência", "Sócio") and user_nivel != "Admin":
+        return jsonify({"error": "Acesso restrito ao Coordenador."}), 403
+
+    data = request.json or {}
+    email = data.get("email_investidor")
+    mes = data.get("mes")
+    ano = data.get("ano")
+    projeto_id = data.get("projeto_id")
+    cliente_nome = data.get("cliente", "")
+
+    if not all([email, mes, ano, projeto_id]):
+        return jsonify({"error": "Campos obrigatórios: email_investidor, mes, ano, projeto_id"}), 400
+
+    try:
+        with Session() as db:
+            record = _get_or_create_entrega_record(db, email, int(mes), int(ano))
+            lista = list(record.entregas_criativos or [])
+
+            for categoria in ("criativos", "videos", "lp"):
+                if categoria in data:
+                    lista = update_contratados(lista, projeto_id, cliente_nome, categoria, data[categoria])
+
+            record.entregas_criativos = lista
+            db.commit()
+            return jsonify({"ok": True, "entregas_criativos": lista})
+    except SQLAlchemyError as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/criativa/entregas/entregues", methods=["PUT"])
+@check_session
+@check_access(["Designer", "WebDesigner"])
+def update_criativa_entregues():
+    """
+    Atualiza a quantidade entregue de uma categoria para um projeto/designer.
+    O membro do time só pode atualizar o próprio registro; Gerência/Sócio/Admin podem atualizar qualquer um.
+    Payload: {email_investidor, mes, ano, projeto_id, cliente, categoria, valor}
+    """
+    data = request.json or {}
+    email = data.get("email_investidor")
+    mes = data.get("mes")
+    ano = data.get("ano")
+    projeto_id = data.get("projeto_id")
+    cliente_nome = data.get("cliente", "")
+    categoria = data.get("categoria")
+    valor = data.get("valor", 0)
+
+    if not all([email, mes, ano, projeto_id, categoria]):
+        return jsonify({"error": "Campos obrigatórios: email_investidor, mes, ano, projeto_id, categoria"}), 400
+
+    # Bloqueia entregas em meses futuros
+    hoje = dt.now()
+    if int(ano) > hoje.year or (int(ano) == hoje.year and int(mes) > hoje.month):
+        return jsonify({"error": "Não é permitido registrar entregas em meses futuros."}), 400
+
+    # Time só pode editar o próprio registro
+    user_email = session.get("email")
+    user_posicao = session.get("posicao", "")
+    user_nivel = session.get("nivel_acesso", "")
+    is_high_level = user_posicao in ("Gerência", "Sócio") or user_nivel == "Admin"
+    if not is_high_level and user_email != email:
+        return jsonify({"error": "Você só pode editar suas próprias entregas."}), 403
+
+    categorias_validas = {"criativos", "videos", "lp"}
+    if categoria not in categorias_validas:
+        return jsonify({"error": f"Categoria inválida. Use: {', '.join(categorias_validas)}"}), 400
+
+    try:
+        with Session() as db:
+            record = _get_or_create_entrega_record(db, email, int(mes), int(ano))
+            lista_atual = list(record.entregas_criativos or [])
+
+            # Valida limite contratado (bloqueia se não houver contrato ou se exceder)
+            entry = get_entregas_by_projeto(lista_atual, projeto_id)
+            contratados = entry.get(categoria, {}).get("contratados", 0) if entry else 0
+            if int(valor) > contratados:
+                label = {"criativos": "Criativos", "videos": "Vídeos", "lp": "LPs"}.get(categoria, categoria)
+                return jsonify({"error": f"Limite excedido: apenas {contratados} {label} contratados para este cliente."}), 400
+
+            lista = update_entregues(lista_atual, projeto_id, cliente_nome, categoria, valor)
+            record.entregas_criativos = lista
+            db.commit()
+            return jsonify({"ok": True, "entregas_criativos": lista})
+    except SQLAlchemyError as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/criativa/entregas/link", methods=["PUT"])
+@check_session
+@check_access(["Designer", "WebDesigner"])
+def update_criativa_link():
+    """
+    Atualiza o link de criativos para um projeto/designer no JSONB.
+    O membro do time só pode editar o próprio registro; Gerência/Sócio/Admin podem editar qualquer um.
+    Payload: {email_investidor, mes, ano, projeto_id, cliente, link}
+    """
+    data = request.json or {}
+    email = data.get("email_investidor")
+    mes = data.get("mes")
+    ano = data.get("ano")
+    projeto_id = data.get("projeto_id")
+    cliente_nome = data.get("cliente", "")
+    link = data.get("link", "")
+
+    if not all([email, mes, ano, projeto_id]):
+        return jsonify({"error": "Campos obrigatórios: email_investidor, mes, ano, projeto_id"}), 400
+
+    user_email = session.get("email")
+    user_posicao = session.get("posicao", "")
+    user_nivel = session.get("nivel_acesso", "")
+    is_high_level = user_posicao in ("Gerência", "Sócio") or user_nivel == "Admin"
+    if not is_high_level and user_email != email:
+        return jsonify({"error": "Você só pode editar suas próprias entregas."}), 403
+
+    try:
+        with Session() as db:
+            record = _get_or_create_entrega_record(db, email, int(mes), int(ano))
+            lista = update_link_criativo(
+                list(record.entregas_criativos or []),
+                projeto_id, cliente_nome, link
+            )
+            record.entregas_criativos = lista
+            db.commit()
+            return jsonify({"ok": True})
+    except SQLAlchemyError as e:
+        return jsonify({"error": str(e)}), 500
 
 
 # ─── APIs OPERAÇÃO ───────────────────────────────────────────────────────────
@@ -1261,17 +1590,55 @@ def get_investidores_ativos():
 @app.route("/api/projetos/<int:pipefy_id>/vinculos", methods=["GET"])
 @check_session
 def get_projeto_vinculos(pipefy_id):
-    """Retorna investidores vinculados a um projeto."""
+    """Retorna investidores vinculados a um projeto, com data_inicio resolvida."""
     try:
         with Session() as db:
             vinculos = db.query(InvestidorProjeto).filter_by(pipefy_id_projeto=pipefy_id).all()
-            return jsonify([{
-                "id": v.id,
-                "email": v.email_investidor,
-                "cientista": v.cientista,
-                "active": v.active,
-                "fee_contribuicao": float(v.fee_contribuicao or 0)
-            } for v in vinculos])
+
+            # Pré-carrega MetricaMensal mais recente de cada email para buscar data_inicio no historico
+            emails = list({v.email_investidor for v in vinculos if not v.created_at})
+            historico_map = {}  # email → data_inicio (str ISO)
+            if emails:
+                from sqlalchemy import func
+                # Pega o registro mais recente (maior ano/mes) de cada email
+                sub = (
+                    db.query(
+                        MetricaMensal.email_investidor,
+                        func.max(MetricaMensal.ano * 100 + MetricaMensal.mes).label("ym")
+                    )
+                    .filter(MetricaMensal.email_investidor.in_(emails))
+                    .group_by(MetricaMensal.email_investidor)
+                    .subquery()
+                )
+                metricas = (
+                    db.query(MetricaMensal)
+                    .join(sub, (MetricaMensal.email_investidor == sub.c.email_investidor) &
+                               ((MetricaMensal.ano * 100 + MetricaMensal.mes) == sub.c.ym))
+                    .all()
+                )
+                for m in metricas:
+                    if not m.historico_projetos:
+                        continue
+                    for item in m.historico_projetos:
+                        if str(item.get("projeto_id")) == str(pipefy_id) and item.get("data_inicio"):
+                            historico_map[m.email_investidor] = item["data_inicio"]
+                            break
+
+            result = []
+            for v in vinculos:
+                if v.created_at:
+                    data_inicio = v.created_at.isoformat()
+                else:
+                    data_inicio = historico_map.get(v.email_investidor)
+                result.append({
+                    "id": v.id,
+                    "email": v.email_investidor,
+                    "cientista": v.cientista,
+                    "active": v.active,
+                    "fee_contribuicao": float(v.fee_contribuicao or 0),
+                    "data_inicio": data_inicio
+                })
+            return jsonify(result)
     except SQLAlchemyError as e:
         return jsonify({"error": str(e)}), 500
 
@@ -1434,14 +1801,43 @@ def update_projeto_local(pipefy_id):
                 
                 cientista = inv_data.get("cientista", False)
                 
+                # Parse da data_inicio enviada pelo front (YYYY-MM-DD)
+                data_inicio_str = inv_data.get("data_inicio")
+                from datetime import date as date_type
+                if data_inicio_str:
+                    try:
+                        data_inicio_obj = date_type.fromisoformat(data_inicio_str)
+                    except ValueError:
+                        data_inicio_obj = None
+                else:
+                    data_inicio_obj = None
+
                 if v:
                     # Atualiza existente
                     v.nome_projeto = data.get("nome", v.nome_projeto)
                     v.fee_projeto = Decimal(str(data.get("fee", v.fee_projeto) or 0))
-
                     v.cientista = cientista
+                    if data_inicio_obj:
+                        v.created_at = data_inicio_obj
+                        # Propaga a nova data_inicio para historico_projetos em todos os meses
+                        metricas = db.query(MetricaMensal).filter_by(email_investidor=email).all()
+                        for metrica in metricas:
+                            if not metrica.historico_projetos:
+                                continue
+                            novo_hist = []
+                            atualizado = False
+                            for item in metrica.historico_projetos:
+                                if str(item.get("projeto_id")) == str(pipefy_id):
+                                    item = dict(item)
+                                    item["data_inicio"] = data_inicio_str
+                                    atualizado = True
+                                novo_hist.append(item)
+                            if atualizado:
+                                metrica.historico_projetos = novo_hist
+                                flag_modified(metrica, "historico_projetos")
                 else:
-                    # Cria novo
+                    # Cria novo — usa data_inicio se fornecida, senão hoje
+                    created = data_inicio_obj if data_inicio_obj else dt.now().date()
                     novo_v = InvestidorProjeto(
                         pipefy_id_projeto=pipefy_id,
                         email_investidor=email,
@@ -1449,9 +1845,8 @@ def update_projeto_local(pipefy_id):
                         fee_projeto=Decimal(str(data.get("fee", projeto.fee) or 0)),
                         cientista=cientista,
                         active=True,
-                        created_at=dt.now()
+                        created_at=created
                     )
-
                     db.add(novo_v)
 
             db.commit()

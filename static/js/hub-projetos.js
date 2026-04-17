@@ -266,6 +266,9 @@ function openProjectModal(projectData, tipoProjeto) {
     loadProjectVinculos(projectData.pipefy_id);
     if (window.APP_CONFIG.nivelAcesso === 'Gerência' || window.APP_CONFIG.nivelAcesso === 'Admin') {
         loadActiveInvestors();
+        // Define data de hoje como padrão no date picker de vincular
+        const vincularDataInput = document.getElementById('vincularDataInicio');
+        if (vincularDataInput) vincularDataInput.value = _todayISO();
     }
 }
 
@@ -827,57 +830,118 @@ function renderVinculos() {
         return;
     }
 
-    container.innerHTML = projectVinculosLocal.map(v => `
+    container.innerHTML = projectVinculosLocal.map(v => {
+        const dataExibir = _formatDateBR(v.data_inicio);
+
+        // Tag de data: clicável no modo edição
+        const dataTag = isEditMode
+            ? `<span class="tag-data-inicio tag-data-editavel"
+                     onclick="openEditDataInicioModal('${v.email}')"
+                     title="Clique para alterar a data de início">
+                   <i class="fa-solid fa-calendar-day"></i> ${dataExibir}
+                   <i class="fa-solid fa-pen" style="font-size:0.6rem;opacity:0.7;margin-left:3px;"></i>
+               </span>`
+            : `<span class="tag-data-inicio">
+                   <i class="fa-solid fa-calendar-day"></i> ${dataExibir}
+               </span>`;
+
+        return `
         <div class="vinculo-item">
             <div class="vinculo-info">
                 <span class="vinculo-email">${v.email}</span>
                 <div class="vinculo-tags">
                     ${v.cientista ? '<span class="tag-cientista">Cientista</span>' : ''}
                     ${v.active === false ? '<span class="tag-inactive">Churn</span>' : ''}
+                    ${dataTag}
                 </div>
             </div>
             <div class="vinculo-controls">
-                <button type="button" class="btn-remove-vinculo" 
-                        onclick="removerVinculoLocal('${v.email}')" 
+                <button type="button" class="btn-remove-vinculo"
+                        onclick="removerVinculoLocal('${v.email}')"
                         title="Remover investidor"
                         ${!isEditMode ? 'style="display:none"' : ''}>
                     <i class="fa-solid fa-user-minus"></i>
                 </button>
             </div>
-        </div>
-    `).join('');
+        </div>`;
+    }).join('');
+}
+
+function _todayISO() {
+    return new Date().toISOString().split('T')[0];
+}
+
+function _formatDateBR(iso) {
+    if (!iso) return '—';
+    const [y, m, d] = iso.split('T')[0].split('-');
+    return `${d}/${m}/${y}`;
 }
 
 function vincularNovoInvestidor() {
-    const email = document.getElementById('investidorSelect').value;
-    const cientista = document.getElementById('isCientista').checked;
-    
+    const email      = document.getElementById('investidorSelect').value;
+    const cientista  = document.getElementById('isCientista').checked;
+    const dataInicio = document.getElementById('vincularDataInicio').value || _todayISO();
+
     if (!email) {
-        alert('Selecione um investidor para vincular.');
+        if (window.showToast) showToast('Selecione um investidor para vincular.', 'error');
+        else alert('Selecione um investidor para vincular.');
         return;
     }
 
-    // Verificar se já está na lista
     if (projectVinculosLocal.find(v => v.email === email)) {
-        alert('Este investidor já está vinculado ao projeto.');
+        if (window.showToast) showToast('Este investidor já está vinculado ao projeto.', 'error');
+        else alert('Este investidor já está vinculado ao projeto.');
         return;
     }
-    
-    // Adiciona ao estado local
-    projectVinculosLocal.push({
-        email: email,
-        cientista: cientista,
-        active: true
-    });
 
+    projectVinculosLocal.push({ email, cientista, active: true, data_inicio: dataInicio });
     renderVinculos();
-    
-    // Limpa campos
-    document.getElementById('investidorSelect').value = '';
-    document.getElementById('isCientista').checked = false;
+
+    document.getElementById('investidorSelect').value   = '';
+    document.getElementById('isCientista').checked      = false;
+    document.getElementById('vincularDataInicio').value = _todayISO();
 }
 
 function removerVinculoLocal(email) {
     projectVinculosLocal = projectVinculosLocal.filter(v => v.email !== email);
+    renderVinculos();
+}
+
+/* ==============================
+EDIÇÃO DE DATA DE INÍCIO DO VÍNCULO
+================================ */
+
+let _editDataInicioEmail = null;
+
+function openEditDataInicioModal(email) {
+    _editDataInicioEmail = email;
+    const v = projectVinculosLocal.find(x => x.email === email);
+    const dataAtual = v?.data_inicio || _todayISO();
+
+    document.getElementById('editDataInicioEmail').textContent = `Investidor: ${email}`;
+    document.getElementById('editDataInicioInput').value = dataAtual;
+    document.getElementById('editDataInicioModal').classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeEditDataInicioModal() {
+    document.getElementById('editDataInicioModal').classList.remove('active');
+    _editDataInicioEmail = null;
+}
+
+function confirmarEditDataInicio() {
+    const novaData = document.getElementById('editDataInicioInput').value;
+    if (!novaData) {
+        if (window.showToast) showToast('Selecione uma data válida.', 'error');
+        return;
+    }
+
+    const v = projectVinculosLocal.find(x => x.email === _editDataInicioEmail);
+    if (v) {
+        v.data_inicio = novaData;
+        if (window.showToast) showToast(`Data de início de ${_editDataInicioEmail} atualizada para ${_formatDateBR(novaData)}. Clique em "Salvar" para confirmar.`, 'success');
+    }
+
+    closeEditDataInicioModal();
     renderVinculos();
 }
