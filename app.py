@@ -888,15 +888,24 @@ def operacao():
 
 @app.route("/criativa", methods=["GET"])
 @check_session
-@check_access(["Designer", "WebDesigner"])
+@check_access(["Designer", "WebDesigner", "Account", "Gestor de Tráfego"])
 def criativa():
     mes = request.args.get("mes", type=int) or dt.now().month
     ano = request.args.get("ano", type=int) or dt.now().year
 
     try:
+        from services.currency import CurrencyService
+        usd_rate = float(CurrencyService.get_usd_to_brl_rate())
+    except Exception:
+        usd_rate = 5.7  # fallback
+
+    try:
         with Session() as db:
             designers = db.query(Investidor).filter(
-                Investidor.funcao.ilike("Designer") | Investidor.funcao.ilike("WebDesigner"),
+                Investidor.funcao.ilike("Designer") |
+                Investidor.funcao.ilike("WebDesigner") |
+                Investidor.funcao.ilike("Account") |
+                Investidor.funcao.ilike("Gestor de Tráfego"),
                 Investidor.ativo == True
             ).order_by(Investidor.squad, Investidor.nome).all()
 
@@ -905,7 +914,20 @@ def criativa():
                 InvestidorProjeto.active == True
             ).all()
 
-            clientes_por_email = {}  # email → [{nome, projeto_id}]
+            # Fee e moeda por projeto (pipefy_id → {fee, moeda})
+            projeto_fees = {}
+            fee_rows = db.query(ProjetoAtivo.pipefy_id, ProjetoAtivo.fee, ProjetoAtivo.moeda).all()
+            for row in fee_rows:
+                if row.pipefy_id:
+                    try:
+                        projeto_fees[str(row.pipefy_id)] = {
+                            "fee": float(row.fee or 0),
+                            "moeda": str(row.moeda).strip().upper() if row.moeda else "BRL",
+                        }
+                    except (ValueError, TypeError):
+                        projeto_fees[str(row.pipefy_id)] = {"fee": 0, "moeda": "BRL"}
+
+            clientes_por_email = {}  # email → [{nome, projeto_id, fee, moeda}]
             for p in projetos_rows:
                 email = p.email_investidor
                 nome = (p.nome_projeto or "").strip()
@@ -914,8 +936,14 @@ def criativa():
                     continue
                 if email not in clientes_por_email:
                     clientes_por_email[email] = []
+                info = projeto_fees.get(str(projeto_id), {"fee": 0, "moeda": "BRL"})
                 if not any(c["projeto_id"] == projeto_id for c in clientes_por_email[email]):
-                    clientes_por_email[email].append({"nome": nome, "projeto_id": projeto_id})
+                    clientes_por_email[email].append({
+                        "nome": nome,
+                        "projeto_id": projeto_id,
+                        "fee": info["fee"],
+                        "moeda": info["moeda"],
+                    })
 
             # Carrega entregas_criativos de investidores_metricas_mensais_novo
             emails = [d.email for d in designers if d.email]
@@ -944,6 +972,8 @@ def criativa():
                     clientes_json.append({
                         "nome": c["nome"],
                         "projeto_id": c["projeto_id"],
+                        "fee": c.get("fee", 0),
+                        "moeda": c.get("moeda", "BRL"),
                         "link_criativos": entry.get("link_criativos", "") if entry else "",
                         "criativos_c": entry["criativos"]["contratados"] if entry else 0,
                         "criativos_e": entry["criativos"]["entregues"] if entry else 0,
@@ -969,14 +999,14 @@ def criativa():
         print(f"Erro ao carregar designers: {e}")
         squads = {}
 
-    return render_template("criativa.html", squads=squads, mes=mes, ano=ano)
+    return render_template("criativa.html", squads=squads, mes=mes, ano=ano, usd_rate=usd_rate)
 
 
 # ─── APIs CRIATIVA ───────────────────────────────────────────────────────────
 
 @app.route("/api/criativa/entregas/<email>/<int:mes>/<int:ano>", methods=["GET"])
 @check_session
-@check_access(["Designer", "WebDesigner"])
+@check_access(["Designer", "WebDesigner", "Account", "Gestor de Tráfego"])
 def get_entregas_criativa(email, mes, ano):
     """Retorna entregas_criativos de investidores_metricas_mensais_novo para o designer/mês/ano."""
     try:
@@ -1219,6 +1249,63 @@ def get_entregas(pipefy_id, mes, ano):
 # ─────────────────────────────────────────────────────────────────────────────
 # ENDPOINT: MONTHLY DELIVERIES (ENTREGAS AUTOMÁTICAS – READ ONLY)
 # ─────────────────────────────────────────────────────────────────────────────
+
+@app.route("/api/criativa/op-deliveries/<email>/<int:mes>/<int:ano>", methods=["GET"])
+@check_session
+def get_op_deliveries_coord(email, mes, ano):
+    """Retorna status das entregas mensais de um Account/GT para coordenadores."""
+    posicao = session.get("posicao", "").strip()
+    nivel   = session.get("nivel_acesso", "").strip()
+    if posicao not in ("Gerência", "Sócio") and nivel != "Admin":
+        return jsonify({"error": "Acesso restrito"}), 403
+    try:
+        with Session() as db:
+            entregas = db.query(MonthlyDelivery).filter_by(
+                email=email, month=mes, year=ano
+            ).all()
+            result = {}
+            for e in entregas:
+                pid = str(e.client_id)
+                if pid not in result:
+                    result[pid] = {}
+                result[pid][e.delivery_type] = e.status
+            return jsonify(result)
+    except SQLAlchemyError as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/criativa/op-deliveries", methods=["PUT"])
+@check_session
+def update_op_delivery_coord():
+    """Permite coordenador marcar/desmarcar entrega manualmente."""
+    posicao = session.get("posicao", "").strip()
+    nivel   = session.get("nivel_acesso", "").strip()
+    if posicao not in ("Gerência", "Sócio") and nivel != "Admin":
+        return jsonify({"error": "Acesso restrito"}), 403
+    data = request.get_json()
+    email         = data.get("email")
+    client_id     = data.get("client_id")
+    delivery_type = data.get("delivery_type")
+    mes           = data.get("mes")
+    ano           = data.get("ano")
+    status        = data.get("status")  # 'completed' | 'pending'
+    if not all([email, client_id, delivery_type, mes, ano, status in ("completed", "pending")]):
+        return jsonify({"error": "Dados inválidos"}), 400
+    try:
+        with Session() as db:
+            entry = db.query(MonthlyDelivery).filter_by(
+                email=email, client_id=int(client_id),
+                delivery_type=delivery_type, month=mes, year=ano
+            ).first()
+            if not entry:
+                return jsonify({"error": "Entrega não encontrada"}), 404
+            entry.status = status
+            entry.completed_at = __import__('datetime').datetime.now() if status == 'completed' else None
+            db.commit()
+        return jsonify({"status": "ok"})
+    except SQLAlchemyError as e:
+        return jsonify({"error": str(e)}), 500
+
 
 @app.route("/api/operacao/monthly-deliveries/<int:pipefy_id>/<int:mes>/<int:ano>", methods=["GET"])
 @check_session

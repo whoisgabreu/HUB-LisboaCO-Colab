@@ -194,6 +194,13 @@ function closeDesignerModal() {
 
 // ── View 4: Detalhe do Designer ───────────────────────────────────────────────
 function openDesignerDetalhe(card) {
+    // Roteia cargos operacionais para a view própria
+    const funcao = card.getAttribute('data-designer-funcao') || '';
+    if (funcao === 'Account' || funcao === 'Gestor de Tráfego') {
+        openOperacionalDetalhe(card);
+        return;
+    }
+
     const name  = card.getAttribute('data-designer-name');
     const role  = card.getAttribute('data-designer-role');
     const photo = card.getAttribute('data-designer-photo');
@@ -690,3 +697,499 @@ function renderChartConclusao(pct) {
         }]
     });
 }
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// MÓDULO OPERACIONAL — Account / Gestor de Tráfego
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const OP_ENTREGAS_CONFIG = {
+    'Account': [
+        { tipo: 'relatorio_mensal', label: 'Relatório Mensal', icone: 'fa-file-alt',       padrao: 1, link: true  },
+        { tipo: 'planner_monday',   label: 'Planner Monday',   icone: 'fa-calendar-check', padrao: 4, link: false },
+        { tipo: 'csat_checkin',     label: 'CSAT Check-in',    icone: 'fa-comments',        padrao: 4, link: false },
+        { tipo: 'forecast',         label: 'Forecasting',       icone: 'fa-chart-line',      padrao: 1, link: true  },
+    ],
+    'Gestor de Tráfego': [
+        { tipo: 'relatorio_mensal', label: 'Relatório Mensal',       icone: 'fa-file-alt',       padrao: 1, link: true  },
+        { tipo: 'kpi',              label: 'KPI',                     icone: 'fa-tachometer-alt', padrao: 1, link: true  },
+        { tipo: 'plano_midia',      label: 'Plano de Mídia',          icone: 'fa-bullhorn',       padrao: 1, link: false },
+        { tipo: 'doc_otimizacao',   label: 'Documento de Otimização', icone: 'fa-sliders-h',      padrao: 4, link: false },
+    ],
+};
+
+// ── Estado em memória ─────────────────────────────────────────────────────────
+let _opFuncao   = '';
+let _opNome     = '';
+let _opCargo    = '';
+let _opPhoto    = '';
+let _opEmail    = '';
+let _opClientes = [];
+let _opProjIdEditando  = null;
+let _opLinkEditando    = { projId: null, tipo: null };
+
+const _opMetas  = {};  // { pipefyId: { tipo: count } }
+const _opFeitos = {};  // { pipefyId: { tipo: count } }
+const _opLinks  = {};  // { pipefyId: { tipo: url   } }
+
+let _chartOpBarras    = null;
+let _chartOpConclusao = null;
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function _getOpMeta(pipefyId, tipo) {
+    const custom = (_opMetas[String(pipefyId)] || {})[tipo];
+    if (custom !== undefined) return custom;
+    const cfg  = OP_ENTREGAS_CONFIG[_opFuncao] || [];
+    const item = cfg.find(d => d.tipo === tipo);
+    return item ? item.padrao : 1;
+}
+
+function _getOpFeito(pipefyId, tipo) {
+    return ((_opFeitos[String(pipefyId)] || {})[tipo]) || 0;
+}
+
+function _opCor(pct) {
+    return pct >= 80 ? '#22c55e' : pct >= 50 ? '#f59e0b' : '#ef4444';
+}
+
+// ── Abrir detalhe operacional ─────────────────────────────────────────────────
+function openOperacionalDetalhe(card) {
+    const name   = card.getAttribute('data-designer-name');
+    const role   = card.getAttribute('data-designer-role');
+    const funcao = card.getAttribute('data-designer-funcao');
+    const photo  = card.getAttribute('data-designer-photo');
+    const squad  = card.getAttribute('data-designer-squad') || '';
+    const email  = card.getAttribute('data-designer-email') || '';
+    let clientes = [];
+
+    try {
+        clientes = JSON.parse(card.getAttribute('data-designer-clientes-json') || '[]');
+    } catch (e) { console.error(e); }
+
+    _opFuncao   = funcao;
+    _opNome     = name;
+    _opEmail    = email;
+    _opCargo    = squad ? `${role} · ${squad}` : role;
+    _opPhoto    = photo;
+    _opClientes = clientes;
+
+    // Limpa feitos anteriores deste usuário
+    const tipos = OP_ENTREGAS_CONFIG[funcao] || [];
+    clientes.forEach(c => {
+        const pid = String(c.projeto_id);
+        if (_opFeitos[pid]) {
+            tipos.forEach(d => { delete _opFeitos[pid][d.tipo]; });
+        }
+    });
+
+    document.getElementById('op-detalhe-nome').textContent  = name;
+    document.getElementById('op-detalhe-cargo').textContent = _opCargo;
+
+    const avatarEl = document.getElementById('op-detalhe-avatar');
+    avatarEl.innerHTML = photo
+        ? `<img src="static/images/profile_pictures/${photo}" alt="${name}" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;">`
+        : `<i class="fa-solid fa-user-tie"></i>`;
+
+    document.querySelectorAll('.criativa-view').forEach(v => v.classList.remove('active'));
+    document.querySelectorAll('.criativa-nav-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('criativa-view-operacional-detalhe').classList.add('active');
+
+    _renderOpView();
+
+    // Carrega estado real das entregas do backend
+    if (email) {
+        const mes = _mesSelecionado;
+        const ano = _anoSelecionado;
+        fetch(`/api/criativa/op-deliveries/${encodeURIComponent(email)}/${mes}/${ano}`)
+            .then(r => r.ok ? r.json() : null)
+            .then(data => {
+                if (!data) return;
+                // data: { "proj_id": { "delivery_type": "completed"|"pending" } }
+                Object.entries(data).forEach(([pid, tipos_status]) => {
+                    Object.entries(tipos_status).forEach(([tipo, status]) => {
+                        const meta = _getOpMeta(pid, tipo);
+                        if (!_opFeitos[pid]) _opFeitos[pid] = {};
+                        _opFeitos[pid][tipo] = status === 'completed' ? meta : 0;
+                    });
+                });
+                _renderOpView();
+            })
+            .catch(() => {}); // falha silenciosa — mantém estado vazio
+    }
+}
+
+// ── Render completo ───────────────────────────────────────────────────────────
+function _renderOpView() {
+    const tipos    = OP_ENTREGAS_CONFIG[_opFuncao] || [];
+    const clientes = _opClientes;
+
+    let totalMeta = 0, totalFeito = 0, totalFeeFeito = 0;
+    let hasFee = false;
+
+    const usdRate = (window.APP_CONFIG && window.APP_CONFIG.usdRate) || 5.7;
+
+    clientes.forEach(c => {
+        const pid    = String(c.projeto_id);
+        const fee    = parseFloat(c.fee || 0);
+        const moeda  = (c.moeda || 'BRL').toUpperCase();
+        const feeBRL = moeda === 'USD' ? fee * usdRate : fee;
+        if (fee > 0) hasFee = true;
+
+        let projMeta = 0, projFeito = 0;
+        tipos.forEach(d => {
+            const m = _getOpMeta(pid, d.tipo);
+            const f = Math.min(_getOpFeito(pid, d.tipo), m);
+            projMeta   += m;
+            projFeito  += f;
+            totalMeta  += m;
+            totalFeito += f;
+        });
+
+        // Fee proporcional: cada projeto contribui com sua própria % de conclusão (em BRL)
+        const projPct = projMeta > 0 ? projFeito / projMeta : 0;
+        totalFeeFeito += feeBRL * projPct;
+    });
+
+    const pct      = totalMeta > 0 ? Math.round((totalFeito / totalMeta) * 100) : 0;
+    const feeFeito = hasFee ? totalFeeFeito : null;
+
+    _renderOpKpis(totalMeta, totalFeito, pct, feeFeito);
+    _renderOpCharts(tipos, clientes, pct);
+    _renderOpProjetos(tipos, clientes);
+}
+
+// ── KPIs ──────────────────────────────────────────────────────────────────────
+function _renderOpKpis(totalMeta, totalFeito, pct, feeFeito) {
+    const cor    = _opCor(pct);
+    const feeStr = feeFeito !== null
+        ? `R$ ${feeFeito.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+        : '—';
+
+    document.getElementById('op-kpi-total').textContent = totalMeta;
+    document.getElementById('op-kpi-feito').textContent = `${totalFeito} / ${totalMeta}`;
+
+    const pctEl = document.getElementById('op-kpi-pct');
+    pctEl.textContent = `${pct}%`;
+    pctEl.style.color = cor;
+
+    const feeEl = document.getElementById('op-kpi-fee');
+    feeEl.textContent = feeStr;
+    feeEl.style.color = feeFeito !== null ? cor : '';
+}
+
+// ── Gráficos ──────────────────────────────────────────────────────────────────
+function _renderOpCharts(tipos, clientes, pct) {
+    const isTemaClaro = document.body.classList.contains('tema-claro');
+    const textColor   = isTemaClaro ? '#374151' : '#e5e7eb';
+    const gridColor   = isTemaClaro ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)';
+    const cor         = _opCor(pct);
+
+    // ── Barras: Meta vs Realizado por tipo ────────────────────────────────────
+    if (_chartOpBarras) _chartOpBarras.destroy();
+    const ctxBar = document.getElementById('chart-op-barras')?.getContext('2d');
+    if (ctxBar) {
+        const labels      = tipos.map(d => d.label);
+        const metaTotais  = tipos.map(d =>
+            clientes.reduce((s, c) => s + _getOpMeta(String(c.projeto_id), d.tipo), 0));
+        const feitoTotais = tipos.map(d =>
+            clientes.reduce((s, c) => s + Math.min(
+                _getOpFeito(String(c.projeto_id), d.tipo),
+                _getOpMeta(String(c.projeto_id), d.tipo)
+            ), 0));
+        const yMax = Math.ceil(Math.max(...metaTotais, 1) / 5) * 5;
+
+        _chartOpBarras = new Chart(ctxBar, {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: [
+                    { label: 'Meta',      data: metaTotais,  backgroundColor: 'rgba(239,68,68,0.7)',  borderColor: '#ef4444', borderWidth: 2, borderRadius: 6, borderSkipped: false },
+                    { label: 'Realizado', data: feitoTotais, backgroundColor: 'rgba(34,197,94,0.7)',  borderColor: '#22c55e', borderWidth: 2, borderRadius: 6, borderSkipped: false },
+                ]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'top', labels: { color: textColor, font: { family: 'Poppins', size: 12, weight: '500' }, usePointStyle: true, pointStyle: 'rectRounded', padding: 20 } },
+                    tooltip: { backgroundColor: isTemaClaro ? '#1f2937' : '#1a1a2e', titleFont: { family: 'Poppins', size: 13 }, bodyFont: { family: 'Poppins', size: 12 }, padding: 12, cornerRadius: 8 }
+                },
+                scales: {
+                    x: { ticks: { color: textColor, font: { family: 'Poppins', size: 11 } }, grid: { display: false } },
+                    y: { beginAtZero: true, max: yMax, ticks: { color: textColor, font: { family: 'Poppins', size: 11 }, stepSize: Math.max(1, Math.floor(yMax / 5)) }, grid: { color: gridColor } }
+                }
+            }
+        });
+    }
+
+    // ── Doughnut: Taxa de Conclusão ───────────────────────────────────────────
+    if (_chartOpConclusao) _chartOpConclusao.destroy();
+    const ctxDo = document.getElementById('chart-op-conclusao')?.getContext('2d');
+    if (ctxDo) {
+        _chartOpConclusao = new Chart(ctxDo, {
+            type: 'doughnut',
+            data: {
+                labels: ['Realizado', 'Pendente'],
+                datasets: [{
+                    data: [pct, 100 - pct],
+                    backgroundColor: [cor, isTemaClaro ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)'],
+                    borderColor: ['transparent', 'transparent'], borderWidth: 0, cutout: '78%', borderRadius: 8
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { backgroundColor: isTemaClaro ? '#1f2937' : '#1a1a2e', titleFont: { family: 'Poppins', size: 13 }, bodyFont: { family: 'Poppins', size: 12 }, padding: 12, cornerRadius: 8, callbacks: { label: ctx => ctx.label + ': ' + ctx.raw + '%' } }
+                }
+            },
+            plugins: [{
+                id: 'textoCentralOp',
+                afterDraw(chart) {
+                    const { ctx: c, chartArea } = chart;
+                    const cx = (chartArea.left + chartArea.right)  / 2;
+                    const cy = (chartArea.top  + chartArea.bottom) / 2;
+                    c.save();
+                    c.textAlign = 'center'; c.textBaseline = 'middle';
+                    c.font = 'bold 2rem Poppins'; c.fillStyle = cor;
+                    c.fillText(pct + '%', cx, cy - 8);
+                    c.font = '500 0.75rem Poppins'; c.fillStyle = textColor;
+                    c.fillText('Concluído', cx, cy + 22);
+                    c.restore();
+                }
+            }]
+        });
+    }
+}
+
+// ── Cards por projeto ─────────────────────────────────────────────────────────
+function _renderOpProjetos(tipos, clientes) {
+    const container = document.getElementById('op-projetos-container');
+    if (!container) return;
+
+    const isCoordenador = _isCoordinador();
+    container.innerHTML = '';
+
+    if (!clientes.length) {
+        container.innerHTML = `<p style="color:var(--text-muted);padding:1rem;">Nenhum cliente vinculado.</p>`;
+        return;
+    }
+
+    clientes.forEach(c => {
+        const pid    = String(c.projeto_id);
+        const fee    = parseFloat(c.fee || 0);
+        const moeda  = (c.moeda || 'BRL').toUpperCase();
+        const isUSD  = moeda === 'USD';
+        const simbol = isUSD ? 'US$' : 'R$';
+        const feeStr = fee > 0
+            ? `${simbol} ${fee.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+            : '—';
+
+        // Totais do projeto — cada tipo de entrega vale 25% fixo
+        const PESO_POR_TIPO = 25;
+        const projPct = tipos.length > 0 ? Math.round(tipos.reduce((s, d) => {
+            const meta  = _getOpMeta(pid, d.tipo);
+            const feito = Math.min(_getOpFeito(pid, d.tipo), meta);
+            return s + (meta > 0 ? (feito / meta) * PESO_POR_TIPO : 0);
+        }, 0)) : 0;
+        const projCor      = _opCor(projPct);
+        // Proporcional exibido na moeda original do projeto
+        const projFeeFeito = fee > 0 ? fee * projPct / 100 : null;
+        const projFeeStr   = projFeeFeito !== null
+            ? ` &nbsp;·&nbsp; Proporcional: <strong style="color:${projCor};">${simbol} ${projFeeFeito.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>`
+            : '';
+
+        // Rows de entrega
+        const deliveryRows = tipos.map(d => {
+            const meta   = _getOpMeta(pid, d.tipo);
+            const feito  = _getOpFeito(pid, d.tipo);
+            const clamp  = Math.min(feito, meta);
+            const rowPct = meta > 0 ? Math.round((clamp / meta) * 100) : 0;
+            const rowCor = _opCor(rowPct);
+            // cada tipo vale 25% fixo, independente da meta individual
+            const pesoPorEntrega  = meta > 0 ? PESO_POR_TIPO / meta : PESO_POR_TIPO;
+            const contribuicao    = clamp * pesoPorEntrega;
+            const contribuicaoFmt = Number.isInteger(contribuicao) ? contribuicao : contribuicao.toFixed(2);
+            const maxed  = feito >= meta;
+            const zeroed = feito <= 0;
+
+            // Botão de link (apenas para entregas com link: true)
+            const linkUrl   = ((_opLinks[pid] || {})[d.tipo]) || '';
+            const linkBtns  = d.link ? `
+                <span style="width:1px;height:20px;background:var(--border-color);margin:0 2px;"></span>
+                ${linkUrl ? `<a href="${linkUrl.replace(/"/g, '&quot;')}" target="_blank" rel="noopener"
+                    class="criativa-btn-icon" title="Abrir planilha" style="font-size:0.8rem;">
+                    <i class="fas fa-external-link-alt"></i></a>` : ''}
+                <button class="criativa-btn-icon" title="${linkUrl ? 'Editar link' : 'Adicionar link da planilha'}"
+                    style="font-size:0.8rem;"
+                    onclick="openOpLinkModal('${pid}','${d.tipo}','${d.label.replace(/'/g, "\\'")}')">
+                    <i class="fas fa-${linkUrl ? 'pencil-alt' : 'link'}"></i>
+                </button>` : '';
+
+            return `
+            <div class="op-entrega-row">
+                <div class="op-entrega-info">
+                    <i class="fas ${d.icone}" style="color:#D61616;width:16px;text-align:center;flex-shrink:0;margin-top:2px;"></i>
+                    <div class="op-entrega-texts">
+                        <span class="op-entrega-label">${d.label}</span>
+                        <span class="op-entrega-peso">Peso: <strong style="color:var(--text-main)">25%</strong>${meta > 1 ? ` <span style="opacity:0.6;">(${pesoPorEntrega % 1 === 0 ? pesoPorEntrega : pesoPorEntrega.toFixed(2)}% × ${meta})</span>` : ''} &nbsp;·&nbsp; <strong style="color:${rowCor}">${contribuicaoFmt}%</strong> conquistado</span>
+                    </div>
+                </div>
+                <div class="op-entrega-controls">
+                    ${linkBtns}
+                    <button class="btn-delta btn-minus${zeroed ? ' btn-disabled' : ''}"
+                        onclick="opDelta('${pid}','${d.tipo}',-1)"
+                        ${zeroed ? 'disabled' : ''}>−</button>
+                    <span style="min-width:48px;text-align:center;font-weight:600;color:${rowCor};">${clamp}<span style="color:var(--text-muted);font-weight:400"> / ${meta}</span></span>
+                    <button class="btn-delta btn-plus${maxed ? ' btn-disabled' : ''}"
+                        onclick="opDelta('${pid}','${d.tipo}',1)"
+                        ${maxed ? 'disabled' : ''}>+</button>
+                </div>
+                <div class="op-entrega-bar-wrap">
+                    <div class="op-entrega-bar" style="width:${rowPct}%;background:${rowCor};box-shadow:0 0 6px ${rowCor}44;"></div>
+                </div>
+            </div>`;
+        }).join('');
+
+        const cardEl = document.createElement('div');
+        cardEl.className = 'criativa-table-card';
+        cardEl.style.cssText = 'padding:1.5rem;';
+        cardEl.innerHTML = `
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;flex-wrap:wrap;gap:0.75rem;">
+                <div>
+                    <h4 style="margin:0;font-size:1rem;color:var(--text-main);">${c.nome}</h4>
+                    <span style="font-size:0.8rem;color:var(--text-muted);">Fee: <strong style="color:var(--text-sub);">${feeStr}</strong>${projFeeStr}</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:0.75rem;">
+                    <div style="font-size:1.4rem;font-weight:700;color:${projCor};">${projPct}%</div>
+                    ${isCoordenador ? `<button class="criativa-btn-icon" title="Configurar metas" onclick="openOpMetasModal('${pid}','${c.nome.replace(/'/g, "\\'")}')"><i class="fas fa-sliders-h"></i></button>` : ''}
+                </div>
+            </div>
+            <div class="op-entregas-lista">${deliveryRows}</div>
+        `;
+        container.appendChild(cardEl);
+    });
+}
+
+// ── Delta (+ / -) ─────────────────────────────────────────────────────────────
+function opDelta(projId, tipo, delta) {
+    const pid   = String(projId);
+    const meta  = _getOpMeta(pid, tipo);
+    const atual = _getOpFeito(pid, tipo);
+    const novo  = Math.min(Math.max(0, atual + delta), meta);
+    if (novo === atual) return;
+
+    if (!_opFeitos[pid]) _opFeitos[pid] = {};
+    _opFeitos[pid][tipo] = novo;
+    _renderOpView();
+
+    // Persiste no backend se coordenador
+    if (_isCoordinador() && _opEmail) {
+        const mes = _mesSelecionado;
+        const ano = _anoSelecionado;
+        fetch('/api/criativa/op-deliveries', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                email: _opEmail,
+                client_id: parseInt(pid),
+                delivery_type: tipo,
+                mes, ano,
+                status: novo >= meta ? 'completed' : 'pending',
+            }),
+        }).catch(() => {});
+    }
+}
+
+// ── Modal: configurar metas por projeto ───────────────────────────────────────
+function openOpMetasModal(projId, projNome) {
+    _opProjIdEditando = String(projId);
+    document.getElementById('modal-op-metas-projeto').textContent = `Cliente: ${projNome}`;
+
+    const tipos = OP_ENTREGAS_CONFIG[_opFuncao] || [];
+    document.getElementById('op-meta-fields').innerHTML = tipos.map(d => {
+        const val = _getOpMeta(_opProjIdEditando, d.tipo);
+        return `
+        <div style="display:grid;grid-template-columns:1fr auto;align-items:center;gap:1rem;
+                    padding:0.75rem 1rem;background:rgba(255,255,255,0.02);
+                    border:1px solid var(--border-color);border-radius:8px;">
+            <div style="display:flex;align-items:center;gap:0.5rem;">
+                <i class="fas ${d.icone}" style="color:#D61616;width:16px;text-align:center;"></i>
+                <span style="font-size:0.87rem;font-weight:600;">${d.label}</span>
+                <span style="font-size:0.7rem;color:var(--text-muted);">(padrão: ${d.padrao})</span>
+            </div>
+            <input type="number" class="op-meta-input" data-tipo="${d.tipo}"
+                   value="${val}" min="1" max="31"
+                   style="width:64px;text-align:center;background:var(--card-bg);
+                          border:1px solid var(--border-color);border-radius:6px;
+                          color:var(--text-main);font-family:Poppins,sans-serif;
+                          font-size:1rem;font-weight:600;padding:0.3rem 0.4rem;outline:none;">
+        </div>`;
+    }).join('');
+
+    document.getElementById('modal-op-metas').style.display = 'flex';
+}
+
+function closeOpMetasModal() {
+    document.getElementById('modal-op-metas').style.display = 'none';
+    _opProjIdEditando = null;
+}
+
+function saveOpMetas() {
+    if (!_opProjIdEditando) return;
+
+    // Salva metas por tipo
+    if (!_opMetas[_opProjIdEditando]) _opMetas[_opProjIdEditando] = {};
+    document.querySelectorAll('#op-meta-fields .op-meta-input').forEach(inp => {
+        const val = parseInt(inp.value, 10);
+        if (!isNaN(val) && val >= 1) _opMetas[_opProjIdEditando][inp.dataset.tipo] = val;
+    });
+
+    // Garante que feitos não excedem novas metas
+    if (_opFeitos[_opProjIdEditando]) {
+        (OP_ENTREGAS_CONFIG[_opFuncao] || []).forEach(d => {
+            const meta  = _getOpMeta(_opProjIdEditando, d.tipo);
+            const feito = _opFeitos[_opProjIdEditando][d.tipo] || 0;
+            if (feito > meta) _opFeitos[_opProjIdEditando][d.tipo] = meta;
+        });
+    }
+
+    closeOpMetasModal();
+    _renderOpView();
+    if (typeof showToast === 'function') showToast('Metas atualizadas!', 'success');
+}
+
+// ── Modal: link de planilha ───────────────────────────────────────────────────
+function openOpLinkModal(projId, tipo, tipoLabel) {
+    _opLinkEditando = { projId: String(projId), tipo };
+    document.getElementById('modal-op-link-descricao').textContent = `Planilha: ${tipoLabel}`;
+    document.getElementById('op-link-url').value = ((_opLinks[String(projId)] || {})[tipo]) || '';
+    document.getElementById('modal-op-link').style.display = 'flex';
+}
+
+function closeOpLinkModal() {
+    document.getElementById('modal-op-link').style.display = 'none';
+    _opLinkEditando = { projId: null, tipo: null };
+}
+
+function saveOpLink() {
+    const { projId, tipo } = _opLinkEditando;
+    if (!projId || !tipo) return;
+    const url = document.getElementById('op-link-url').value.trim();
+    if (!_opLinks[projId]) _opLinks[projId] = {};
+    _opLinks[projId][tipo] = url;
+    closeOpLinkModal();
+    _renderOpView();
+    if (typeof showToast === 'function') showToast('Link salvo!', 'success');
+}
+
+// ── Fecha modais ao clicar no backdrop ────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+    const modalOp = document.getElementById('modal-op-metas');
+    if (modalOp) modalOp.addEventListener('click', e => {
+        if (e.target === e.currentTarget) closeOpMetasModal();
+    });
+    const modalLink = document.getElementById('modal-op-link');
+    if (modalLink) modalLink.addEventListener('click', e => {
+        if (e.target === e.currentTarget) closeOpLinkModal();
+    });
+});

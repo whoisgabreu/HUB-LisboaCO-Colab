@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Criativa | Lisboa&CO</title>
+    <title>Entregas da Operação | Lisboa&CO</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -17,6 +17,43 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="static/js/criativa.js" defer></script>
     {% include "components/icon_title.html" %}
+    <style>
+        /* ── Módulo Operacional: rows de entrega ──────────────────────────── */
+        .op-entrega-row {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 0.5rem 1rem;
+            padding: 0.85rem 0;
+            border-bottom: 1px solid var(--border-color);
+            align-items: center;
+        }
+        .op-entrega-row:last-child { border-bottom: none; }
+        .op-entrega-info {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.6rem;
+        }
+        .op-entrega-texts { display: flex; flex-direction: column; gap: 2px; }
+        .op-entrega-label { font-size: 0.87rem; font-weight: 600; color: var(--text-main); }
+        .op-entrega-peso  { font-size: 0.72rem; color: var(--text-muted); }
+        .op-entrega-controls { display: flex; align-items: center; gap: 0.5rem; }
+        .op-entrega-bar-wrap {
+            grid-column: 1 / -1;
+            background: rgba(255,255,255,0.06);
+            border-radius: 6px;
+            height: 6px;
+            overflow: hidden;
+        }
+        body.tema-claro .op-entrega-bar-wrap { background: rgba(0,0,0,0.06); }
+        .op-entrega-bar {
+            height: 100%;
+            border-radius: 6px;
+            transition: width 0.3s ease;
+        }
+        .op-entregas-lista { display: flex; flex-direction: column; }
+        /* ── Input das metas ──────────────────────────────────────────────── */
+        .op-meta-input:focus { border-color: #D61616 !important; }
+    </style>
 </head>
 
 <body>
@@ -31,9 +68,9 @@
                 <!-- CABEÇALHO -->
                 <header class="criativa-header">
                     <div class="criativa-title">
-                        <h2><i class="fas fa-palette" style="color: #D61616; margin-right: 10px;"></i>Gestão Criativa
+                        <h2><i class="fas fa-box-open" style="color: #D61616; margin-right: 10px;"></i>Entrega
                         </h2>
-                        <p>Controle de produção e entregas criativas por projeto</p>
+                        <p>Visão geral da equipe de operação por cargo e squad</p>
                     </div>
                     <form id="form-periodo" class="criativa-periodo-form" method="get" action="/criativa">
                         <select id="sel-mes" name="mes" class="criativa-periodo-select" onchange="handlePeriodoChange()">
@@ -66,6 +103,7 @@
                                 <div class="project-card"
                                     data-designer-name="{{ d.nome }}"
                                     data-designer-role="{{ d.funcao }}{% if d.senioridade %} {{ d.senioridade }}{% endif %}"
+                                    data-designer-funcao="{{ d.funcao }}"
                                     data-designer-photo="{{ d.profile_picture }}"
                                     data-designer-squad="{{ d.squad }}"
                                     data-designer-email="{{ d.email }}"
@@ -96,8 +134,80 @@
                         </div>
                         {% endfor %}
                     {% else %}
-                        <p style="color: var(--text-muted); padding: 1rem;">Nenhum designer encontrado.</p>
+                        <p style="color: var(--text-muted); padding: 1rem;">Nenhum membro de equipe encontrado.</p>
                     {% endif %}
+
+                </div>
+
+                <!-- ═══ VIEW 5: DETALHE OPERACIONAL (Account / Gestor de Tráfego) ═══ -->
+                <div id="criativa-view-operacional-detalhe" class="criativa-view">
+
+                    <!-- Cabeçalho -->
+                    <div class="designer-detalhe-header">
+                        <div class="designer-detalhe-info">
+                            <div class="designer-detalhe-avatar" id="op-detalhe-avatar">
+                                <i class="fa-solid fa-user-tie"></i>
+                            </div>
+                            <div>
+                                <h3 id="op-detalhe-nome">Nome</h3>
+                                <p id="op-detalhe-cargo">Cargo</p>
+                            </div>
+                        </div>
+                        <button class="criativa-nav-btn" onclick="voltarParaEquipe()">
+                            <i class="fas fa-arrow-left"></i> Voltar para Equipe
+                        </button>
+                    </div>
+
+                    <!-- KPIs -->
+                    <div class="designer-detalhe-kpis">
+                        <div class="designer-kpi">
+                            <div class="designer-kpi-icon"><i class="fas fa-list-check"></i></div>
+                            <div class="designer-kpi-data">
+                                <span class="designer-kpi-label">Total de Entregas</span>
+                                <span class="designer-kpi-value" id="op-kpi-total">0</span>
+                            </div>
+                        </div>
+                        <div class="designer-kpi">
+                            <div class="designer-kpi-icon"><i class="fas fa-circle-check"></i></div>
+                            <div class="designer-kpi-data">
+                                <span class="designer-kpi-label">Concluídas</span>
+                                <span class="designer-kpi-value" id="op-kpi-feito">0 / 0</span>
+                            </div>
+                        </div>
+                        <div class="designer-kpi">
+                            <div class="designer-kpi-icon"><i class="fas fa-percent"></i></div>
+                            <div class="designer-kpi-data">
+                                <span class="designer-kpi-label">Progresso Geral</span>
+                                <span class="designer-kpi-value" id="op-kpi-pct">0%</span>
+                            </div>
+                        </div>
+                        <div class="designer-kpi conclusao">
+                            <div class="designer-kpi-icon conclusao-icon"><i class="fas fa-coins"></i></div>
+                            <div class="designer-kpi-data">
+                                <span class="designer-kpi-label">Fee Proporcional</span>
+                                <span class="designer-kpi-value" id="op-kpi-fee">—</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Gráficos -->
+                    <div class="designer-detalhe-charts">
+                        <div class="designer-chart-card">
+                            <h4><i class="fas fa-chart-bar"></i> Meta vs Realizado</h4>
+                            <div class="chart-wrapper">
+                                <canvas id="chart-op-barras"></canvas>
+                            </div>
+                        </div>
+                        <div class="designer-chart-card">
+                            <h4><i class="fas fa-chart-pie"></i> Taxa de Conclusão</h4>
+                            <div class="chart-wrapper doughnut-wrapper">
+                                <canvas id="chart-op-conclusao"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Cards por projeto -->
+                    <div id="op-projetos-container" style="margin-top:1.5rem;display:flex;flex-direction:column;gap:1.5rem;"></div>
 
                 </div>
 
@@ -197,6 +307,48 @@
 
             </div>
         </main>
+    </div>
+
+    <!-- MODAL: Link de planilha operacional -->
+    <div id="modal-op-link" class="modal">
+        <div class="modal-content" style="max-width: 480px;">
+            <div class="modal-header">
+                <h3><i class="fas fa-link"></i> Link da Planilha</h3>
+                <button class="close-modal" onclick="closeOpLinkModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p id="modal-op-link-descricao" style="font-weight:600; color:var(--text-main); margin-bottom:1.2rem;"></p>
+                <div class="form-group">
+                    <label for="op-link-url">Link da planilha</label>
+                    <input type="url" id="op-link-url" placeholder="https://docs.google.com/..."
+                           style="margin-top:4px; width:100%;">
+                </div>
+            </div>
+            <div class="modal-footer" style="padding:1.5rem 0 0 0;">
+                <button type="button" class="btn-cancel" onclick="closeOpLinkModal()">Cancelar</button>
+                <button type="button" class="btn-save" onclick="saveOpLink()">Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Editar Metas Operacionais (Account / Gestor de Tráfego) -->
+    <div id="modal-op-metas" class="modal">
+        <div class="modal-content" style="max-width: 520px;">
+            <div class="modal-header">
+                <h3><i class="fas fa-sliders-h"></i> Configurar Metas</h3>
+                <button class="close-modal" onclick="closeOpMetasModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p id="modal-op-metas-projeto" style="font-weight:600; color:var(--text-main); margin-bottom:1rem;"></p>
+                <div id="op-meta-fields" style="display:flex;flex-direction:column;gap:0.75rem;">
+                    <!-- Campos gerados pelo JS -->
+                </div>
+            </div>
+            <div class="modal-footer" style="padding:1.5rem 0 0 0;">
+                <button type="button" class="btn-cancel" onclick="closeOpMetasModal()">Cancelar</button>
+                <button type="button" class="btn-save" onclick="saveOpMetas()">Salvar</button>
+            </div>
+        </div>
     </div>
 
     <!-- MODAL: Configurar Contratados (Coordenador) -->
@@ -310,7 +462,8 @@
             userFuncao: "{{ session.get('funcao', '') }}",
             userToken: "{{session.token}}",
             mes: {{ mes }},
-            ano: {{ ano }}
+            ano: {{ ano }},
+            usdRate: {{ usd_rate }}
         };
     </script>
     {% include "components/modal-configuracoes.html" %}
