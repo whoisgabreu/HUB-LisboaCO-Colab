@@ -8,24 +8,35 @@ let currentProject = null;
 let currentMonth = new Date().getMonth() + 1;
 let currentYear = new Date().getFullYear();
 
-// ─── LABELS DE ENTREGAS POR CARGO ────────────────────────────────────────────
+// ─── CONFIGURAÇÃO DE ENTREGAS POR CARGO ──────────────────────────────────────
+// Regras pré-definidas: cada cargo tem metas fixas por tipo de entrega.
+// O coordenador pode ajustar por cliente via modal.
 
-const DELIVERY_LABELS = {
-    // Account
-    checkin: { label: "Check-in Semanal", desc: "Automático ao registrar checkin no mês" },
-    relatorio_account: { label: "Definição de Meta (Account)", desc: "Automático ao concluir meta estratégica" },
-    planner_monday: { label: "Planner Monday Semanal", desc: "Automático ao registrar ≥4 tarefas semanais" },
-    forecasting: { label: "Atualização do Forecasting com Metas", desc: "Automático ao registrar meta estratégica" },
-    // Gestor de Tráfego
-    plano_midia: { label: "Plano de Mídia", desc: "Automático ao salvar plano de mídia" },
-    otimizacao: { label: "Documento de Otimização", desc: "Automático ao registrar otimização" },
-    relatorio_gt: { label: "Definição de Meta (GT)", desc: "Automático ao concluir meta estratégica" },
-    config_conta: { label: "Configurações de Conta", desc: "Automático ao registrar ≥4 tarefas semanais" },
+const DELIVERY_CONFIG = {
+    "Account": [
+        { tipo: "checkin_csat",     label: "Check-in + CSAT",          icone: "fa-comments",      meta: 4, desc: "Automático ao registrar check-in com CSAT no mês" },
+        { tipo: "relatorio_mensal", label: "Relatório Mensal",          icone: "fa-file-alt",       meta: 1, desc: "Automático ao submeter o relatório mensal do cliente" },
+        { tipo: "planner_monday",   label: "Planner Monday",            icone: "fa-calendar-check", meta: 4, desc: "Automático ao registrar ≥4 tarefas semanais no Monday" },
+        { tipo: "forecasting",      label: "Forecasting",               icone: "fa-chart-line",     meta: 1, desc: "Automático ao registrar meta com projeção financeira" },
+    ],
+    "Gestor de Tráfego": [
+        { tipo: "plano_midia",      label: "Plano de Mídia",            icone: "fa-bullhorn",       meta: 1, desc: "Automático ao salvar o plano de mídia mensal aprovado" },
+        { tipo: "kpis",             label: "KPIs do Mês",               icone: "fa-tachometer-alt", meta: 1, desc: "Automático ao registrar KPIs de performance das campanhas" },
+        { tipo: "doc_otimizacao",   label: "Documento de Otimização",   icone: "fa-sliders-h",      meta: 4, desc: "Automático ao registrar otimização de campanhas" },
+        { tipo: "relatorio_mensal", label: "Relatório Mensal",          icone: "fa-file-alt",       meta: 1, desc: "Automático ao submeter o relatório mensal de tráfego" },
+    ],
 };
 
-const ROLE_DELIVERY_ORDER = {
-    "Account": ["checkin", "relatorio_account", "planner_monday", "forecasting"],
-    "Gestor de Tráfego": ["plano_midia", "otimizacao", "relatorio_gt", "config_conta"],
+// Metas customizadas por cliente — chave: `${pipefyId}` → { tipo: meta_override }
+const CUSTOM_METAS = {};
+
+// Chart.js instance para o doughnut de entregas
+let chartEntregas = null;
+
+// ─── DADOS MOCK (remover quando o backend suportar a nova estrutura) ──────────
+const MOCK_REALIZADOS = {
+    "Account":           { checkin_csat: 2, relatorio_mensal: 0, planner_monday: 4, forecasting: 1 },
+    "Gestor de Tráfego": { plano_midia: 1,  kpis: 1,            doc_otimizacao: 2, relatorio_mensal: 0 },
 };
 
 // ─── TOAST ───────────────────────────────────────────────────────────────────
@@ -524,74 +535,277 @@ async function toggleTask(id, element) {
     } catch (e) { console.error(e); }
 }
 
-// ─── ENTREGAS DO MÊS (READ-ONLY, AUTOMÁTICAS) ────────────────────────────────
+// ─── ENTREGAS DO MÊS — BARRAS DE PROGRESSO ───────────────────────────────────
 
 async function loadEntregas(pipefyId, mes, ano) {
-    const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+    const meses = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
     const dateEl = document.getElementById('display-entregas-date');
     if (dateEl) dateEl.innerText = `[${meses[mes - 1]} ${ano}]`;
 
     const container = document.getElementById('entregas-grid');
     if (!container) return;
 
-    try {
-        const res = await fetch(`/api/operacao/monthly-deliveries/${pipefyId}/${mes}/${ano}`);
-        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-        const entregas = await res.json();
-
-        // Determinar cargo do usuário via sessão (injetado pelo template)
-        const userRole = window.__USER_ROLE__ || "";
-        const deliveryOrder = ROLE_DELIVERY_ORDER[userRole] || [];
-
-        if (entregas.length === 0 && deliveryOrder.length === 0) {
-            container.innerHTML = '<p style="color:var(--text-muted);padding:2rem;text-align:center;">Entregas serão geradas automaticamente conforme você registrar atividades.</p>';
-            return;
-        }
-
-        // Mapear entregas por tipo para lookup rápido
-        const entregaMap = {};
-        entregas.forEach(e => { entregaMap[e.delivery_type] = e; });
-
-        const orderedTypes = deliveryOrder.length ? deliveryOrder :
-            (entregas.length ? entregas.map(e => e.delivery_type) : []);
-
-        container.innerHTML = orderedTypes.map((dtype, index) => {
-            const entrega = entregaMap[dtype] || { status: 'pending', mrr_contribution: 0 };
-            const info = DELIVERY_LABELS[dtype] || { label: dtype, desc: "" };
-            const isConcluida = entrega.status === 'completed';
-            return `
-                <div class="entrega-card ${isConcluida ? 'concluido' : ''}" style="cursor:default;" title="Entrega gerada automaticamente pelo sistema">
-                    <div class="entrega-check"><i class="fas fa-check"></i></div>
-                    <div class="entrega-info">
-                        <h4>${info.label} (Entrega 0${index + 1})</h4>
-                        <p>${info.desc}</p>
-                        ${isConcluida && entrega.mrr_contribution > 0
-                    ? `<span style="font-size:0.75rem;color:#28a745;font-weight:600;">+ R$ ${parseFloat(entrega.mrr_contribution).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>`
-                    : ''}
-                    </div>
-                    <span class="entrega-status-badge ${isConcluida ? 'badge-ok' : 'badge-pending'}">
-                        <i class="fas ${isConcluida ? 'fa-lock-open' : 'fa-lock'}"></i>
-                        ${isConcluida ? 'Concluída' : 'Pendente'}
-                    </span>
-                </div>`;
-        }).join('');
-
-        // Calcular MRR total
-        const totalMrr = entregas.filter(e => e.status === 'completed')
-            .reduce((sum, e) => sum + parseFloat(e.mrr_contribution || 0), 0);
-        updateMRRDisplay(totalMrr);
-
-    } catch (e) {
-        console.error("Erro ao carregar entregas:", e);
-        container.innerHTML = '<p style="color:#D61616;padding:2rem;text-align:center;"><i class="fas fa-exclamation-circle"></i> Erro ao carregar entregas mensais. Por favor, tente novamente.</p>';
+    const userRole = window.__USER_ROLE__ || "";
+    const config = DELIVERY_CONFIG[userRole];
+    if (!config) {
+        container.innerHTML = '<p style="color:var(--text-muted);padding:2rem;text-align:center;">Cargo sem entregas configuradas.</p>';
+        return;
     }
+
+    // Obter metas do cliente (padrão + override do coordenador)
+    const customKey = String(pipefyId);
+    const customOverride = CUSTOM_METAS[customKey] || {};
+
+    const configComMeta = config.map(c => ({
+        ...c,
+        meta: customOverride[c.tipo] !== undefined ? customOverride[c.tipo] : c.meta,
+    }));
+
+    // Obter realizados: mock por ora — substituir pelo retorno da API quando disponível
+    const realizadosRaw = MOCK_REALIZADOS[userRole] || {};
+
+    renderEntregasSummary(configComMeta, realizadosRaw);
+    renderEntregasCards(configComMeta, realizadosRaw);
+}
+
+function _corProgresso(pct) {
+    if (pct >= 100) return '#22c55e';
+    if (pct >= 75)  return '#22c55e';
+    if (pct >= 40)  return '#f59e0b';
+    return '#ef4444';
+}
+
+function renderEntregasSummary(config, realizados) {
+    const panel = document.getElementById('entregas-summary-panel');
+    const kpisEl = document.getElementById('entregas-kpis-grid');
+    if (!panel || !kpisEl) return;
+
+    const PESO_POR_TIPO  = 25; // cada tipo vale 25% do total
+    const totalMeta      = config.reduce((s, c) => s + c.meta, 0);
+    const totalRealizado = config.reduce((s, c) => s + Math.min(realizados[c.tipo] || 0, c.meta), 0);
+    const concluidas     = config.filter(c => (realizados[c.tipo] || 0) >= c.meta).length;
+    // Percentual total: soma de (realizado/meta)*25 para cada tipo
+    const pct            = Math.round(config.reduce((s, c) => {
+        const r = Math.min(realizados[c.tipo] || 0, c.meta);
+        return s + (c.meta > 0 ? (r / c.meta) * PESO_POR_TIPO : 0);
+    }, 0));
+    const cor            = _corProgresso(pct);
+
+    // KPI cards
+    kpisEl.innerHTML = `
+        <div class="entrega-kpi-card">
+            <div class="entrega-kpi-icon" style="background:linear-gradient(135deg,#D61616,#a01010);">
+                <i class="fas fa-list-check"></i>
+            </div>
+            <div class="entrega-kpi-data">
+                <span class="entrega-kpi-label">Tipos de Entrega</span>
+                <span class="entrega-kpi-value">${config.length}</span>
+            </div>
+        </div>
+        <div class="entrega-kpi-card">
+            <div class="entrega-kpi-icon" style="background:linear-gradient(135deg,${cor},${cor}cc);">
+                <i class="fas fa-circle-check"></i>
+            </div>
+            <div class="entrega-kpi-data">
+                <span class="entrega-kpi-label">Tipos Concluídos</span>
+                <span class="entrega-kpi-value" style="color:${cor};">${concluidas} / ${config.length}</span>
+            </div>
+        </div>
+        <div class="entrega-kpi-card">
+            <div class="entrega-kpi-icon" style="background:linear-gradient(135deg,#22c55e,#16a34a);">
+                <i class="fas fa-check-double"></i>
+            </div>
+            <div class="entrega-kpi-data">
+                <span class="entrega-kpi-label">Entregas Realizadas</span>
+                <span class="entrega-kpi-value" style="color:#22c55e;">${totalRealizado} / ${totalMeta}</span>
+            </div>
+        </div>
+        <div class="entrega-kpi-card">
+            <div class="entrega-kpi-icon" style="background:linear-gradient(135deg,#6366f1,#4338ca);">
+                <i class="fas fa-bullseye"></i>
+            </div>
+            <div class="entrega-kpi-data">
+                <span class="entrega-kpi-label">Meta Geral</span>
+                <span class="entrega-kpi-value" style="color:${cor};">${pct}%</span>
+            </div>
+        </div>
+    `;
+
+    // Doughnut chart
+    _renderDoughnutEntregas(pct, cor);
+
+    panel.style.display = 'grid';
+}
+
+function _renderDoughnutEntregas(pct, cor) {
+    if (chartEntregas) chartEntregas.destroy();
+    const canvas = document.getElementById('chart-entregas-op');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const isTemaClaro = document.body.classList.contains('tema-claro');
+    const trackColor = isTemaClaro ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)';
+    const textColor  = isTemaClaro ? '#374151' : '#e5e7eb';
+
+    chartEntregas = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Realizado', 'Pendente'],
+            datasets: [{
+                data: [pct, 100 - pct],
+                backgroundColor: [cor, trackColor],
+                borderColor:     ['transparent','transparent'],
+                borderWidth: 0,
+                cutout: '78%',
+                borderRadius: 6,
+            }]
+        },
+        options: {
+            responsive: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: isTemaClaro ? '#1f2937' : '#1a1a2e',
+                    titleFont: { family: 'Poppins', size: 12 },
+                    bodyFont:  { family: 'Poppins', size: 11 },
+                    padding: 10,
+                    cornerRadius: 8,
+                    callbacks: { label: c => c.label + ': ' + c.raw + '%' },
+                }
+            }
+        },
+        plugins: [{
+            id: 'textoCentral',
+            afterDraw(chart) {
+                const { ctx: c, chartArea } = chart;
+                const cx = (chartArea.left + chartArea.right)  / 2;
+                const cy = (chartArea.top  + chartArea.bottom) / 2;
+                c.save();
+                c.textAlign = 'center'; c.textBaseline = 'middle';
+                c.font = 'bold 1.7rem Poppins'; c.fillStyle = cor;
+                c.fillText(pct + '%', cx, cy - 10);
+                c.font = '500 0.68rem Poppins'; c.fillStyle = textColor;
+                c.fillText('Concluído', cx, cy + 17);
+                c.restore();
+            }
+        }]
+    });
+}
+
+function renderEntregasCards(config, realizados) {
+    const container = document.getElementById('entregas-grid');
+    if (!container) return;
+
+    const PESO_POR_TIPO = 25; // cada tipo vale 25%
+
+    container.innerHTML = config.map((c, i) => {
+        const realizado       = realizados[c.tipo] || 0;
+        const meta            = c.meta;
+        const pct             = meta > 0 ? Math.min(Math.round((realizado / meta) * 100), 100) : 0;
+        const cor             = _corProgresso(pct);
+        const completo        = realizado >= meta;
+        const pesoPorEntrega  = meta > 0 ? (PESO_POR_TIPO / meta) : PESO_POR_TIPO;
+        const contribuicao    = Math.min(realizado, meta) * pesoPorEntrega;
+        const contribuicaoFmt = Number.isInteger(contribuicao) ? contribuicao : contribuicao.toFixed(2);
+
+        return `
+        <div class="entrega-progress-card ${completo ? 'completo' : ''}">
+            <div class="epc-icon" style="background:${completo ? 'rgba(34,197,94,0.15)' : 'rgba(255,255,255,0.04)'};color:${completo ? '#22c55e' : 'var(--text-muted)'};border:1px solid ${completo ? 'rgba(34,197,94,0.3)' : 'var(--border-color)'};">
+                <i class="fas ${c.icone}"></i>
+            </div>
+            <div class="epc-body">
+                <div class="epc-header-row">
+                    <h4>${c.label}</h4>
+                    <span class="epc-count" style="color:${cor};">${realizado}<span style="color:var(--text-muted);font-weight:400;"> / ${meta}</span></span>
+                </div>
+                <p class="epc-desc">${c.desc}</p>
+                <div class="epc-bar-track">
+                    <div class="epc-bar-fill" style="width:${pct}%;background:linear-gradient(90deg,${cor},${cor}bb);box-shadow:0 0 8px ${cor}44;"></div>
+                </div>
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-top:0.4rem;">
+                    <span style="font-size:0.72rem;color:var(--text-muted);">Peso: <strong style="color:var(--text-main);">25%</strong>${meta > 1 ? ` <span style="opacity:0.6;">(${pesoPorEntrega % 1 === 0 ? pesoPorEntrega : pesoPorEntrega.toFixed(2)}% × ${meta})</span>` : ''}</span>
+                    <span style="font-size:0.72rem;color:${cor};font-weight:600;">${contribuicaoFmt}% / 25%</span>
+                </div>
+            </div>
+            <div class="epc-badge">
+                <span class="epc-status ${completo ? 'ok' : (realizado > 0 ? 'parcial' : 'pendente')}">
+                    <i class="fas ${completo ? 'fa-circle-check' : (realizado > 0 ? 'fa-circle-half-stroke' : 'fa-circle-xmark')}"></i>
+                    ${completo ? 'Concluída' : (realizado > 0 ? 'Em progresso' : 'Pendente')}
+                </span>
+            </div>
+        </div>`;
+    }).join('');
 }
 
 function updateMRRDisplay(totalMrr) {
     const display = document.getElementById('mrr-impact-display');
-    if (display) {
-        display.innerText = `R$ ${totalMrr.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+    if (display) display.innerText = `R$ ${totalMrr.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+}
+
+// ─── MODAL EDITAR METAS (COORDENADOR) ────────────────────────────────────────
+
+function openMetasModal() {
+    const userRole = window.__USER_ROLE__ || "";
+    const config = DELIVERY_CONFIG[userRole];
+    if (!config || !currentProject) return;
+
+    const customKey = String(currentProject.pipefy_id);
+    const customOverride = CUSTOM_METAS[customKey] || {};
+
+    const clienteNome = currentProject.name || currentProject.pipefy_id;
+    document.querySelector('#modal-editar-metas .gt-modal-header h3').innerHTML =
+        `<i class="fas fa-sliders-h" style="margin-right:8px;color:#D61616;"></i>Editar Metas — <span style="color:#D61616;">${clienteNome}</span>`;
+
+    const fieldsEl = document.getElementById('metas-form-fields');
+    fieldsEl.innerHTML = config.map(c => {
+        const metaAtual  = customOverride[c.tipo] !== undefined ? customOverride[c.tipo] : c.meta;
+        const isPadrao   = customOverride[c.tipo] === undefined;
+        return `
+        <div style="display:grid;grid-template-columns:1fr auto;align-items:center;gap:1rem;padding:0.9rem 1rem;background:rgba(255,255,255,0.02);border:1px solid var(--border-color);border-radius:10px;">
+            <div>
+                <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:3px;">
+                    <i class="fas ${c.icone}" style="color:#D61616;font-size:0.85rem;width:16px;text-align:center;"></i>
+                    <span style="font-size:0.88rem;font-weight:600;color:var(--text-main);">${c.label}</span>
+                    ${isPadrao ? '<span style="font-size:0.65rem;color:var(--text-muted);background:rgba(255,255,255,0.05);border:1px solid var(--border-color);padding:1px 6px;border-radius:10px;">padrão</span>' : '<span style="font-size:0.65rem;color:#f59e0b;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.25);padding:1px 6px;border-radius:10px;">personalizado</span>'}
+                </div>
+                <p style="font-size:0.72rem;color:var(--text-muted);margin:0;">Meta padrão do cargo: <strong style="color:var(--text-sub);">${c.meta}</strong></p>
+            </div>
+            <input type="number" class="metas-input" data-tipo="${c.tipo}" data-padrao="${c.meta}"
+                   min="0" max="20" value="${metaAtual}"
+                   style="width:72px;text-align:center;background:var(--card-bg);border:1px solid var(--border-color);border-radius:8px;color:var(--text-main);font-family:Poppins,sans-serif;font-size:1rem;font-weight:600;padding:0.4rem 0.5rem;outline:none;transition:border-color 0.2s;"
+                   onfocus="this.style.borderColor='#D61616'" onblur="this.style.borderColor='var(--border-color)'"
+            />
+        </div>`;
+    }).join('');
+
+    openGTModal('modal-editar-metas');
+}
+
+function closeMetasModal() {
+    const modal = document.getElementById('modal-editar-metas');
+    if (modal) { modal.classList.remove('active'); document.body.style.overflow = ''; }
+}
+
+function saveMetasModal() {
+    if (!currentProject) return;
+    const customKey = String(currentProject.pipefy_id);
+    const inputs = document.querySelectorAll('#metas-form-fields .metas-input');
+
+    const override = {};
+    inputs.forEach(input => {
+        const val = parseInt(input.value, 10);
+        const padrao = parseInt(input.dataset.padrao, 10);
+        if (!isNaN(val) && val !== padrao) override[input.dataset.tipo] = val;
+    });
+
+    if (Object.keys(override).length > 0) {
+        CUSTOM_METAS[customKey] = override;
+    } else {
+        delete CUSTOM_METAS[customKey];
     }
+
+    closeMetasModal();
+    loadEntregas(currentProject.pipefy_id, currentMonth, currentYear);
+    if (typeof showToast === 'function') showToast('Metas atualizadas com sucesso!', 'success');
 }
 
 // ─── PLANO DE MÍDIA ───────────────────────────────────────────────────────────

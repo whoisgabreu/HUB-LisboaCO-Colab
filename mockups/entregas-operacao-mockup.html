@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mockup — Entregas do Mês | Operação</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  <style>
+    /* ── Reset & Base ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-main:       #0f0f1a;
+      --bg-card:       #1a1a2e;
+      --bg-card-hover: #1f1f38;
+      --border:        rgba(255,255,255,0.07);
+      --border-hover:  rgba(214,22,22,0.35);
+      --text-main:     #e5e7eb;
+      --text-muted:    #6b7280;
+      --text-sub:      #9ca3af;
+      --accent-red:    #D61616;
+      --accent-green:  #22c55e;
+      --accent-orange: #f59e0b;
+      --shadow-card:   0 4px 24px rgba(0,0,0,0.35);
+    }
+
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: var(--bg-main);
+      color: var(--text-main);
+      min-height: 100vh;
+      padding: 2.5rem 2rem;
+    }
+
+    /* ── Topo utilitário (mockup label + role toggle) ── */
+    .mockup-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 2rem;
+      padding: 0.75rem 1.2rem;
+      background: rgba(214,22,22,0.08);
+      border: 1px solid rgba(214,22,22,0.25);
+      border-radius: 12px;
+      font-size: 0.8rem;
+      color: var(--accent-red);
+      font-weight: 600;
+      letter-spacing: 0.04em;
+    }
+
+    .role-toggle {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .role-btn {
+      background: transparent;
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 8px;
+      color: var(--text-muted);
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 0.35rem 0.9rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .role-btn.active, .role-btn:hover {
+      background: var(--accent-red);
+      border-color: var(--accent-red);
+      color: #fff;
+    }
+
+    /* ── Section Header ── */
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.75rem;
+    }
+
+    .section-title {
+      display: flex;
+      align-items: center;
+      gap: 0.9rem;
+    }
+
+    .section-icon {
+      width: 44px;
+      height: 44px;
+      background: linear-gradient(135deg, var(--accent-red), #a01010);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      color: #fff;
+      flex-shrink: 0;
+      box-shadow: 0 4px 12px rgba(214,22,22,0.3);
+    }
+
+    .section-title h3 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .section-title h3 span.mes-label {
+      color: var(--accent-red);
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-left: 8px;
+    }
+
+    .history-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text-muted);
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.78rem;
+      font-weight: 500;
+      padding: 0.45rem 1rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: all 0.2s;
+    }
+
+    .history-btn:hover {
+      border-color: rgba(255,255,255,0.2);
+      color: var(--text-main);
+    }
+
+    /* ── Summary Panel (doughnut + KPIs) ── */
+    .summary-panel {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 1.5rem;
+      margin-bottom: 1.75rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 1.5rem 1.75rem;
+      box-shadow: var(--shadow-card);
+    }
+
+    /* Left: KPI grid */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      align-content: center;
+    }
+
+    .kpi-card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1rem 1.2rem;
+      display: flex;
+      align-items: center;
+      gap: 0.9rem;
+      transition: border-color 0.2s;
+    }
+
+    .kpi-card:hover { border-color: rgba(255,255,255,0.14); }
+
+    .kpi-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      flex-shrink: 0;
+    }
+
+    .kpi-icon.red    { background: rgba(214,22,22,0.15);  color: var(--accent-red);    }
+    .kpi-icon.green  { background: rgba(34,197,94,0.15);  color: var(--accent-green);  }
+    .kpi-icon.orange { background: rgba(245,158,11,0.15); color: var(--accent-orange); }
+    .kpi-icon.blue   { background: rgba(99,102,241,0.15); color: #818cf8;              }
+
+    .kpi-data { display: flex; flex-direction: column; }
+
+    .kpi-label {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      font-weight: 500;
+      line-height: 1;
+      margin-bottom: 0.3rem;
+    }
+
+    .kpi-value {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: var(--text-main);
+      line-height: 1;
+    }
+
+    .kpi-value.green  { color: var(--accent-green);  }
+    .kpi-value.orange { color: var(--accent-orange); }
+
+    /* Right: Doughnut chart */
+    .chart-wrapper {
+      width: 190px;
+      height: 190px;
+      position: relative;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* ── Delivery Cards ── */
+    .entregas-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .entrega-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1rem 1.4rem;
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+      gap: 1.1rem;
+      transition: all 0.25s;
+      cursor: default;
+    }
+
+    .entrega-card:hover {
+      border-color: var(--border-hover);
+      background: var(--bg-card-hover);
+      box-shadow: 0 2px 16px rgba(0,0,0,0.2);
+    }
+
+    .entrega-card.concluido {
+      border-color: rgba(34,197,94,0.25);
+      background: rgba(34,197,94,0.04);
+    }
+
+    /* Ícone circular */
+    .entrega-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.05rem;
+      flex-shrink: 0;
+      transition: all 0.3s;
+    }
+
+    .entrega-card.concluido .entrega-icon {
+      background: rgba(34,197,94,0.18);
+      color: var(--accent-green);
+    }
+
+    .entrega-card:not(.concluido) .entrega-icon {
+      background: rgba(255,255,255,0.05);
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+    }
+
+    /* Progress bar por card */
+    .entrega-body { min-width: 0; }
+
+    .entrega-body h4 {
+      font-size: 0.92rem;
+      font-weight: 600;
+      color: var(--text-main);
+      margin-bottom: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .entrega-body p {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-bottom: 0.55rem;
+      line-height: 1.4;
+    }
+
+    .entrega-card.concluido .entrega-body p { color: rgba(34,197,94,0.7); }
+
+    .entrega-bar-track {
+      height: 5px;
+      background: rgba(255,255,255,0.07);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .entrega-bar-fill {
+      height: 100%;
+      border-radius: 10px;
+      transition: width 0.8s cubic-bezier(.4,0,.2,1);
+    }
+
+    .entrega-card.concluido .entrega-bar-fill {
+      background: linear-gradient(90deg, #22c55e, #16a34a);
+      box-shadow: 0 0 8px rgba(34,197,94,0.4);
+    }
+
+    .entrega-card:not(.concluido) .entrega-bar-fill {
+      background: rgba(255,255,255,0.15);
+      width: 0% !important;
+    }
+
+    /* Badge de status */
+    .entrega-badge {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 0.35rem;
+      flex-shrink: 0;
+    }
+
+    .badge-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.3rem 0.7rem;
+      border-radius: 20px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .badge-status.ok {
+      background: rgba(34,197,94,0.15);
+      color: var(--accent-green);
+      border: 1px solid rgba(34,197,94,0.25);
+    }
+
+    .badge-status.pending {
+      background: rgba(107,114,128,0.12);
+      color: var(--text-muted);
+      border: 1px solid rgba(107,114,128,0.2);
+    }
+
+    .badge-mrr {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--accent-green);
+      text-align: right;
+    }
+
+    .badge-mrr.zero { color: var(--text-muted); font-weight: 500; }
+
+    /* ── Progress bar geral (thin, abaixo do painel summary) ── */
+    .general-progress-wrap {
+      margin-top: 1rem;
+    }
+
+    .general-progress-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-bottom: 0.35rem;
+    }
+
+    .general-progress-track {
+      height: 6px;
+      background: rgba(255,255,255,0.07);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .general-progress-fill {
+      height: 100%;
+      border-radius: 10px;
+      transition: width 1s ease-in-out;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 680px) {
+      .summary-panel { grid-template-columns: 1fr; }
+      .chart-wrapper { width: 150px; height: 150px; margin: 0 auto; }
+      .kpi-grid { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Toolbar (apenas no mockup) -->
+  <div class="mockup-toolbar">
+    <span><i class="fas fa-eye" style="margin-right:6px;"></i>MOCKUP — Entregas do Mês · Aba Operação</span>
+    <div class="role-toggle">
+      <button class="role-btn active" onclick="switchRole('Account')">Account</button>
+      <button class="role-btn" onclick="switchRole('Gestor de Tráfego')">Gestor de Tráfego</button>
+    </div>
+  </div>
+
+  <!-- Section Header -->
+  <div class="section-header">
+    <div class="section-title">
+      <div class="section-icon"><i class="fas fa-check-double"></i></div>
+      <h3>
+        Entregas do Mês
+        <span class="mes-label" id="mes-label">[Abril 2026]</span>
+      </h3>
+    </div>
+    <button class="history-btn">
+      <i class="fas fa-history"></i> Histórico de Entregas
+      <i class="fas fa-chevron-down" style="font-size:0.65rem;"></i>
+    </button>
+  </div>
+
+  <!-- Summary Panel -->
+  <div class="summary-panel">
+
+    <!-- KPIs -->
+    <div>
+      <div class="kpi-grid" id="kpi-grid">
+        <!-- Gerado por JS -->
+      </div>
+
+      <!-- Barra de progresso geral -->
+      <div class="general-progress-wrap">
+        <div class="general-progress-label">
+          <span>Progresso das Entregas</span>
+          <span id="pct-label-bar">—</span>
+        </div>
+        <div class="general-progress-track">
+          <div class="general-progress-fill" id="progress-bar-fill" style="width:0%"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Doughnut Chart -->
+    <div class="chart-wrapper">
+      <canvas id="chart-conclusao"></canvas>
+    </div>
+
+  </div>
+
+  <!-- Delivery Cards -->
+  <div class="entregas-grid" id="entregas-grid">
+    <!-- Gerado por JS -->
+  </div>
+
+
+  <!-- ═══════════════ SCRIPT ═══════════════ -->
+  <script>
+    // ── Dados ──────────────────────────────────────────────────────────────────
+
+    const DATA = {
+      "Account": {
+        fee_snapshot: 5000,
+        entregas: [
+          { tipo: "checkin_csat",    label: "Check-in + CSAT",          desc: "Automático ao registrar check-in com avaliação CSAT",   icone: "fa-comments",      status: "completed", mrr: 1250,    date: "10/04/2026" },
+          { tipo: "relatorio_mensal",label: "Relatório Mensal",          desc: "Automático ao submeter o relatório mensal do cliente",  icone: "fa-file-alt",       status: "completed", mrr: 1250,    date: "12/04/2026" },
+          { tipo: "planner_monday",  label: "Planner Monday Semanal",    desc: "Automático ao registrar ≥4 tarefas semanais no Monday", icone: "fa-calendar-check", status: "pending",   mrr: 0,       date: null },
+          { tipo: "forecasting",     label: "Atualização do Forecasting",desc: "Automático ao registrar meta com projeção financeira",  icone: "fa-chart-line",    status: "pending",   mrr: 0,       date: null }
+        ]
+      },
+      "Gestor de Tráfego": {
+        fee_snapshot: 6000,
+        entregas: [
+          { tipo: "kpis",           label: "KPIs do Mês",               desc: "Automático ao registrar KPIs de performance das campanhas", icone: "fa-tachometer-alt", status: "completed", mrr: 1500, date: "08/04/2026" },
+          { tipo: "plano_midia",    label: "Plano de Mídia",             desc: "Automático ao salvar o plano de mídia mensal aprovado",    icone: "fa-bullhorn",       status: "completed", mrr: 1500, date: "09/04/2026" },
+          { tipo: "doc_otimizacao", label: "Documento de Otimização",    desc: "Automático ao registrar otimização de campanhas",          icone: "fa-sliders-h",      status: "completed", mrr: 1500, date: "15/04/2026" },
+          { tipo: "relatorio_mensal",label: "Relatório Mensal",          desc: "Automático ao submeter o relatório mensal de tráfego",    icone: "fa-file-chart-bar", status: "pending",   mrr: 0,    date: null }
+        ]
+      }
+    };
+
+    let chartInstance = null;
+    let currentRole = "Account";
+
+    // ── Render ──────────────────────────────────────────────────────────────────
+
+    function render(role) {
+      const d = DATA[role];
+      const total     = d.entregas.length;
+      const concluidas = d.entregas.filter(e => e.status === "completed").length;
+      const pct        = Math.round((concluidas / total) * 100);
+      const mrrDesbloqueado = d.entregas.reduce((s, e) => s + e.mrr, 0);
+      const mrrTotal        = d.fee_snapshot;
+      const mrrPendente     = mrrTotal - mrrDesbloqueado;
+
+      renderKPIs(total, concluidas, mrrDesbloqueado, mrrPendente);
+      renderProgressBar(pct, mrrDesbloqueado, mrrTotal);
+      renderDoughnut(pct);
+      renderCards(d.entregas, d.fee_snapshot, total);
+    }
+
+    function renderKPIs(total, concluidas, desbloqueado, pendente) {
+      const valueClass = pct => pct === 0 ? '' : (pct === 100 ? 'green' : (pct >= 75 ? 'green' : (pct >= 50 ? 'orange' : '')));
+      const pct = Math.round((concluidas / total) * 100);
+
+      document.getElementById('kpi-grid').innerHTML = `
+        <div class="kpi-card">
+          <div class="kpi-icon red"><i class="fas fa-list-check"></i></div>
+          <div class="kpi-data">
+            <span class="kpi-label">Total de Entregas</span>
+            <span class="kpi-value">${total}</span>
+          </div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon green"><i class="fas fa-circle-check"></i></div>
+          <div class="kpi-data">
+            <span class="kpi-label">Concluídas</span>
+            <span class="kpi-value ${concluidas === total ? 'green' : (concluidas > 0 ? 'orange' : '')}">${concluidas} / ${total}</span>
+          </div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon green"><i class="fas fa-unlock"></i></div>
+          <div class="kpi-data">
+            <span class="kpi-label">MRR Desbloqueado</span>
+            <span class="kpi-value green">R$ ${desbloqueado.toLocaleString('pt-BR', {minimumFractionDigits:2})}</span>
+          </div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon orange"><i class="fas fa-lock"></i></div>
+          <div class="kpi-data">
+            <span class="kpi-label">MRR Pendente</span>
+            <span class="kpi-value ${pendente === 0 ? 'green' : 'orange'}">R$ ${pendente.toLocaleString('pt-BR', {minimumFractionDigits:2})}</span>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderProgressBar(pct, mrr, mrrTotal) {
+      const fill = document.getElementById('progress-bar-fill');
+      const label = document.getElementById('pct-label-bar');
+
+      let cor = pct >= 100 ? '#22c55e' : (pct >= 75 ? '#22c55e' : (pct >= 50 ? '#f59e0b' : '#ef4444'));
+      fill.style.width = pct + '%';
+      fill.style.background = `linear-gradient(90deg, ${cor}, ${cor}cc)`;
+      fill.style.boxShadow = `0 0 8px ${cor}55`;
+      label.textContent = pct + '%';
+      label.style.color = cor;
+    }
+
+    function renderDoughnut(pct) {
+      if (chartInstance) chartInstance.destroy();
+
+      const ctx = document.getElementById('chart-conclusao').getContext('2d');
+
+      let cor = '#ef4444';
+      if (pct >= 100)     cor = '#22c55e';
+      else if (pct >= 75) cor = '#22c55e';
+      else if (pct >= 50) cor = '#f59e0b';
+
+      const trackColor = 'rgba(255,255,255,0.06)';
+
+      chartInstance = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: ['Concluído', 'Pendente'],
+          datasets: [{
+            data: [pct, 100 - pct],
+            backgroundColor: [cor, trackColor],
+            borderColor:      ['transparent', 'transparent'],
+            borderWidth: 0,
+            cutout: '78%',
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: '#1a1a2e',
+              titleFont: { family: 'Poppins', size: 12 },
+              bodyFont:  { family: 'Poppins', size: 11 },
+              padding: 10,
+              cornerRadius: 8,
+              callbacks: { label: ctx => ctx.label + ': ' + ctx.raw + '%' }
+            }
+          }
+        },
+        plugins: [{
+          id: 'textoCentral',
+          afterDraw(chart) {
+            const { ctx: c, chartArea } = chart;
+            const cx = (chartArea.left + chartArea.right)  / 2;
+            const cy = (chartArea.top  + chartArea.bottom) / 2;
+            c.save();
+            c.textAlign    = 'center';
+            c.textBaseline = 'middle';
+            c.font         = 'bold 1.9rem Poppins';
+            c.fillStyle    = cor;
+            c.fillText(pct + '%', cx, cy - 10);
+            c.font      = '500 0.7rem Poppins';
+            c.fillStyle = '#6b7280';
+            c.fillText('Concluído', cx, cy + 18);
+            c.restore();
+          }
+        }]
+      });
+    }
+
+    function renderCards(entregas, feeSnapshot, total) {
+      const mrrPorEntrega = feeSnapshot / total;
+
+      document.getElementById('entregas-grid').innerHTML = entregas.map((e, i) => {
+        const concluido = e.status === 'completed';
+        return `
+          <div class="entrega-card ${concluido ? 'concluido' : ''}">
+
+            <!-- Ícone -->
+            <div class="entrega-icon">
+              <i class="fas ${e.icone}"></i>
+            </div>
+
+            <!-- Corpo -->
+            <div class="entrega-body">
+              <h4>${e.label} <span style="font-weight:400;color:var(--text-muted);font-size:0.78rem;">(Entrega 0${i+1})</span></h4>
+              <p>${e.desc}</p>
+              <!-- Mini barra de progresso por card -->
+              <div class="entrega-bar-track">
+                <div class="entrega-bar-fill" style="width:${concluido ? '100' : '0'}%"></div>
+              </div>
+            </div>
+
+            <!-- Badge -->
+            <div class="entrega-badge">
+              <span class="badge-status ${concluido ? 'ok' : 'pending'}">
+                <i class="fas ${concluido ? 'fa-circle-check' : 'fa-circle-xmark'}"></i>
+                ${concluido ? 'Concluída' : 'Pendente'}
+              </span>
+              ${concluido
+                ? `<span class="badge-mrr">+ R$ ${e.mrr.toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>`
+                : `<span class="badge-mrr zero">R$ ${mrrPorEntrega.toLocaleString('pt-BR',{minimumFractionDigits:2})} a liberar</span>`
+              }
+              ${concluido && e.date
+                ? `<span style="font-size:0.65rem;color:var(--text-muted);">${e.date}</span>`
+                : ''
+              }
+            </div>
+
+          </div>
+        `;
+      }).join('');
+    }
+
+    // ── Toggle de cargo ──────────────────────────────────────────────────────────
+
+    function switchRole(role) {
+      currentRole = role;
+      document.querySelectorAll('.role-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.textContent.trim() === role);
+      });
+      render(role);
+    }
+
+    // ── Init ─────────────────────────────────────────────────────────────────────
+    render(currentRole);
+  </script>
+</body>
+</html>

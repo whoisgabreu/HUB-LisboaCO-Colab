@@ -1,0 +1,187 @@
+{
+  "schema_version": "2.0",
+  "description": "Estrutura de entregas mensais por cargo - Aba Operação",
+  "last_updated": "2026-04-17",
+
+  "roles": {
+    "Account": {
+      "label": "Account",
+      "total_entregas": 4,
+      "peso_por_entrega": 0.25,
+      "delivery_types": [
+        {
+          "tipo": "checkin_csat",
+          "label": "Check-in + CSAT",
+          "descricao": "Automático ao registrar check-in com avaliação CSAT no mês",
+          "icone": "fa-comments",
+          "ordem": 1,
+          "peso_mrr": 0.25,
+          "trigger": "checkin_com_csat_registrado",
+          "trigger_descricao": "≥1 check-in com CSAT registrado no mês"
+        },
+        {
+          "tipo": "relatorio_mensal",
+          "label": "Relatório Mensal",
+          "descricao": "Automático ao submeter o relatório mensal do cliente",
+          "icone": "fa-file-alt",
+          "ordem": 2,
+          "peso_mrr": 0.25,
+          "trigger": "relatorio_mensal_submetido",
+          "trigger_descricao": "≥1 relatório mensal submetido no mês"
+        },
+        {
+          "tipo": "planner_monday",
+          "label": "Planner Monday Semanal",
+          "descricao": "Automático ao registrar ≥4 tarefas semanais no Monday",
+          "icone": "fa-calendar-check",
+          "ordem": 3,
+          "peso_mrr": 0.25,
+          "trigger": "tarefas_semanais_gte_4",
+          "trigger_descricao": "≥4 tarefas semanais registradas no mês"
+        },
+        {
+          "tipo": "forecasting",
+          "label": "Atualização do Forecasting",
+          "descricao": "Automático ao registrar meta estratégica com projeção financeira",
+          "icone": "fa-chart-line",
+          "ordem": 4,
+          "peso_mrr": 0.25,
+          "trigger": "meta_estrategica_com_forecasting",
+          "trigger_descricao": "≥1 meta estratégica com forecasting registrada"
+        }
+      ]
+    },
+
+    "Gestor de Tráfego": {
+      "label": "Gestor de Tráfego",
+      "total_entregas": 4,
+      "peso_por_entrega": 0.25,
+      "delivery_types": [
+        {
+          "tipo": "kpis",
+          "label": "KPIs do Mês",
+          "descricao": "Automático ao registrar KPIs de performance das campanhas",
+          "icone": "fa-tachometer-alt",
+          "ordem": 1,
+          "peso_mrr": 0.25,
+          "trigger": "kpis_registrados",
+          "trigger_descricao": "≥1 registro de KPIs de campanha no mês"
+        },
+        {
+          "tipo": "plano_midia",
+          "label": "Plano de Mídia",
+          "descricao": "Automático ao salvar o plano de mídia mensal aprovado",
+          "icone": "fa-bullhorn",
+          "ordem": 2,
+          "peso_mrr": 0.25,
+          "trigger": "plano_midia_salvo",
+          "trigger_descricao": "≥1 plano de mídia salvo no mês"
+        },
+        {
+          "tipo": "doc_otimizacao",
+          "label": "Documento de Otimização",
+          "descricao": "Automático ao registrar otimização de campanhas no mês",
+          "icone": "fa-sliders-h",
+          "ordem": 3,
+          "peso_mrr": 0.25,
+          "trigger": "otimizacao_registrada",
+          "trigger_descricao": "≥1 otimização de campanha registrada no mês"
+        },
+        {
+          "tipo": "relatorio_mensal",
+          "label": "Relatório Mensal",
+          "descricao": "Automático ao submeter o relatório mensal de tráfego pago",
+          "icone": "fa-file-chart-bar",
+          "ordem": 4,
+          "peso_mrr": 0.25,
+          "trigger": "relatorio_mensal_submetido",
+          "trigger_descricao": "≥1 relatório mensal de tráfego submetido"
+        }
+      ]
+    }
+  },
+
+  "exemplo_instancia_account": {
+    "email": "account@v4company.com",
+    "mes": 4,
+    "ano": 2026,
+    "cargo": "Account",
+    "fee_snapshot": 5000.00,
+    "entregas": [
+      {
+        "tipo": "checkin_csat",
+        "status": "completed",
+        "mrr_contribution": 1250.00,
+        "completed_at": "2026-04-10T10:30:00"
+      },
+      {
+        "tipo": "relatorio_mensal",
+        "status": "completed",
+        "mrr_contribution": 1250.00,
+        "completed_at": "2026-04-12T14:20:00"
+      },
+      {
+        "tipo": "planner_monday",
+        "status": "pending",
+        "mrr_contribution": 0.00,
+        "completed_at": null
+      },
+      {
+        "tipo": "forecasting",
+        "status": "pending",
+        "mrr_contribution": 0.00,
+        "completed_at": null
+      }
+    ],
+    "resumo": {
+      "total_entregas": 4,
+      "entregas_concluidas": 2,
+      "percentual_conclusao": 50,
+      "mrr_desbloqueado": 2500.00,
+      "mrr_total_possivel": 5000.00,
+      "mrr_pendente": 2500.00
+    }
+  },
+
+  "exemplo_instancia_gt": {
+    "email": "gt@v4company.com",
+    "mes": 4,
+    "ano": 2026,
+    "cargo": "Gestor de Tráfego",
+    "fee_snapshot": 6000.00,
+    "entregas": [
+      {
+        "tipo": "kpis",
+        "status": "completed",
+        "mrr_contribution": 1500.00,
+        "completed_at": "2026-04-08T09:15:00"
+      },
+      {
+        "tipo": "plano_midia",
+        "status": "completed",
+        "mrr_contribution": 1500.00,
+        "completed_at": "2026-04-09T11:00:00"
+      },
+      {
+        "tipo": "doc_otimizacao",
+        "status": "completed",
+        "mrr_contribution": 1500.00,
+        "completed_at": "2026-04-15T16:45:00"
+      },
+      {
+        "tipo": "relatorio_mensal",
+        "status": "pending",
+        "mrr_contribution": 0.00,
+        "completed_at": null
+      }
+    ],
+    "resumo": {
+      "total_entregas": 4,
+      "entregas_concluidas": 3,
+      "percentual_conclusao": 75,
+      "mrr_desbloqueado": 4500.00,
+      "mrr_total_possivel": 6000.00,
+      "mrr_pendente": 1500.00
+    }
+  }
+}

@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Operação | Lisboa&CO</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
@@ -77,6 +78,80 @@
         [data-theme="light"] .main-goal-card h2 {
             color: var(--text-main) !important;
         }
+
+        /* ── Modal Editar Metas ── */
+        .op-metas-fee-banner {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            padding: 0.7rem 1rem;
+            background: rgba(99,102,241,0.08);
+            border: 1px solid rgba(99,102,241,0.2);
+            border-radius: 10px;
+            font-size: 0.78rem;
+            color: var(--text-sub);
+            margin-bottom: 1rem;
+        }
+        .op-metas-row {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.85rem 1rem;
+            background: rgba(255,255,255,0.02);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            transition: border-color 0.2s;
+        }
+        .op-metas-row:focus-within { border-color: rgba(214,22,22,0.3); }
+        .op-metas-label-row {
+            display: flex;
+            align-items: center;
+            gap: 0.45rem;
+            margin-bottom: 2px;
+        }
+        .op-metas-label {
+            font-size: 0.87rem;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+        .op-meta-tag {
+            font-size: 0.62rem;
+            padding: 1px 6px;
+            border-radius: 10px;
+        }
+        .op-meta-tag.padrao {
+            color: var(--text-muted);
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--border-color);
+        }
+        .op-meta-tag.custom {
+            color: #f59e0b;
+            background: rgba(245,158,11,0.1);
+            border: 1px solid rgba(245,158,11,0.25);
+        }
+        .op-metas-padrao-hint {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin: 0;
+        }
+        .op-metas-input {
+            width: 72px;
+            text-align: center;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-main);
+            font-family: 'Poppins', sans-serif;
+            font-size: 1rem;
+            font-weight: 600;
+            padding: 0.4rem 0.5rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .op-metas-input:focus { border-color: #D61616; }
+        body.tema-claro .op-metas-row { background: #f9fafb; border-color: #e5e7eb; }
+        body.tema-claro .op-metas-input { background: #fff; border-color: #d1d5db; color: #111827; }
     </style>
 </head>
 
@@ -173,10 +248,6 @@
                                 <span>Checkin Semanal</span>
                             </button>
                             {% endif %}
-                            <button class="op-pill-btn" onclick="switchOperacaoTab('entregas')">
-                                <div class="op-icon-box"><i class="fas fa-check-double"></i></div>
-                                <span>Entregas do Mês</span>
-                            </button>
                         </div>
                     </div>
 
@@ -409,35 +480,7 @@
                         </div>
                     </section>
 
-                    <!-- 5. ENTREGAS DO MÊS -->
-                    <section id="section-entregas" class="op-content-section">
-                        <header
-                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-                            <div class="op-section-title" style="margin-bottom: 0;">
-                                <div class="op-icon-box"><i class="fas fa-check-double"></i></div>
-                                <h3>Entregas do Mês <span id="display-entregas-date"
-                                        style="color: #D61616; font-weight: 600; font-size: 0.9rem; margin-left: 10px;"></span>
-                                </h3>
-                            </div>
-                            <button class="history-dropdown-btn" onclick="openGTModal('modal-historico-entregas')">
-                                <i class="fas fa-history"></i> Histórico de Entregas <i class="fas fa-chevron-down"
-                                    style="font-size: 0.7rem;"></i>
-                            </button>
-                        </header>
-
-
-                        <div class="entregas-grid" id="entregas-grid">
-                            <!-- Entregas geradas dinamicamente pelo JS com base no cargo do usuário -->
-                            <div style="text-align:center;padding:3rem;color:var(--text-muted);">
-                                <i class="fas fa-spinner fa-spin"
-                                    style="font-size:1.5rem;margin-bottom:1rem;display:block;"></i>
-                                Carregando entregas do mês...
-                            </div>
-                        </div>
-
-                    </section>
-
-                    <!-- 6. LINKS ÚTEIS -->
+                    <!-- 5. LINKS ÚTEIS -->
                     <section id="section-links" class="op-content-section">
                         <header
                             style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
@@ -911,73 +954,6 @@
         </div>
     </div>
 
-    <!-- Modal: Histórico de Entregas -->
-    <div id="modal-historico-entregas" class="gt-modal">
-        <div class="gt-modal-content" style="max-width: 800px;">
-            <div class="gt-modal-header">
-                <h3 class="gt-modal-title">Histórico de Entregas Mensais</h3>
-                <button class="gt-modal-close" onclick="closeGTModal('modal-historico-entregas')">&times;</button>
-            </div>
-
-            <div class="history-accordion">
-                <!-- Janeiro 2026 -->
-                <div class="history-month-item" id="history-entregas-jan-2026">
-                    <div class="history-month-header" onclick="toggleHistoryMonth('history-entregas-jan-2026')">
-                        <div style="display: flex; align-items: center; gap: 15px;">
-                            <span class="badge-gt badge-estavel">Janeiro 2026</span>
-                            <span style="color: #28a745; font-size: 0.85rem; font-weight: 500;">4/4 Entregues <i
-                                    class="fas fa-check-circle"></i></span>
-                        </div>
-                        <i class="fas fa-chevron-down history-arrow"></i>
-                    </div>
-                    <div class="history-month-content">
-                        <ul style="list-style: none; margin: 0; padding: 0.5rem 1rem;">
-                            <li style="margin-bottom: 15px; color: var(--text-muted);"><i class="fas fa-check"
-                                    style="color: #00ff00; margin-right: 10px;"></i> 4 Docs de Otimização Registrados
-                            </li>
-                            <li style="margin-bottom: 15px; color: var(--text-muted);"><i class="fas fa-check"
-                                    style="color: #00ff00; margin-right: 10px;"></i> Relatório Mensal Processado</li>
-                            <li style="margin-bottom: 15px; color: var(--text-muted);"><i class="fas fa-check"
-                                    style="color: #00ff00; margin-right: 10px;"></i> Plano de Mídia Executado</li>
-                            <li style="margin-bottom: 15px; color: var(--text-muted);"><i class="fas fa-check"
-                                    style="color: #00ff00; margin-right: 10px;"></i> Acessos e Configurações Revisados
-                            </li>
-                        </ul>
-                    </div>
-                </div>
-
-                <!-- Dezembro 2025 -->
-                <div class="history-month-item" id="history-entregas-dez-2025">
-                    <div class="history-month-header" onclick="toggleHistoryMonth('history-entregas-dez-2025')">
-                        <div style="display: flex; align-items: center; gap: 15px;">
-                            <span class="badge-gt" style="background: rgba(255,255,255,0.1);">Dezembro 2025</span>
-                            <span style="color: #28a745; font-size: 0.85rem; font-weight: 500;">4/4 Entregues <i
-                                    class="fas fa-check-circle"></i></span>
-                        </div>
-                        <i class="fas fa-chevron-down history-arrow"></i>
-                    </div>
-                    <div class="history-month-content">
-                        <ul style="list-style: none; margin: 0; padding: 0.5rem 1rem;">
-                            <li style="margin-bottom: 15px; color: var(--text-muted);"><i class="fas fa-check"
-                                    style="color: #00ff00; margin-right: 10px;"></i> 4 Docs de Otimização Registrados
-                            </li>
-                            <li style="margin-bottom: 15px; color: var(--text-muted);"><i class="fas fa-check"
-                                    style="color: #00ff00; margin-right: 10px;"></i> Relatório Mensal Processado</li>
-                            <li style="margin-bottom: 15px; color: var(--text-muted);"><i class="fas fa-check"
-                                    style="color: #00ff00; margin-right: 10px;"></i> Plano de Mídia Executado</li>
-                            <li style="margin-bottom: 15px; color: var(--text-muted);"><i class="fas fa-check"
-                                    style="color: #00ff00; margin-right: 10px;"></i> Acessos e Configurações Revisados
-                            </li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-
-            <p style="font-size: 0.75rem; color: #555; text-align: center; margin-top: 1.5rem; font-style: italic;">As
-                entregas passadas ficam salvas com o arquivo de BI para histórico consultivo.</p>
-        </div>
-    </div>
-
     <!-- Modal: Novo Link Útil -->
     <div id="modal-novo-link" class="gt-modal">
         <div class="gt-modal-content" style="max-width: 520px;">
@@ -1100,9 +1076,12 @@
             userAccessLevel: "{{ session.nivel_acesso }}",
             userToken: "{{session.token}}"
         };
-        // Cargo do usuário injetado para o delivery engine do frontend
-        window.__USER_ROLE__ = "{{ session.funcao }}";
+        window.__USER_ROLE__    = "{{ session.funcao }}";
+        window.__USER_POSICAO__ = "{{ session.posicao }}";
+        window.__CURRENT_FEE__  = 0;
     </script>
+
+
     {% include "components/modal-configuracoes.html" %}
     <script src="static/js/tema.js"></script>
 </body>
