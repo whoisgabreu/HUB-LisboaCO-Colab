@@ -943,6 +943,21 @@ function openOperacionalDetalhe(card) {
 }
 
 // ── Render completo ───────────────────────────────────────────────────────────
+// Retorna o fee em BRL de um cliente, aplicando proporcional para churned
+function _feeBRLCliente(c, usdRate) {
+    const fee = parseFloat(c.fee || 0);
+    const moeda = (c.moeda || 'BRL').toUpperCase();
+    let feeBRL = moeda === 'USD' ? fee * usdRate : fee;
+    if (c.cientista) feeBRL *= 1.5;
+    if (c.churned && c.data_churn) {
+        const parts = c.data_churn.split('/');
+        const churnDay = parseInt(parts[0], 10);
+        const totalDays = new Date(_anoSelecionado, _mesSelecionado, 0).getDate();
+        feeBRL = feeBRL * churnDay / totalDays;
+    }
+    return feeBRL;
+}
+
 function _renderOpView() {
     const clientes = _opClientes;
 
@@ -955,9 +970,7 @@ function _renderOpView() {
         const pid = String(c.projeto_id);
         const tipos = _getProjectTipos(c);
         const fee = parseFloat(c.fee || 0);
-        const moeda = (c.moeda || 'BRL').toUpperCase();
-        let feeBRL = moeda === 'USD' ? fee * usdRate : fee;
-        if (c.cientista) feeBRL *= 1.5;
+        const feeBRL = _feeBRLCliente(c, usdRate);
         if (fee > 0) hasFee = true;
 
         let projMeta = 0, projFeito = 0;
@@ -975,7 +988,22 @@ function _renderOpView() {
     });
 
     const pct = totalMeta > 0 ? Math.round((totalFeito / totalMeta) * 100) : 0;
-    const feeFeito = hasFee ? totalFeeFeito : null;
+    
+    // Substitui o cálculo local de feeFeito pelo dado real do banco de dados
+    let feeFeito = null;
+    if (hasFee) {
+        if (typeof _opRemuJson !== 'undefined' && _opRemuJson && _opRemuJson.rows) {
+            const rowMes = _opRemuJson.rows.find(r => r.mes === _mesSelecionado && r.ano === _anoSelecionado) 
+                        || _opRemuJson.rows[_opRemuJson.rows.length - 1];
+            if (rowMes && rowMes.mrr_bruto_entregue !== undefined) {
+                feeFeito = rowMes.mrr_bruto_entregue;
+            } else {
+                feeFeito = totalFeeFeito;
+            }
+        } else {
+            feeFeito = totalFeeFeito;
+        }
+    }
 
     // Tipos para o gráfico: union de todos os tipos do cargo + extras cientista
     const tiposBase = OP_ENTREGAS_CONFIG[_opFuncao] || [];
@@ -1061,30 +1089,6 @@ function _renderOpCharts(tipos, clientes, pct) {
             }
         });
     }
-}
-
-// ── Cards por projeto ─────────────────────────────────────────────────────────
-function _renderOpProjetos(tipos, clientes) {
-    const container = document.getElementById('op-projetos-container');
-    if (!container) return;
-
-    const isCoordenador = _isCoordinador();
-    container.innerHTML = '';
-
-    if (!clientes.length) {
-        container.innerHTML = `<p style="color:var(--text-muted);padding:1rem;">Nenhum cliente vinculado.</p>`;
-        return;
-    }
-
-    clientes.forEach(c => {
-        const pid    = String(c.projeto_id);
-        const fee    = parseFloat(c.fee || 0);
-        const moeda  = (c.moeda || 'BRL').toUpperCase();
-        const isUSD  = moeda === 'USD';
-        const simbol = isUSD ? 'US$' : 'R$';
-        const feeStr = fee > 0
-            ? `${simbol} ${fee.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
-            : '—';
 
     // ── Doughnut: Taxa de Conclusão ───────────────────────────────────────────
     if (_chartOpConclusao) _chartOpConclusao.destroy();
@@ -1127,6 +1131,7 @@ function _renderOpProjetos(tipos, clientes) {
 }
 
 // ── Cards por projeto ─────────────────────────────────────────────────────────
+
 function _renderOpProjetos(clientes) {
     const container = document.getElementById('op-projetos-container');
     if (!container) return;
@@ -1251,46 +1256,20 @@ function _renderOpProjetos(clientes) {
 
 // ── Seção de Remuneração embutida ─────────────────────────────────────────────
 function _renderDesignerRemu(remu) {
+    // Usa os dados do banco de dados diretamente, sem recalcular no frontend
     _renderRemuSection(remu, {
         sectionId: 'designer-remu-section',
         cardsId: 'designer-remu-cards',
         tbodyId: 'designer-remu-tbody',
         labelId: 'designer-remu-mes-label',
-        clientes: [],          // designer não usa a lista de clientes aqui
-        showClients: false,
+        clientes: _clientesDetalheAtual,
+        showClients: true,
     });
 }
 
 function _renderOpRemu(remu) {
-    // Calcula MRR entregue localmente a partir dos dados de entregas reais
-    const mrrEntregue = _calcOpMrrEntregue();
-
-    // Clona o remu para não mutar o objeto original do servidor
-    const remuAjustado = remu ? JSON.parse(JSON.stringify(remu)) : remu;
-
-    // Sobrescreve o mrr do mês selecionado com o valor calculado localmente
-    // Aplica regra: MRR Atual = MRR Entregue - Churn
-    if (remuAjustado && remuAjustado.rows) {
-        const rowMes = remuAjustado.rows.find(r => r.mes === _mesSelecionado && r.ano === _anoSelecionado);
-        if (rowMes) {
-            const churn = rowMes.churn_rs || 0;
-            rowMes.mrr_bruto_entregue = mrrEntregue;
-            rowMes.mrr = mrrEntregue - churn;
-
-            // Recalcula remuneração proporcional às entregas para o "espelho" da UI
-            const mrrEsp = rowMes.mrr_esperado || 1;
-            const pctEntrega = Math.min(mrrEntregue / mrrEsp, 1);
-            const remMin = rowMes.rem_min || 0;
-            const remMax = rowMes.rem_max || 0;
-            rowMes.total_brl = remMin + (remMax - remMin) * pctEntrega;
-        }
-        // Atualiza o mrr top-level se existir
-        if (remuAjustado.mrr !== undefined) {
-            remuAjustado.mrr = mrrEntregue;
-        }
-    }
-
-    _renderRemuSection(remuAjustado, {
+    // Usa os dados do banco de dados diretamente, sem recalcular no frontend
+    _renderRemuSection(remu, {
         sectionId: 'op-remu-section',
         cardsId: 'op-remu-cards',
         tbodyId: 'op-remu-tbody',
@@ -1309,12 +1288,11 @@ function _calcOpMrrEntregue() {
     let total = 0;
 
     (_opClientes || []).forEach(c => {
+        if (c.churned) return;
         const pid = String(c.projeto_id);
         const tipos = _getProjectTipos(c);
-        const fee = parseFloat(c.fee || 0);
-        const moeda = (c.moeda || 'BRL').toUpperCase();
-        let feeBRL = moeda === 'USD' ? fee * usdRate : fee;
-        if (c.cientista) feeBRL *= 1.5;
+        // Fee proporcional: clientes churned contribuem apenas pelos dias ativos no mês
+        const feeBRL = _feeBRLCliente(c, usdRate);
 
         let projMeta = 0, projFeito = 0;
         tipos.forEach(d => {
@@ -1335,6 +1313,7 @@ function _calcDesignerMrrEntregue() {
     const usdRate = (window.APP_CONFIG && window.APP_CONFIG.usdRate) || 5.7;
 
     (_clientesDetalheAtual || []).forEach(c => {
+        if (c.churned) return;
         let fee = parseFloat(c.fee || 0);
         const moeda = (c.moeda || 'BRL').toUpperCase();
         if (moeda === 'USD') fee *= usdRate;
@@ -1361,34 +1340,7 @@ function _calcDesignerMrrEntregue() {
     return totalMrr;
 }
 
-function _renderDesignerRemu(remu) {
-    const mrrEntregue = _calcDesignerMrrEntregue();
-    const remuAjustado = remu ? JSON.parse(JSON.stringify(remu)) : remu;
-    if (remuAjustado && remuAjustado.rows) {
-        const rowMes = remuAjustado.rows.find(r => r.mes === _mesSelecionado && r.ano === _anoSelecionado)
-            || remuAjustado.rows[remuAjustado.rows.length - 1];
-        if (rowMes) {
-            const churn = rowMes.churn_rs || 0;
-            rowMes.mrr_bruto_entregue = mrrEntregue;
-            rowMes.mrr = mrrEntregue - churn;
 
-            // Recalcula remuneração proporcional às entregas para o "espelho" da UI
-            const mrrEsp = rowMes.mrr_esperado || 1;
-            const pctEntrega = Math.min(mrrEntregue / mrrEsp, 1);
-            const remMin = rowMes.rem_min || 0;
-            const remMax = rowMes.rem_max || 0;
-            rowMes.total_brl = remMin + (remMax - remMin) * pctEntrega;
-        }
-    }
-    _renderRemuSection(remuAjustado, {
-        sectionId: 'designer-remu-section',
-        labelId: 'designer-remu-mes-label',
-        cardsId: 'designer-remu-cards',
-        tbodyId: 'designer-remu-tbody',
-        showClients: true,
-        clientes: _clientesDetalheAtual
-    });
-}
 
 function _renderRemuSection(remu, opts) {
     const section = document.getElementById(opts.sectionId);
@@ -1445,8 +1397,8 @@ function _renderRemuSection(remu, opts) {
     const labelEl = document.getElementById(opts.labelId);
     if (labelEl) labelEl.textContent = `· ${mesNome}/${rowMes.ano}`;
 
-    const usdRate = (window.APP_CONFIG && window.APP_CONFIG.usdRate) || 5.7;
-    const totalClientes = (opts.clientes || []).length;
+    const totalAtivos = (opts.clientes || []).filter(c => !c.churned).length;
+    const totalChurned = (opts.clientes || []).length - totalAtivos;
     const clickAction = opts.onClientClick ? opts.onClientClick : "openOpClientesModal()";
     const clientesCard = opts.showClients ? `
         <div class="remu-metric-card" onclick="${clickAction}" style="cursor:pointer;transition:transform 0.2s;"
@@ -1456,8 +1408,8 @@ function _renderRemuSection(remu, opts) {
                 <i class="fa-solid fa-users remu-metric-icon"></i>
             </div>
             <div style="margin-top:0.75rem;">
-                <div style="font-size:2rem;font-weight:700;color:var(--text-main);line-height:1;">${totalClientes}</div>
-                <div style="font-size:0.72rem;color:var(--text-muted);margin-top:4px;text-transform:uppercase;letter-spacing:0.5px;">projetos ativos</div>
+                <div style="font-size:2rem;font-weight:700;color:var(--text-main);line-height:1;">${totalAtivos}</div>
+                <div style="font-size:0.72rem;color:var(--text-muted);margin-top:4px;text-transform:uppercase;letter-spacing:0.5px;">projetos ativos${totalChurned > 0 ? ` · <span style="color:#ef4444;">${totalChurned} saída${totalChurned > 1 ? 's' : ''}</span>` : ''}</div>
             </div>
             <div style="margin-top:12px;text-align:right;border-top:1px solid var(--border-color);padding-top:8px;">
                 <span style="font-size:0.7rem;color:#D61616;font-weight:600;text-transform:uppercase;letter-spacing:1px;">
@@ -1577,19 +1529,22 @@ function openOpClientesModal() {
         const cientistaBadge = c.cientista
             ? `<span style="display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:20px;font-size:0.65rem;font-weight:700;background:#a855f722;color:#a855f7;border:1px solid #a855f744;margin-left:6px;"><i class="fas fa-flask" style="font-size:0.58rem;"></i> Cientista</span>`
             : '';
+        const churnBadge = c.churned
+            ? `<span style="background:var(--bg-card);color:#ef4444;border:1px solid #ef4444;padding:2px 6px;border-radius:4px;font-size:0.6rem;font-weight:700;margin-left:6px;">SAÍDA ${c.data_churn || ''}</span>`
+            : '';
         const feeExib = c.cientista ? (parseFloat(c.fee || 0) * 1.5) : parseFloat(c.fee || 0);
         const feeExibStr = feeExib > 0
             ? (moeda === 'USD'
                 ? `US$ ${feeExib.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
                 : fmt(feeExib))
             : '—';
-        return `<div style="display:flex;justify-content:space-between;align-items:center;padding:0.6rem 0.75rem;border-radius:8px;background:${c.cientista ? 'rgba(168,85,247,0.05)' : 'rgba(255,255,255,0.03)'};border:1px solid ${c.cientista ? '#a855f733' : 'var(--border-color)'};gap:1rem;">
+        return `<div style="display:flex;justify-content:space-between;align-items:center;padding:0.6rem 0.75rem;border-radius:8px;background:${c.churned ? 'rgba(239,68,68,0.04)' : c.cientista ? 'rgba(168,85,247,0.05)' : 'rgba(255,255,255,0.03)'};border:1px solid ${c.churned ? '#ef444433' : c.cientista ? '#a855f733' : 'var(--border-color)'};gap:1rem;${c.churned ? 'opacity:0.75;' : ''}">
             <div>
-                <div style="display:flex;align-items:center;font-size:0.88rem;font-weight:600;color:var(--text-main);">${c.nome}${cientistaBadge}</div>
+                <div style="display:flex;align-items:center;font-size:0.88rem;font-weight:600;color:var(--text-main);">${c.nome}${cientistaBadge}${churnBadge}</div>
                 <div style="font-size:0.72rem;color:var(--text-muted);margin-top:2px;">ID: ${c.projeto_id}</div>
             </div>
             <div style="text-align:right;flex-shrink:0;">
-                <div style="font-size:0.88rem;font-weight:600;color:${c.cientista ? '#a855f7' : 'var(--text-sub)'};">${feeExibStr}${c.cientista ? ' <span style="font-size:0.65rem;opacity:0.7;">×1.5</span>' : ''}</div>
+                <div style="font-size:0.88rem;font-weight:600;color:${c.churned ? '#ef4444' : c.cientista ? '#a855f7' : 'var(--text-sub)'};">${feeExibStr}${c.cientista ? ' <span style="font-size:0.65rem;opacity:0.7;">×1.5</span>' : ''}</div>
                 ${c.cientista ? `<div style="font-size:0.7rem;color:var(--text-muted);text-decoration:line-through;">${feeStr}</div>` : ''}
             </div>
         </div>`;

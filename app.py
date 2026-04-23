@@ -290,53 +290,60 @@ def _recalcular_mrr_por_entregas(record):
     entregas = record.entregas_criativos if is_criativo else record.entregas_operacao
     entregas = entregas or []
 
-    if not entregas:
-        return
-
     total_mrr_entregue = Decimal("0")
 
+    if not entregas:
+        churn_atual = Decimal(str(record.fixo_churn_atual or 0))
+        record.fixo_mrr_entrega = Decimal("0")
+        record.fixo_mrr_atual = Decimal("0") - churn_atual
+        flag_modified(record, "fixo_mrr_atual")
+        flag_modified(record, "fixo_mrr_entrega")
+        return
+
     with Session() as db_aux:
-        for p in entregas:
-            pid = p.get("projeto_id")
-            if not pid:
-                continue
+        # Busca todos os vínculos ativos do investidor
+        vinculos = db_aux.query(InvestidorProjeto).filter_by(
+            email_investidor=record.email_investidor,
+            active=True
+        ).all()
 
-            # Calcula o progresso deste projeto
-            if is_criativo:
-                c_c = p.get("criativos", {}).get("contratados", 0)
-                c_e = p.get("criativos", {}).get("entregues", 0)
-                v_c = p.get("videos", {}).get("contratados", 0)
-                v_e = p.get("videos", {}).get("entregues", 0)
-                l_c = p.get("lp", {}).get("contratados", 0)
-                l_e = p.get("lp", {}).get("entregues", 0)
+        # Cria um mapa de entregas por projeto_id para busca rápida
+        entregas_map = {str(p.get("projeto_id")): p for p in entregas if p.get("projeto_id")}
 
-                total_meta = c_c + v_c + l_c
-                total_entregues = c_e + v_e + l_e
-
-                if total_meta > 0:
-                    progresso = Decimal(str(total_entregues / total_meta))
+        for v in vinculos:
+            pid = str(v.pipefy_id_projeto)
+            p = entregas_map.get(pid)
+            
+            progresso = Decimal("0")
+            if p:
+                # Calcula o progresso deste projeto
+                if is_criativo:
+                    c_c = p.get("criativos", {}).get("contratados", 0)
+                    c_e = p.get("criativos", {}).get("entregues", 0)
+                    v_c = p.get("videos", {}).get("contratados", 0)
+                    v_e = p.get("videos", {}).get("entregues", 0)
+                    l_c = p.get("lp", {}).get("contratados", 0)
+                    l_e = p.get("lp", {}).get("entregues", 0)
+                    total_meta = c_c + v_c + l_c
+                    total_entregues = c_e + v_e + l_e
+                    # Regra: Se meta é 0, ganha 100%
+                    progresso = min(Decimal(str(total_entregues / total_meta)), Decimal("1.0")) if total_meta > 0 else Decimal("1")
                 else:
-                    progresso = Decimal("1") # 100% garantido se nada foi contratado
+                    itens = p.get('entregas', [])
+                    total_meta = sum(item.get("meta", 0) for item in itens)
+                    total_entregues = sum(item.get("entregues", 0) for item in itens)
+                    progresso = min(Decimal(str(total_entregues / total_meta)), Decimal("1.0")) if total_meta > 0 else Decimal("0")
             else:
-                itens = p.get('entregas', [])
-                total_meta = sum(item.get("meta", 0) for item in itens)
-                total_entregues = sum(item.get("entregues", 0) for item in itens)
-                progresso = Decimal(str(total_entregues / total_meta)) if total_meta > 0 else Decimal("0")
+                # Regra: Se não está na lista (não definido), Designer ganha 100%
+                if is_criativo:
+                    progresso = Decimal("1")
+                else:
+                    progresso = Decimal("0") # Operação exige checklist para contar MRR
 
-            vinculo = db_aux.query(InvestidorProjeto).filter_by(
-                email_investidor=record.email_investidor,
-                pipefy_id_projeto=int(pid)
-            ).first()
-
-            if not vinculo:
-                continue
-
-            fee = Decimal(str(vinculo.fee_projeto or 0))
+            fee = Decimal(str(v.fee_projeto or 0))
 
             # Conversão de moeda se necessário
-            proj = db_aux.query(ProjetoAtivo).filter_by(pipefy_id=int(pid)).first()
-            if not proj:
-                proj = db_aux.query(ProjetoOnetime).filter_by(pipefy_id=int(pid)).first()
+            proj = db_aux.query(ProjetoAtivo).filter_by(pipefy_id=v.pipefy_id_projeto).first()
             moeda = proj.moeda if proj else "BRL"
             if moeda == "USD":
                 from services.currency import CurrencyService
@@ -344,7 +351,7 @@ def _recalcular_mrr_por_entregas(record):
                 fee *= rate
 
             # Multiplicador Cientista
-            if vinculo.cientista:
+            if v.cientista:
                 fee *= Decimal("1.5")
 
             # Contribuição = fee × progresso do projeto
@@ -354,6 +361,7 @@ def _recalcular_mrr_por_entregas(record):
     churn_atual = Decimal(str(record.fixo_churn_atual or 0))
     record.fixo_mrr_entrega = total_mrr_entregue
     record.fixo_mrr_atual = total_mrr_entregue - churn_atual
+    
     flag_modified(record, "fixo_mrr_atual")
     flag_modified(record, "fixo_mrr_entrega")
 
@@ -653,24 +661,9 @@ def home():
                 rows.reverse()
 
                 last_row = rows[-1] if rows else {}
+                rem_atual = float(primeira_metrica.calc_remuneracao_total or 0)
                 rem_min = float(primeira_metrica.fixo_remuneracao_minima or 0)
                 rem_max = float(primeira_metrica.fixo_remuneracao_maxima or 0)
-                # Espelhamento da remuneração proporcional (conforme tela de entregas)
-                hoje = dt.now()
-                # Só aplicamos o cálculo de "entrega em progresso" se for o mês/ano atual
-                is_current_month = (primeira_metrica.mes == hoje.month and primeira_metrica.ano == hoje.year)
-                
-                if is_current_month:
-                    mrr_entregue = float(primeira_metrica.fixo_mrr_entrega or 0)
-                else:
-                    # Se não temos registro do mês atual, o progresso de entrega é 0
-                    mrr_entregue = 0.0
-
-                mrr_esperado = float(primeira_metrica.fixo_mrr_esperado or 1)
-                pct_entrega = min(mrr_entregue / mrr_esperado, 1.0)
-
-                rem_proporcional = rem_min + (rem_max - rem_min) * pct_entrega
-                rem_atual = round(rem_proporcional, 2)
 
                 my_remuneracao = {
                     "name": investidor.nome,
@@ -678,7 +671,7 @@ def home():
                     "squad": investidor.squad,
                     "profile_picture": investidor.profile_picture,
                     "fixed_fee": float(primeira_metrica.fixo_remuneracao_fixa or 0),
-                    "mrr": float(primeira_metrica.fixo_mrr_entrega or 0),
+                    "mrr": float(primeira_metrica.fixo_mrr_atual or 0),
                     "mrrTotal": float(primeira_metrica.fixo_mrr_projeto_total or 0),
                     "mrrEsperado": float(primeira_metrica.fixo_mrr_esperado or 0),
                     "mrrTeto": float(primeira_metrica.fixo_mrr_teto or 0),
@@ -1190,7 +1183,8 @@ def criativa():
                         "month_year": f"{m.mes:02d}/{m.ano}",
                         "mes": m.mes,
                         "ano": m.ano,
-                        "mrr": float(m.fixo_mrr_entrega or 0),
+                        "mrr": float(m.fixo_mrr_atual or 0),
+                        "mrr_bruto_entregue": float(m.fixo_mrr_entrega or 0),
                         "mrr_total": float(m.fixo_mrr_projeto_total or 0),
                         "mrr_esperado": float(m.fixo_mrr_esperado or 0),
                         "mrr_teto": float(m.fixo_mrr_teto or 0),
@@ -1219,7 +1213,7 @@ def criativa():
                         rem_atual = max(min(last["total_brl"], last["rem_max"]), last["rem_min"])
                     remu_map[e] = {
                         "fixed_fee": float(m.fixo_remuneracao_fixa or 0),
-                        "mrr": float(m.fixo_mrr_entrega or 0),
+                        "mrr": float(m.fixo_mrr_atual or 0),
                         "mrr_total": float(m.fixo_mrr_projeto_total or 0),
                         "mrr_esperado": float(m.fixo_mrr_esperado or 0),
                         "mrr_teto": float(m.fixo_mrr_teto or 0),
@@ -1251,6 +1245,8 @@ def criativa():
                         "fee": c.get("fee", 0),
                         "moeda": c.get("moeda", "BRL"),
                         "cientista": c.get("cientista", False),
+                        "churned": c.get("churned", False),
+                        "data_churn": c.get("data_churn", None),
                         "link_criativos": entry.get("link_criativos", "") if entry else "",
                         "criativos_c": entry["criativos"]["contratados"] if entry else 0,
                         "criativos_e": entry["criativos"]["entregues"] if entry else 0,
