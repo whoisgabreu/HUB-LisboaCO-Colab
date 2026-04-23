@@ -206,6 +206,7 @@ class MetricaMensal(Base):
     calc_remuneracao_total = Column(DECIMAL(15, 2), server_default=FetchedValue())
     historico_projetos = Column(JSONB)
     entregas_criativos = Column(JSONB)  # Array de entregas criativas por projeto
+    entregas_operacao = Column(JSONB)   # Array de entregas de operação por projeto
 
 
     def to_dict(self):
@@ -218,6 +219,9 @@ class MetricaMensal(Base):
             "name": None,  # será preenchido com JOIN do investidor
             "fixed_fee": float(self.fixo_remuneracao_fixa or 0),
             "mrr": float(self.fixo_mrr_atual or 0),
+            "mrr_total": float(self.fixo_mrr_projeto_total or 0),
+            "mrr_esperado": float(self.fixo_mrr_esperado or 0),
+            "mrr_teto": float(self.fixo_mrr_teto or 0),
             "churn": float(self.fixo_churn_atual or 0),
             "flag": self.flag,
             "green_streak": self.green_streak or 0,

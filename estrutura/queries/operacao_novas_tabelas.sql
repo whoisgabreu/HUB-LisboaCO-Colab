@@ -35,3 +35,7 @@ CREATE TABLE IF NOT EXISTS plataforma_geral.operacao_tarefas (
 -- Comentários para documentação
 COMMENT ON COLUMN plataforma_geral.operacao_entregas_mensais.percentual_calculado IS 'Percentual de entrega concluído (0, 0.25, 0.50, 0.75, 1.0)';
 COMMENT ON COLUMN plataforma_geral.operacao_entregas_mensais.valor_contribuicao_mrr IS 'Valor do Fee * Percentual da entrega';
+
+-- Adiciona coluna entregas_operacao na tabela de métricas mensais (rodar 1x)
+ALTER TABLE plataforma_geral.investidores_metricas_mensais_novo
+    ADD COLUMN IF NOT EXISTS entregas_operacao JSONB;

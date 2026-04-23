@@ -28,13 +28,15 @@
         </a>
         {% endif %}
 
-        {# Menu Remuneração: Gerência e Sócio #}
+        {# Menu Remuneração Ocultado: agora integrado em Entregas da Operação #}
+        <!--
         {% if session.posicao in ["Gerência", "Sócio"] %}
         <a href="/hub-remuneracao" class="nav-item">
             <i class="fas fa-wallet"></i>
             <span>Remuneração</span>
         </a>
         {% endif %}
+        -->
 
         {# Menu Admin: Apenas Admin #}
         {% if session.nivel_acesso == "Admin" %}
@@ -44,16 +46,15 @@
         </a>
         {% endif %}
 
-        {% if session.email in ["martins.gabriel@v4company.com", "gabriel.lasaro@v4company.com"] %}
-
-        <!-- {# Menu Criativa: apenas Designer, WebDesigner e Gerência #}
-        {% if session.squad == "Gerência" or session.funcao in ["Designer", "WebDesigner"] %} -->
+        {# Menu Entregas da Operação: Designers, Operação e Liderança #}
+        {% if session.posicao in ["Gerência", "Sócio", "Coordenador"] or session.funcao in ["Designer", "WebDesigner", "Account", "Gestor de Tráfego"] %}
         <a href="/criativa" class="nav-item">
-            <i class="fas fa-box-open"></i>
+            <i class="fas fa-pencil-ruler"></i>
             <span>Entregas da Operação</span>
         </a>
-        <!-- {% endif %} -->
+        {% endif %}
 
+        {% if session.email in ["martins.gabriel@v4company.com", "gabriel.lasaro@v4company.com"] %}
         <a href="/hub-cs-cx" class="nav-item">
             <i class="fas fa-users"></i>
             <span>Hub de CS/CX</span>
@@ -71,6 +72,7 @@
             <span>Cockpit</span>
         </a>
         {% endif %}
+
     </div>
 
 </nav>

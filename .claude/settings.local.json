@@ -4,7 +4,11 @@
       "Bash(grep:*)",
       "Bash(python -c ':*)",
       "Bash(python -m venv .venv)",
-      "Bash(.venv/Scripts/python -c ' *)"
+      "Bash(.venv/Scripts/python -c ' *)",
+      "Bash(python -c \"import app; print\\('OK'\\)\")",
+      "Bash(python *)",
+      "Bash(psql *)",
+      "Bash(pip install *)"
     ]
   }
 }
