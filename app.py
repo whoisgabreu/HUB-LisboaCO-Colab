@@ -86,6 +86,103 @@ def check_access(roles):
 
 # ─── HELPERS ────────────────────────────────────────────────────────────────
 
+# ── Helpers: Gestão de Entregas Operação ─────────────────────────────────────
+
+_ENTREGAS_ACCOUNT_TPL = [
+    {"nome": "relatorio_mensal",        "tipo": "account", "meta": 1, "entregues": 0},
+    {"nome": "planner_monday",          "tipo": "account", "meta": 4, "entregues": 0},
+    {"nome": "csat_checkin",            "tipo": "account", "meta": 1, "entregues": 0},
+    {"nome": "forecasting",             "tipo": "account", "meta": 1, "entregues": 0},
+]
+
+_ENTREGAS_GT_TPL = [
+    {"nome": "kpis",                    "tipo": "gt", "meta": 1, "entregues": 0},
+    {"nome": "plano_de_midia",          "tipo": "gt", "meta": 1, "entregues": 0},
+    {"nome": "documento_de_otimizacao", "tipo": "gt", "meta": 4, "entregues": 0},
+    {"nome": "relatorio_mensal",        "tipo": "gt", "meta": 1, "entregues": 0},
+]
+
+
+def _build_entregas_op_list(responsavel):
+    if responsavel == "account":
+        return [dict(e) for e in _ENTREGAS_ACCOUNT_TPL]
+    if responsavel == "gt":
+        return [dict(e) for e in _ENTREGAS_GT_TPL]
+    if responsavel == "cientista":
+        seen, result = set(), []
+        for e in [dict(e) for e in _ENTREGAS_ACCOUNT_TPL] + [dict(e) for e in _ENTREGAS_GT_TPL]:
+            if e["nome"] not in seen:
+                seen.add(e["nome"])
+                result.append(e)
+        return result
+    return []
+
+
+def _build_entrega_op_entry(projeto_id, cliente_nome, responsavel):
+    entry = {
+        "cliente": cliente_nome,
+        "projeto_id": str(projeto_id),
+        "responsavel": responsavel,
+        "link_relatorio": "",
+        "entregas": _build_entregas_op_list(responsavel),
+    }
+    # link_kpi: apenas GT e Cientista (kpis é uma entrega de GT)
+    if responsavel in ("gt", "cientista"):
+        entry["link_kpi"] = ""
+    # link_forecast: Account (forecasting) e Cientista
+    if responsavel in ("account", "cientista"):
+        entry["link_forecast"] = ""
+    return entry
+
+
+def _update_entrega_op_entregues(entregas_list, projeto_id, cliente_nome, responsavel, nome_entrega, tipo_entrega, valor):
+    entregas_list = list(entregas_list or [])
+    idx = next(
+        (i for i, e in enumerate(entregas_list) if str(e.get("projeto_id")) == str(projeto_id)),
+        None
+    )
+    if idx is None:
+        entry = _build_entrega_op_entry(projeto_id, cliente_nome, responsavel)
+        entregas_list.append(entry)
+        idx = len(entregas_list) - 1
+
+    entry = dict(entregas_list[idx])
+    itens = [dict(e) for e in (entry.get("entregas") or [])]
+    for item in itens:
+        if item.get("nome") == nome_entrega and item.get("tipo") == tipo_entrega:
+            item["entregues"] = max(0, min(int(valor), item.get("meta", 1)))
+            break
+    entry["entregas"] = itens
+    entregas_list[idx] = entry
+    return entregas_list
+
+
+def _update_entrega_op_links(entregas_list, projeto_id, cliente_nome="", responsavel_hint="",
+                             link_relatorio=None, link_kpi=None, link_forecast=None):
+    entregas_list = list(entregas_list or [])
+    idx = next(
+        (i for i, e in enumerate(entregas_list) if str(e.get("projeto_id")) == str(projeto_id)),
+        None
+    )
+    if idx is None:
+        if not responsavel_hint:
+            return entregas_list
+        entry = _build_entrega_op_entry(projeto_id, cliente_nome, responsavel_hint)
+        entregas_list.append(entry)
+        idx = len(entregas_list) - 1
+
+    entry = {k: (dict(v) if isinstance(v, dict) else v) for k, v in entregas_list[idx].items()}
+    responsavel = entry.get("responsavel", "") or responsavel_hint
+    if link_relatorio is not None:
+        entry["link_relatorio"] = link_relatorio
+    if link_kpi is not None and responsavel in ("gt", "cientista"):
+        entry["link_kpi"] = link_kpi
+    if link_forecast is not None and responsavel in ("account", "cientista"):
+        entry["link_forecast"] = link_forecast
+    entregas_list[idx] = entry
+    return entregas_list
+
+
 # ── Helpers: Gestão de Entregas Criativas ────────────────────────────────────
 
 def get_entregas_by_projeto(entregas_list, projeto_id):
@@ -173,6 +270,7 @@ def _get_or_create_entrega_record(db, email, mes, ano):
             mes=mes,
             ano=ano,
             entregas_criativos=[],
+            entregas_operacao=[],
         )
         db.add(record)
         db.flush()
@@ -180,13 +278,84 @@ def _get_or_create_entrega_record(db, email, mes, ano):
 
 # ─────────────────────────────────────────────────────────────────────────────
 
-def recalculate_investor_mrr(db, email, mes, ano):
+def _recalcular_mrr_por_entregas(record):
     """
-    NÃO-OP: remuneração agora é baseada exclusivamente no fee_projeto.
-    Entregas não influenciam o MRR armazenado.
-    O recálculo real é feito pelo scheduler diário via calcular_metricas_mensais.
+    Calcula o MRR proporcional com base nas entregas realizadas da operacao.
+    A lógica calcula POR PROJETO: fee_projeto × progresso_projeto, e soma tudo.
+    Isso garante que o MRR reflita apenas o valor dos projetos efetivamente entregues.
     """
-    return 0
+    from decimal import Decimal
+
+    is_criativo = record.cargo in ("Designer", "WebDesigner")
+    entregas = record.entregas_criativos if is_criativo else record.entregas_operacao
+    entregas = entregas or []
+
+    if not entregas:
+        return
+
+    total_mrr_entregue = Decimal("0")
+
+    with Session() as db_aux:
+        for p in entregas:
+            pid = p.get("projeto_id")
+            if not pid:
+                continue
+
+            # Calcula o progresso deste projeto
+            if is_criativo:
+                c_c = p.get("criativos", {}).get("contratados", 0)
+                c_e = p.get("criativos", {}).get("entregues", 0)
+                v_c = p.get("videos", {}).get("contratados", 0)
+                v_e = p.get("videos", {}).get("entregues", 0)
+                l_c = p.get("lp", {}).get("contratados", 0)
+                l_e = p.get("lp", {}).get("entregues", 0)
+
+                total_meta = c_c + v_c + l_c
+                total_entregues = c_e + v_e + l_e
+
+                if total_meta > 0:
+                    progresso = Decimal(str(total_entregues / total_meta))
+                else:
+                    progresso = Decimal("1") # 100% garantido se nada foi contratado
+            else:
+                itens = p.get('entregas', [])
+                total_meta = sum(item.get("meta", 0) for item in itens)
+                total_entregues = sum(item.get("entregues", 0) for item in itens)
+                progresso = Decimal(str(total_entregues / total_meta)) if total_meta > 0 else Decimal("0")
+
+            vinculo = db_aux.query(InvestidorProjeto).filter_by(
+                email_investidor=record.email_investidor,
+                pipefy_id_projeto=int(pid)
+            ).first()
+
+            if not vinculo:
+                continue
+
+            fee = Decimal(str(vinculo.fee_projeto or 0))
+
+            # Conversão de moeda se necessário
+            proj = db_aux.query(ProjetoAtivo).filter_by(pipefy_id=int(pid)).first()
+            if not proj:
+                proj = db_aux.query(ProjetoOnetime).filter_by(pipefy_id=int(pid)).first()
+            moeda = proj.moeda if proj else "BRL"
+            if moeda == "USD":
+                from services.currency import CurrencyService
+                rate = CurrencyService.get_usd_to_brl_rate()
+                fee *= rate
+
+            # Multiplicador Cientista
+            if vinculo.cientista:
+                fee *= Decimal("1.5")
+
+            # Contribuição = fee × progresso do projeto
+            total_mrr_entregue += fee * progresso
+
+    # Atualiza tanto a coluna bruta quanto a atual descontando churn
+    churn_atual = Decimal(str(record.fixo_churn_atual or 0))
+    record.fixo_mrr_entrega = total_mrr_entregue
+    record.fixo_mrr_atual = total_mrr_entregue - churn_atual
+    flag_modified(record, "fixo_mrr_atual")
+    flag_modified(record, "fixo_mrr_entrega")
 
 
 def _projeto_to_dict(projeto):
@@ -486,8 +655,22 @@ def home():
                 last_row = rows[-1] if rows else {}
                 rem_min = float(primeira_metrica.fixo_remuneracao_minima or 0)
                 rem_max = float(primeira_metrica.fixo_remuneracao_maxima or 0)
-                total_brl = last_row.get("total_brl", 0)
-                rem_atual = rem_min if total_brl < rem_min else (rem_max if total_brl > rem_max else total_brl)
+                # Espelhamento da remuneração proporcional (conforme tela de entregas)
+                hoje = dt.now()
+                # Só aplicamos o cálculo de "entrega em progresso" se for o mês/ano atual
+                is_current_month = (primeira_metrica.mes == hoje.month and primeira_metrica.ano == hoje.year)
+                
+                if is_current_month:
+                    mrr_entregue = float(primeira_metrica.fixo_mrr_entrega or 0)
+                else:
+                    # Se não temos registro do mês atual, o progresso de entrega é 0
+                    mrr_entregue = 0.0
+
+                mrr_esperado = float(primeira_metrica.fixo_mrr_esperado or 1)
+                pct_entrega = min(mrr_entregue / mrr_esperado, 1.0)
+
+                rem_proporcional = rem_min + (rem_max - rem_min) * pct_entrega
+                rem_atual = round(rem_proporcional, 2)
 
                 my_remuneracao = {
                     "name": investidor.nome,
@@ -888,7 +1071,7 @@ def operacao():
 
 @app.route("/criativa", methods=["GET"])
 @check_session
-@check_access(["Designer", "WebDesigner", "Account", "Gestor de Tráfego"])
+@check_access(["Designer", "WebDesigner", "Account", "Gestor de Tráfego", "Coordenador"])
 def criativa():
     mes = request.args.get("mes", type=int) or dt.now().month
     ano = request.args.get("ano", type=int) or dt.now().year
@@ -901,17 +1084,43 @@ def criativa():
 
     try:
         with Session() as db:
-            designers = db.query(Investidor).filter(
+            query = db.query(Investidor).filter(
                 Investidor.funcao.ilike("Designer") |
                 Investidor.funcao.ilike("WebDesigner") |
                 Investidor.funcao.ilike("Account") |
                 Investidor.funcao.ilike("Gestor de Tráfego"),
                 Investidor.ativo == True
-            ).order_by(Investidor.squad, Investidor.nome).all()
+            )
 
-            # Clientes ativos por designer com projeto_id
+            # Regras de visualização por Cargo/Squad
+            u_email = session.get("email")
+            u_posicao = session.get("posicao", "")
+            u_squad = session.get("squad", "")
+            u_acesso = session.get("nivel_acesso", "")
+
+            if u_acesso == "Admin" or u_posicao in ["Gerência", "Sócio"]:
+                # Vê tudo sem filtros adicionais
+                pass
+            elif u_posicao == "Coordenador":
+                # Vê apenas membros da própria squad
+                query = query.filter(Investidor.squad == u_squad)
+            else:
+                # Vê apenas a si mesmo
+                query = query.filter(Investidor.email == u_email)
+
+            designers = query.order_by(Investidor.squad, Investidor.nome).all()
+
+            # Clientes ativos + churns ocorridos no mês selecionado
+            from sqlalchemy import extract, or_, and_
             projetos_rows = db.query(InvestidorProjeto).filter(
-                InvestidorProjeto.active == True
+                or_(
+                    InvestidorProjeto.active == True,
+                    and_(
+                        InvestidorProjeto.active == False,
+                        extract('month', InvestidorProjeto.inactivated_at) == mes,
+                        extract('year',  InvestidorProjeto.inactivated_at) == ano,
+                    )
+                )
             ).all()
 
             # Fee e moeda por projeto (pipefy_id → {fee, moeda})
@@ -943,6 +1152,9 @@ def criativa():
                         "projeto_id": projeto_id,
                         "fee": info["fee"],
                         "moeda": info["moeda"],
+                        "cientista": bool(p.cientista),
+                        "churned": not p.active,
+                        "data_churn": p.inactivated_at.strftime("%d/%m/%Y") if p.inactivated_at else None
                     })
 
             # Carrega entregas_criativos de investidores_metricas_mensais_novo
@@ -956,6 +1168,70 @@ def criativa():
                 ).all()
                 for ec in entregas_rows:
                     entregas_map[ec.email_investidor] = ec.entregas_criativos or []
+
+            # Carrega dados de remuneração para todos os membros da equipe
+            op_emails = [d.email for d in designers if d.email]
+            remu_map = {}
+            if op_emails:
+                remu_rows_all = db.query(MetricaMensal).filter(
+                    MetricaMensal.email_investidor.in_(op_emails),
+                ).order_by(
+                    MetricaMensal.email_investidor,
+                    MetricaMensal.ano.desc(),
+                    MetricaMensal.mes.desc()
+                ).all()
+
+                remu_by_email = {}
+                for m in remu_rows_all:
+                    e = m.email_investidor
+                    if e not in remu_by_email:
+                        remu_by_email[e] = {"latest": m, "rows": []}
+                    remu_by_email[e]["rows"].append({
+                        "month_year": f"{m.mes:02d}/{m.ano}",
+                        "mes": m.mes,
+                        "ano": m.ano,
+                        "mrr": float(m.fixo_mrr_entrega or 0),
+                        "mrr_total": float(m.fixo_mrr_projeto_total or 0),
+                        "mrr_esperado": float(m.fixo_mrr_esperado or 0),
+                        "mrr_teto": float(m.fixo_mrr_teto or 0),
+                        "churn": float(m.calc_churn_real_percentual or 0),
+                        "churn_rs": float(m.fixo_churn_atual or 0),
+                        "variable_brl": float(m.calc_variavel_total or 0),
+                        "total_brl": max(float(m.calc_remuneracao_total or 0), float(m.fixo_remuneracao_minima or 0)),
+                        "rem_min": float(m.fixo_remuneracao_minima or 0),
+                        "rem_max": float(m.fixo_remuneracao_maxima or 0),
+                        "yellow_streak": m.yellow_streak or 0,
+                        "green_streak": m.green_streak or 0,
+                        "motivo_flag": m.motivo_flag or "",
+                        "cargo": m.cargo or "",
+                        "senioridade": m.senioridade or "",
+                        "nivel": m.level or "",
+                        "fixo": float(m.fixo_remuneracao_fixa or 0),
+                    })
+
+                for e, data in remu_by_email.items():
+                    data["rows"].reverse()  # ordem cronológica, mais recente por último
+                    m = data["latest"]
+                    rows = data["rows"]
+                    rem_atual = 0
+                    if rows:
+                        last = rows[-1]
+                        rem_atual = max(min(last["total_brl"], last["rem_max"]), last["rem_min"])
+                    remu_map[e] = {
+                        "fixed_fee": float(m.fixo_remuneracao_fixa or 0),
+                        "mrr": float(m.fixo_mrr_entrega or 0),
+                        "mrr_total": float(m.fixo_mrr_projeto_total or 0),
+                        "mrr_esperado": float(m.fixo_mrr_esperado or 0),
+                        "mrr_teto": float(m.fixo_mrr_teto or 0),
+                        "rem_min": float(m.fixo_remuneracao_minima or 0),
+                        "rem_max": float(m.fixo_remuneracao_maxima or 0),
+                        "rem_atual": rem_atual,
+                        "churn_rs": float(m.fixo_churn_atual or 0),
+                        "flag": m.flag or "",
+                        "yellow_streak": m.yellow_streak or 0,
+                        "green_streak": m.green_streak or 0,
+                        "rows": rows,
+                    }
 
             squads = {}
             for d in designers:
@@ -974,6 +1250,7 @@ def criativa():
                         "projeto_id": c["projeto_id"],
                         "fee": c.get("fee", 0),
                         "moeda": c.get("moeda", "BRL"),
+                        "cientista": c.get("cientista", False),
                         "link_criativos": entry.get("link_criativos", "") if entry else "",
                         "criativos_c": entry["criativos"]["contratados"] if entry else 0,
                         "criativos_e": entry["criativos"]["entregues"] if entry else 0,
@@ -994,12 +1271,13 @@ def criativa():
                     "squad": squad,
                     "clientes": [c["nome"] for c in clientes],
                     "clientes_json": clientes_json,
+                    "remu_json": remu_map.get(d.email, {}),
                 })
     except Exception as e:
         print(f"Erro ao carregar designers: {e}")
         squads = {}
 
-    return render_template("criativa.html", squads=squads, mes=mes, ano=ano, usd_rate=usd_rate)
+    return render_template("criativa.html", squads=squads, mes=mes, ano=ano, usd_rate=usd_rate, now_mes=dt.now().month, now_ano=dt.now().year)
 
 
 # ─── APIs CRIATIVA ───────────────────────────────────────────────────────────
@@ -1110,8 +1388,28 @@ def update_criativa_entregues():
 
             lista = update_entregues(lista_atual, projeto_id, cliente_nome, categoria, valor)
             record.entregas_criativos = lista
+            flag_modified(record, "entregas_criativos")
+            _recalcular_mrr_por_entregas(record)
             db.commit()
-            return jsonify({"ok": True, "entregas_criativos": lista})
+            db.refresh(record)
+
+            remu_atualizada = {
+                "month_year": f"{record.mes:02d}/{record.ano}",
+                "mes": record.mes,
+                "ano": record.ano,
+                "mrr": float(record.fixo_mrr_atual or 0),
+                "mrr_total": float(record.fixo_mrr_projeto_total or 0),
+                "mrr_esperado": float(record.fixo_mrr_esperado or 0),
+                "mrr_teto": float(record.fixo_mrr_teto or 0),
+                "churn": float(record.calc_churn_real_percentual or 0),
+                "churn_rs": float(record.fixo_churn_atual or 0),
+                "variable_brl": float(record.calc_variavel_total or 0),
+                "total_brl": max(float(record.calc_remuneracao_total or 0), float(record.fixo_remuneracao_minima or 0)),
+                "rem_min": float(record.fixo_remuneracao_minima or 0),
+                "rem_max": float(record.fixo_remuneracao_maxima or 0),
+                "fixo": float(record.fixo_remuneracao_fixa or 0),
+            }
+            return jsonify({"ok": True, "entregas_criativos": lista, "remu": remu_atualizada})
     except SQLAlchemyError as e:
         return jsonify({"error": str(e)}), 500
 
@@ -1219,6 +1517,140 @@ def save_tarefa():
     except SQLAlchemyError as e:
         return jsonify({"error": str(e)}), 500
 
+
+# ─── APIs ENTREGAS OPERAÇÃO (JSONB) ──────────────────────────────────────────
+
+@app.route("/api/operacao/entregas-op/<email>/<int:mes>/<int:ano>", methods=["GET"])
+@check_session
+@check_access(["Account", "Gestor de Tráfego"])
+def get_entregas_operacao(email, mes, ano):
+    user_email = session.get("email")
+    user_posicao = session.get("posicao", "")
+    user_nivel = session.get("nivel_acesso", "")
+    is_high_level = user_posicao in ("Gerência", "Sócio") or user_nivel == "Admin"
+    if not is_high_level and user_email != email:
+        return jsonify({"error": "Acesso restrito"}), 403
+    try:
+        with Session() as db:
+            record = db.query(MetricaMensal).filter_by(
+                email_investidor=email, mes=mes, ano=ano
+            ).first()
+            return jsonify(record.entregas_operacao if record else [])
+    except SQLAlchemyError as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/operacao/entregas-op/entregues", methods=["PUT"])
+@check_session
+@check_access(["Account", "Gestor de Tráfego"])
+def update_entregas_operacao_entregues():
+    data = request.json or {}
+    email = data.get("email_investidor")
+    mes = data.get("mes")
+    ano = data.get("ano")
+    projeto_id = data.get("projeto_id")
+    cliente_nome = data.get("cliente", "")
+    responsavel = data.get("responsavel", "account")
+    nome_entrega = data.get("nome_entrega")
+    tipo_entrega = data.get("tipo_entrega")
+    valor = data.get("valor", 0)
+
+    if not all([email, mes, ano, projeto_id, nome_entrega, tipo_entrega]):
+        return jsonify({"error": "Campos obrigatórios: email_investidor, mes, ano, projeto_id, nome_entrega, tipo_entrega"}), 400
+
+    hoje = dt.now()
+    if int(ano) > hoje.year or (int(ano) == hoje.year and int(mes) > hoje.month):
+        return jsonify({"error": "Não é permitido registrar entregas em meses futuros."}), 400
+
+    user_email = session.get("email")
+    user_posicao = session.get("posicao", "")
+    user_nivel = session.get("nivel_acesso", "")
+    is_high_level = user_posicao in ("Gerência", "Sócio") or user_nivel == "Admin"
+    if not is_high_level and user_email != email:
+        return jsonify({"error": "Você só pode editar suas próprias entregas."}), 403
+
+    if responsavel not in ("account", "gt", "cientista"):
+        return jsonify({"error": "responsavel inválido. Use: account, gt ou cientista"}), 400
+
+    try:
+        with Session() as db:
+            record = _get_or_create_entrega_record(db, email, int(mes), int(ano))
+            lista = _update_entrega_op_entregues(
+                list(record.entregas_operacao or []),
+                projeto_id, cliente_nome, responsavel, nome_entrega, tipo_entrega, int(valor)
+            )
+            record.entregas_operacao = lista
+            flag_modified(record, "entregas_operacao")
+            _recalcular_mrr_por_entregas(record)
+            db.commit()
+            db.refresh(record)
+            
+            remu_atualizada = {
+                "month_year": f"{record.mes:02d}/{record.ano}",
+                "mes": record.mes,
+                "ano": record.ano,
+                "mrr": float(record.fixo_mrr_atual or 0),
+                "mrr_total": float(record.fixo_mrr_projeto_total or 0),
+                "mrr_esperado": float(record.fixo_mrr_esperado or 0),
+                "mrr_teto": float(record.fixo_mrr_teto or 0),
+                "churn": float(record.calc_churn_real_percentual or 0),
+                "churn_rs": float(record.fixo_churn_atual or 0),
+                "variable_brl": float(record.calc_variavel_total or 0),
+                "total_brl": max(float(record.calc_remuneracao_total or 0), float(record.fixo_remuneracao_minima or 0)),
+                "rem_min": float(record.fixo_remuneracao_minima or 0),
+                "rem_max": float(record.fixo_remuneracao_maxima or 0),
+                "fixo": float(record.fixo_remuneracao_fixa or 0),
+            }
+            return jsonify({"ok": True, "entregas_operacao": lista, "remu": remu_atualizada})
+    except SQLAlchemyError as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/operacao/entregas-op/links", methods=["PUT"])
+@check_session
+@check_access(["Account", "Gestor de Tráfego", "Gerência", "Sócio"])
+def update_entregas_operacao_links():
+    data = request.json or {}
+    email = data.get("email_investidor")
+    mes = data.get("mes")
+    ano = data.get("ano")
+    projeto_id = data.get("projeto_id")
+    cliente_nome = data.get("cliente", "")
+    responsavel = data.get("responsavel", "")
+    link_relatorio = data.get("link_relatorio")
+    link_kpi = data.get("link_kpi")
+    link_forecast = data.get("link_forecast")
+
+    if not all([email, mes, ano, projeto_id]):
+        return jsonify({"error": "Campos obrigatórios: email_investidor, mes, ano, projeto_id"}), 400
+
+    user_email = session.get("email")
+    user_posicao = session.get("posicao", "")
+    user_nivel = session.get("nivel_acesso", "")
+    is_high_level = user_posicao in ("Gerência", "Sócio") or user_nivel == "Admin"
+    if not is_high_level and user_email != email:
+        return jsonify({"error": "Você só pode editar suas próprias entregas."}), 403
+
+    try:
+        with Session() as db:
+            record = _get_or_create_entrega_record(db, email, int(mes), int(ano))
+            lista = _update_entrega_op_links(
+                list(record.entregas_operacao or []),
+                projeto_id, cliente_nome, responsavel,
+                link_relatorio, link_kpi, link_forecast
+            )
+            record.entregas_operacao = lista
+            flag_modified(record, "entregas_operacao")
+            _recalcular_mrr_por_entregas(record)
+            db.commit()
+            return jsonify({"ok": True, "entregas_operacao": lista})
+    except SQLAlchemyError as e:
+        return jsonify({"error": str(e)}), 500
+    except Exception as e:
+        return jsonify({"error": f"Erro interno: {str(e)}"}), 500
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 
 @app.route("/api/operacao/entregas/<int:pipefy_id>/<int:mes>/<int:ano>", methods=["GET"])
 @check_session

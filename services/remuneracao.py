@@ -194,13 +194,52 @@ def calcular_metricas_mensais(mes, ano):
             metrica.yellow_streak = yellow_streak
             metrica.ativo = True # Como veio do query de ativos, garantimos True
             
-            # ATRIBUIÇÃO FINAL — remuneração baseada exclusivamente no fee_projeto
-            # fixo_mrr_atual: MRR base para cálculo (fee dos projetos ativos)
-            metrica.fixo_mrr_atual = mrr_portfolio_total
-            # fixo_mrr_entrega: exibição no Dashboard — mesmo valor (fee dos projetos)
-            metrica.fixo_mrr_entrega = mrr_portfolio_total
-            # fixo_mrr_projeto_total: comparativo do portfólio total
+            # ATRIBUIÇÃO FINAL — remuneração baseada em entregas
             metrica.fixo_mrr_projeto_total = mrr_portfolio_total
+            
+            # Calcula MRR entregue POR PROJETO: fee_projeto × progresso_projeto
+            entregas_op = metrica.entregas_operacao or []
+            novo_mrr = Decimal("0")
+            if len(entregas_op) > 0:
+                for p in entregas_op:
+                    itens = p.get('entregas', [])
+                    total_meta = sum(item.get('meta', 0) for item in itens)
+                    total_entregues = sum(item.get('entregues', 0) for item in itens)
+                    progresso = Decimal(str(total_entregues / total_meta)) if total_meta > 0 else Decimal("0")
+
+                    # Busca fee real do vínculo deste projeto
+                    pid = p.get("projeto_id")
+                    if not pid:
+                        continue
+                    vinculo_proj = next(
+                        (v for v in vinculos if str(v.pipefy_id_projeto) == str(pid)),
+                        None
+                    )
+                    if not vinculo_proj:
+                        continue
+
+                    fee_proj = Decimal(str(vinculo_proj.fee_projeto or 0))
+
+                    # Conversão de moeda
+                    from models import ProjetoAtivo, ProjetoOnetime
+                    proj_ref = db.query(ProjetoAtivo).filter_by(pipefy_id=int(pid)).first()
+                    if not proj_ref:
+                        proj_ref = db.query(ProjetoOnetime).filter_by(pipefy_id=int(pid)).first()
+                    moeda_proj = proj_ref.moeda if proj_ref else "BRL"
+                    if moeda_proj == "USD":
+                        from services.currency import CurrencyService
+                        rate = CurrencyService.get_usd_to_brl_rate()
+                        fee_proj *= rate
+
+                    # Multiplicador Cientista
+                    if vinculo_proj.cientista:
+                        fee_proj *= Decimal("1.5")
+
+                    # Contribuição = fee × progresso do projeto
+                    novo_mrr += fee_proj * progresso
+            
+            metrica.fixo_mrr_entrega = novo_mrr # MRR bruto entregue
+            metrica.fixo_mrr_atual = novo_mrr - churn_atual # MRR atual descontando churn
             metrica.fixo_churn_atual = churn_atual
             if cargo_config:
                 metrica.fixo_remuneracao_fixa = cargo_config.fixo_remuneracao_fixa

@@ -68,20 +68,20 @@
                 <!-- CABEÇALHO -->
                 <header class="criativa-header">
                     <div class="criativa-title">
-                        <h2><i class="fas fa-box-open" style="color: #D61616; margin-right: 10px;"></i>Entrega
+                        <h2><i class="fas fa-gears" style="color: #D61616; margin-right: 10px;"></i>Entregas da Operação
                         </h2>
                         <p>Visão geral da equipe de operação por cargo e squad</p>
                     </div>
                     <form id="form-periodo" class="criativa-periodo-form" method="get" action="/criativa">
                         <select id="sel-mes" name="mes" class="criativa-periodo-select" onchange="handlePeriodoChange()">
                             {% for m in range(1, 13) %}
-                            <option value="{{ m }}" {% if m == mes %}selected{% endif %}>
+                            <option value="{{ m }}" {% if m == mes %}selected{% endif %} {% if ano == now_ano and m > now_mes %}disabled{% endif %}>
                                 {{ ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"][m-1] }}
                             </option>
                             {% endfor %}
                         </select>
                         <select id="sel-ano" name="ano" class="criativa-periodo-select" onchange="handlePeriodoChange()">
-                            {% for y in range(2024, 2028) %}
+                            {% for y in range(2024, now_ano + 1) %}
                             <option value="{{ y }}" {% if y == ano %}selected{% endif %}>{{ y }}</option>
                             {% endfor %}
                         </select>
@@ -109,6 +109,7 @@
                                     data-designer-email="{{ d.email }}"
                                     data-designer-clientes="{{ d.clientes | length }}"
                                     data-designer-clientes-json='{{ d.clientes_json | tojson }}'
+                                    data-remu-json='{{ d.remu_json | tojson }}'
                                     onclick="openDesignerDetalhe(this)">
                                     <div class="project-header">
                                         <div class="project-icon">
@@ -156,6 +157,41 @@
                         <button class="criativa-nav-btn" onclick="voltarParaEquipe()">
                             <i class="fas fa-arrow-left"></i> Voltar para Equipe
                         </button>
+                    </div>
+
+                    <!-- Seção de Remuneração (apenas Account / Gestor de Tráfego) -->
+                    <div id="op-remu-section" style="display:none; margin-bottom:2rem;">
+                        <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:1.25rem;">
+                            <i class="fas fa-wallet" style="color:#D61616;font-size:1.1rem;"></i>
+                            <h3 style="margin:0;font-size:1.05rem;color:var(--text-main);font-weight:600;">Remuneração</h3>
+                            <span id="op-remu-mes-label" style="font-size:0.78rem;color:var(--text-muted);margin-left:4px;"></span>
+                        </div>
+                        <div class="remu-metrics" id="op-remu-cards"></div>
+                        <div class="remu-table-card" id="op-remu-table-wrap" style="margin-top:1.5rem;">
+                            <div class="remu-table-header">
+                                <h3>Histórico de Remuneração</h3>
+                            </div>
+                            <div class="remu-table-wrapper">
+                                <table class="remu-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Flag</th>
+                                            <th>Mês-Ano</th>
+                                            <th>Cargo</th>
+                                            <th>Senioridade</th>
+                                            <th>Nível</th>
+                                            <th>Rem. Fixa</th>
+                                            <th>MRR</th>
+                                            <th>Churn R$</th>
+                                            <th>Churn %</th>
+                                            <th>R$ Variável</th>
+                                            <th>Rem. Total</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="op-remu-tbody"></tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- KPIs -->
@@ -228,6 +264,41 @@
                         <button class="criativa-nav-btn" onclick="voltarParaEquipe()">
                             <i class="fas fa-arrow-left"></i> Voltar para Equipe
                         </button>
+                    </div>
+
+                    <!-- Seção de Remuneração (Designer / WebDesigner) -->
+                    <div id="designer-remu-section" style="display:none; margin-bottom:2rem;">
+                        <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:1.25rem;">
+                            <i class="fas fa-wallet" style="color:#D61616;font-size:1.1rem;"></i>
+                            <h3 style="margin:0;font-size:1.05rem;color:var(--text-main);font-weight:600;">Remuneração</h3>
+                            <span id="designer-remu-mes-label" style="font-size:0.78rem;color:var(--text-muted);margin-left:4px;"></span>
+                        </div>
+                        <div class="remu-metrics" id="designer-remu-cards"></div>
+                        <div class="remu-table-card" style="margin-top:1.5rem;">
+                            <div class="remu-table-header">
+                                <h3>Histórico de Remuneração</h3>
+                            </div>
+                            <div class="remu-table-wrapper">
+                                <table class="remu-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Flag</th>
+                                            <th>Mês-Ano</th>
+                                            <th>Cargo</th>
+                                            <th>Senioridade</th>
+                                            <th>Nível</th>
+                                            <th>Rem. Fixa</th>
+                                            <th>MRR</th>
+                                            <th>Churn R$</th>
+                                            <th>Churn %</th>
+                                            <th>R$ Variável</th>
+                                            <th>Rem. Total</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="designer-remu-tbody"></tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- KPIs do Designer -->
@@ -307,6 +378,23 @@
 
             </div>
         </main>
+    </div>
+
+    <!-- MODAL: Listagem de Clientes (Remuneração) -->
+    <div id="modal-op-clientes" class="modal" onclick="if(event.target===this)closeOpClientesModal()" style="display:none;">
+        <div class="modal-content" style="max-width:640px;">
+            <div class="modal-header">
+                <div>
+                    <h3><i class="fas fa-users"></i> Listagem de Projetos</h3>
+                    <p id="op-clientes-modal-nome" style="margin:2px 0 0;font-size:0.8rem;color:var(--text-muted);"></p>
+                </div>
+                <button class="close-modal" onclick="closeOpClientesModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="op-clientes-modal-list" class="remu-projects-container" style="max-height:400px;overflow-y:auto;display:flex;flex-direction:column;gap:0.6rem;padding:0.25rem 0;">
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- MODAL: Link de planilha operacional -->

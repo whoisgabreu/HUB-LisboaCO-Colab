@@ -69,209 +69,38 @@
                 {% if my_remuneracao %}
                 <h3 style="margin-top: 2.5rem; margin-bottom: 1.5rem;">Minhas Métricas</h3>
 
-                <!-- Card de Identificação -->
-                <!-- <section class="remu-investor-card" style="margin-bottom: 1.5rem;">
-                    <div class="remu-investor-info">
-                        <span class="remu-investor-name">{{ my_remuneracao.name }}</span>
-                        <span class="remu-divider">|</span>
-                        <span class="remu-investor-meta">{{ my_remuneracao.role }} | {{ my_remuneracao.squad }}</span>
+                <div class="user-info-banner" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.5rem; display: flex; align-items: center; gap: 1.5rem; margin-bottom: 1.5rem;">
+                    <div class="user-avatar" style="width: 60px; height: 60px; border-radius: 50%; background: var(--bg-app); display: flex; align-items: center; justify-content: center; border: 2px solid #D61616; overflow: hidden;">
+                        {% if my_remuneracao.profile_picture %}
+                            <img src="/static/images/profile_pictures/{{ my_remuneracao.profile_picture }}" alt="{{ my_remuneracao.name }}" style="width: 100%; height: 100%; object-fit: cover;">
+                        {% else %}
+                            <i class="fa-solid fa-user-tie" style="font-size: 1.5rem; color: var(--text-muted);"></i>
+                        {% endif %}
                     </div>
-                </section> -->
-
-                <!-- Mini Cards de Métricas -->
-                <div class="remu-metrics">
-
-                    <!-- Clientes -->
-                    <div class="remu-metric-card" id="homeRemuClientsCard" onclick="homeOpenProjectsList()"
-                        style="cursor: pointer; transition: transform 0.2s;"
-                        onmouseover="this.style.transform='translateY(-5px)'"
-                        onmouseout="this.style.transform='translateY(0)'">
-                        <div class="remu-metric-header">
-                            <span class="remu-metric-label">Clientes</span>
-                            <i class="fa-solid fa-users remu-metric-icon"></i>
-                        </div>
-                        <div class="remu-clients-summary"
-                            style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 10px;">
-                            <div class="remu-summary-item">
-                                <span class="remu-summary-label"
-                                    style="font-size: 0.65rem; color: #888; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px; display: block; margin-bottom: 4px;">Ativos
-                                    no mês</span>
-                                <span class="remu-summary-val">{{
-                                    my_remuneracao.clients_count }}</span>
-                            </div>
-                            <div class="remu-summary-item">
-                                <span class="remu-summary-label"
-                                    style="font-size: 0.65rem; color: #888; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px; display: block; margin-bottom: 4px;">Inativos
-                                    no mês</span>
-                                <span class="remu-summary-val"
-                                    style="color: var(--text-muted);">{{
-                                    [0, my_remuneracao.projetos_total - my_remuneracao.clients_count] | max
-                                    }}</span>
-                            </div>
-                        </div>
-                        <div
-                            style="margin-top: 12px; text-align: right; border-top: 1px solid var(--border-color); padding-top: 8px;">
-                            <span
-                                style="font-size: 0.7rem; color: #D61616; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">Ver
-                                listagem completa <i class="fa-solid fa-chevron-right"
-                                    style="font-size: 0.6rem; margin-left: 4px;"></i></span>
-                        </div>
-                    </div>
-
-                    <!-- Remuneração -->
-                    <div class="remu-metric-card">
-                        <div class="remu-metric-header">
-                            <span class="remu-metric-label">Remuneração</span>
-                            <i class="fa-solid fa-wallet remu-metric-icon"></i>
-                        </div>
-                        <div class="remu-values-list">
-                            <div class="remu-value-item primary">
-                                <span class="remu-value-label">Atual</span>
-                                <span class="remu-value-amount" id="homeRemAtual" style="color: #D61616;">...</span>
-                            </div>
-                            <div class="remu-value-item"
-                                style="border-top: 1px solid var(--border-color); padding-top: 8px;">
-                                <span class="remu-value-label">Fixa</span>
-                                <span class="remu-value-amount" id="homeFixed"
-                                    style="font-size: 1.2rem; opacity: 0.9;">...</span>
-                            </div>
-                            <div class="remu-value-grid">
-                                <div class="remu-value-item">
-                                    <span class="remu-value-label">Mínima</span>
-                                    <span class="remu-value-amount min" id="homeRemMin">...</span>
-                                </div>
-                                <div class="remu-value-item">
-                                    <span class="remu-value-label">Máxima</span>
-                                    <span class="remu-value-amount max" id="homeRemMax">...</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- MRR Comparativo (preenchido via JS inline) -->
-                    <div class="remu-metric-card">
-                        <div class="remu-metric-header">
-                            <span class="remu-metric-label">MRR (Fee dos Projetos)</span>
-                            <i class="fa-solid fa-chart-line remu-metric-icon"></i>
-                        </div>
-                        <div id="homeModalMRR" class="remu-comparison-box">
-                            <!-- Preenchido via JS -->
-                        </div>
-                    </div>
-
-                    <!-- Metas de MRR (preenchido via JS inline) -->
-                    <div class="remu-metric-card">
-                        <div class="remu-metric-header">
-                            <span class="remu-metric-label">Metas de MRR</span>
-                            <i class="fa-solid fa-bullseye remu-metric-icon"></i>
-                        </div>
-                        <div class="remu-target-card" id="homeModalTargets">
-                            <!-- Preenchido via JS -->
-                        </div>
-                    </div>
-
-                </div> <!-- Fim remu-metrics -->
-
-                <!-- Tabela Histórico -->
-                <div class="remu-table-card" style="margin-top: 1.5rem;">
-                    <div class="remu-table-header">
-                        <h3>Histórico de Remuneração <span class="tooltip-remuneracao" title="Remuneração = Fixo + Variável.
-
-Variável depende de 2 fatores:
-
-1) Churn: se o churn real (Churn ÷ MRR) for menor que o limite, gera bônus proporcional à diferença.
-
-2) CSP: se o custo real (Fixo ÷ MRR) for menor que o CSP esperado, gera bônus proporcional.
-
-Variável Total = Bônus de Churn + Bônus de CSP.
-Remuneração Total = Fixo + Variável.
-
-Menor churn e maior eficiência = maior remuneração.
-                        ">i</span></h3>
-                    </div>
-                    <div class="remu-table-wrapper">
-                        <table class="remu-table">
-                            <thead>
-                                <tr>
-                                    <th scope="col">Flag</th>
-                                    <th scope="col">Mês-Ano</th>
-                                    <th scope="col">Cargo</th>
-                                    <th scope="col">Senioridade</th>
-                                    <th scope="col">Nivel</th>
-                                    <th scope="col">Remuneração Cargo</th>
-                                    <th scope="col">MRR</th>
-                                    <th scope="col">Churn R$</th>
-                                    <th scope="col">Churn %</th>
-                                    <th scope="col">R$ Variável</th>
-                                    <th scope="col">Remuneração Total</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% if my_remuneracao.rows %}
-                                {% for row in my_remuneracao.rows %}
-                                <tr>
-                                    <!-- FLAG -->
-                                    <td class='{{
-                                        "yellow-flag-table" if row.yellow_streak == 1
-                                        else "red-flag-table" if row.yellow_streak == 2
-                                        else "black-flag-table" if row.yellow_streak >= 3
-                                        else "green-pdc-flag-table" if row.green_streak >= 3
-                                        else "green-flag-table"
-                                    }}' title='{{ row.motivo_flag }}'>
-                                        <span>{{
-                                            "Yellow" if row.yellow_streak == 1
-                                            else "Red" if row.yellow_streak == 2
-                                            else "Black" if row.yellow_streak >= 3
-                                            else "Green PDC" if row.green_streak >= 3
-                                            else "Green"
-                                            }}</span>
-                                    </td>
-                                    <!-- MÊS/ANO -->
-                                    <td>{{ row.month_year }}</td>
-                                    <!-- CARGO -->
-                                    <td>{{ row.role }}</td>
-                                    <!-- SENIORIDADE -->
-                                    <td>{{ row.senioridade }}</td>
-                                    <!-- NIVEL -->
-                                    <td>{{ row.nivel }}</td>
-                                    <!-- REMUNERAÇÃO FIXA -->
-                                    <td><span class="monetario">R$ {{ row.fixed_fee | round(2) }}</span></td>
-                                    <!-- MRR -->
-                                    <td><span class="monetario">R$ {{ (row.mrr) | round(2) }}</span></td>
-                                    <!-- CHURN R$ -->
-                                    <td><span class="monetario">R$ {{ row.churn_rs | round(2) }}</span></td>
-                                    <!-- CHURN % -->
-                                    <td class="{{ 'remu-value-negative' if row.churn > 0 else '' }}">
-                                        {% if row.churn is number %}
-                                        {{ (row.churn * 100) | round(2) }}%
-                                        {% else %}
-                                        {{ row.churn }}
-                                        {% endif %}
-                                    </td>
-                                    <!-- VARIAVEL R$ -->
-                                    <td><span class="monetario">R$ {{ (row.variable_brl) | round(2) }}</span></td>
-                                    <!-- REMUNERAÇÃO TOTAL -->
-                                    <td style="font-weight: 600;">
-                                        R$
-                                        {% if row.total_brl < row.rem_min %} {{ row.rem_min | round(2) }} {% elif
-                                            row.total_brl> row.rem_max %} {{ row.rem_max | round(2) }}
-                                            {% else %} {{ row.total_brl | round(2) }}
-                                            {% endif %}
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                                {% else %}
-                                <tr>
-                                    <td colspan="11" style="text-align: center; padding: 2rem;">
-                                        Nenhum registro encontrado.
-                                    </td>
-                                </tr>
-                                {% endif %}
-                            </tbody>
-                        </table>
+                    <div>
+                        <h4 style="margin: 0; font-size: 1.2rem; color: var(--text-main);">{{ my_remuneracao.name }}</h4>
+                        <p style="margin: 4px 0 0; color: var(--text-muted); font-size: 0.9rem;">{{ my_remuneracao.role }} &nbsp;·&nbsp; {{ my_remuneracao.rows[-1].senioridade if my_remuneracao.rows else '' }}</p>
                     </div>
                 </div>
 
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <span class="metric-label">CLIENTES ATIVOS</span>
+                        <span class="metric-value">{{ my_remuneracao.clients_count }}</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-label">MRR TOTAL</span>
+                        <span class="metric-value" style="color: #D61616;">R$ {{ "{:,.2f}".format(my_remuneracao.mrrTotal).replace(",", "X").replace(".", ",").replace("X", ".") }}</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-label">REMUNERAÇÃO ATUAL</span>
+                        <span class="metric-value">R$ {{ "{:,.2f}".format(my_remuneracao.rem_atual).replace(",", "X").replace(".", ",").replace("X", ".") }}</span>
+                    </div>
+                </div>
+                <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 1rem; font-style: italic; opacity: 0.8;">
+                    <i class="fas fa-info-circle" style="color: #D61616; margin-right: 4px;"></i>
+                    A remuneração atual é uma estimativa baseada no seu progresso de entregas registradas no mês corrente.
+                </p>
                 {% endif %}
                 <!-- ══ Fim Minha Remuneração ══════════════════════════════════ -->
 
