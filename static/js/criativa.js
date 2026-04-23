@@ -1061,6 +1061,30 @@ function _renderOpCharts(tipos, clientes, pct) {
             }
         });
     }
+}
+
+// ── Cards por projeto ─────────────────────────────────────────────────────────
+function _renderOpProjetos(tipos, clientes) {
+    const container = document.getElementById('op-projetos-container');
+    if (!container) return;
+
+    const isCoordenador = _isCoordinador();
+    container.innerHTML = '';
+
+    if (!clientes.length) {
+        container.innerHTML = `<p style="color:var(--text-muted);padding:1rem;">Nenhum cliente vinculado.</p>`;
+        return;
+    }
+
+    clientes.forEach(c => {
+        const pid    = String(c.projeto_id);
+        const fee    = parseFloat(c.fee || 0);
+        const moeda  = (c.moeda || 'BRL').toUpperCase();
+        const isUSD  = moeda === 'USD';
+        const simbol = isUSD ? 'US$' : 'R$';
+        const feeStr = fee > 0
+            ? `${simbol} ${fee.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+            : '—';
 
     // ── Doughnut: Taxa de Conclusão ───────────────────────────────────────────
     if (_chartOpConclusao) _chartOpConclusao.destroy();
