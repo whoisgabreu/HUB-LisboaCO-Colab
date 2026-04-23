@@ -42,14 +42,25 @@ def calcular_metricas_mensais(mes, ano):
         mes_atual_str = f"{ano}-{mes:02d}"
 
         for inv in investidores:
+            # 0. Carregar a métrica primeiro para poder acessar o historico_projetos
+            metrica = db.query(MetricaMensal).filter(
+                MetricaMensal.email_investidor == inv.email,
+                MetricaMensal.mes == mes,
+                MetricaMensal.ano == ano
+            ).first()
+
+            hist_map = {}
+            if metrica and metrica.historico_projetos:
+                hist_map = {str(item.get("projeto_id")): item for item in metrica.historico_projetos}
+
             # 1. MRR Total da Carteira (Gross Fees Potencial)
-            # Conforme Step 9: fixo_mrr_atual é a soma de todos os fees ativos.
             mrr_portfolio_total = Decimal("0.0")
             
             # 2. Churn
             churn_atual = Decimal("0.0")
             
             detalhes = []
+            fees_calculados = {} # Salva o fee processado (proporcional + USD + Cientista) por projeto
 
             # Buscar vínculos para calcular o MRR Total e detalhamento
             vinculos = db.query(InvestidorProjeto).filter(
@@ -57,6 +68,7 @@ def calcular_metricas_mensais(mes, ano):
             ).all()
             
             for v in vinculos:
+                pid = str(v.pipefy_id_projeto)
                 # Achar a moeda do projeto
                 from models import ProjetoAtivo, ProjetoOnetime
                 proj_ativo = db.query(ProjetoAtivo).filter_by(pipefy_id=v.pipefy_id_projeto).first()
@@ -65,19 +77,27 @@ def calcular_metricas_mensais(mes, ano):
                 
                 moeda = proj_ativo.moeda if proj_ativo else "BRL"
 
-                # O Fee do projeto bruto (Total Portfolio)
-                fee_full = Decimal(str(v.fee_projeto or 0))
+                # Define o fee base
+                hist_item = hist_map.get(pid)
+                if hist_item:
+                    # valor_proporcional JÁ CONTÉM o bônus cientista (aplicado em projeto_participacao_service)
+                    fee_full = Decimal(str(hist_item.get("valor_proporcional", 0)))
+                else:
+                    # Fallback caso não tenha rodado o service de participação
+                    fee_full = Decimal(str(v.fee_projeto or 0))
+                    if v.cientista:
+                        fee_full *= Decimal("1.5")
 
-                # Conversão
+                # Conversão de moeda sempre é feita no final (hist_item não converte USD)
                 if moeda == "USD":
                     from services.currency import CurrencyService
                     rate = CurrencyService.get_usd_to_brl_rate()
                     fee_full *= rate
                 
-                # Regra do Cientista (aplica multiplicador sobre o fee base para o portfólio)
-                if v.cientista:
-                    fee_full *= Decimal("1.5")
-                
+                # Arredonda
+                fee_full = fee_full.quantize(Decimal("0.01"))
+                fees_calculados[pid] = fee_full
+
                 if v.active:
                     mrr_portfolio_total += fee_full
                     
@@ -96,9 +116,6 @@ def calcular_metricas_mensais(mes, ano):
                         if v.inactivated_at.strftime("%Y-%m") == mes_atual_str:
                             churn_atual += fee_full
 
-            # 3. MRR Base: derivado exclusivamente do fee_projeto (mrr_portfolio_total)
-            # Entregas NÃO influenciam o cálculo de remuneração nesta branch.
-
             # Buscar limites do cargo
             cargo_config = None
             if inv.funcao and inv.senioridade and inv.nivel:
@@ -112,7 +129,7 @@ def calcular_metricas_mensais(mes, ano):
                 mrr_teto = cargo_config.fixo_mrr_teto or Decimal("0")
                 churn_max_valor = cargo_config.calc_churn_maximo_valor or Decimal("0")
 
-                # REGRA DE FLAG: baseada no MRR do portfólio (fee_projeto)
+                # REGRA DE FLAG: baseada no MRR do portfólio
                 is_green = (churn_atual <= churn_max_valor and 
                             mrr_portfolio_total >= mrr_min and 
                             mrr_portfolio_total <= mrr_teto)
@@ -131,7 +148,6 @@ def calcular_metricas_mensais(mes, ano):
                     motivo_flag = " | ".join(motivos) if motivos else "Abaixo do MRR mínimo"
             else:
                 if inv.posicao == "Sócio" and not inv.funcao:
-                    # Sócios sem cargo operacional não têm flag/alerta
                     flag = "GREEN"
                     motivo_flag = "Sócio sem cargo operacional"
                 else:
@@ -169,12 +185,6 @@ def calcular_metricas_mensais(mes, ano):
                     yellow_streak = 1 if flag == "YELLOW" else 0
 
             # Upsert na MetricaMensal
-            metrica = db.query(MetricaMensal).filter(
-                MetricaMensal.email_investidor == inv.email,
-                MetricaMensal.mes == mes,
-                MetricaMensal.ano == ano
-            ).first()
-
             if not metrica:
                 metrica = MetricaMensal(
                     email_investidor=inv.email,
@@ -192,51 +202,57 @@ def calcular_metricas_mensais(mes, ano):
             metrica.motivo_flag = motivo_flag
             metrica.green_streak = green_streak
             metrica.yellow_streak = yellow_streak
-            metrica.ativo = True # Como veio do query de ativos, garantimos True
+            metrica.ativo = True
             
             # ATRIBUIÇÃO FINAL — remuneração baseada em entregas
             metrica.fixo_mrr_projeto_total = mrr_portfolio_total
             
             # Calcula MRR entregue POR PROJETO: fee_projeto × progresso_projeto
-            entregas_op = metrica.entregas_operacao or []
+            is_criativo = metrica.cargo in ("Designer", "WebDesigner")
+            entregas = metrica.entregas_criativos if is_criativo else metrica.entregas_operacao
+            entregas = entregas or []
+            
+            # Cria um mapa de entregas por projeto_id para busca rápida
+            entregas_map = {str(p.get("projeto_id")): p for p in entregas if p.get("projeto_id")}
+
             novo_mrr = Decimal("0")
-            if len(entregas_op) > 0:
-                for p in entregas_op:
-                    itens = p.get('entregas', [])
-                    total_meta = sum(item.get('meta', 0) for item in itens)
-                    total_entregues = sum(item.get('entregues', 0) for item in itens)
-                    progresso = Decimal(str(total_entregues / total_meta)) if total_meta > 0 else Decimal("0")
+            for v in vinculos:
+                if not v.active:
+                    continue
 
-                    # Busca fee real do vínculo deste projeto
-                    pid = p.get("projeto_id")
-                    if not pid:
-                        continue
-                    vinculo_proj = next(
-                        (v for v in vinculos if str(v.pipefy_id_projeto) == str(pid)),
-                        None
-                    )
-                    if not vinculo_proj:
-                        continue
+                pid = str(v.pipefy_id_projeto)
+                p = entregas_map.get(pid)
+                
+                progresso = Decimal("0")
+                if p:
+                    # Calcula o progresso deste projeto
+                    if is_criativo:
+                        c_c = p.get('criativos', {}).get('contratados', 0)
+                        c_e = p.get('criativos', {}).get('entregues', 0)
+                        v_c = p.get('videos', {}).get('contratados', 0)
+                        v_e = p.get('videos', {}).get('entregues', 0)
+                        l_c = p.get('lp', {}).get('contratados', 0)
+                        l_e = p.get('lp', {}).get('entregues', 0)
+                        t_meta = c_c + v_c + l_c
+                        t_feito = c_e + v_e + l_e
+                        # Regra: Se meta é 0, ganha 100%
+                        progresso = min(Decimal(str(t_feito / t_meta)), Decimal("1.0")) if t_meta > 0 else Decimal("1")
+                    else:
+                        itens = p.get('entregas', [])
+                        t_meta = sum(item.get('meta', 0) for item in itens)
+                        t_feito = sum(item.get('entregues', 0) for item in itens)
+                        progresso = min(Decimal(str(t_feito / t_meta)), Decimal("1.0")) if t_meta > 0 else Decimal("0")
+                else:
+                    # Regra: Se não está na lista (não definido), Designer ganha 100%
+                    if is_criativo:
+                        progresso = Decimal("1")
+                    else:
+                        progresso = Decimal("0") # Operação exige checklist para contar MRR
 
-                    fee_proj = Decimal(str(vinculo_proj.fee_projeto or 0))
+                fee_proj = fees_calculados.get(pid, Decimal("0"))
 
-                    # Conversão de moeda
-                    from models import ProjetoAtivo, ProjetoOnetime
-                    proj_ref = db.query(ProjetoAtivo).filter_by(pipefy_id=int(pid)).first()
-                    if not proj_ref:
-                        proj_ref = db.query(ProjetoOnetime).filter_by(pipefy_id=int(pid)).first()
-                    moeda_proj = proj_ref.moeda if proj_ref else "BRL"
-                    if moeda_proj == "USD":
-                        from services.currency import CurrencyService
-                        rate = CurrencyService.get_usd_to_brl_rate()
-                        fee_proj *= rate
-
-                    # Multiplicador Cientista
-                    if vinculo_proj.cientista:
-                        fee_proj *= Decimal("1.5")
-
-                    # Contribuição = fee × progresso do projeto
-                    novo_mrr += fee_proj * progresso
+                # Contribuição = fee proporcional × progresso do projeto
+                novo_mrr += fee_proj * progresso
             
             metrica.fixo_mrr_entrega = novo_mrr # MRR bruto entregue
             metrica.fixo_mrr_atual = novo_mrr - churn_atual # MRR atual descontando churn
