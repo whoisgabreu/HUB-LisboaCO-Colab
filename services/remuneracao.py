@@ -208,7 +208,7 @@ def calcular_metricas_mensais(mes, ano):
             metrica.fixo_mrr_projeto_total = mrr_portfolio_total
             
             # Calcula MRR entregue POR PROJETO: fee_projeto × progresso_projeto
-            is_criativo = metrica.cargo in ("Designer", "WebDesigner")
+            is_criativo = metrica.cargo in ("Designer", "WebDesigner", "Webdesigner")
             entregas = metrica.entregas_criativos if is_criativo else metrica.entregas_operacao
             entregas = entregas or []
             

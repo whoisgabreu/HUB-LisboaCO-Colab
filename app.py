@@ -286,7 +286,7 @@ def _recalcular_mrr_por_entregas(record):
     """
     from decimal import Decimal
 
-    is_criativo = record.cargo in ("Designer", "WebDesigner")
+    is_criativo = record.cargo in ("Designer", "WebDesigner", "Webdesigner")
     entregas = record.entregas_criativos if is_criativo else record.entregas_operacao
     entregas = entregas or []
 
@@ -340,21 +340,26 @@ def _recalcular_mrr_por_entregas(record):
                 else:
                     progresso = Decimal("0") # Operação exige checklist para contar MRR
 
-            fee = Decimal(str(v.fee_projeto or 0))
+            # Obtem o fee proporcional já calculado no histórico de projetos (que inclui churn/dias, USD e cientista)
+            fee = Decimal("0")
+            hist = record.historico_projetos or []
+            proj_hist = next((h for h in hist if str(h.get("projeto_id")) == str(v.pipefy_id_projeto)), None)
+            
+            if proj_hist and "valor_proporcional" in proj_hist:
+                fee = Decimal(str(proj_hist["valor_proporcional"]))
+            else:
+                # Fallback caso não encontre no histórico
+                fee = Decimal(str(v.fee_projeto or 0))
+                proj = db_aux.query(ProjetoAtivo).filter_by(pipefy_id=v.pipefy_id_projeto).first()
+                moeda = proj.moeda if proj else "BRL"
+                if moeda == "USD":
+                    from services.currency import CurrencyService
+                    rate = CurrencyService.get_usd_to_brl_rate()
+                    fee *= rate
+                if v.cientista:
+                    fee *= Decimal("1.5")
 
-            # Conversão de moeda se necessário
-            proj = db_aux.query(ProjetoAtivo).filter_by(pipefy_id=v.pipefy_id_projeto).first()
-            moeda = proj.moeda if proj else "BRL"
-            if moeda == "USD":
-                from services.currency import CurrencyService
-                rate = CurrencyService.get_usd_to_brl_rate()
-                fee *= rate
-
-            # Multiplicador Cientista
-            if v.cientista:
-                fee *= Decimal("1.5")
-
-            # Contribuição = fee × progresso do projeto
+            # Contribuição = fee proporcional × progresso do projeto
             total_mrr_entregue += fee * progresso
 
     # Atualiza tanto a coluna bruta quanto a atual descontando churn
