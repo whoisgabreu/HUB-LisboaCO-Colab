@@ -280,95 +280,97 @@ def _get_or_create_entrega_record(db, email, mes, ano):
 
 def _recalcular_mrr_por_entregas(record):
     """
-    Calcula o MRR proporcional com base nas entregas realizadas da operacao.
-    A lógica calcula POR PROJETO: fee_projeto × progresso_projeto, e soma tudo.
-    Isso garante que o MRR reflita apenas o valor dos projetos efetivamente entregues.
+    Recalcula os campos de MRR no MetricaMensal após o registro de uma entrega.
+    Garante que fixo_mrr_entrega, fixo_mrr_atual, fixo_churn_atual e
+    fixo_mrr_projeto_total fiquem sempre consistentes entre si.
+    O banco usa fixo_mrr_atual (entregue - churn) para todas as fórmulas GENERATED.
     """
     from decimal import Decimal
 
     is_criativo = record.cargo in ("Designer", "WebDesigner", "Webdesigner")
     entregas = record.entregas_criativos if is_criativo else record.entregas_operacao
     entregas = entregas or []
+    entregas_map = {str(p.get("projeto_id")): p for p in entregas if p.get("projeto_id")}
+
+    mes_atual_str = f"{record.ano}-{record.mes:02d}"
+    hist = record.historico_projetos or []
 
     total_mrr_entregue = Decimal("0")
-
-    if not entregas:
-        churn_atual = Decimal(str(record.fixo_churn_atual or 0))
-        record.fixo_mrr_entrega = Decimal("0")
-        record.fixo_mrr_atual = Decimal("0") - churn_atual
-        flag_modified(record, "fixo_mrr_atual")
-        flag_modified(record, "fixo_mrr_entrega")
-        return
+    mrr_portfolio_total = Decimal("0")
+    churn_calculado = Decimal("0")
 
     with Session() as db_aux:
-        # Busca todos os vínculos ativos do investidor
-        vinculos = db_aux.query(InvestidorProjeto).filter_by(
-            email_investidor=record.email_investidor,
-            active=True
+        # Busca todos os vínculos (ativos + inativados no mês para churn)
+        from sqlalchemy import or_, and_, extract
+        todos_vinculos = db_aux.query(InvestidorProjeto).filter(
+            InvestidorProjeto.email_investidor == record.email_investidor
         ).all()
 
-        # Cria um mapa de entregas por projeto_id para busca rápida
-        entregas_map = {str(p.get("projeto_id")): p for p in entregas if p.get("projeto_id")}
+        usd_rate = None  # carregado uma vez se necessário
 
-        for v in vinculos:
+        for v in todos_vinculos:
             pid = str(v.pipefy_id_projeto)
-            p = entregas_map.get(pid)
-            
-            progresso = Decimal("0")
-            if p:
-                # Calcula o progresso deste projeto
-                if is_criativo:
-                    c_c = p.get("criativos", {}).get("contratados", 0)
-                    c_e = p.get("criativos", {}).get("entregues", 0)
-                    v_c = p.get("videos", {}).get("contratados", 0)
-                    v_e = p.get("videos", {}).get("entregues", 0)
-                    l_c = p.get("lp", {}).get("contratados", 0)
-                    l_e = p.get("lp", {}).get("entregues", 0)
-                    total_meta = c_c + v_c + l_c
-                    total_entregues = c_e + v_e + l_e
-                    # Regra: Se meta é 0, ganha 100%
-                    progresso = min(Decimal(str(total_entregues / total_meta)), Decimal("1.0")) if total_meta > 0 else Decimal("1")
-                else:
-                    itens = p.get('entregas', [])
-                    total_meta = sum(item.get("meta", 0) for item in itens)
-                    total_entregues = sum(item.get("entregues", 0) for item in itens)
-                    progresso = min(Decimal(str(total_entregues / total_meta)), Decimal("1.0")) if total_meta > 0 else Decimal("0")
-            else:
-                # Regra: Se não está na lista (não definido), Designer ganha 100%
-                if is_criativo:
-                    progresso = Decimal("1")
-                else:
-                    progresso = Decimal("0") # Operação exige checklist para contar MRR
 
-            # Obtem o fee proporcional já calculado no histórico de projetos (que inclui churn/dias, USD e cientista)
-            fee = Decimal("0")
-            hist = record.historico_projetos or []
-            proj_hist = next((h for h in hist if str(h.get("projeto_id")) == str(v.pipefy_id_projeto)), None)
-            
+            proj_hist = next((h for h in hist if str(h.get("projeto_id")) == pid), None)
             if proj_hist and "valor_proporcional" in proj_hist:
+                # valor_proporcional está na moeda original — precisa converter USD→BRL
                 fee = Decimal(str(proj_hist["valor_proporcional"]))
+                moeda_proj = str(proj_hist.get("moeda", "BRL")).strip().upper()
             else:
-                # Fallback caso não encontre no histórico
                 fee = Decimal(str(v.fee_projeto or 0))
                 proj = db_aux.query(ProjetoAtivo).filter_by(pipefy_id=v.pipefy_id_projeto).first()
-                moeda = proj.moeda if proj else "BRL"
-                if moeda == "USD":
-                    from services.currency import CurrencyService
-                    rate = CurrencyService.get_usd_to_brl_rate()
-                    fee *= rate
+                moeda_proj = str(proj.moeda).strip().upper() if proj and proj.moeda else "BRL"
                 if v.cientista:
                     fee *= Decimal("1.5")
 
-            # Contribuição = fee proporcional × progresso do projeto
-            total_mrr_entregue += fee * progresso
+            # Conversão USD→BRL sempre no final (igual ao remuneracao.py)
+            if moeda_proj == "USD":
+                from services.currency import CurrencyService
+                if usd_rate is None:
+                    usd_rate = CurrencyService.get_usd_to_brl_rate()
+                fee *= usd_rate
 
-    # Atualiza tanto a coluna bruta quanto a atual descontando churn
-    churn_atual = Decimal(str(record.fixo_churn_atual or 0))
+            if v.active:
+                mrr_portfolio_total += fee
+
+                # Calcula progresso de entrega para este projeto
+                p = entregas_map.get(pid)
+                progresso = Decimal("0")
+                if p:
+                    if is_criativo:
+                        c_c = p.get("criativos", {}).get("contratados", 0)
+                        c_e = p.get("criativos", {}).get("entregues", 0)
+                        v_c = p.get("videos", {}).get("contratados", 0)
+                        v_e = p.get("videos", {}).get("entregues", 0)
+                        l_c = p.get("lp", {}).get("contratados", 0)
+                        l_e = p.get("lp", {}).get("entregues", 0)
+                        total_meta = c_c + v_c + l_c
+                        total_entregues = c_e + v_e + l_e
+                        progresso = min(Decimal(str(total_entregues / total_meta)), Decimal("1.0")) if total_meta > 0 else Decimal("1")
+                    else:
+                        itens = p.get("entregas", [])
+                        total_meta = sum(item.get("meta", 0) for item in itens)
+                        total_entregues = sum(item.get("entregues", 0) for item in itens)
+                        progresso = min(Decimal(str(total_entregues / total_meta)), Decimal("1.0")) if total_meta > 0 else Decimal("0")
+                else:
+                    progresso = Decimal("1") if is_criativo else Decimal("0")
+
+                total_mrr_entregue += fee * progresso
+
+            else:
+                # Churn: apenas vinculos inativados no mês deste record
+                if v.inactivated_at and v.inactivated_at.strftime("%Y-%m") == mes_atual_str:
+                    churn_calculado += fee
+
     record.fixo_mrr_entrega = total_mrr_entregue
-    record.fixo_mrr_atual = total_mrr_entregue - churn_atual
-    
-    flag_modified(record, "fixo_mrr_atual")
+    record.fixo_mrr_atual = max(Decimal("0"), total_mrr_entregue - churn_calculado)
+    record.fixo_churn_atual = churn_calculado
+    record.fixo_mrr_projeto_total = mrr_portfolio_total
+
     flag_modified(record, "fixo_mrr_entrega")
+    flag_modified(record, "fixo_mrr_atual")
+    flag_modified(record, "fixo_churn_atual")
+    flag_modified(record, "fixo_mrr_projeto_total")
 
 
 def _projeto_to_dict(projeto):
@@ -1399,6 +1401,7 @@ def update_criativa_entregues():
                 "mes": record.mes,
                 "ano": record.ano,
                 "mrr": float(record.fixo_mrr_atual or 0),
+                "mrr_bruto_entregue": float(record.fixo_mrr_entrega or 0),
                 "mrr_total": float(record.fixo_mrr_projeto_total or 0),
                 "mrr_esperado": float(record.fixo_mrr_esperado or 0),
                 "mrr_teto": float(record.fixo_mrr_teto or 0),
@@ -1591,6 +1594,7 @@ def update_entregas_operacao_entregues():
                 "mes": record.mes,
                 "ano": record.ano,
                 "mrr": float(record.fixo_mrr_atual or 0),
+                "mrr_bruto_entregue": float(record.fixo_mrr_entrega or 0),
                 "mrr_total": float(record.fixo_mrr_projeto_total or 0),
                 "mrr_esperado": float(record.fixo_mrr_esperado or 0),
                 "mrr_teto": float(record.fixo_mrr_teto or 0),

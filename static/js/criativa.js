@@ -988,21 +988,13 @@ function _renderOpView() {
     });
 
     const pct = totalMeta > 0 ? Math.round((totalFeito / totalMeta) * 100) : 0;
-    
-    // Substitui o cálculo local de feeFeito pelo dado real do banco de dados
+
+    // FEE PROPORCIONAL sempre vem do banco (mrr_bruto_entregue = fixo_mrr_entrega)
     let feeFeito = null;
-    if (hasFee) {
-        if (typeof _opRemuJson !== 'undefined' && _opRemuJson && _opRemuJson.rows) {
-            const rowMes = _opRemuJson.rows.find(r => r.mes === _mesSelecionado && r.ano === _anoSelecionado) 
-                        || _opRemuJson.rows[_opRemuJson.rows.length - 1];
-            if (rowMes && rowMes.mrr_bruto_entregue !== undefined) {
-                feeFeito = rowMes.mrr_bruto_entregue;
-            } else {
-                feeFeito = totalFeeFeito;
-            }
-        } else {
-            feeFeito = totalFeeFeito;
-        }
+    if (hasFee && typeof _opRemuJson !== 'undefined' && _opRemuJson && _opRemuJson.rows) {
+        const rowMes = _opRemuJson.rows.find(r => r.mes === _mesSelecionado && r.ano === _anoSelecionado)
+                    || _opRemuJson.rows[_opRemuJson.rows.length - 1];
+        if (rowMes) feeFeito = rowMes.mrr_bruto_entregue ?? null;
     }
 
     // Tipos para o gráfico: union de todos os tipos do cargo + extras cientista

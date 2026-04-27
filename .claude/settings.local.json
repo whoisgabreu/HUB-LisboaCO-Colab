@@ -8,7 +8,9 @@
       "Bash(python -c \"import app; print\\('OK'\\)\")",
       "Bash(python *)",
       "Bash(psql *)",
-      "Bash(pip install *)"
+      "Bash(pip install *)",
+      "Bash(.venv/Scripts/python.exe -m py_compile app.py)",
+      "Bash(.venv/Scripts/python.exe -m py_compile services/remuneracao.py)"
     ]
   }
 }
