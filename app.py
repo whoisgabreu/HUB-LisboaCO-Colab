@@ -306,23 +306,29 @@ def _recalcular_mrr_por_entregas(record):
             InvestidorProjeto.email_investidor == record.email_investidor
         ).all()
 
+        usd_rate = None  # carregado uma vez se necessário
+
         for v in todos_vinculos:
             pid = str(v.pipefy_id_projeto)
 
-            # Fee do projeto (prioritiza historico_projetos que já tem proporção/USD/cientista)
             proj_hist = next((h for h in hist if str(h.get("projeto_id")) == pid), None)
             if proj_hist and "valor_proporcional" in proj_hist:
+                # valor_proporcional está na moeda original — precisa converter USD→BRL
                 fee = Decimal(str(proj_hist["valor_proporcional"]))
+                moeda_proj = str(proj_hist.get("moeda", "BRL")).strip().upper()
             else:
                 fee = Decimal(str(v.fee_projeto or 0))
                 proj = db_aux.query(ProjetoAtivo).filter_by(pipefy_id=v.pipefy_id_projeto).first()
-                moeda = proj.moeda if proj else "BRL"
-                if moeda == "USD":
-                    from services.currency import CurrencyService
-                    rate = CurrencyService.get_usd_to_brl_rate()
-                    fee *= rate
+                moeda_proj = str(proj.moeda).strip().upper() if proj and proj.moeda else "BRL"
                 if v.cientista:
                     fee *= Decimal("1.5")
+
+            # Conversão USD→BRL sempre no final (igual ao remuneracao.py)
+            if moeda_proj == "USD":
+                from services.currency import CurrencyService
+                if usd_rate is None:
+                    usd_rate = CurrencyService.get_usd_to_brl_rate()
+                fee *= usd_rate
 
             if v.active:
                 mrr_portfolio_total += fee
