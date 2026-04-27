@@ -254,8 +254,8 @@ def calcular_metricas_mensais(mes, ano):
                 # Contribuição = fee proporcional × progresso do projeto
                 novo_mrr += fee_proj * progresso
             
-            metrica.fixo_mrr_entrega = novo_mrr # MRR bruto entregue
-            metrica.fixo_mrr_atual = novo_mrr - churn_atual # MRR atual descontando churn
+            metrica.fixo_mrr_entrega = novo_mrr
+            metrica.fixo_mrr_atual = max(Decimal("0"), novo_mrr - churn_atual)
             metrica.fixo_churn_atual = churn_atual
             if cargo_config:
                 metrica.fixo_remuneracao_fixa = cargo_config.fixo_remuneracao_fixa
