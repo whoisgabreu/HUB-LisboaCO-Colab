@@ -32,9 +32,6 @@ function handlePeriodoChange() {
 
     const isDetalhe = document.getElementById('criativa-view-designer-detalhe')
         ?.classList.contains('active');
-    const isOpDetalhe = document.getElementById('criativa-view-operacional-detalhe')
-        ?.classList.contains('active');
-
     if (isDetalhe && _designerEmailAtual) {
         _mesSelecionado = novoMes;
         _anoSelecionado = novoAno;
@@ -46,56 +43,6 @@ function handlePeriodoChange() {
 
         _renderDesignerRemu(_opRemuJson);
         _fetchAndRefreshDetalhe();
-    } else if (isOpDetalhe && _opEmail) {
-        _mesSelecionado = novoMes;
-        _anoSelecionado = novoAno;
-
-        const url = new URL(window.location);
-        url.searchParams.set('mes', novoMes);
-        url.searchParams.set('ano', novoAno);
-        history.replaceState({}, '', url);
-
-        _renderOpRemu(_opRemuJson);
-
-        // Recarrega entregas do backend para o novo mês
-        fetch(`/api/operacao/entregas-op/${encodeURIComponent(_opEmail)}/${novoMes}/${novoAno}`)
-            .then(r => r.ok ? r.json() : null)
-            .then(data => {
-                _opFeitos = {}; // Zera os dados locais do mês antigo
-                _opMetas = {};
-                _opLinks = {};
-
-                if (Array.isArray(data)) {
-                    data.forEach(projEntry => {
-                        const pid = String(projEntry.projeto_id);
-                        if (!_opFeitos[pid]) _opFeitos[pid] = {};
-                        (projEntry.entregas || []).forEach(e => {
-                            for (const cfgList of Object.values(OP_ENTREGAS_CONFIG)) {
-                                const item = cfgList.find(d => d.nome === e.nome && d.db_tipo === e.tipo);
-                                if (item) {
-                                    _opFeitos[pid][item.tipo] = e.entregues || 0;
-                                    if (e.meta !== undefined) {
-                                        if (!_opMetas[pid]) _opMetas[pid] = {};
-                                        _opMetas[pid][item.tipo] = e.meta;
-                                    }
-                                    break;
-                                }
-                            }
-                        });
-                        if (!_opLinks[pid]) _opLinks[pid] = {};
-                        for (const cfgList of Object.values(OP_ENTREGAS_CONFIG)) {
-                            cfgList.forEach(d => {
-                                if (d.link && d.link_field && projEntry[d.link_field]) {
-                                    _opLinks[pid][d.tipo] = projEntry[d.link_field];
-                                }
-                            });
-                        }
-                    });
-                }
-                _renderOpView();
-                _renderOpRemu(_opRemuJson);
-            })
-            .catch(() => { _renderOpView(); _renderOpRemu(_opRemuJson); });
     } else {
         document.getElementById('form-periodo').submit();
     }
@@ -787,7 +734,7 @@ const OP_ENTREGAS_CONFIG = {
     'Account': [
         { tipo: 'relatorio_mensal', nome: 'relatorio_mensal', db_tipo: 'account', label: 'Relatório Mensal', icone: 'fa-file-alt', padrao: 1, link: true, link_field: 'link_relatorio' },
         { tipo: 'planner_monday', nome: 'planner_monday', db_tipo: 'account', label: 'Planner Monday', icone: 'fa-calendar-check', padrao: 4, link: false },
-        { tipo: 'csat_checkin', nome: 'csat_checkin', db_tipo: 'account', label: 'CSAT Check-in', icone: 'fa-comments', padrao: 1, link: false },
+        { tipo: 'csat_checkin', nome: 'csat_checkin', db_tipo: 'account', label: 'CSAT Check-in', icone: 'fa-comments', padrao: 4, link: false },
         { tipo: 'forecast', nome: 'forecasting', db_tipo: 'account', label: 'Forecasting', icone: 'fa-chart-line', padrao: 1, link: true, link_field: 'link_forecast' },
     ],
     'Gestor de Tráfego': [
@@ -796,6 +743,15 @@ const OP_ENTREGAS_CONFIG = {
         { tipo: 'plano_midia', nome: 'plano_de_midia', db_tipo: 'gt', label: 'Plano de Mídia', icone: 'fa-bullhorn', padrao: 1, link: false },
         { tipo: 'doc_otimizacao', nome: 'documento_de_otimizacao', db_tipo: 'gt', label: 'Documento de Otimização', icone: 'fa-sliders-h', padrao: 4, link: false },
     ],
+    'Cientista': [
+        { tipo: 'relatorio_mensal', nome: 'relatorio_mensal', db_tipo: 'account', label: 'Relatório Mensal', icone: 'fa-file-alt', padrao: 1, link: true, link_field: 'link_relatorio' },
+        { tipo: 'csat_checkin', nome: 'csat_checkin', db_tipo: 'account', label: 'CSAT Check-in', icone: 'fa-comments', padrao: 4, link: false },
+        { tipo: 'planner_monday', nome: 'planner_monday', db_tipo: 'account', label: 'Planner Monday', icone: 'fa-calendar-check', padrao: 4, link: false },
+        { tipo: 'forecast', nome: 'forecasting', db_tipo: 'account', label: 'Forecasting', icone: 'fa-chart-line', padrao: 1, link: true, link_field: 'link_forecast' },
+        { tipo: 'plano_midia', nome: 'plano_de_midia', db_tipo: 'gt', label: 'Plano de Mídia', icone: 'fa-bullhorn', padrao: 1, link: false },
+        { tipo: 'kpi', nome: 'kpis', db_tipo: 'gt', label: 'KPIs', icone: 'fa-tachometer-alt', padrao: 1, link: true, link_field: 'link_kpi' },
+        { tipo: 'doc_otimizacao', nome: 'documento_de_otimizacao', db_tipo: 'gt', label: 'Documento de Otimização', icone: 'fa-sliders-h', padrao: 4, link: false },
+    ]
 };
 
 // ── Estado em memória ─────────────────────────────────────────────────────────
@@ -961,7 +917,7 @@ function _feeBRLCliente(c, usdRate) {
 function _renderOpView() {
     const clientes = _opClientes;
 
-    let totalMeta = 0, totalFeito = 0, totalFeeFeito = 0;
+    let totalMeta = 0, totalFeito = 0, totalFeeFeito = 0, totalTotalFee = 0;
     let hasFee = false;
 
     const usdRate = (window.APP_CONFIG && window.APP_CONFIG.usdRate) || 5.7;
@@ -970,32 +926,39 @@ function _renderOpView() {
         const pid = String(c.projeto_id);
         const tipos = _getProjectTipos(c);
         const fee = parseFloat(c.fee || 0);
-        const feeBRL = _feeBRLCliente(c, usdRate);
+        const feeBRL = _feeBRLCliente(c, usdRate); // Já inclui 1.5x se cientista e proporcional churn
         if (fee > 0) hasFee = true;
 
-        let projMeta = 0, projFeito = 0;
-        tipos.forEach(d => {
-            const m = _getOpMeta(pid, d.tipo);
-            const f = Math.min(_getOpFeito(pid, d.tipo), m);
-            projMeta += m;
-            projFeito += f;
-            totalMeta += m;
-            totalFeito += f;
-        });
+        // Cálculo de Progresso (Mesma lógica do card individual)
+        const PESO_POR_TIPO = tipos.length > 0 ? 100 / tipos.length : 25;
+        const projPct = tipos.length > 0 ? Math.round(tipos.reduce((s, d) => {
+            const meta = _getOpMeta(pid, d.tipo);
+            const feito = Math.min(_getOpFeito(pid, d.tipo), meta);
+            return s + (meta > 0 ? (feito / meta) * PESO_POR_TIPO : 0);
+        }, 0)) : 0;
 
-        const projPct = projMeta > 0 ? projFeito / projMeta : 0;
-        totalFeeFeito += feeBRL * projPct;
+        totalTotalFee += feeBRL;
+        totalFeeFeito += (feeBRL * projPct / 100);
+
+        // Somar para metas brutas (opcional para o gráfico de barras)
+        tipos.forEach(d => {
+            totalMeta += _getOpMeta(pid, d.tipo);
+            totalFeito += Math.min(_getOpFeito(pid, d.tipo), _getOpMeta(pid, d.tipo));
+        });
     });
 
-    const pct = totalMeta > 0 ? Math.round((totalFeito / totalMeta) * 100) : 0;
+    // O percentual global agora é a média ponderada pelo MRR
+    const pct = totalTotalFee > 0 ? Math.round((totalFeeFeito / totalTotalFee) * 100) : 0;
 
-    // FEE PROPORCIONAL sempre vem do banco (mrr_bruto_entregue = fixo_mrr_entrega)
-    let feeFeito = null;
+    // FEE PROPORCIONAL: tentamos pegar do histórico de remuneração (valor oficial do banco)
+    let feeFeitoExib = null;
     if (hasFee && typeof _opRemuJson !== 'undefined' && _opRemuJson && _opRemuJson.rows) {
         const rowMes = _opRemuJson.rows.find(r => r.mes === _mesSelecionado && r.ano === _anoSelecionado)
                     || _opRemuJson.rows[_opRemuJson.rows.length - 1];
-        if (rowMes) feeFeito = rowMes.mrr_bruto_entregue ?? null;
+        if (rowMes) feeFeitoExib = rowMes.mrr_bruto_entregue ?? null;
     }
+    // Fallback para o cálculo local se o banco ainda não sincronizou
+    if (feeFeitoExib === null && hasFee) feeFeitoExib = totalFeeFeito;
 
     // Tipos para o gráfico: union de todos os tipos do cargo + extras cientista
     const tiposBase = OP_ENTREGAS_CONFIG[_opFuncao] || [];
@@ -1005,7 +968,7 @@ function _renderOpView() {
         ? [...tiposBase, ...(OP_ENTREGAS_CONFIG[otherFuncao] || []).filter(d => !tiposBase.find(b => b.tipo === d.tipo))]
         : tiposBase;
 
-    _renderOpKpis(totalMeta, totalFeito, pct, feeFeito);
+    _renderOpKpis(totalMeta, totalFeito, pct, feeFeitoExib);
     _renderOpCharts(tiposChart, clientes, pct);
     _renderOpProjetos(clientes);
 }
@@ -1205,13 +1168,13 @@ function _renderOpProjetos(clientes) {
                 </div>
                 <div class="op-entrega-controls">
                     ${linkBtns}
-                    <button class="btn-delta btn-minus${blockedZero ? ' btn-disabled' : ''}"
+                    ${isCoordenador ? `<button class="btn-delta btn-minus${blockedZero ? ' btn-disabled' : ''}"
                         onclick="${c.churned ? 'return false;' : `opDelta('${pid}','${d.tipo}',-1)`}"
-                        ${blockedZero ? 'disabled' : ''}>−</button>
+                        ${blockedZero ? 'disabled' : ''}>−</button>` : ''}
                     <span style="min-width:48px;text-align:center;font-weight:600;color:${rowCor};">${clamp}<span style="color:var(--text-muted);font-weight:400"> / ${meta}</span></span>
-                    <button class="btn-delta btn-plus${blocked ? ' btn-disabled' : ''}"
+                    ${isCoordenador ? `<button class="btn-delta btn-plus${blocked ? ' btn-disabled' : ''}"
                         onclick="${c.churned ? 'return false;' : `opDelta('${pid}','${d.tipo}',1)`}"
-                        ${blocked ? 'disabled' : ''}>+</button>
+                        ${blocked ? 'disabled' : ''}>+</button>` : ''}
                 </div>
                 <div class="op-entrega-bar-wrap">
                     <div class="op-entrega-bar" style="width:${rowPct}%;background:${rowCor};box-shadow:0 0 6px ${rowCor}44;"></div>
@@ -1360,34 +1323,44 @@ function _renderRemuSection(remu, opts) {
         return 'Green';
     };
 
-    // Usa o row do mês/ano selecionado; fallback para o mais recente
-    const rowMes = remu.rows.find(r => r.mes === _mesSelecionado && r.ano === _anoSelecionado)
-        || remu.rows[remu.rows.length - 1];
-    const mesLabel = rowMes === remu.rows[remu.rows.length - 1] && !remu.rows.find(r => r.mes === _mesSelecionado && r.ano === _anoSelecionado)
+    // Usa o row do mês/ano selecionado; meses sem dados recebem um row-zero
+    const rowMes = remu.rows.find(r => r.mes === _mesSelecionado && r.ano === _anoSelecionado);
+    const lastRow = remu.rows.length > 0 ? remu.rows[remu.rows.length - 1] : null;
+    const semDados = !rowMes;
+    const effectiveRow = rowMes || (lastRow ? {
+        ...lastRow,
+        mes: _mesSelecionado, ano: _anoSelecionado,
+        mrr: 0, mrr_bruto_entregue: 0, mrr_total: 0,
+        churn: 0, churn_rs: 0, variable_brl: 0,
+        total_brl: lastRow.rem_min,
+        yellow_streak: 0, green_streak: 0, motivo_flag: ''
+    } : null);
+    if (!effectiveRow) { section.style.display = 'none'; return; }
+    const mesLabel = semDados
         ? ' <span style="font-size:0.7rem;color:var(--text-muted);">(sem dados neste mês)</span>'
         : '';
 
-    const flagLbl = flagLabel(rowMes);
-    const flagCls = flagClass(rowMes);
+    const flagLbl = flagLabel(effectiveRow);
+    const flagCls = flagClass(effectiveRow);
     const flagColor = flagCls.includes('black') ? '#374151' : flagCls.includes('red') ? '#ef4444' : flagCls.includes('yellow') ? '#f59e0b' : '#22c55e';
 
-    const mrr = rowMes.mrr || 0;
-    const mrrTotal = rowMes.mrr_total || 0;
-    const churnRs = rowMes.churn_rs || 0;
-    const mrrEsp = rowMes.mrr_esperado || 0;
-    const mrrTeto = rowMes.mrr_teto || 0;
-    const remMin = rowMes.rem_min || 0;
-    const remMax = rowMes.rem_max || 0;
-    const fixedFee = rowMes.fixo || 0;
-    const remAtual = Math.min(Math.max(rowMes.total_brl || 0, remMin), remMax);
+    const mrr = effectiveRow.mrr || 0;
+    const mrrTotal = effectiveRow.mrr_total || 0;
+    const churnRs = effectiveRow.churn_rs || 0;
+    const mrrEsp = effectiveRow.mrr_esperado || 0;
+    const mrrTeto = effectiveRow.mrr_teto || 0;
+    const remMin = effectiveRow.rem_min || 0;
+    const remMax = effectiveRow.rem_max || 0;
+    const fixedFee = effectiveRow.fixo || 0;
+    const remAtual = Math.min(Math.max(effectiveRow.total_brl || 0, remMin), remMax);
 
     const deltaEsp = mrrTotal - mrrEsp;
     const deltaTeto = mrrTotal - mrrTeto;
 
     const MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-    const mesNome = MESES[rowMes.mes - 1] || rowMes.month_year;
+    const mesNome = MESES[effectiveRow.mes - 1] || effectiveRow.month_year;
     const labelEl = document.getElementById(opts.labelId);
-    if (labelEl) labelEl.textContent = `· ${mesNome}/${rowMes.ano}`;
+    if (labelEl) labelEl.innerHTML = `· ${mesNome}/${effectiveRow.ano}${mesLabel}`;
 
     const totalAtivos = (opts.clientes || []).filter(c => !c.churned).length;
     const totalChurned = (opts.clientes || []).length - totalAtivos;
@@ -1449,7 +1422,7 @@ function _renderRemuSection(remu, opts) {
                 </div>
                 <div class="remu-comparison-item" style="border-top:1px solid rgba(255,255,255,0.05);padding-top:8px;">
                     <span class="remu-comparison-label">MRR Bruto Entregue</span>
-                    <span class="remu-comparison-val" style="font-size:0.95rem;opacity:0.85;">${fmt(rowMes.mrr_bruto_entregue || (mrr + churnRs))}</span>
+                    <span class="remu-comparison-val" style="font-size:0.95rem;opacity:0.85;">${fmt(effectiveRow.mrr_bruto_entregue || (mrr + churnRs))}</span>
                 </div>
                 <div class="remu-comparison-item" style="border-top:1px solid rgba(255,255,255,0.05);padding-top:8px;">
                     <span class="remu-comparison-label">Churn</span>
@@ -1601,10 +1574,23 @@ function opDelta(projId, tipo, delta) {
                 } else {
                     _opRemuJson.rows.push(data.remu);
                 }
+                _renderOpView();
                 _renderOpRemu(_opRemuJson);
             }
         })
-        .catch(err => console.error('[opDelta] Erro ao salvar entrega:', err));
+        .catch(err => {
+            console.error('[opDelta] Erro ao salvar entrega:', err);
+            // Reverter atualização otimista
+            if (_opFeitos[pid]) _opFeitos[pid][tipo] = atual;
+            _renderOpView();
+            _renderOpRemu(_opRemuJson);
+
+            if (typeof showToast === 'function') {
+                showToast(err.message || 'Erro ao salvar entrega.', 'error');
+            } else {
+                alert(err.message || 'Erro ao salvar entrega.');
+            }
+        });
 }
 
 // ── Modal: configurar metas por projeto ───────────────────────────────────────

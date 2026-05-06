@@ -202,14 +202,20 @@ def process_deliveries(email: str, pipefy_id: int, mes: int, ano: int):
             print(f"DEBUG: No delivery types for role {role}")
             return {"status": "skipped", "reason": f"cargo_sem_entregas: {role}"}
 
-        # Buscar vinculo e fee_contribuicao
+        # Buscar vinculo e fee_contribuicao (fallback para fee_projeto se fee_contribuicao = 0)
         vinculo = db.query(InvestidorProjeto).filter_by(
             email_investidor=email,
             pipefy_id_projeto=pipefy_id,
             active=True
         ).first()
 
-        fee = Decimal(str(vinculo.fee_contribuicao or 0)) if vinculo else Decimal("0")
+        if vinculo:
+            fee_base = Decimal(str(vinculo.fee_contribuicao or 0))
+            if fee_base == Decimal("0"):
+                fee_base = Decimal(str(vinculo.fee_projeto or 0))
+        else:
+            fee_base = Decimal("0")
+        fee = fee_base
         mrr_por_entrega = fee * Decimal("0.25")
 
         results = {}

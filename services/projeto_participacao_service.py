@@ -145,6 +145,13 @@ class ProjetoParticipacaoService:
                         else:
                             v_inicio = max(v_inicio, data_inicio_ref)
 
+                    # Correção: para vínculos ativos, data_inicio não pode ser posterior
+                    # ao primeiro dia do mês. O created_at do vínculo pode ser posterior
+                    # ao início do mês mesmo que o cliente já existisse antes, causando
+                    # desconto proporcional indevido (ex: created_at = 04/05 → 28/31 do fee).
+                    if v.active != False and v_inicio > data_inicio_ref:
+                        v_inicio = data_inicio_ref
+
                     # Regra do Proporcional:
                     # Sempre calculamos o valor proporcional, seja o vínculo ativo ou inativo.
                     # Se ativo (v.active != False), v_fim será None e o helper assumirá o fim do mês.

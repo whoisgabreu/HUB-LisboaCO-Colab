@@ -74,33 +74,38 @@ def calcular_metricas_mensais(mes, ano):
                 proj_ativo = db.query(ProjetoAtivo).filter_by(pipefy_id=v.pipefy_id_projeto).first()
                 if not proj_ativo:
                     proj_ativo = db.query(ProjetoOnetime).filter_by(pipefy_id=v.pipefy_id_projeto).first()
-                
+
                 moeda = proj_ativo.moeda if proj_ativo else "BRL"
 
-                # Define o fee base
-                hist_item = hist_map.get(pid)
-                if hist_item:
-                    # valor_proporcional JÁ CONTÉM o bônus cientista (aplicado em projeto_participacao_service)
-                    fee_full = Decimal(str(hist_item.get("valor_proporcional", 0)))
-                else:
-                    # Fallback caso não tenha rodado o service de participação
-                    fee_full = Decimal(str(v.fee_projeto or 0))
-                    if v.cientista:
-                        fee_full *= Decimal("1.5")
+                # FEE COMPLETO — base para portfolio, flag e churn (fee integral, não proporcional)
+                fee_full = Decimal(str(v.fee_projeto or 0))
+                if v.cientista:
+                    fee_full *= Decimal("1.5")
 
-                # Conversão de moeda sempre é feita no final (hist_item não converte USD)
+                usd_rate = None
                 if moeda == "USD":
                     from services.currency import CurrencyService
-                    rate = CurrencyService.get_usd_to_brl_rate()
-                    fee_full *= rate
-                
-                # Arredonda
+                    usd_rate = CurrencyService.get_usd_to_brl_rate()
+                    fee_full *= usd_rate
+
                 fee_full = fee_full.quantize(Decimal("0.01"))
-                fees_calculados[pid] = fee_full
+
+                # FEE PROPORCIONAL — base para MRR entregue (fee × progresso)
+                # valor_proporcional = (dias trabalhados no mês / total dias) × fee, inclui bônus cientista
+                hist_item = hist_map.get(pid)
+                if hist_item:
+                    fee_prop = Decimal(str(hist_item.get("valor_proporcional", 0)))
+                    if moeda == "USD" and usd_rate:
+                        fee_prop *= usd_rate
+                    fee_prop = fee_prop.quantize(Decimal("0.01"))
+                else:
+                    fee_prop = fee_full  # sem histórico proporcional, usa fee completo como fallback
+
+                fees_calculados[pid] = fee_prop  # entrega usa proporcional
 
                 if v.active:
-                    mrr_portfolio_total += fee_full
-                    
+                    mrr_portfolio_total += fee_full  # portfolio = soma dos fees completos
+
                     # Detalhes (snapshot para o JSON)
                     detalhes.append({
                         "id": v.pipefy_id_projeto,
@@ -111,10 +116,10 @@ def calcular_metricas_mensais(mes, ano):
                         "fee": float(fee_full)
                     })
                 else:
-                    # Churn: se inativado no mês atual
+                    # Churn: proporcional aos dias que o cliente esteve ativo no mês
                     if v.inactivated_at:
                         if v.inactivated_at.strftime("%Y-%m") == mes_atual_str:
-                            churn_atual += fee_full
+                            churn_atual += fee_prop
 
             # Buscar limites do cargo
             cargo_config = None
@@ -130,11 +135,19 @@ def calcular_metricas_mensais(mes, ano):
                 churn_max_valor = cargo_config.calc_churn_maximo_valor or Decimal("0")
 
                 # REGRA DE FLAG: baseada no MRR do portfólio
-                is_green = (churn_atual <= churn_max_valor and 
-                            mrr_portfolio_total >= mrr_min and 
+                # Regra extra: ultrapassou o teto com churn OK → GREEN PDC direto
+                pdc_por_mrr = (churn_atual <= churn_max_valor and
+                               mrr_teto > 0 and
+                               mrr_portfolio_total > mrr_teto)
+
+                is_green = (churn_atual <= churn_max_valor and
+                            mrr_portfolio_total >= mrr_min and
                             mrr_portfolio_total <= mrr_teto)
-                
-                if is_green:
+
+                if pdc_por_mrr:
+                    flag = "GREEN"
+                    motivo_flag = f"MRR acima do teto da carteira ({float(mrr_portfolio_total):.2f} > {float(mrr_teto):.2f}) com churn OK — GREEN PDC"
+                elif is_green:
                     flag = "GREEN"
                     motivo_flag = "Dentro dos parâmetros (GREEN)"
                 else:
@@ -143,8 +156,6 @@ def calcular_metricas_mensais(mes, ano):
                         motivos.append(f"Churn acima do máximo ({float(churn_atual):.2f} > {float(churn_max_valor):.2f})")
                     if mrr_portfolio_total < mrr_min:
                         motivos.append(f"MRR Portfolio ({float(mrr_portfolio_total):.2f}) abaixo do mínimo ({float(mrr_min):.2f})")
-                    if mrr_portfolio_total > mrr_teto:
-                        motivos.append(f"MRR Portfolio ({float(mrr_portfolio_total):.2f}) acima do teto ({float(mrr_teto):.2f})")
                     motivo_flag = " | ".join(motivos) if motivos else "Abaixo do MRR mínimo"
             else:
                 if inv.posicao == "Sócio" and not inv.funcao:
@@ -183,6 +194,11 @@ def calcular_metricas_mensais(mes, ano):
                 else:
                     green_streak = 1 if flag == "GREEN" else 0
                     yellow_streak = 1 if flag == "YELLOW" else 0
+
+            # Se ganhou GREEN PDC por ultrapassar o teto de MRR, garante streak mínimo de 3
+            if flag == "GREEN" and cargo_config and pdc_por_mrr:
+                green_streak = max(green_streak, 3)
+                yellow_streak = 0
 
             # Upsert na MetricaMensal
             if not metrica:
@@ -224,7 +240,11 @@ def calcular_metricas_mensais(mes, ano):
                 p = entregas_map.get(pid)
                 
                 progresso = Decimal("0")
-                if p:
+                
+                # Regra: Meses 02 e 03 de 2026 estão zerados para todos (nenhuma entrega)
+                if ano == 2026 and mes in (2, 3):
+                    progresso = Decimal("0")
+                elif p:
                     # Calcula o progresso deste projeto
                     if is_criativo:
                         c_c = p.get('criativos', {}).get('contratados', 0)

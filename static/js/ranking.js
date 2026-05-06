@@ -162,7 +162,7 @@ function renderRanking(data, sortBy = 'daysWithoutChurn') {
                     <div class="podium-photo-wrap">
                         ${pos === 1 ? '<div class="crown-wrap"><i class="fas fa-crown"></i></div>' : ''}
                         <img class="podium-img" src="${investor.photo || 'static/images/profile_pictures/default.png'}" alt="${investor.name}" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(investor.name)}&background=random&color=fff&size=512'">
-                        <div class="flag-dot ${investor.flag}"></div>
+                        ${['green','yellow','red'].includes(investor.flag) ? `<div class="flag-dot ${investor.flag}"></div>` : ''}
                     </div>
                     <div class="podium-bar">
                         <div class="bar-number">${pos}</div>
@@ -187,7 +187,7 @@ function renderRanking(data, sortBy = 'daysWithoutChurn') {
                     <div class="ranking-card" onclick="openInvestorDetails(${investor.id})">
                         <div class="rank-number">#${index + 4}</div>
                         <div class="card-header">
-                            <div class="flag-badge ${investor.flag}"></div>
+                            ${['green','yellow','red'].includes(investor.flag) ? `<div class="flag-badge ${investor.flag}"></div>` : ''}
                             <img src="${investor.photo || 'static/images/profile_pictures/default.png'}" alt="${investor.name}" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(investor.name)}&background=random&color=fff&size=512'">
                         </div>
                         <div class="card-overlay-info">

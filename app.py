@@ -16,12 +16,10 @@ from models import (
     MetricaMensal, InvestidorProjeto,
     OperacaoTarefa, OperacaoEntregaMensal, OperacaoPlanoMidia,
     OperacaoOtimizacao, OperacaoCheckin,
-    MonthlyDelivery, OperacaoLinkUtil, EntregaCriativa
+    MonthlyDelivery, OperacaoLinkUtil, EntregaCriativa,
 )
 from services.remuneracao import calcular_metricas_mensais
-from services.delivery_engine import process_deliveries, process_all_deliveries_for_project
-from services.delivery_service import DeliveryService
-from services.operacao_service import OperacaoService
+from services.operacao_service import OperacaoService, OperacaoSnapshotService
 from services.projeto_participacao_service import ProjetoParticipacaoService
 
 
@@ -39,8 +37,8 @@ def job_recalcular_remuneracao():
     from datetime import datetime as dt
     from services.remuneracao import calcular_metricas_mensais
     try:
-        calcular_metricas_mensais(dt.now().month, dt.now().year)
         ProjetoParticipacaoService.sincronizar_remuneracao(dt.now().month, dt.now().year)
+        calcular_metricas_mensais(dt.now().month, dt.now().year)
         print("Recalculo automatico concluido com sucesso.")
 
     except Exception as e:
@@ -89,17 +87,17 @@ def check_access(roles):
 # ── Helpers: Gestão de Entregas Operação ─────────────────────────────────────
 
 _ENTREGAS_ACCOUNT_TPL = [
-    {"nome": "relatorio_mensal",        "tipo": "account", "meta": 1, "entregues": 0},
-    {"nome": "planner_monday",          "tipo": "account", "meta": 4, "entregues": 0},
-    {"nome": "csat_checkin",            "tipo": "account", "meta": 1, "entregues": 0},
-    {"nome": "forecasting",             "tipo": "account", "meta": 1, "entregues": 0},
+    {"nome": "relatorio_account",        "tipo": "account", "meta": 1, "entregues": 0},
+    {"nome": "planner_monday",           "tipo": "account", "meta": 4, "entregues": 0},
+    {"nome": "csat_checkin",             "tipo": "account", "meta": 4, "entregues": 0},
+    {"nome": "forecasting",              "tipo": "account", "meta": 1, "entregues": 0},
 ]
 
 _ENTREGAS_GT_TPL = [
     {"nome": "kpis",                    "tipo": "gt", "meta": 1, "entregues": 0},
     {"nome": "plano_de_midia",          "tipo": "gt", "meta": 1, "entregues": 0},
     {"nome": "documento_de_otimizacao", "tipo": "gt", "meta": 4, "entregues": 0},
-    {"nome": "relatorio_mensal",        "tipo": "gt", "meta": 1, "entregues": 0},
+    {"nome": "relatorio_gt",            "tipo": "gt", "meta": 1, "entregues": 0},
 ]
 
 
@@ -110,9 +108,16 @@ def _build_entregas_op_list(responsavel):
         return [dict(e) for e in _ENTREGAS_GT_TPL]
     if responsavel == "cientista":
         seen, result = set(), []
-        for e in [dict(e) for e in _ENTREGAS_ACCOUNT_TPL] + [dict(e) for e in _ENTREGAS_GT_TPL]:
-            if e["nome"] not in seen:
-                seen.add(e["nome"])
+        # Para cientista, unificamos os relatórios em um só 'relatorio_mensal'
+        base_list = [dict(e) for e in _ENTREGAS_ACCOUNT_TPL] + [dict(e) for e in _ENTREGAS_GT_TPL]
+        for e in base_list:
+            nome = e["nome"]
+            if nome in ("relatorio_account", "relatorio_gt"):
+                nome = "relatorio_mensal"
+            
+            if nome not in seen:
+                seen.add(nome)
+                e["nome"] = nome
                 result.append(e)
         return result
     return []
@@ -311,49 +316,69 @@ def _recalcular_mrr_por_entregas(record):
         for v in todos_vinculos:
             pid = str(v.pipefy_id_projeto)
 
-            proj_hist = next((h for h in hist if str(h.get("projeto_id")) == pid), None)
-            if proj_hist and "valor_proporcional" in proj_hist:
-                # valor_proporcional está na moeda original — precisa converter USD→BRL
-                fee = Decimal(str(proj_hist["valor_proporcional"]))
-                moeda_proj = str(proj_hist.get("moeda", "BRL")).strip().upper()
-            else:
-                fee = Decimal(str(v.fee_projeto or 0))
-                proj = db_aux.query(ProjetoAtivo).filter_by(pipefy_id=v.pipefy_id_projeto).first()
-                moeda_proj = str(proj.moeda).strip().upper() if proj and proj.moeda else "BRL"
-                if v.cientista:
-                    fee *= Decimal("1.5")
+            proj = db_aux.query(ProjetoAtivo).filter_by(pipefy_id=v.pipefy_id_projeto).first()
+            moeda_proj = str(proj.moeda).strip().upper() if proj and proj.moeda else "BRL"
 
-            # Conversão USD→BRL sempre no final (igual ao remuneracao.py)
             if moeda_proj == "USD":
                 from services.currency import CurrencyService
                 if usd_rate is None:
                     usd_rate = CurrencyService.get_usd_to_brl_rate()
-                fee *= usd_rate
+
+            # FEE COMPLETO — para mrr_portfolio_total (flag e teto)
+            fee_full = Decimal(str(v.fee_projeto or 0))
+            if v.cientista:
+                fee_full *= Decimal("1.5")
+            if moeda_proj == "USD" and usd_rate:
+                fee_full *= usd_rate
+            fee_full = fee_full.quantize(Decimal("0.01"))
+
+            # FEE PROPORCIONAL — para MRR entregue e churn (dias trabalhados no mês)
+            proj_hist = next((h for h in hist if str(h.get("projeto_id")) == pid), None)
+            if proj_hist and "valor_proporcional" in proj_hist:
+                fee = Decimal(str(proj_hist["valor_proporcional"]))
+                if moeda_proj == "USD" and usd_rate:
+                    fee *= usd_rate
+                fee = fee.quantize(Decimal("0.01"))
+            else:
+                fee = fee_full  # sem histórico proporcional, usa fee completo
 
             if v.active:
-                mrr_portfolio_total += fee
+                mrr_portfolio_total += fee_full  # portfolio = fees completos
 
-                # Calcula progresso de entrega para este projeto
+                # Regra: Meses 02 e 03 de 2026 estão zerados para todos (nenhuma entrega)
                 p = entregas_map.get(pid)
-                progresso = Decimal("0")
-                if p:
-                    if is_criativo:
-                        c_c = p.get("criativos", {}).get("contratados", 0)
-                        c_e = p.get("criativos", {}).get("entregues", 0)
-                        v_c = p.get("videos", {}).get("contratados", 0)
-                        v_e = p.get("videos", {}).get("entregues", 0)
-                        l_c = p.get("lp", {}).get("contratados", 0)
-                        l_e = p.get("lp", {}).get("entregues", 0)
-                        total_meta = c_c + v_c + l_c
-                        total_entregues = c_e + v_e + l_e
-                        progresso = min(Decimal(str(total_entregues / total_meta)), Decimal("1.0")) if total_meta > 0 else Decimal("1")
-                    else:
-                        itens = p.get("entregas", [])
-                        total_meta = sum(item.get("meta", 0) for item in itens)
-                        total_entregues = sum(item.get("entregues", 0) for item in itens)
-                        progresso = min(Decimal(str(total_entregues / total_meta)), Decimal("1.0")) if total_meta > 0 else Decimal("0")
+                if record.ano == 2026 and record.mes in (2, 3):
+                    progresso = Decimal("0")
                 else:
-                    progresso = Decimal("1") if is_criativo else Decimal("0")
+                    if p:
+                        if is_criativo:
+                            c_c = p.get("criativos", {}).get("contratados", 0)
+                            c_e = p.get("criativos", {}).get("entregues", 0)
+                            v_c = p.get("videos", {}).get("contratados", 0)
+                            v_e = p.get("videos", {}).get("entregues", 0)
+                            l_c = p.get("lp", {}).get("contratados", 0)
+                            l_e = p.get("lp", {}).get("entregues", 0)
+                            total_meta = c_c + v_c + l_c
+                            total_entregues = c_e + v_e + l_e
+                            progresso = min(Decimal(str(total_entregues / total_meta)), Decimal("1.0")) if total_meta > 0 else Decimal("1")
+                        else:
+                            itens = p.get("entregas", [])
+                            if not itens:
+                                progresso = Decimal("0")
+                            else:
+                                from decimal import ROUND_HALF_UP
+                                peso_por_tipo = Decimal("100.0") / Decimal(str(len(itens)))
+                                sum_progresso = Decimal("0")
+                                for item in itens:
+                                    meta = Decimal(str(item.get("meta", 0)))
+                                    entregues = min(Decimal(str(item.get("entregues", 0))), meta)
+                                    if meta > 0:
+                                        sum_progresso += (entregues / meta) * peso_por_tipo
+                                
+                                sum_progresso = sum_progresso.to_integral_value(rounding=ROUND_HALF_UP)
+                                progresso = sum_progresso / Decimal("100.0")
+                    else:
+                        progresso = Decimal("1") if is_criativo else Decimal("0")
 
                 total_mrr_entregue += fee * progresso
 
@@ -371,6 +396,282 @@ def _recalcular_mrr_por_entregas(record):
     flag_modified(record, "fixo_mrr_atual")
     flag_modified(record, "fixo_churn_atual")
     flag_modified(record, "fixo_mrr_projeto_total")
+
+
+# ─── HELPERS TABELA OPERACAO (UNICA TABELA DE ENTREGAS) ──────────────────────
+
+def _operacao_empty_json():
+    """Estrutura padrão do JSON entregas."""
+    return {
+        "plano_midia":      {"budget_total": 0, "planos": []},
+        "otimizacoes":      [],
+        "forecasting":      {"link": ""},
+        "kpis":             {"link": ""},
+        "checkin_semanal":  [],
+        "relatorio_mensal": {"link": ""},
+        "metas":            {},
+    }
+
+
+def _operacao_get_snapshot(pipefy_id, mes, ano):
+    """Lê plataforma_geral.operacao.entregas para projeto+mes+ano. Retorna dict ou None."""
+    try:
+        with Session() as db:
+            row = db.execute(text(
+                "SELECT entregas FROM plataforma_geral.operacao "
+                "WHERE id_projeto = :id AND mes = :mes AND ano = :ano LIMIT 1"
+            ), {"id": str(pipefy_id), "mes": int(mes), "ano": int(ano)}).first()
+            if not row or row.entregas is None:
+                return None
+            if isinstance(row.entregas, dict):
+                return row.entregas
+            return json.loads(row.entregas)
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        print(f"[operacao_get] {e}")
+        return None
+
+
+def _operacao_save_section(pipefy_id, mes, ano, section_key, data, append=False, nome=None):
+    """
+    Salva uma seção do JSON entregas na tabela plataforma_geral.operacao.
+    Usa engine.begin() para transação auto-commit confiável.
+    Verifica existência da linha após o commit.
+    """
+    print(f"[_operacao_save_section] pipefy_id={pipefy_id} mes={mes} ano={ano} section={section_key} append={append}")
+    try:
+        # Validar parâmetros
+        if pipefy_id is None or mes is None or ano is None:
+            print(f"[operacao] ERRO: parâmetros inválidos pipefy_id={pipefy_id} mes={mes} ano={ano}")
+            return False
+
+        # Buscar nome do projeto
+        if nome is None:
+            with Session() as ndb:
+                proj = (ndb.query(ProjetoAtivo).filter_by(pipefy_id=pipefy_id).first()
+                        or ndb.query(ProjetoOnetime).filter_by(pipefy_id=pipefy_id).first())
+                nome = proj.nome if proj else ""
+
+        id_str = str(pipefy_id)
+        mes_int = int(mes)
+        ano_int = int(ano)
+
+        # engine.begin() abre transação e dá commit automático no exit (ou rollback se exception)
+        with engine.begin() as conn:
+            row = conn.execute(text(
+                "SELECT id, entregas FROM plataforma_geral.operacao "
+                "WHERE id_projeto = :id AND mes = :mes AND ano = :ano LIMIT 1"
+            ), {"id": id_str, "mes": mes_int, "ano": ano_int}).mappings().first()
+
+            if row:
+                print(f"[operacao] linha existe id={row['id']} -> UPDATE")
+                current_raw = row["entregas"]
+                if isinstance(current_raw, dict):
+                    current = current_raw
+                elif current_raw:
+                    current = json.loads(current_raw)
+                else:
+                    current = _operacao_empty_json()
+
+                if append:
+                    lst = list(current.get(section_key) or [])
+                    lst.append(data)
+                    current[section_key] = lst
+                else:
+                    current[section_key] = data
+
+                conn.execute(text(
+                    "UPDATE plataforma_geral.operacao "
+                    "SET entregas = CAST(:ent AS jsonb) WHERE id = :rid"
+                ), {"ent": json.dumps(current, ensure_ascii=False), "rid": row["id"]})
+            else:
+                print(f"[operacao] linha NÃO existe -> INSERT")
+                full = _operacao_empty_json()
+                if append:
+                    full[section_key] = [data]
+                else:
+                    full[section_key] = data
+
+                conn.execute(text(
+                    "INSERT INTO plataforma_geral.operacao "
+                    "(mes, ano, nome, id_projeto, entregas) "
+                    "VALUES (:mes, :ano, :nome, :id, CAST(:ent AS jsonb))"
+                ), {"mes": mes_int, "ano": ano_int, "nome": nome or "",
+                    "id": id_str, "ent": json.dumps(full, ensure_ascii=False)})
+
+        # Verificar que foi persistido
+        with engine.connect() as conn2:
+            check = conn2.execute(text(
+                "SELECT id FROM plataforma_geral.operacao "
+                "WHERE id_projeto = :id AND mes = :mes AND ano = :ano LIMIT 1"
+            ), {"id": id_str, "mes": mes_int, "ano": ano_int}).first()
+
+            if check:
+                print(f"[operacao] OK CONFIRMADO id={check[0]} projeto={pipefy_id} mes={mes} ano={ano}")
+                return True
+            else:
+                print(f"[operacao] FALHA: linha nao encontrada apos commit!")
+                return False
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        print(f"[operacao] ERRO save: {e}")
+        return False
+
+
+def _sync_metrica_entregas_operacao(email, pipefy_id, mes, ano):
+    """
+    Lê o snapshot da operacao e atualiza MetricaMensal.entregas_operacao
+    para o usuário (entregues por delivery_type + links). Recalcula MRR.
+    Protege meses fechados.
+    Sincroniza TODOS os tipos de entrega que existam no snapshot,
+    independente do cargo do usuário.
+    """
+    try:
+        from datetime import datetime as _dt
+        now = _dt.now()
+        if ano < now.year or (ano == now.year and mes < now.month):
+            return
+
+        snap = _operacao_get_snapshot(pipefy_id, mes, ano)
+        if not snap:
+            print(f"[metrica sync] sem snapshot para projeto={pipefy_id} {mes}/{ano}")
+            return
+
+        with Session() as db:
+            investidor = db.query(Investidor).filter(Investidor.email.ilike(email)).first()
+            if not investidor:
+                print(f"[metrica sync] investidor não encontrado: {email}")
+                return
+
+            metrica = db.query(MetricaMensal).filter_by(
+                email_investidor=email, mes=mes, ano=ano
+            ).first()
+            if not metrica:
+                print(f"[metrica sync] MetricaMensal não encontrada: {email} {mes}/{ano}")
+                return
+
+            lista = list(metrica.entregas_operacao or [])
+            entry = next((e for e in lista if str(e.get("projeto_id")) == str(pipefy_id)), None)
+            
+            if not entry:
+                # Se não existe, precisamos criar a entrada baseada no vínculo (checar se é cientista)
+                vinculo = db.query(InvestidorProjeto).filter_by(
+                    email_investidor=email, pipefy_id_projeto=pipefy_id
+                ).first()
+                if not vinculo:
+                    print(f"[metrica sync] vínculo não encontrado para {email} projeto={pipefy_id}")
+                    return
+                
+                # Determinar o 'responsavel' hint para o build
+                if vinculo.cientista:
+                    hint = "cientista"
+                else:
+                    hint = "account" if investidor.funcao in ("Account", "Coordenador de CX") else "gt"
+                
+                # Buscar nome do projeto
+                proj_name = vinculo.nome_projeto or ""
+                if not proj_name:
+                    p_ativo = db.query(ProjetoAtivo).filter_by(pipefy_id=pipefy_id).first()
+                    proj_name = p_ativo.nome if p_ativo else f"Projeto {pipefy_id}"
+
+                entry = _build_entrega_op_entry(pipefy_id, proj_name, hint)
+                lista.append(entry)
+                metrica.entregas_operacao = lista
+                # Não retornamos, continuamos para preencher os counts no novo entry
+
+            # Extrair contagens do snapshot — todos os tipos, sem filtrar por cargo
+            plano_planos     = (snap.get("plano_midia") or {}).get("planos") or []
+            otims            = snap.get("otimizacoes") or []
+            checkins         = snap.get("checkin_semanal") or []
+            kpis_link        = (snap.get("kpis") or {}).get("link") or ""
+            forecasting_link = (snap.get("forecasting") or {}).get("link") or ""
+            relatorio_link   = (snap.get("relatorio_mensal") or {}).get("link") or ""
+            relatorio_acc_link = (snap.get("relatorio_account") or {}).get("link") or ""
+            relatorio_gt_link  = (snap.get("relatorio_gt") or {}).get("link") or ""
+
+            # Contagens para TODOS os tipos de entrega
+            # Forecasting: concluído se houver link OU se a meta do snapshot (metas) estiver marcada como concluída
+            goal_snap = snap.get("metas") or {}
+            is_forecast_done = 1 if (forecasting_link or goal_snap.get("concluida")) else 0
+
+            counts = {
+                "plano_de_midia":          1 if plano_planos else 0,
+                "documento_de_otimizacao": min(len(otims), 4),
+                "kpis":                    1 if kpis_link else 0,
+                "csat_checkin":            min(len(checkins), 4),
+                "forecasting":             is_forecast_done,
+                "relatorio_mensal":        1 if (relatorio_link or relatorio_acc_link or relatorio_gt_link) else 0,
+                "relatorio_account":       1 if (relatorio_acc_link or relatorio_link) else 0,
+                "relatorio_gt":            1 if (relatorio_gt_link or relatorio_link) else 0,
+            }
+
+            links = {}
+            if kpis_link:
+                links["link_kpi"] = kpis_link
+            if forecasting_link:
+                links["link_forecast"] = forecasting_link
+            if relatorio_link:
+                links["link_relatorio"] = relatorio_link
+
+            # Contabilizar tarefas semanais (planner_monday)
+            tarefas_snap = snap.get("tarefas_semanais") or []
+            count_semanal = len(tarefas_snap)
+            if count_semanal == 0:
+                # Fallback para tabela antiga — SAVEPOINT protege a sessão
+                try:
+                    nested = db.begin_nested()
+                    tarefas_db = db.query(OperacaoTarefa).filter_by(
+                        projeto_pipefy_id=pipefy_id, tipo="semanal", ano=ano
+                    ).all()
+                    for t in tarefas_db:
+                        try:
+                            if t.referencia and "-W" in t.referencia:
+                                y, w = map(int, t.referencia.split("-W"))
+                                d = _dt.fromisocalendar(y, w, 1)
+                                if d.month == mes: count_semanal += 1
+                        except Exception: pass
+                    nested.commit()
+                except Exception:
+                    # Tabela operacao_tarefas pode não existir — nested.rollback salva o restante da transação
+                    try:
+                        nested.rollback()
+                    except Exception:
+                        pass
+                    print(f"[metrica sync] tabela operacao_tarefas indisponível, ignorando fallback")
+                    count_semanal = 0
+            counts["planner_monday"] = min(count_semanal, 4)
+
+            # Mapa de metas corretas baseado nos templates oficiais
+            _metas_corretas = {}
+            for tpl in _ENTREGAS_ACCOUNT_TPL + _ENTREGAS_GT_TPL:
+                _metas_corretas[tpl["nome"]] = tpl["meta"]
+
+            changed = False
+            for ent in entry.get("entregas", []):
+                n = ent.get("nome")
+                if n in counts and ent.get("entregues") != counts[n]:
+                    ent["entregues"] = counts[n]
+                    changed = True
+                # Corrigir meta desatualizada (ex: csat_checkin era 1, agora é 4)
+                meta_correta = _metas_corretas.get(n)
+                if meta_correta and ent.get("meta") != meta_correta:
+                    ent["meta"] = meta_correta
+                    changed = True
+            for k, v in links.items():
+                if entry.get(k) != v:
+                    entry[k] = v
+                    changed = True
+
+            if changed:
+                flag_modified(metrica, "entregas_operacao")
+                _recalcular_mrr_por_entregas(metrica)
+                db.commit()
+                print(f"[metrica sync] OK {email} projeto={pipefy_id} counts={counts}")
+            else:
+                print(f"[metrica sync] sem mudancas {email} projeto={pipefy_id}")
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        print(f"[metrica sync] ERRO: {e}")
 
 
 def _projeto_to_dict(projeto):
@@ -1110,15 +1411,22 @@ def criativa():
 
             designers = query.order_by(Investidor.squad, Investidor.nome).all()
 
-            # Clientes ativos + churns ocorridos no mês selecionado
-            from sqlalchemy import extract, or_, and_
+            # Clientes que estavam ativos DURANTE o mês selecionado
+            from sqlalchemy import or_, and_
+            _start_mes = dt(ano, mes, 1, 0, 0, 0)
+            _end_mes_exc = dt(ano + 1, 1, 1) if mes == 12 else dt(ano, mes + 1, 1)
             projetos_rows = db.query(InvestidorProjeto).filter(
+                # Foi adicionado antes ou durante o mês selecionado
+                or_(
+                    InvestidorProjeto.created_at == None,
+                    InvestidorProjeto.created_at < _end_mes_exc
+                ),
+                # Não deu churn antes do início do mês selecionado
                 or_(
                     InvestidorProjeto.active == True,
                     and_(
                         InvestidorProjeto.active == False,
-                        extract('month', InvestidorProjeto.inactivated_at) == mes,
-                        extract('year',  InvestidorProjeto.inactivated_at) == ano,
+                        InvestidorProjeto.inactivated_at >= _start_mes
                     )
                 )
             ).all()
@@ -1323,6 +1631,9 @@ def update_criativa_contratados():
     if not all([email, mes, ano, projeto_id]):
         return jsonify({"error": "Campos obrigatórios: email_investidor, mes, ano, projeto_id"}), 400
 
+    if int(ano) == 2026 and int(mes) in (2, 3):
+        return jsonify({"error": "As entregas dos meses 02 e 03 de 2026 estão bloqueadas."}), 400
+
     try:
         with Session() as db:
             record = _get_or_create_entrega_record(db, email, int(mes), int(ano))
@@ -1359,6 +1670,9 @@ def update_criativa_entregues():
 
     if not all([email, mes, ano, projeto_id, categoria]):
         return jsonify({"error": "Campos obrigatórios: email_investidor, mes, ano, projeto_id, categoria"}), 400
+
+    if int(ano) == 2026 and int(mes) in (2, 3):
+        return jsonify({"error": "As entregas dos meses 02 e 03 de 2026 estão bloqueadas."}), 400
 
     # Bloqueia entregas em meses futuros
     hoje = dt.now()
@@ -1414,7 +1728,9 @@ def update_criativa_entregues():
                 "fixo": float(record.fixo_remuneracao_fixa or 0),
             }
             return jsonify({"ok": True, "entregas_criativos": lista, "remu": remu_atualizada})
-    except SQLAlchemyError as e:
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
 
@@ -1437,6 +1753,9 @@ def update_criativa_link():
 
     if not all([email, mes, ano, projeto_id]):
         return jsonify({"error": "Campos obrigatórios: email_investidor, mes, ano, projeto_id"}), 400
+
+    if int(ano) == 2026 and int(mes) in (2, 3):
+        return jsonify({"error": "As entregas dos meses 02 e 03 de 2026 estão bloqueadas."}), 400
 
     user_email = session.get("email")
     user_posicao = session.get("posicao", "")
@@ -1463,62 +1782,143 @@ def update_criativa_link():
 
 @app.route("/api/operacao/tarefas/<int:pipefy_id>", methods=["GET"])
 @check_session
-@check_access(["Account", "Gestor de Tráfego"])
+@check_access(["Account", "Gestor de Tráfego", "Cientista"])
 def get_tarefas(pipefy_id):
+    """Lê tarefas/metas da tabela operacao.entregas (UNICA tabela)."""
     tipo = request.args.get("tipo", "semanal")
-    referencia = request.args.get("referencia")
+    referencia = request.args.get("referencia", "")
     try:
-        with Session() as db:
-            query = db.query(OperacaoTarefa).filter_by(projeto_pipefy_id=pipefy_id, tipo=tipo)
-            if referencia:
-                query = query.filter_by(referencia=referencia)
-            tarefas = query.all()
+        # Extrair mes/ano da referência
+        mes, ano = None, None
+        if referencia and "-M" in referencia:
+            parts = referencia.split("-M")
+            ano, mes = int(parts[0]), int(parts[1])
+        else:
+            now = dt.now()
+            mes, ano = now.month, now.year
+
+        snap = _operacao_get_snapshot(pipefy_id, mes, ano) or {}
+
+        if tipo == "goal_snapshot":
+            metas = snap.get("metas") or {}
+            if not metas:
+                return jsonify([])
+            # Frontend espera: array com {id, descricao (JSON string), concluida, referencia}
             return jsonify([{
-                "id": t.id,
-                "descricao": t.descricao,
-                "concluida": t.concluida,
-                "referencia": t.referencia
-            } for t in tarefas])
-    except SQLAlchemyError as e:
+                "id": 1,
+                "descricao": json.dumps(metas, ensure_ascii=False),
+                "concluida": bool(metas.get("concluida", False)),
+                "referencia": referencia or f"{ano}-M{mes:02d}",
+            }])
+
+        # Tarefas semanais/quarter — não usadas no novo modelo de tabela única
+        return jsonify([])
+    except Exception as e:
+        import traceback; traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
 
 @app.route("/api/operacao/tarefas", methods=["POST"])
 @check_session
-@check_access(["Account", "Gestor de Tráfego"])
+@check_access(["Account", "Gestor de Tráfego", "Cientista"])
 def save_tarefa():
-    data = request.json
-    try:
-        with Session() as db:
-            if data.get("id"):
-                tarefa = db.get(OperacaoTarefa, data["id"])
-                if tarefa:
-                    tarefa.concluida = data.get("concluida", tarefa.concluida)
-                    tarefa.descricao = data.get("descricao", tarefa.descricao)
-            else:
-                tarefa = OperacaoTarefa(
-                    projeto_pipefy_id=data["pipefy_id"],
-                    tipo=data["tipo"],
-                    descricao=data["descricao"],
-                    referencia=data["referencia"],
-                    ano=data["ano"],
-                    concluida=False
-                )
-                db.add(tarefa)
-            db.commit()
-            
-            # Trigger DeliveryService for relevant types based on task type (E4)
-            email_sessao = session.get("email")
-            if tarefa.tipo == 'quarter':
-                DeliveryService.checkAndComplete(email_sessao, tarefa.projeto_pipefy_id, 'relatorio_account', dt.now().month, dt.now().year)
-                DeliveryService.checkAndComplete(email_sessao, tarefa.projeto_pipefy_id, 'relatorio_gt', dt.now().month, dt.now().year)
-                DeliveryService.checkAndComplete(email_sessao, tarefa.projeto_pipefy_id, 'forecasting', dt.now().month, dt.now().year)
-            elif tarefa.tipo == 'semanal':
-                DeliveryService.checkAndComplete(email_sessao, tarefa.projeto_pipefy_id, 'planner_monday', dt.now().month, dt.now().year)
-                DeliveryService.checkAndComplete(email_sessao, tarefa.projeto_pipefy_id, 'config_conta', dt.now().month, dt.now().year)
+    """Salva metas (goal_snapshot) APENAS na tabela operacao.entregas.metas."""
+    data = request.json or {}
+    email = session.get("email")
+    pipefy_id = data.get("pipefy_id")
+    tipo = data.get("tipo")
+    referencia = data.get("referencia", "")
+    descricao = data.get("descricao")
 
-            return jsonify({"status": "success", "id": tarefa.id})
-    except SQLAlchemyError as e:
+    try:
+        # Determinar mes/ano a partir da referência
+        if referencia and "-M" in referencia:
+            parts = referencia.split("-M")
+            ano, mes = int(parts[0]), int(parts[1])
+        else:
+            now = dt.now()
+            mes, ano = now.month, now.year
+
+        # Tratamento por tipo
+        if tipo == "semanal":
+            # Salva na seção tarefas_semanais do snapshot
+            tarefa_item = {
+                "descricao": descricao,
+                "referencia": referencia,
+                "criado_por": email,
+                "data": dt.now().strftime("%Y-%m-%d")
+            }
+            _operacao_save_section(pipefy_id, mes, ano, "tarefas_semanais", tarefa_item, append=True)
+            _sync_metrica_entregas_operacao(email, pipefy_id, mes, ano)
+            return jsonify({"status": "success", "id": 1})
+
+        if tipo != "goal_snapshot" and not data.get("id"):
+            # Outros tipos (ex: quarter antigo) não persistem
+            return jsonify({"status": "success", "id": 1})
+
+        # Carregar metas atuais
+        metas = snap.get("metas") or {}
+        return jsonify({"status": "success", "id": 1})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/operacao/tarefas", methods=["DELETE"])
+@check_session
+@check_access(["Account", "Cientista"])
+def delete_tarefa_manual():
+    """Remove o último registro manual do Planner Monday do mês atual."""
+    data = request.json or {}
+    pipefy_id = data.get("pipefy_id")
+    if not pipefy_id:
+        return jsonify({"error": "pipefy_id obrigatório"}), 400
+
+    now = dt.now()
+    mes, ano = now.month, now.year
+    email = session.get("email")
+
+    try:
+        snap = _operacao_get_snapshot(pipefy_id, mes, ano)
+        if not snap or "tarefas_semanais" not in snap:
+            return jsonify({"error": "Nenhum registro encontrado"}), 404
+        
+        lst = list(snap["tarefas_semanais"])
+        if not lst:
+            return jsonify({"error": "Nenhum registro para remover"}), 400
+        
+        # Remove a última tarefa (decremento)
+        del lst[-1]
+        
+        with engine.begin() as conn:
+            snap["tarefas_semanais"] = lst
+            conn.execute(text(
+                "UPDATE plataforma_geral.operacao SET entregas = CAST(:ent AS jsonb) "
+                "WHERE id_projeto = :id AND mes = :mes AND ano = :ano"
+            ), {"ent": json.dumps(snap, ensure_ascii=False), "id": str(pipefy_id), "mes": mes, "ano": ano})
+            
+        _sync_metrica_entregas_operacao(email, pipefy_id, mes, ano)
+        return jsonify({"status": "success"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+        if descricao:
+            # Salvar/sobrescrever metas com nova descricao (JSON string)
+            try:
+                metas = json.loads(descricao)
+            except Exception:
+                metas = {"raw": descricao}
+
+        # Toggle de conclusão (sem descricao, só concluida)
+        if "concluida" in data and not descricao:
+            metas["concluida"] = bool(data.get("concluida"))
+
+        if pipefy_id:
+            _operacao_save_section(pipefy_id, mes, ano, "metas", metas, append=False)
+            _sync_metrica_entregas_operacao(email, pipefy_id, mes, ano)
+
+        return jsonify({"status": "success", "id": 1})
+    except Exception as e:
+        import traceback; traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
 
@@ -1561,6 +1961,9 @@ def update_entregas_operacao_entregues():
 
     if not all([email, mes, ano, projeto_id, nome_entrega, tipo_entrega]):
         return jsonify({"error": "Campos obrigatórios: email_investidor, mes, ano, projeto_id, nome_entrega, tipo_entrega"}), 400
+
+    if int(ano) == 2026 and int(mes) in (2, 3):
+        return jsonify({"error": "As entregas dos meses 02 e 03 de 2026 estão bloqueadas."}), 400
 
     hoje = dt.now()
     if int(ano) > hoje.year or (int(ano) == hoje.year and int(mes) > hoje.month):
@@ -1746,28 +2149,113 @@ def update_op_delivery_coord():
 
 @app.route("/api/operacao/monthly-deliveries/<int:pipefy_id>/<int:mes>/<int:ano>", methods=["GET"])
 @check_session
-@check_access(["Account", "Gestor de Tráfego"])
 def get_monthly_deliveries(pipefy_id, mes, ano):
-    """Retorna as entregas automáticas do mês para o usuário logado neste projeto."""
-    email = session.get("email")
+    """Calcula entregas concluídas baseado no snapshot da tabela operacao."""
     try:
-        with Session() as db:
-            entregas = db.query(MonthlyDelivery).filter_by(
-                email=email,
-                client_id=pipefy_id,
-                month=mes,
-                year=ano,
-            ).all()
-            return jsonify([{
-                "id": e.id,
-                "role": e.role,
-                "delivery_type": e.delivery_type,
-                "status": e.status,
-                "fee_snapshot": float(e.fee_snapshot or 0),
-                "mrr_contribution": float(e.mrr_contribution or 0),
-                "completed_at": e.completed_at.isoformat() if e.completed_at else None,
-            } for e in entregas])
-    except SQLAlchemyError as e:
+        snap = _operacao_get_snapshot(pipefy_id, mes, ano)
+        if not snap:
+            return jsonify([])
+
+        deliveries = []
+        idx = 0
+
+        # Plano de mídia — meta 1
+        planos = (snap.get("plano_midia") or {}).get("planos") or []
+        if planos:
+            idx += 1
+            deliveries.append({
+                "id": idx, "role": "Gestor de Tráfego",
+                "delivery_type": "plano_midia", "status": "completed",
+                "count": 1,
+                "fee_snapshot": 0, "mrr_contribution": 0, "completed_at": None,
+            })
+
+        # Otimizações — meta 4
+        otims = snap.get("otimizacoes") or []
+        cnt_otim = len(otims)
+        idx += 1
+        deliveries.append({
+            "id": idx, "role": "Gestor de Tráfego",
+            "delivery_type": "otimizacao",
+            "status": "completed" if cnt_otim >= 4 else ("partial" if cnt_otim > 0 else "pending"),
+            "count": min(cnt_otim, 4),
+            "fee_snapshot": 0, "mrr_contribution": 0, "completed_at": None,
+        })
+
+        # Checkin — meta 4
+        checkins = snap.get("checkin_semanal") or []
+        cnt_checkin = len(checkins)
+        idx += 1
+        deliveries.append({
+            "id": idx, "role": "Account",
+            "delivery_type": "checkin",
+            "status": "completed" if cnt_checkin >= 4 else ("partial" if cnt_checkin > 0 else "pending"),
+            "count": min(cnt_checkin, 4),
+            "fee_snapshot": 0, "mrr_contribution": 0, "completed_at": None,
+        })
+
+        # Forecasting — meta 1
+        if (snap.get("forecasting") or {}).get("link"):
+            idx += 1
+            deliveries.append({
+                "id": idx, "role": "Account",
+                "delivery_type": "forecasting", "status": "completed",
+                "count": 1,
+                "fee_snapshot": 0, "mrr_contribution": 0, "completed_at": None,
+            })
+
+        # KPIs — meta 1
+        if (snap.get("kpis") or {}).get("link"):
+            idx += 1
+            deliveries.append({
+                "id": idx, "role": "Gestor de Tráfego",
+                "delivery_type": "kpis", "status": "completed",
+                "count": 1,
+                "fee_snapshot": 0, "mrr_contribution": 0, "completed_at": None,
+            })
+
+        # Relatórios Mensais (qualquer tipo serve para preencher)
+        has_any_report = (
+            (snap.get("relatorio_mensal") or {}).get("link") or
+            (snap.get("relatorio_gt") or {}).get("link") or
+            (snap.get("relatorio_account") or {}).get("link")
+        )
+        if has_any_report:
+            # Emite os três tipos para garantir compatibilidade com qualquer perfil no frontend
+            idx += 1
+            deliveries.append({
+                "id": idx, "role": "Gestor de Tráfego",
+                "delivery_type": "relatorio_mensal", "status": "completed",
+                "count": 1, "fee_snapshot": 0, "mrr_contribution": 0, "completed_at": None,
+            })
+            idx += 1
+            deliveries.append({
+                "id": idx, "role": "Gestor de Tráfego",
+                "delivery_type": "relatorio_gt", "status": "completed",
+                "count": 1, "fee_snapshot": 0, "mrr_contribution": 0, "completed_at": None,
+            })
+            idx += 1
+            deliveries.append({
+                "id": idx, "role": "Account",
+                "delivery_type": "relatorio_account", "status": "completed",
+                "count": 1, "fee_snapshot": 0, "mrr_contribution": 0, "completed_at": None,
+            })
+
+        # Planner Monday — meta 4
+        tarefas_semanais = snap.get("tarefas_semanais") or []
+        cnt_monday = len(tarefas_semanais)
+        idx += 1
+        deliveries.append({
+            "id": idx, "role": "Account",
+            "delivery_type": "planner_monday",
+            "status": "completed" if cnt_monday >= 4 else ("partial" if cnt_monday > 0 else "pending"),
+            "count": min(cnt_monday, 4),
+            "fee_snapshot": 0, "mrr_contribution": 0, "completed_at": None,
+        })
+
+        return jsonify(deliveries)
+    except Exception as e:
+        import traceback; traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
 
@@ -1783,12 +2271,38 @@ def processar_remuneracao():
     """Endpoint para processar métricas do mês atual."""
     from datetime import datetime as dt
     try:
-        calcular_metricas_mensais(dt.now().month, dt.now().year)
         ProjetoParticipacaoService.sincronizar_remuneracao(dt.now().month, dt.now().year)
+        calcular_metricas_mensais(dt.now().month, dt.now().year)
         return jsonify({"status": "success", "message": "Métricas processadas."})
 
     except Exception as e:
         print(f"Erro ao processar remuneracao: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/remuneracao/recalcular-historico")
+@check_session
+@check_access(["Gerência"])
+def recalcular_historico_remuneracao():
+    """Recalcula todos os meses presentes no banco. Apenas Gerência."""
+    try:
+        with Session() as db:
+            periodos = db.query(
+                MetricaMensal.mes, MetricaMensal.ano
+            ).distinct().order_by(MetricaMensal.ano, MetricaMensal.mes).all()
+
+        resultados = []
+        for mes, ano in periodos:
+            try:
+                ProjetoParticipacaoService.sincronizar_remuneracao(mes, ano)
+                calcular_metricas_mensais(mes, ano)
+                resultados.append({"mes": mes, "ano": ano, "status": "ok"})
+            except Exception as e:
+                resultados.append({"mes": mes, "ano": ano, "status": "erro", "detalhe": str(e)})
+
+        return jsonify({"status": "success", "periodos": resultados})
+    except Exception as e:
+        print(f"Erro ao recalcular histórico: {e}")
         return jsonify({"error": str(e)}), 500
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1857,148 +2371,309 @@ def atualizar_entregas_automaticas(db, pipefy_id, mes, ano, investidor_email):
 
 @app.route("/api/operacao/plano-midia", methods=["POST"])
 @check_session
-@check_access(["Gestor de Tráfego"])
+@check_access(["Gestor de Tráfego", "Cientista", "Gerência", "Account", "Desenvolvedor"])
 def save_plano_midia():
-    data = request.json
+    """Salva plano de mídia APENAS na tabela operacao.entregas.plano_midia."""
+    data = request.json or {}
     email = session.get("email")
-    print(f"DEBUG: save_plano_midia POST - Email: {email}, ID: {data.get('pipefy_id')}, Mes: {data.get('mes')}")
+    pipefy_id = data.get("pipefy_id")
+    mes = data.get("mes")
+    ano = data.get("ano")
+    dados = data.get("dados_plano", {})
+
+    print(f"\n{'='*70}")
+    print(f"[plano-midia POST] email={email} projeto={pipefy_id} mes={mes} ano={ano}")
+    print(f"[plano-midia POST] dados recebidos: {json.dumps(dados, ensure_ascii=False)[:200]}")
+
+    # Diagnóstico ANTES do save
+    try:
+        with engine.connect() as c:
+            antes = c.execute(text(
+                "SELECT COUNT(*) FROM plataforma_geral.operacao WHERE id_projeto = :id"
+            ), {"id": str(pipefy_id)}).scalar()
+            print(f"[plano-midia POST] linhas existentes na operacao para projeto {pipefy_id}: {antes}")
+    except Exception as e:
+        print(f"[plano-midia POST] ERRO ao contar antes: {e}")
+        return jsonify({"error": f"DB connection error: {e}"}), 500
+
+    plano_snap = {
+        "budget_total": dados.get("budget_total", 0),
+        "planos": [
+            {
+                "canal": c.get("canal", ""),
+                "nome_campanha": c.get("campanhas", ""),
+                "%_budget": c.get("percent_budget", 0),
+                "R$_budget": c.get("budget", 0),
+                "budget_dia": c.get("budget_dia", 0),
+            }
+            for c in dados.get("canais", [])
+        ],
+    }
+
+    ok = _operacao_save_section(pipefy_id, mes, ano, "plano_midia", plano_snap, append=False)
+    if not ok:
+        return jsonify({"error": "Falha ao salvar na tabela operacao", "saved": False}), 500
+
+    # Diagnóstico DEPOIS do save
+    snap_atual = _operacao_get_snapshot(pipefy_id, mes, ano)
+    with engine.connect() as c:
+        depois = c.execute(text(
+            "SELECT COUNT(*) FROM plataforma_geral.operacao WHERE id_projeto = :id"
+        ), {"id": str(pipefy_id)}).scalar()
+        print(f"[plano-midia POST] linhas APOS save: {depois}")
+
+    _sync_metrica_entregas_operacao(email, pipefy_id, mes, ano)
+    print(f"[plano-midia POST] FIM - retornando snapshot")
+    print(f"{'='*70}\n")
+
+    return jsonify({
+        "status": "success",
+        "saved": True,
+        "rows_total_for_project": depois,
+        "snapshot": snap_atual,
+    })
+
+
+@app.route("/api/operacao/planos-midia/<int:pipefy_id>", methods=["GET"])
+@check_session
+def get_plano_midia_historico(pipefy_id):
+    """Retorna o histórico de planos de mídia para um projeto em todos os meses."""
     try:
         with Session() as db:
-            # Filtrar por email também para evitar conflitos de cargos
-            plano = db.query(OperacaoPlanoMidia).filter_by(
-                projeto_pipefy_id=data["pipefy_id"], 
-                mes=data["mes"], 
-                ano=data["ano"],
-                investidor_email=email
-            ).first()
-
-            if not plano:
-                print("DEBUG: Creating new plan record")
-                plano = OperacaoPlanoMidia(
-                    projeto_pipefy_id=data["pipefy_id"], mes=data["mes"], ano=data["ano"],
-                    investidor_email=email, created_at=dt.now()
-                )
-                db.add(plano)
-            else:
-                print("DEBUG: Updating existing plan record")
+            from sqlalchemy import text
+            snaps = db.execute(text(
+                "SELECT mes, ano, entregas FROM plataforma_geral.operacao "
+                "WHERE id_projeto = :id_projeto ORDER BY ano DESC, mes DESC"
+            ), {"id_projeto": str(pipefy_id)}).fetchall()
             
-            plano.dados_plano = data.get("dados_plano", {})
-            plano.updated_at = dt.now()
-            db.commit()
-
-        # Trigger delivery_engine and DeliveryService (E4)
-        DeliveryService.checkAndComplete(email, data["pipefy_id"], "plano_midia", data["mes"], data["ano"])
-        res_engine = process_deliveries(email, data["pipefy_id"], data["mes"], data["ano"])
-        print(f"DEBUG: Delivery engine result: {res_engine}")
-        return jsonify({"status": "success", "engine": res_engine})
-    except SQLAlchemyError as e:
+            historico = []
+            for s in snaps:
+                entregas = s.entregas or {}
+                if "plano_midia" in entregas and entregas["plano_midia"].get("planos"):
+                    plano = entregas["plano_midia"]
+                    historico.append({
+                        "mes": s.mes,
+                        "ano": s.ano,
+                        "budget_total": plano.get("budget_total", 0),
+                        "canais": [
+                            {
+                                "canal": p.get("canal", ""),
+                                "campanhas": p.get("nome_campanha", ""),
+                                "percent_budget": p.get("%_budget", 0),
+                                "budget": p.get("R$_budget", 0),
+                                "budget_dia": p.get("budget_dia", 0),
+                            }
+                            for p in plano.get("planos", [])
+                        ]
+                    })
+            return jsonify(historico)
+    except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 @app.route("/api/operacao/plano-midia/<int:pipefy_id>/<int:mes>/<int:ano>", methods=["GET"])
 @check_session
-@check_access(["Account", "Gestor de Tráfego"])
+@check_access(["Account", "Gestor de Tráfego", "Cientista", "Desenvolvedor"])
 def get_plano_midia(pipefy_id, mes, ano):
+    """Lê plano de mídia da tabela operacao.entregas.plano_midia."""
+    try:
+        snap = _operacao_get_snapshot(pipefy_id, mes, ano)
+        if not snap:
+            return jsonify(None)
+        plano = snap.get("plano_midia") or {}
+        if not plano.get("planos"):
+            return jsonify(None)
+
+        return jsonify({
+            "id": pipefy_id,
+            "dados_plano": {
+                "budget_total": plano.get("budget_total", 0),
+                "canais": [
+                    {
+                        "canal": p.get("canal", ""),
+                        "campanhas": p.get("nome_campanha", ""),
+                        "percent_budget": p.get("%_budget", 0),
+                        "budget": p.get("R$_budget", 0),
+                        "budget_dia": p.get("budget_dia", 0),
+                    }
+                    for p in plano.get("planos", [])
+                ],
+            },
+            "created_at": None,
+        })
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/operacao/test-db", methods=["GET"])
+@check_session
+def test_operacao_db():
+    """Diagnóstico: tenta inserir e deletar uma linha de teste na tabela operacao."""
+    import traceback
     try:
         with Session() as db:
-            # Primeiro tenta buscar o plano do próprio usuário
-            plano = db.query(OperacaoPlanoMidia).filter_by(
-                projeto_pipefy_id=pipefy_id, mes=mes, ano=ano,
-                investidor_email=session.get("email")
-            ).first()
+            db.execute(text(
+                "INSERT INTO plataforma_geral.operacao (mes, ano, nome, id_projeto, entregas) "
+                "VALUES (1, 1999, 'TESTE_DIAGNOSTICO', 'TESTE_ID', '{\"ok\":true}'::jsonb)"
+            ))
+            db.execute(text(
+                "DELETE FROM plataforma_geral.operacao WHERE id_projeto = 'TESTE_ID' AND ano = 1999"
+            ))
+            db.commit()
+        return jsonify({"ok": True, "msg": "INSERT e DELETE na tabela operacao funcionaram."})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e), "trace": traceback.format_exc()}), 500
 
-            # Se não houver do usuário, tenta qualquer um do projeto para visualização/compartilhamento
-            if not plano:
-                plano = db.query(OperacaoPlanoMidia).filter_by(
-                    projeto_pipefy_id=pipefy_id, mes=mes, ano=ano
-                ).first()
-            if plano:
-                return jsonify({
-                    "id": plano.id,
-                    "dados_plano": plano.dados_plano,
-                    "created_at": plano.created_at.isoformat() if plano.created_at else None
-                })
-            return jsonify(None)
-    except SQLAlchemyError as e:
+
+@app.route("/api/operacao/snapshot/<int:pipefy_id>/<int:mes>/<int:ano>", methods=["GET"])
+@check_session
+def get_operacao_snapshot(pipefy_id, mes, ano):
+    """Retorna o JSON consolidado de entregas do projeto para o mês/ano."""
+    try:
+        with Session() as db:
+            snap = OperacaoSnapshotService.get_snapshot(db, pipefy_id, mes, ano)
+            return jsonify(snap or {})
+    except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/operacao/snapshot/links", methods=["PUT"])
+@check_session
+@check_access(["Account", "Gestor de Tráfego", "Cientista", "Desenvolvedor"])
+def update_snapshot_links():
+    """Salva links fixos (kpis, forecasting, relatorio_account, relatorio_gt) no snapshot."""
+    data = request.json or {}
+    email = session.get("email")
+    pipefy_id = data.get("pipefy_id")
+    mes = data.get("mes")
+    ano = data.get("ano")
+    tipo = data.get("tipo")
+    link = data.get("link", "")
+
+    valid_tipos = ["kpis", "forecasting", "relatorio_account", "relatorio_gt", "relatorio_mensal"]
+    if not all([pipefy_id, mes, ano, tipo]) or tipo not in valid_tipos:
+        return jsonify({"error": "Parâmetros inválidos"}), 400
+
+    try:
+        with Session() as db:
+            OperacaoSnapshotService.update_section(
+                db, pipefy_id, int(mes), int(ano),
+                tipo, {"link": link},
+            )
+            metrica = OperacaoSnapshotService.sync_to_metrica(
+                db, email, pipefy_id, int(mes), int(ano)
+            )
+            if metrica:
+                _recalcular_mrr_por_entregas(metrica)
+            db.commit()
+        return jsonify({"ok": True})
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        print(f"[snapshot] links: {e}")
+        return jsonify({"error": str(e)}), 500
+
 
 @app.route("/api/operacao/otimizacao", methods=["POST"])
 @check_session
-@check_access(["Gestor de Tráfego"])
+@check_access(["Account", "Gestor de Tráfego", "Cientista", "Gerência", "Desenvolvedor"])
 def save_otimizacao_api():
-    data = request.json
+    """Salva otimização APENAS na tabela operacao.entregas.otimizacoes (append)."""
+    data = request.json or {}
     email = session.get("email")
-    try:
-        with Session() as db:
-            nova = OperacaoOtimizacao(
-                projeto_pipefy_id=data["pipefy_id"],
-                investidor_email=email,
-                tipo=data["tipo"],
-                canal=data["canal"],
-                data_otimizacao=dt.strptime(data["data"], "%Y-%m-%d"),
-                detalhes=data["detalhes"],
-                created_at=dt.now()
-            )
-            db.add(nova)
-            db.commit()
+    pipefy_id = data.get("pipefy_id")
+    d = dt.strptime(data.get("data", ""), "%Y-%m-%d") if data.get("data") else dt.now()
+    mes, ano = d.month, d.year
 
-        # Trigger delivery_engine and DeliveryService (E4)
-        d = dt.strptime(data["data"], "%Y-%m-%d")
-        DeliveryService.checkAndComplete(email, data["pipefy_id"], "otimizacao", d.month, d.year)
-        process_deliveries(email, data["pipefy_id"], d.month, d.year)
-        return jsonify({"status": "success"})
-    except SQLAlchemyError as e:
-        return jsonify({"error": str(e)}), 500
+    print(f"[otimizacao POST] email={email} projeto={pipefy_id} mes={mes} ano={ano}")
+
+    otim_snap = {
+        "canal": data.get("canal", ""),
+        "data_da_otimizacao": data.get("data", ""),
+        "oquesera_otimizado": data.get("tipo", ""),
+        "detalhes_otimizacao": data.get("detalhes", ""),
+        "criado_por": email,
+    }
+
+    ok = _operacao_save_section(pipefy_id, mes, ano, "otimizacoes", otim_snap, append=True)
+    if not ok:
+        return jsonify({"error": "Falha ao salvar na tabela operacao"}), 500
+
+    _sync_metrica_entregas_operacao(email, pipefy_id, mes, ano)
+    return jsonify({"status": "success"})
 
 @app.route("/api/operacao/checkin", methods=["POST"])
 @check_session
-@check_access(["Account"])
+@check_access(["Account", "Cientista", "Gerência", "Desenvolvedor"])
 def save_checkin():
-    data = request.json
+    """Salva checkin APENAS na tabela operacao.entregas.checkin_semanal (append)."""
+    data = request.json or {}
     email = session.get("email")
-    try:
-        with Session() as db:
-            novo = OperacaoCheckin(
-                projeto_pipefy_id=data["pipefy_id"],
-                investidor_email=email,
-                semana_ano=data["semana_ano"],
-                compareceu=data["compareceu"],
-                campanhas_ativas=data.get("campanhas_ativas", True),
-                gap_comunicacao=data.get("gap_comunicacao", False),
-                cliente_reclamou=data.get("cliente_reclamou", False),
-                satisfeito=data.get("satisfeito", True),
-                csat_pontuacao=data.get("csat"),
-                observacoes=data.get("obs"),
-                created_at=dt.now()
-            )
-            db.add(novo)
-            db.commit()
+    pipefy_id = data.get("pipefy_id")
+    now = dt.now()
+    mes, ano = now.month, now.year
 
-        # Trigger delivery_engine and DeliveryService (E4)
-        DeliveryService.checkAndComplete(email, data["pipefy_id"], "checkin", dt.now().month, dt.now().year)
-        process_deliveries(email, data["pipefy_id"], dt.now().month, dt.now().year)
-        return jsonify({"status": "success"})
-    except SQLAlchemyError as e:
-        return jsonify({"error": str(e)}), 500
+    print(f"[checkin POST] email={email} projeto={pipefy_id} mes={mes} ano={ano}")
+
+    checkin_snap = {
+        "data": now.strftime("%Y-%m-%d"),
+        "semana": data.get("semana_ano", ""),
+        "stakeholder_participou": data.get("compareceu", False),
+        "campanhas_ativas": data.get("campanhas_ativas", True),
+        "gap_comunicacao": data.get("gap_comunicacao", False),
+        "cliente_reclamou": data.get("cliente_reclamou", False),
+        "observacoes": data.get("obs", ""),
+        "links": [data["transcricao_url"]] if data.get("transcricao_url") else [],
+        "criado_por": email,
+    }
+
+    ok = _operacao_save_section(pipefy_id, mes, ano, "checkin_semanal", checkin_snap, append=True)
+    if not ok:
+        return jsonify({"error": "Falha ao salvar na tabela operacao"}), 500
+
+    _sync_metrica_entregas_operacao(email, pipefy_id, mes, ano)
+    return jsonify({"status": "success"})
+
 
 @app.route("/api/operacao/checkins/<int:pipefy_id>", methods=["GET"])
 @check_session
-@check_access(["Account", "Gestor de Tráfego"])
+@check_access(["Account", "Gestor de Tráfego", "Cientista", "Desenvolvedor"])
 def get_checkins(pipefy_id):
+    """Lista todos os checkins do projeto — lê da tabela operacao."""
     try:
         with Session() as db:
-            checkins = db.query(OperacaoCheckin).filter_by(projeto_pipefy_id=pipefy_id).order_by(OperacaoCheckin.created_at.desc()).all()
-            return jsonify([{
-                "semana": c.semana_ano,
-                "compareceu": c.compareceu,
-                "campanhas_ativas": c.campanhas_ativas,
-                "gap_comunicacao": c.gap_comunicacao,
-                "cliente_reclamou": c.cliente_reclamou,
-                "satisfeito": c.satisfeito,
-                "csat": c.csat_pontuacao,
-                "obs": c.observacoes,
-                "data": c.created_at.strftime("%d/%m/%Y") if c.created_at else ""
-            } for c in checkins])
-    except SQLAlchemyError as e:
+            rows = db.execute(text(
+                "SELECT mes, ano, entregas FROM plataforma_geral.operacao "
+                "WHERE id_projeto = :id ORDER BY ano DESC, mes DESC"
+            ), {"id": str(pipefy_id)}).fetchall()
+
+            result = []
+            for r in rows:
+                m, a = r.mes, r.ano
+                ent = r.entregas if isinstance(r.entregas, dict) else (
+                    json.loads(r.entregas) if r.entregas else {}
+                )
+                for i, c in enumerate(ent.get("checkin_semanal") or []):
+                    result.append({
+                        "id": f"{m}-{a}-{i}",
+                        "mes": m,
+                        "ano": a,
+                        "original_index": i,
+                        "semana": c.get("semana", ""),
+                        "compareceu": c.get("stakeholder_participou", False),
+                        "campanhas_ativas": c.get("campanhas_ativas", True),
+                        "gap_comunicacao": c.get("gap_comunicacao", False),
+                        "cliente_reclamou": c.get("cliente_reclamou", False),
+                        "satisfeito": True,
+                        "csat": None,
+                        "obs": c.get("observacoes", ""),
+                        "data": c.get("data", ""),
+                        "transcricao_url": (c.get("links") or [None])[0] if c.get("links") else None,
+                    })
+            return jsonify(result)
+    except Exception as e:
+        import traceback; traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
 
@@ -2006,26 +2681,37 @@ def get_checkins(pipefy_id):
 
 @app.route("/api/operacao/otimizacoes/<int:pipefy_id>", methods=["GET"])
 @check_session
-@check_access(["Account", "Gestor de Tráfego"])
+@check_access(["Account", "Gestor de Tráfego", "Cientista", "Desenvolvedor"])
 def get_otimizacoes(pipefy_id):
-    """Lista todas as otimizações registradas para um projeto."""
-    email = session.get("email")
-    squad = session.get("squad")
+    """Lista todas as otimizações do projeto (todos os meses) — lê da tabela operacao."""
     try:
         with Session() as db:
-            query = db.query(OperacaoOtimizacao).filter_by(projeto_pipefy_id=pipefy_id)
-            if squad != "Gerência":
-                query = query.filter_by(investidor_email=email)
-            otimizacoes = query.order_by(OperacaoOtimizacao.data_otimizacao.desc()).all()
-            return jsonify([{
-                "id": o.id,
-                "tipo": o.tipo,
-                "canal": o.canal,
-                "data": o.data_otimizacao.strftime("%d/%m/%Y") if o.data_otimizacao else "",
-                "detalhes": o.detalhes,
-                "criado_em": o.created_at.strftime("%d/%m/%Y") if o.created_at else ""
-            } for o in otimizacoes])
-    except SQLAlchemyError as e:
+            rows = db.execute(text(
+                "SELECT mes, ano, entregas FROM plataforma_geral.operacao "
+                "WHERE id_projeto = :id ORDER BY ano DESC, mes DESC"
+            ), {"id": str(pipefy_id)}).fetchall()
+
+            result = []
+            for r in rows:
+                m, a = r.mes, r.ano
+                ent = r.entregas if isinstance(r.entregas, dict) else (
+                    json.loads(r.entregas) if r.entregas else {}
+                )
+                for i, o in enumerate(ent.get("otimizacoes") or []):
+                    result.append({
+                        "id": f"{m}-{a}-{i}",
+                        "mes": m,
+                        "ano": a,
+                        "original_index": i,
+                        "tipo": o.get("oquesera_otimizado", ""),
+                        "canal": o.get("canal", ""),
+                        "data": o.get("data_da_otimizacao", ""),
+                        "detalhes": o.get("detalhes_otimizacao", ""),
+                        "criado_em": o.get("data_da_otimizacao", ""),
+                    })
+            return jsonify(result)
+    except Exception as e:
+        import traceback; traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
 
@@ -2033,7 +2719,7 @@ def get_otimizacoes(pipefy_id):
 
 @app.route("/api/operacao/links/<int:pipefy_id>", methods=["GET"])
 @check_session
-@check_access(["Account", "Gestor de Tráfego"])
+@check_access(["Account", "Gestor de Tráfego", "Desenvolvedor"])
 def get_links(pipefy_id):
     try:
         with Session() as db:
@@ -2054,7 +2740,7 @@ def get_links(pipefy_id):
 
 @app.route("/api/operacao/links", methods=["POST"])
 @check_session
-@check_access(["Account", "Gestor de Tráfego"])
+@check_access(["Account", "Gestor de Tráfego", "Desenvolvedor"])
 def save_link():
     data = request.json
     email = session.get("email")
@@ -2080,7 +2766,7 @@ def save_link():
 
 @app.route("/api/operacao/links/<int:link_id>", methods=["DELETE"])
 @check_session
-@check_access(["Account", "Gestor de Tráfego"])
+@check_access(["Account", "Gestor de Tráfego", "Desenvolvedor"])
 def delete_link(link_id):
     try:
         with Session() as db:
@@ -2090,6 +2776,86 @@ def delete_link(link_id):
                 db.commit()
             return jsonify({"status": "success"})
     except SQLAlchemyError as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# ─── NOVAS ROTAS DE DELEÇÃO OPERAÇÃO ──────────────────────────────────────────
+
+@app.route("/api/operacao/checkin/<int:pipefy_id>/<int:mes>/<int:ano>/<int:index>", methods=["DELETE"])
+@check_session
+@check_access(["Account", "Gestor de Tráfego", "Cientista", "Desenvolvedor"])
+def delete_checkin_api(pipefy_id, mes, ano, index):
+    try:
+        snap = _operacao_get_snapshot(pipefy_id, mes, ano)
+        if not snap or "checkin_semanal" not in snap:
+            return jsonify({"error": "Check-in não encontrado"}), 404
+        
+        lst = list(snap["checkin_semanal"])
+        if index < 0 or index >= len(lst):
+            return jsonify({"error": "Índice inválido"}), 400
+        
+        del lst[index]
+        
+        with engine.begin() as conn:
+            snap["checkin_semanal"] = lst
+            conn.execute(text(
+                "UPDATE plataforma_geral.operacao SET entregas = CAST(:ent AS jsonb) "
+                "WHERE id_projeto = :id AND mes = :mes AND ano = :ano"
+            ), {"ent": json.dumps(snap, ensure_ascii=False), "id": str(pipefy_id), "mes": mes, "ano": ano})
+            
+        _sync_metrica_entregas_operacao(session.get("email"), pipefy_id, mes, ano)
+        return jsonify({"status": "success"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/operacao/otimizacao/<int:pipefy_id>/<int:mes>/<int:ano>/<int:index>", methods=["DELETE"])
+@check_session
+@check_access(["Gestor de Tráfego", "Cientista", "Gerência", "Desenvolvedor"])
+def delete_otimizacao_api(pipefy_id, mes, ano, index):
+    try:
+        snap = _operacao_get_snapshot(pipefy_id, mes, ano)
+        if not snap or "otimizacoes" not in snap:
+            return jsonify({"error": "Otimização não encontrada"}), 404
+        
+        lst = list(snap["otimizacoes"])
+        if index < 0 or index >= len(lst):
+            return jsonify({"error": "Índice inválido"}), 400
+        
+        del lst[index]
+        
+        with engine.begin() as conn:
+            snap["otimizacoes"] = lst
+            conn.execute(text(
+                "UPDATE plataforma_geral.operacao SET entregas = CAST(:ent AS jsonb) "
+                "WHERE id_projeto = :id AND mes = :mes AND ano = :ano"
+            ), {"ent": json.dumps(snap, ensure_ascii=False), "id": str(pipefy_id), "mes": mes, "ano": ano})
+            
+        _sync_metrica_entregas_operacao(session.get("email"), pipefy_id, mes, ano)
+        return jsonify({"status": "success"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/operacao/plano-midia/<int:pipefy_id>/<int:mes>/<int:ano>", methods=["DELETE"])
+@check_session
+@check_access(["Gestor de Tráfego", "Cientista", "Gerência", "Account", "Desenvolvedor"])
+def delete_plano_midia_api(pipefy_id, mes, ano):
+    try:
+        snap = _operacao_get_snapshot(pipefy_id, mes, ano)
+        if not snap:
+            return jsonify({"error": "Plano não encontrado"}), 404
+        
+        with engine.begin() as conn:
+            snap["plano_midia"] = {"budget_total": 0, "planos": []}
+            conn.execute(text(
+                "UPDATE plataforma_geral.operacao SET entregas = CAST(:ent AS jsonb) "
+                "WHERE id_projeto = :id AND mes = :mes AND ano = :ano"
+            ), {"ent": json.dumps(snap, ensure_ascii=False), "id": str(pipefy_id), "mes": mes, "ano": ano})
+            
+        _sync_metrica_entregas_operacao(session.get("email"), pipefy_id, mes, ano)
+        return jsonify({"status": "success"})
+    except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 
