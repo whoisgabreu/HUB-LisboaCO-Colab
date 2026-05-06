@@ -154,9 +154,11 @@
                                 <p id="op-detalhe-cargo">Cargo</p>
                             </div>
                         </div>
+                        {% if session.get('posicao', '') != 'Operação' %}
                         <button class="criativa-nav-btn" onclick="voltarParaEquipe()">
                             <i class="fas fa-arrow-left"></i> Voltar para Equipe
                         </button>
+                        {% endif %}
                     </div>
 
                     <!-- Seção de Remuneração (apenas Account / Gestor de Tráfego) -->

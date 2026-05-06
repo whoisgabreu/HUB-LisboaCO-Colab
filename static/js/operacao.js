@@ -118,6 +118,33 @@ function closeGTModal(modalId) {
     }
 }
 
+function showConfirmModal({ title = 'Confirmar', message = 'Tem certeza?', confirmText = 'Sim, excluir', cancelText = 'Cancelar', icon = 'fa-trash-alt', onConfirm } = {}) {
+    const modalId = 'modal-confirm-action';
+    const elTitle = document.getElementById('confirm-action-title');
+    const elMsg   = document.getElementById('confirm-action-message');
+    const elIcon  = document.getElementById('confirm-action-icon');
+    const btnOk   = document.getElementById('confirm-action-ok');
+    const btnCancel = document.getElementById('confirm-action-cancel');
+    if (!elTitle || !btnOk) return;
+
+    elTitle.textContent = title;
+    elMsg.textContent   = message;
+    elIcon.className    = `fas ${icon}`;
+    btnOk.textContent     = confirmText;
+    btnCancel.textContent = cancelText;
+
+    const newOk = btnOk.cloneNode(true);
+    btnOk.parentNode.replaceChild(newOk, btnOk);
+    newOk.addEventListener('click', async () => {
+        closeGTModal(modalId);
+        try { if (typeof onConfirm === 'function') await onConfirm(); }
+        catch (e) { console.error('[showConfirmModal] onConfirm:', e); }
+    });
+
+    openGTModal(modalId);
+}
+window.showConfirmModal = showConfirmModal;
+
 // ─── NAVEGAÇÃO ────────────────────────────────────────────────────────────────
 
 function openProjectDetails(project) {
@@ -144,7 +171,7 @@ function openProjectDetails(project) {
     document.querySelectorAll('.btn-auth-account').forEach(btn => {
         const text = btn.innerHTML || "";
         const isRelAcc = text.includes('relatorio_account') || text.includes('Relatório Acc') || text.includes('Relatório Mensal (Acc)');
-        const show = hasAuth && (!isScientist || !isRelAcc) && (globalRole !== 'Cientista' || !isRelAcc);
+        const show = authAcc && (!isScientist || !isRelAcc) && (window.__USER_ROLE__ !== 'Cientista' || !isRelAcc);
         const displayType = btn.classList.contains('access-link-card') ? 'flex' : 'inline-flex';
         btn.style.setProperty('display', show ? displayType : 'none', 'important');
     });
@@ -1088,8 +1115,19 @@ async function loadFixedLinks(pipefyId, monthVal = null) {
         const setLink = (idPrefix, url) => {
             const anchor = document.getElementById(`fixed-link-${idPrefix}`);
             const label  = document.getElementById(`fixed-link-${idPrefix}-url`);
-            if (anchor) anchor.href = url || '#';
-            if (label)  label.textContent = url || 'Sem link definido';
+            if (anchor) {
+                anchor.href = url || '#';
+                if (url) {
+                    anchor.style.opacity = '1';
+                    anchor.style.pointerEvents = 'auto';
+                    anchor.style.cursor = 'pointer';
+                } else {
+                    anchor.style.opacity = '0.45';
+                    anchor.style.pointerEvents = 'none';
+                    anchor.style.cursor = 'default';
+                }
+            }
+            if (label) label.textContent = url || 'Sem link definido';
         };
 
         setLink('kpi', kpiUrl);
@@ -1101,6 +1139,46 @@ async function loadFixedLinks(pipefyId, monthVal = null) {
         console.error('Erro ao carregar links fixos:', e);
     }
 }
+
+function clearFixedLink(key) {
+    if (!currentProject) {
+        showToast('Selecione um projeto primeiro', 'error');
+        return;
+    }
+    const tipoMap = { kpi: 'kpis', forecasting: 'forecasting' };
+    const tipo = tipoMap[key] || key;
+    showConfirmModal({
+        title: 'Limpar Link',
+        message: 'Deseja remover o link salvo deste card? Você pode adicionar um novo depois.',
+        confirmText: 'Sim, limpar',
+        onConfirm: async () => {
+            try {
+                const res = await fetch('/api/operacao/snapshot/links', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        pipefy_id: currentProject.pipefy_id,
+                        mes: currentMonth,
+                        ano: currentYear,
+                        tipo,
+                        link: '',
+                    }),
+                });
+                if (res.ok) {
+                    showToast('Link removido');
+                    loadFixedLinks(currentProject.pipefy_id);
+                } else {
+                    const err = await res.json().catch(() => ({}));
+                    showToast(err.error || 'Falha ao remover link', 'error');
+                }
+            } catch (e) {
+                console.error('[clearFixedLink]', e);
+                showToast('Erro de conexão', 'error');
+            }
+        }
+    });
+}
+window.clearFixedLink = clearFixedLink;
 
 async function openFixedLinkModal(key) {
     const titles = { 
@@ -1179,19 +1257,35 @@ async function loadLinks(pipefyId) {
             return;
         }
 
-        grid.innerHTML = data.map(lk => `
-            <div class="access-link-card" style="position:relative; display: flex; flex-direction: column; height: 100%;">
-                <button onclick="deleteLink(${lk.id})" title="Remover link"
-                    style="position:absolute;top:10px;right:10px;background:none;border:none;color:#888;cursor:pointer;font-size:0.9rem;">
-                    <i class="fas fa-trash-alt"></i>
-                </button>
-                <a href="${lk.url}" target="_blank" rel="noopener" style="text-decoration:none;display:block;flex: 1;">
-                    <div class="op-icon-box" style="margin-bottom:10px;"><i class="fas ${lk.icone || 'fa-link'}"></i></div>
-                    <div style="font-weight:600;font-size:0.9rem;color:var(--text-main); margin-bottom: 4px;">${lk.titulo}</div>
-                    ${lk.descricao ? `<div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:8px;line-height:1.4;">${lk.descricao}</div>` : ''}
-                    <div style="font-size:0.75rem;color:var(--accent-red);word-break:break-all;opacity:0.8;">${lk.url}</div>
+        grid.innerHTML = data.map(lk => {
+            const safeTitulo = String(lk.titulo || '').replace(/</g, '&lt;');
+            const safeDesc   = lk.descricao ? String(lk.descricao).replace(/</g, '&lt;') : '';
+            const safeUrl    = String(lk.url || '').replace(/"/g, '&quot;');
+            return `
+            <div class="access-link-card link-util-card" style="display:flex;flex-direction:column;gap:0.85rem;height:100%;">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+                    <div class="op-icon-box" style="margin:0;flex-shrink:0;"><i class="fas ${lk.icone || 'fa-link'}"></i></div>
+                    <button type="button" onclick="event.stopPropagation();deleteLink(${lk.id})" title="Remover link"
+                        style="background:rgba(214,22,22,0.1);border:1px solid rgba(214,22,22,0.2);color:var(--accent-red);cursor:pointer;font-size:0.85rem;width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;transition:all 0.15s;"
+                        onmouseover="this.style.background='var(--accent-red)';this.style.color='#fff';"
+                        onmouseout="this.style.background='rgba(214,22,22,0.1)';this.style.color='var(--accent-red)';">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                </div>
+                <div style="flex:1;display:flex;flex-direction:column;gap:4px;">
+                    <div style="font-weight:600;font-size:1rem;color:var(--text-main);line-height:1.3;">${safeTitulo}</div>
+                    ${safeDesc ? `<div style="font-size:0.82rem;color:var(--text-muted);line-height:1.4;">${safeDesc}</div>` : ''}
+                </div>
+                <a href="${safeUrl}" target="_blank" rel="noopener"
+                    title="${safeUrl}"
+                    style="display:flex;align-items:center;gap:8px;padding:0.6rem 0.85rem;border-radius:10px;background:rgba(214,22,22,0.08);border:1px solid rgba(214,22,22,0.15);color:var(--accent-red);text-decoration:none;font-size:0.85rem;font-weight:500;transition:all 0.15s;"
+                    onmouseover="this.style.background='rgba(214,22,22,0.15)';"
+                    onmouseout="this.style.background='rgba(214,22,22,0.08)';">
+                    <i class="fas fa-external-link-alt" style="flex-shrink:0;font-size:0.8rem;"></i>
+                    <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${safeUrl}</span>
                 </a>
-            </div>`).join('');
+            </div>`;
+        }).join('');
     } catch (e) { console.error("Erro ao carregar links:", e); }
 }
 
@@ -1227,11 +1321,17 @@ async function saveLink() {
 }
 
 async function deleteLink(linkId) {
-    if (!confirm('Remover este link?')) return;
-    try {
-        await fetch(`/api/operacao/links/${linkId}`, { method: 'DELETE' });
-        loadLinks(currentProject.pipefy_id);
-    } catch (e) { console.error(e); }
+    showConfirmModal({
+        title: 'Remover Link',
+        message: 'Tem certeza que deseja remover este link?',
+        confirmText: 'Sim, remover',
+        onConfirm: async () => {
+            try {
+                await fetch(`/api/operacao/links/${linkId}`, { method: 'DELETE' });
+                loadLinks(currentProject.pipefy_id);
+            } catch (e) { console.error(e); }
+        }
+    });
 }
 
 function filterLinksByMonth(val) {
@@ -1371,84 +1471,84 @@ async function saveCheckin() {
     } catch (e) { console.error(e); }
 }
 
-let pendingDeleteCheckin = null;
-
 async function deleteCheckin(mes, ano, index) {
-    if (!currentProject) { 
-        showToast("Selecione um projeto primeiro", "error"); 
-        return; 
+    if (!currentProject) {
+        showToast("Selecione um projeto primeiro", "error");
+        return;
     }
-    pendingDeleteCheckin = { mes, ano, index };
-    openGTModal('modal-confirm-delete-checkin');
-}
-
-async function confirmDeleteCheckin() {
-    if (!pendingDeleteCheckin || !currentProject) return;
-    const { mes, ano, index } = pendingDeleteCheckin;
-    
-    try {
-        const res = await fetch(`/api/operacao/checkin/${currentProject.pipefy_id}/${mes}/${ano}/${index}`, { method: 'DELETE' });
-        if (res.ok) {
-            showToast('Check-in removido');
-            loadCheckins(currentProject.pipefy_id);
-            loadEntregas(currentProject.pipefy_id, currentMonth, currentYear);
-        } else {
-            const err = await res.json();
-            showToast(err.error || 'Falha ao deletar', 'error');
+    showConfirmModal({
+        title: 'Confirmar Exclusão',
+        message: 'Tem certeza que deseja excluir este check-in? Esta ação não pode ser desfeita.',
+        confirmText: 'Sim, excluir',
+        onConfirm: async () => {
+            try {
+                const res = await fetch(`/api/operacao/checkin/${currentProject.pipefy_id}/${mes}/${ano}/${index}`, { method: 'DELETE' });
+                if (res.ok) {
+                    showToast('Check-in removido');
+                    loadCheckins(currentProject.pipefy_id);
+                    loadEntregas(currentProject.pipefy_id, currentMonth, currentYear);
+                } else {
+                    const err = await res.json();
+                    showToast(err.error || 'Falha ao deletar', 'error');
+                }
+            } catch (e) { console.error("[deleteCheckin] erro:", e); }
         }
-    } catch (e) { console.error("[deleteCheckin] erro:", e); }
-    
-    closeGTModal('modal-confirm-delete-checkin');
-    pendingDeleteCheckin = null;
+    });
 }
 
 window.deleteCheckin = deleteCheckin;
-window.confirmDeleteCheckin = confirmDeleteCheckin;
 
 async function deleteOtimizacao(mes, ano, index) {
-    console.log(`[deleteOtimizacao] INÍCIO - mes=${mes} ano=${ano} index=${index}`);
-    if (!currentProject) { 
-        console.error("[deleteOtimizacao] currentProject é null!");
-        showToast("Selecione um projeto primeiro", "error"); 
-        return; 
+    if (!currentProject) {
+        showToast("Selecione um projeto primeiro", "error");
+        return;
     }
-    if (!confirm('Deseja excluir esta otimização?')) return;
-    try {
-        const res = await fetch(`/api/operacao/otimizacao/${currentProject.pipefy_id}/${mes}/${ano}/${index}`, { method: 'DELETE' });
-        console.log(`[deleteOtimizacao] resposta do servidor: ${res.status}`);
-        if (res.ok) {
-            showToast('Otimização removida');
-            loadOtimizacoes(currentProject.pipefy_id);
-            loadEntregas(currentProject.pipefy_id, currentMonth, currentYear);
-        } else {
-            const err = await res.json();
-            showToast(err.error || 'Falha ao deletar', 'error');
+    showConfirmModal({
+        title: 'Excluir Otimização',
+        message: 'Deseja excluir esta otimização? Esta ação não pode ser desfeita.',
+        confirmText: 'Sim, excluir',
+        onConfirm: async () => {
+            try {
+                const res = await fetch(`/api/operacao/otimizacao/${currentProject.pipefy_id}/${mes}/${ano}/${index}`, { method: 'DELETE' });
+                if (res.ok) {
+                    showToast('Otimização removida');
+                    loadOtimizacoes(currentProject.pipefy_id);
+                    loadEntregas(currentProject.pipefy_id, currentMonth, currentYear);
+                } else {
+                    const err = await res.json();
+                    showToast(err.error || 'Falha ao deletar', 'error');
+                }
+            } catch (e) { console.error("[deleteOtimizacao] erro:", e); }
         }
-    } catch (e) { console.error("[deleteOtimizacao] erro:", e); }
+    });
 }
 window.deleteOtimizacao = deleteOtimizacao;
 
 async function deletePlanoMidia() {
-    console.log(`[deletePlanoMidia] INÍCIO - mes=${currentMonth} ano=${currentYear}`);
-    if (!currentProject) { 
-        console.error("[deletePlanoMidia] currentProject é null!");
-        showToast("Selecione um projeto primeiro", "error"); 
-        return; 
+    if (!currentProject) {
+        showToast("Selecione um projeto primeiro", "error");
+        return;
     }
-    if (!confirm('Deseja limpar todo o plano de mídia deste mês?')) return;
-    try {
-        const url = `/api/operacao/plano-midia/${currentProject.pipefy_id}/${currentMonth}/${currentYear}`;
-        console.log(`[deletePlanoMidia] DELETE ${url}`);
-        const res = await fetch(url, { method: 'DELETE' });
-        if (res.ok) {
-            showToast('Plano de mídia removido');
-            loadPlanoMidia(currentProject.pipefy_id, currentMonth, currentYear);
-            loadEntregas(currentProject.pipefy_id, currentMonth, currentYear);
-        } else {
-            const err = await res.json();
-            showToast(err.error || 'Falha ao deletar', 'error');
+    showConfirmModal({
+        title: 'Limpar Plano de Mídia',
+        message: 'Deseja limpar todo o plano de mídia deste mês? Esta ação não pode ser desfeita.',
+        confirmText: 'Sim, limpar',
+        icon: 'fa-eraser',
+        onConfirm: async () => {
+            try {
+                const url = `/api/operacao/plano-midia/${currentProject.pipefy_id}/${currentMonth}/${currentYear}`;
+                const res = await fetch(url, { method: 'DELETE' });
+                if (res.ok) {
+                    showToast('Plano de mídia removido');
+                    loadPlanoMidia(currentProject.pipefy_id, currentMonth, currentYear);
+                    loadEntregas(currentProject.pipefy_id, currentMonth, currentYear);
+                } else {
+                    const err = await res.json();
+                    showToast(err.error || 'Falha ao deletar', 'error');
+                }
+            } catch (e) { console.error("[deletePlanoMidia] erro:", e); }
         }
-    } catch (e) { console.error("[deletePlanoMidia] erro:", e); }
+    });
 }
 window.deletePlanoMidia = deletePlanoMidia;
 
@@ -1675,25 +1775,30 @@ document.addEventListener('DOMContentLoaded', () => {
  */
 async function decrementPlannerMonday(pipefyId) {
     if (!pipefyId) return;
-    if (!confirm('Deseja remover o último registro manual do Planner Monday?')) return;
-
-    try {
-        const res = await fetch('/api/operacao/tarefas', {
-            method: 'DELETE',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ pipefy_id: pipefyId })
-        });
-        if (res.ok) {
-            showToast('Registro do Planner Monday removido.');
-            loadProjectData();
-        } else {
-            const err = await res.json();
-            showToast(err.error || 'Erro ao remover.', 'error');
+    showConfirmModal({
+        title: 'Remover Registro',
+        message: 'Deseja remover o último registro manual do Planner Monday?',
+        confirmText: 'Sim, remover',
+        onConfirm: async () => {
+            try {
+                const res = await fetch('/api/operacao/tarefas', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ pipefy_id: pipefyId })
+                });
+                if (res.ok) {
+                    showToast('Registro do Planner Monday removido.');
+                    loadProjectData();
+                } else {
+                    const err = await res.json();
+                    showToast(err.error || 'Erro ao remover.', 'error');
+                }
+            } catch (e) {
+                console.error(e);
+                showToast('Erro de conexão.', 'error');
+            }
         }
-    } catch (e) {
-        console.error(e);
-        showToast('Erro de conexão.', 'error');
-    }
+    });
 }
 window.decrementPlannerMonday = decrementPlannerMonday;
 
