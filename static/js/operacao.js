@@ -62,6 +62,24 @@ const BACKEND_TO_FRONTEND_TIPO = {
     "relatorio_mensal":  "relatorio_mensal",
 };
 
+// ─── PERMISSÕES ──────────────────────────────────────────────────────────────
+
+function hasGTAuth() {
+    const role = window.__USER_ROLE__ || "";
+    const pos = window.__USER_POSICAO__ || "";
+    const isScientist = currentProject?.cientista === true;
+    const isHighLevel = pos === 'Gerência' || pos === 'Sócio' || role === 'Gerência' || role === 'Sócio' || role === 'Desenvolvedor';
+    return isHighLevel || isScientist || role === 'Cientista' || role === 'Gestor de Tráfego' || role === 'Desenvolvedor';
+}
+
+function hasAccountAuth() {
+    const role = window.__USER_ROLE__ || "";
+    const pos = window.__USER_POSICAO__ || "";
+    const isScientist = currentProject?.cientista === true;
+    const isHighLevel = pos === 'Gerência' || pos === 'Sócio' || role === 'Gerência' || role === 'Sócio' || role === 'Desenvolvedor';
+    return isHighLevel || isScientist || role === 'Cientista' || role === 'Account' || role === 'Coordenador de CX';
+}
+
 // ─── TOAST ───────────────────────────────────────────────────────────────────
 
 // // Fazer a notificação toast durar mais tempo
@@ -81,8 +99,6 @@ const BACKEND_TO_FRONTEND_TIPO = {
 //         setTimeout(() => toast.remove(), 500);
 //     }, 7000);
 // }
-
-// ─── MODAIS ───────────────────────────────────────────────────────────────────
 
 // ─── MODAIS ───────────────────────────────────────────────────────────────────
 
@@ -110,23 +126,22 @@ function openProjectDetails(project) {
     document.getElementById('project-selection-view').style.display = 'none';
     document.getElementById('project-details-view').style.display = 'block';
 
-    // Gerenciar visibilidade de botões por papel/cientista
+    // Gerenciar visibilidade de botões por papel/cientista/posição
     const isScientist = project.cientista === true;
-    const globalRole  = window.__USER_ROLE__ || "";
+    const authGT = hasGTAuth();
+    const authAcc = hasAccountAuth();
 
     // 1. Botões de GT (Plano de Mídia, Otimização, KPIs, Relatório GT)
     document.querySelectorAll('.btn-auth-gt').forEach(btn => {
-        const hasAuth = isScientist || globalRole === 'Cientista' || (globalRole === 'Gestor de Tráfego' || globalRole === 'Gerência' || globalRole === 'Sócio' || globalRole === 'Desenvolvedor');
         const text = btn.innerHTML || "";
         const isRelGT = text.includes('relatorio_gt') || text.includes('Relatório GT') || text.includes('Relatório Mensal (GT)');
-        const show = hasAuth && (!isScientist || !isRelGT) && (globalRole !== 'Cientista' || !isRelGT);
+        const show = authGT && (!isScientist || !isRelGT) && (window.__USER_ROLE__ !== 'Cientista' || !isRelGT);
         const displayType = btn.classList.contains('access-link-card') ? 'flex' : 'inline-flex';
         btn.style.setProperty('display', show ? displayType : 'none', 'important');
     });
 
     // 2. Botões de Account (Forecasting, Checkin, Relatório Account)
     document.querySelectorAll('.btn-auth-account').forEach(btn => {
-        const hasAuth = isScientist || globalRole === 'Cientista' || globalRole === 'Account' || globalRole === 'Gerência' || globalRole === 'Sócio' || globalRole === 'Coordenador de CX';
         const text = btn.innerHTML || "";
         const isRelAcc = text.includes('relatorio_account') || text.includes('Relatório Acc') || text.includes('Relatório Mensal (Acc)');
         const show = hasAuth && (!isScientist || !isRelAcc) && (globalRole !== 'Cientista' || !isRelAcc);
@@ -759,7 +774,7 @@ function renderEntregasCards(config, realizados) {
         const contribuicao    = Math.min(realizado, meta) * pesoPorEntrega;
         const contribuicaoFmt = Number.isInteger(contribuicao) ? contribuicao : contribuicao.toFixed(2);
         
-        const isCoordenador = (currentProject && currentProject.cientista) || window.__USER_ROLE__ === 'Account' || window.__USER_ROLE__ === 'Gerência' || window.__USER_ROLE__ === 'Coordenador de CX';
+        const isCoordenador = (currentProject && currentProject.cientista) || window.__USER_ROLE__ === 'Account' || window.__USER_ROLE__ === 'Gerência' || window.__USER_POSICAO__ === 'Gerência' || window.__USER_ROLE__ === 'Coordenador de CX' || window.__USER_POSICAO__ === 'Sócio';
 
         return `
             <div class="op-entrega-row">
@@ -893,11 +908,9 @@ async function loadPlanoMidia(pipefyId, mes, ano) {
                 </tr>`;
             
             // Aplicar visibilidade antes do return
-            const isScientist = currentProject?.cientista === true;
-            const globalRole  = window.__USER_ROLE__ || "";
-            const hasAuth = isScientist || (globalRole === 'Gestor de Tráfego' || globalRole === 'Gerência' || globalRole === 'Sócio' || globalRole === 'Desenvolvedor');
+            const authGT = hasGTAuth();
             body.querySelectorAll('.btn-auth-gt').forEach(btn => {
-                btn.style.setProperty('display', hasAuth ? 'inline-flex' : 'none', 'important');
+                btn.style.setProperty('display', authGT ? 'inline-flex' : 'none', 'important');
             });
             return;
         }
@@ -938,11 +951,9 @@ async function loadPlanoMidia(pipefyId, mes, ano) {
         }
 
         // Atualizar visibilidade dos botões de GT recém-criados
-        const isScientist = currentProject?.cientista === true;
-        const globalRole  = window.__USER_ROLE__ || "";
-        const hasAuth = isScientist || (globalRole === 'Gestor de Tráfego' || globalRole === 'Gerência' || globalRole === 'Sócio' || globalRole === 'Desenvolvedor');
+        const authGT = hasGTAuth();
         document.querySelectorAll('.btn-auth-gt').forEach(btn => {
-            btn.style.setProperty('display', hasAuth ? 'inline-flex' : 'none', 'important');
+            btn.style.setProperty('display', authGT ? 'inline-flex' : 'none', 'important');
         });
 
     } catch (e) { console.error("Erro ao carregar plano de mídia:", e); }
@@ -994,7 +1005,7 @@ function renderOtimizacoesByMonth(monthVal) {
                     </p>
                 </div>
                 <button onclick="window.deleteOtimizacao(${o.mes}, ${o.ano}, ${o.original_index})" 
-                    class="btn-add-task btn-auth-gt"
+                    class="btn-add-task btn-auth-gt btn-auth-account"
                     style="background: transparent; color: #888; border: 1px solid var(--border-color); padding: 6px 10px; width: auto; height: auto;"
                     onmouseover="this.style.color='#D61616'; this.style.borderColor='#D61616';"
                     onmouseout="this.style.color='#888'; this.style.borderColor='var(--border-color)';"
@@ -1006,11 +1017,9 @@ function renderOtimizacoesByMonth(monthVal) {
     });
 
     // Atualizar visibilidade dos botões de GT recém-criados
-    const isScientist = currentProject?.cientista === true;
-    const globalRole  = window.__USER_ROLE__ || "";
-    const hasAuth = isScientist || (globalRole === 'Gestor de Tráfego' || globalRole === 'Gerência' || globalRole === 'Sócio' || globalRole === 'Desenvolvedor');
+    const authGT = hasGTAuth();
     document.querySelectorAll('.btn-auth-gt').forEach(btn => {
-        btn.style.setProperty('display', hasAuth ? 'inline-flex' : 'none', 'important');
+        btn.style.setProperty('display', authGT ? 'inline-flex' : 'none', 'important');
     });
 }
 
@@ -1054,9 +1063,19 @@ async function saveOtimizacao() {
 
 // ─── LINKS ÚTEIS ─────────────────────────────────────────────────────────────
 
-async function loadFixedLinks(pipefyId) {
+async function loadFixedLinks(pipefyId, monthVal = null) {
+    let m = currentMonth;
+    let y = currentYear;
+    if (monthVal) {
+        const parts = monthVal.split('-');
+        if (parts.length === 2) {
+            y = parseInt(parts[0], 10);
+            m = parseInt(parts[1], 10);
+        }
+    }
+
     try {
-        const res = await fetch(`/api/operacao/snapshot/${pipefyId}/${currentMonth}/${currentYear}`);
+        const res = await fetch(`/api/operacao/snapshot/${pipefyId}/${m}/${y}`);
         if (!res.ok) return;
         const snap = await res.json();
 
@@ -1144,9 +1163,12 @@ async function saveFixedLink() {
 }
 
 async function loadLinks(pipefyId) {
+    initMonthSelect('links-month-select');
     const grid = document.getElementById('links-grid');
     if (!grid) return;
-    loadFixedLinks(pipefyId);
+    
+    const sel = document.getElementById('links-month-select');
+    loadFixedLinks(pipefyId, sel ? sel.value : null);
 
     try {
         const res = await fetch(`/api/operacao/links/${pipefyId}`);
@@ -1210,6 +1232,11 @@ async function deleteLink(linkId) {
         await fetch(`/api/operacao/links/${linkId}`, { method: 'DELETE' });
         loadLinks(currentProject.pipefy_id);
     } catch (e) { console.error(e); }
+}
+
+function filterLinksByMonth(val) {
+    if (!currentProject) return;
+    loadFixedLinks(currentProject.pipefy_id, val);
 }
 
 // ─── CHECKIN ─────────────────────────────────────────────────────────────────
@@ -1291,7 +1318,7 @@ function renderCheckinsByMonth(monthVal) {
                 </div>
                 
                 <button onclick="window.deleteCheckin(${c.mes}, ${c.ano}, ${c.original_index})" 
-                    class="btn-add-task"
+                    class="btn-add-task btn-auth-account"
                     style="background: transparent; color: #888; border: 1px solid var(--border-color); padding: 10px; width: 40px; height: 40px; border-radius:10px; display:flex; align-items:center; justify-content:center;"
                     onmouseover="this.style.color='#D61616'; this.style.borderColor='#D61616'; this.style.background='rgba(214,22,22,0.05)';"
                     onmouseout="this.style.color='#888'; this.style.borderColor='var(--border-color)'; this.style.background='transparent';"
@@ -1344,17 +1371,23 @@ async function saveCheckin() {
     } catch (e) { console.error(e); }
 }
 
+let pendingDeleteCheckin = null;
+
 async function deleteCheckin(mes, ano, index) {
-    console.log(`[deleteCheckin] INÍCIO - mes=${mes} ano=${ano} index=${index}`);
     if (!currentProject) { 
-        console.error("[deleteCheckin] currentProject é null!");
         showToast("Selecione um projeto primeiro", "error"); 
         return; 
     }
-    if (!confirm('Deseja excluir este check-in?')) return;
+    pendingDeleteCheckin = { mes, ano, index };
+    openGTModal('modal-confirm-delete-checkin');
+}
+
+async function confirmDeleteCheckin() {
+    if (!pendingDeleteCheckin || !currentProject) return;
+    const { mes, ano, index } = pendingDeleteCheckin;
+    
     try {
         const res = await fetch(`/api/operacao/checkin/${currentProject.pipefy_id}/${mes}/${ano}/${index}`, { method: 'DELETE' });
-        console.log(`[deleteCheckin] resposta do servidor: ${res.status}`);
         if (res.ok) {
             showToast('Check-in removido');
             loadCheckins(currentProject.pipefy_id);
@@ -1364,8 +1397,13 @@ async function deleteCheckin(mes, ano, index) {
             showToast(err.error || 'Falha ao deletar', 'error');
         }
     } catch (e) { console.error("[deleteCheckin] erro:", e); }
+    
+    closeGTModal('modal-confirm-delete-checkin');
+    pendingDeleteCheckin = null;
 }
+
 window.deleteCheckin = deleteCheckin;
+window.confirmDeleteCheckin = confirmDeleteCheckin;
 
 async function deleteOtimizacao(mes, ano, index) {
     console.log(`[deleteOtimizacao] INÍCIO - mes=${mes} ano=${ano} index=${index}`);
@@ -1587,7 +1625,7 @@ function renderHistoricoPlanos(data) {
                     </div>
                     <i class="fas fa-chevron-down history-arrow" style="transition:transform 0.3s;"></i>
                 </div>
-                <div class="history-month-content" style="display:none; padding:1rem; background:rgba(0,0,0,0.1); border-radius:0 0 12px 12px; margin-top:-12px; margin-bottom:15px; border:1px solid var(--border-color); border-top:none;">
+                <div class="history-month-content" style="padding:1rem; background:rgba(0,0,0,0.1); border-radius:0 0 12px 12px; margin-top:-12px; margin-bottom:15px; border:1px solid var(--border-color); border-top:none;">
                     <table class="op-spreadsheet" style="font-size: 0.78rem; width:100%;">
                         <thead>
                             <tr>
@@ -1610,22 +1648,7 @@ function renderHistoricoPlanos(data) {
 function toggleHistoryMonth(id) {
     const item = document.getElementById(id);
     if (!item) return;
-    const content = item.querySelector('.history-month-content');
-    const arrow = item.querySelector('.history-arrow');
-    
-    const isVisible = content.style.display === 'block';
-    
-    // Fechar outros se quiser accordion real, ou apenas alternar o atual
-    content.style.display = isVisible ? 'none' : 'block';
-    arrow.style.transform = isVisible ? 'rotate(0deg)' : 'rotate(180deg)';
-    
-    if (!isVisible) {
-        item.querySelector('.history-month-header').style.borderColor = 'var(--accent-red)';
-        item.querySelector('.history-month-header').style.background = 'rgba(214,22,22,0.05)';
-    } else {
-        item.querySelector('.history-month-header').style.borderColor = 'var(--border-color)';
-        item.querySelector('.history-month-header').style.background = 'rgba(255,255,255,0.03)';
-    }
+    item.classList.toggle('active');
 }
 window.toggleHistoryMonth = toggleHistoryMonth;
 

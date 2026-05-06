@@ -9,7 +9,7 @@ from models import (
 
 class OperacaoService:
     @staticmethod
-    def get_projetos_operacao(db: Session, email: str, squad: str) -> list:
+    def get_projetos_operacao(db: Session, email: str, squad: str, posicao: str = None) -> list:
         """
         Retorna todos os projetos vinculados e ativos ao usuário para a tela de operação.
         Considera Projetos Ativos, Onetime e Inativos.
@@ -17,7 +17,7 @@ class OperacaoService:
         todas_tabelas = [ProjetoAtivo, ProjetoOnetime]
         meus_projetos_dict = {}
 
-        if squad == "Gerência":
+        if squad == "Gerência" or posicao in ["Gerência", "Sócio"]:
             # Para gerência, buscar de todas as tabelas
             for model in todas_tabelas:
                 projetos = db.query(model).all()

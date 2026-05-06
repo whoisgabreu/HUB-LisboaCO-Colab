@@ -537,10 +537,15 @@
                                 <div class="op-icon-box"><i class="fas fa-bookmark"></i></div>
                                 <h3>Diretório de Links Úteis</h3>
                             </div>
-                            {% if pode_tudo or is_gestor or is_account %}
-                            <button class="btn-add-task" onclick="openGTModal('modal-novo-link')"><i
-                                    class="fas fa-plus"></i> Adicionar Link</button>
-                            {% endif %}
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <select id="links-month-select" class="gt-form-select" onchange="filterLinksByMonth(this.value)" style="width:auto;padding:0.4rem 0.7rem;font-size:0.82rem;max-width:150px;">
+                                    <!-- Gerado via JS -->
+                                </select>
+                                {% if pode_tudo or is_gestor or is_account %}
+                                <button class="btn-add-task" onclick="openGTModal('modal-novo-link')" style="white-space:nowrap;"><i
+                                        class="fas fa-plus"></i> Adicionar Link</button>
+                                {% endif %}
+                            </div>
                         </header>
 
                         <!-- Links fixos (imutáveis) -->
@@ -876,42 +881,7 @@
                 <p style="text-align:center;color:var(--text-muted);padding:2rem;">Nenhum histórico encontrado para este projeto.</p>
             </div>
 
-                <!-- Dezembro 2025 -->
-                <div class="history-month-item" id="history-dez-2025">
-                    <div class="history-month-header" onclick="toggleHistoryMonth('history-dez-2025')">
-                        <div style="display: flex; align-items: center; gap: 15px;">
-                            <span class="badge-gt" style="background: rgba(255,255,255,0.1);">Dezembro 2025</span>
-                            <span style="color: #888; font-size: 0.85rem;">Budget: R$ 4.000,00</span>
-                        </div>
-                        <i class="fas fa-chevron-down history-arrow"></i>
-                    </div>
-                    <div class="history-month-content">
-                        <table class="op-spreadsheet" style="font-size: 0.8rem; background: rgba(0,0,0,0.2);">
-                            <thead>
-                                <tr>
-                                    <th>Canal</th>
-                                    <th>Campanha</th>
-                                    <th>%</th>
-                                    <th>Budget R$</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td>Meta Ads</td>
-                                    <td>CONVERSÃO NATAL</td>
-                                    <td>75%</td>
-                                    <td>R$ 3.000</td>
-                                </tr>
-                                <tr>
-                                    <td>Google Ads</td>
-                                    <td>BRANDING</td>
-                                    <td>25%</td>
-                                    <td>R$ 1.000</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+
             </div>
 
             <p style="font-size: 0.75rem; color: #555; text-align: center; margin-top: 1.5rem; font-style: italic;">
@@ -1093,6 +1063,23 @@
         window.__CURRENT_FEE__  = 0;
     </script>
 
+
+    <!-- Modal: Confirmação de Exclusão -->
+    <div id="modal-confirm-delete-checkin" class="gt-modal">
+        <div class="gt-modal-content" style="max-width: 400px; text-align: center; background: var(--bg-hover); border: 1px solid var(--border-color); border-radius: 20px; padding: 2.5rem;">
+            <div style="margin-bottom: 1.5rem;">
+                <div class="op-icon-box" style="margin: 0 auto 1.5rem; width: 60px; height: 60px; background: rgba(214, 22, 22, 0.1); color: var(--accent-red); display: flex; align-items: center; justify-content: center; border-radius: 50%;">
+                    <i class="fas fa-trash-alt" style="font-size: 1.5rem;"></i>
+                </div>
+                <h3 style="color: var(--text-main); font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem;">Confirmar Exclusão</h3>
+                <p style="color: var(--text-muted); font-size: 0.9rem;">Tem certeza que deseja excluir este check-in? Esta ação não pode ser desfeita.</p>
+            </div>
+            <div style="display: flex; gap: 12px;">
+                <button class="btn-gt-cancel" onclick="closeGTModal('modal-confirm-delete-checkin')" style="flex: 1; padding: 0.8rem; border-radius: 10px; font-weight: 600;">Não, manter</button>
+                <button class="btn-gt-confirm" onclick="confirmDeleteCheckin()" style="flex: 1; padding: 0.8rem; border-radius: 10px; font-weight: 600; background: var(--accent-red); color: white; border: none;">Sim, excluir</button>
+            </div>
+        </div>
+    </div>
 
     {% include "components/modal-configuracoes.html" %}
     <script src="static/js/tema.js"></script>

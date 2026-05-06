@@ -1358,10 +1358,11 @@ def vendas():
 def operacao():
     email = session.get("email")
     squad = session.get("squad")
+    posicao = session.get("posicao")
     
     try:
         with Session() as db:
-            meus_projetos = OperacaoService.get_projetos_operacao(db, email, squad)
+            meus_projetos = OperacaoService.get_projetos_operacao(db, email, squad, posicao)
             
     except SQLAlchemyError as e:
         print(f"Erro ao carregar operação: {e}")
