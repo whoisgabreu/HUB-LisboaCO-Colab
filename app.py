@@ -335,6 +335,7 @@ def _recalcular_mrr_por_entregas(record):
             # FEE PROPORCIONAL — para MRR entregue e churn (dias trabalhados no mês)
             proj_hist = next((h for h in hist if str(h.get("projeto_id")) == pid), None)
             if proj_hist and "valor_proporcional" in proj_hist:
+                # valor_proporcional está na moeda original — precisa converter USD→BRL
                 fee = Decimal(str(proj_hist["valor_proporcional"]))
                 if moeda_proj == "USD" and usd_rate:
                     fee *= usd_rate
@@ -1077,7 +1078,7 @@ def hub_remuneracao():
             ).all()
 
             projetos_map = {}
-            for v in all_vinculos:
+            for v in all_vinculos: that must be resolve
                 if v.email_investidor not in projetos_map:
                     projetos_map[v.email_investidor] = []
                 # Inclui ID, Nome e Fee para exibição detalhada
