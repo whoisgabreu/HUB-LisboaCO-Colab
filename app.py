@@ -157,9 +157,19 @@ def _update_entrega_op_entregues(entregas_list, projeto_id, cliente_nome, respon
     for item in itens:
         is_match = False
         if responsavel == "cientista":
-            if item.get("nome") == nome_entrega:
+            nome_item = item.get("nome")
+            # Unifica nomes de relatórios para cientistas no match
+            if nome_item in ("relatorio_account", "relatorio_gt"):
+                nome_item = "relatorio_mensal"
+            
+            target_nome = nome_entrega
+            if target_nome in ("relatorio_account", "relatorio_gt"):
+                target_nome = "relatorio_mensal"
+
+            if nome_item == target_nome:
                 is_match = True
                 item["tipo"] = "CIENTISTA" # Normaliza legado
+                item["nome"] = nome_item   # Normaliza nome se necessário
         else:
             if item.get("nome") == nome_entrega and item.get("tipo") == tipo_entrega:
                 is_match = True

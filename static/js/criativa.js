@@ -776,12 +776,14 @@ let _chartOpConclusao = null;
 
 // Retorna os tipos de entrega para um projeto — cientista recebe a união dos dois cargos
 function _getProjectTipos(c) {
-    const base = OP_ENTREGAS_CONFIG[_opFuncao] || [];
+    let base = OP_ENTREGAS_CONFIG[_opFuncao] || [];
     if (!c.cientista) return base;
     const otherFuncao = _opFuncao === 'Account' ? 'Gestor de Tráfego' : 'Account';
     const other = OP_ENTREGAS_CONFIG[otherFuncao] || [];
     const baseTypes = new Set(base.map(d => d.tipo));
-    return [...base, ...other.filter(d => !baseTypes.has(d.tipo))];
+    const combined = [...base, ...other.filter(d => !baseTypes.has(d.tipo))];
+    // Para cientista, todos os itens no payload devem ir como 'CIENTISTA'
+    return combined.map(item => ({ ...item, db_tipo: 'CIENTISTA' }));
 }
 
 function _getOpMeta(pipefyId, tipo) {
