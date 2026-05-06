@@ -1078,7 +1078,7 @@ def hub_remuneracao():
             ).all()
 
             projetos_map = {}
-            for v in all_vinculos: that must be resolve
+            for v in all_vinculos:
                 if v.email_investidor not in projetos_map:
                     projetos_map[v.email_investidor] = []
                 # Inclui ID, Nome e Fee para exibição detalhada
