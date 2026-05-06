@@ -8,6 +8,8 @@ let currentProject = null;
 let currentMonth = new Date().getMonth() + 1;
 let currentYear = new Date().getFullYear();
 
+const MESES_PT = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+
 // ─── CONFIGURAÇÃO DE ENTREGAS POR CARGO ──────────────────────────────────────
 // Regras pré-definidas: cada cargo tem metas fixas por tipo de entrega.
 // O coordenador pode ajustar por cliente via modal.
@@ -15,7 +17,7 @@ let currentYear = new Date().getFullYear();
 const DELIVERY_CONFIG = {
     "Account": [
         { tipo: "checkin_csat",     label: "Check-in + CSAT",          icone: "fa-comments",      meta: 4, desc: "Automático ao registrar check-in com CSAT no mês" },
-        { tipo: "relatorio_mensal", label: "Relatório Mensal",          icone: "fa-file-alt",       meta: 1, desc: "Automático ao submeter o relatório mensal do cliente" },
+        { tipo: "relatorio_account", label: "Relatório Mensal (Acc)",    icone: "fa-file-alt",       meta: 1, desc: "Automático ao submeter o relatório mensal do cliente" },
         { tipo: "planner_monday",   label: "Planner Monday",            icone: "fa-calendar-check", meta: 4, desc: "Automático ao registrar ≥4 tarefas semanais no Monday" },
         { tipo: "forecasting",      label: "Forecasting",               icone: "fa-chart-line",     meta: 1, desc: "Automático ao registrar meta com projeção financeira" },
     ],
@@ -23,8 +25,17 @@ const DELIVERY_CONFIG = {
         { tipo: "plano_midia",      label: "Plano de Mídia",            icone: "fa-bullhorn",       meta: 1, desc: "Automático ao salvar o plano de mídia mensal aprovado" },
         { tipo: "kpis",             label: "KPIs do Mês",               icone: "fa-tachometer-alt", meta: 1, desc: "Automático ao registrar KPIs de performance das campanhas" },
         { tipo: "doc_otimizacao",   label: "Documento de Otimização",   icone: "fa-sliders-h",      meta: 4, desc: "Automático ao registrar otimização de campanhas" },
-        { tipo: "relatorio_mensal", label: "Relatório Mensal",          icone: "fa-file-alt",       meta: 1, desc: "Automático ao submeter o relatório mensal de tráfego" },
+        { tipo: "relatorio_gt",      label: "Relatório Mensal (GT)",     icone: "fa-file-alt",       meta: 1, desc: "Automático ao submeter o relatório mensal de tráfego" },
     ],
+    "Cientista": [
+        { tipo: "checkin_csat",     label: "Check-in + CSAT",          icone: "fa-comments",      meta: 4, desc: "Automático ao registrar check-in com CSAT no mês" },
+        { tipo: "relatorio_mensal", label: "Relatório Mensal",          icone: "fa-file-alt",       meta: 1, desc: "Relatório mensal consolidado (Account + GT)" },
+        { tipo: "planner_monday",   label: "Planner Monday",            icone: "fa-calendar-check", meta: 4, desc: "Automático ao registrar ≥4 tarefas semanais no Monday" },
+        { tipo: "forecasting",      label: "Forecasting",               icone: "fa-chart-line",     meta: 1, desc: "Automático ao registrar meta com projeção financeira" },
+        { tipo: "plano_midia",      label: "Plano de Mídia",            icone: "fa-bullhorn",       meta: 1, desc: "Automático ao salvar o plano de mídia mensal aprovado" },
+        { tipo: "kpis",             label: "KPIs do Mês",               icone: "fa-tachometer-alt", meta: 1, desc: "Automático ao registrar KPIs de performance das campanhas" },
+        { tipo: "doc_otimizacao",   label: "Documento de Otimização",   icone: "fa-sliders-h",      meta: 4, desc: "Automático ao registrar otimização de campanhas" },
+    ]
 };
 
 // Metas customizadas por cliente — chave: `${pipefyId}` → { tipo: meta_override }
@@ -33,11 +44,41 @@ const CUSTOM_METAS = {};
 // Chart.js instance para o doughnut de entregas
 let chartEntregas = null;
 
-// ─── DADOS MOCK (remover quando o backend suportar a nova estrutura) ──────────
-const MOCK_REALIZADOS = {
-    "Account":           { checkin_csat: 2, relatorio_mensal: 0, planner_monday: 4, forecasting: 1 },
-    "Gestor de Tráfego": { plano_midia: 1,  kpis: 1,            doc_otimizacao: 2, relatorio_mensal: 0 },
+// Mapeamento de cargos alternativos para o DELIVERY_CONFIG (mesmo mapeamento do backend)
+const ROLE_MAP_ENTREGAS = {
+    "Desenvolvedor": "Gestor de Tráfego",
 };
+
+// Mapeamento delivery_type (backend) → tipo (frontend DELIVERY_CONFIG)
+const BACKEND_TO_FRONTEND_TIPO = {
+    "checkin":           "checkin_csat",
+    "relatorio_account": "relatorio_account",
+    "planner_monday":    "planner_monday",
+    "forecasting":       "forecasting",
+    "plano_midia":       "plano_midia",
+    "otimizacao":        "doc_otimizacao",
+    "kpis":              "kpis",
+    "relatorio_gt":      "relatorio_gt",
+    "relatorio_mensal":  "relatorio_mensal",
+};
+
+// ─── PERMISSÕES ──────────────────────────────────────────────────────────────
+
+function hasGTAuth() {
+    const role = window.__USER_ROLE__ || "";
+    const pos = window.__USER_POSICAO__ || "";
+    const isScientist = currentProject?.cientista === true;
+    const isHighLevel = pos === 'Gerência' || pos === 'Sócio' || role === 'Gerência' || role === 'Sócio' || role === 'Desenvolvedor';
+    return isHighLevel || isScientist || role === 'Cientista' || role === 'Gestor de Tráfego' || role === 'Desenvolvedor';
+}
+
+function hasAccountAuth() {
+    const role = window.__USER_ROLE__ || "";
+    const pos = window.__USER_POSICAO__ || "";
+    const isScientist = currentProject?.cientista === true;
+    const isHighLevel = pos === 'Gerência' || pos === 'Sócio' || role === 'Gerência' || role === 'Sócio' || role === 'Desenvolvedor';
+    return isHighLevel || isScientist || role === 'Cientista' || role === 'Account' || role === 'Coordenador de CX';
+}
 
 // ─── TOAST ───────────────────────────────────────────────────────────────────
 
@@ -58,8 +99,6 @@ const MOCK_REALIZADOS = {
 //         setTimeout(() => toast.remove(), 500);
 //     }, 7000);
 // }
-
-// ─── MODAIS ───────────────────────────────────────────────────────────────────
 
 // ─── MODAIS ───────────────────────────────────────────────────────────────────
 
@@ -86,7 +125,36 @@ function openProjectDetails(project) {
     document.getElementById('display-project-name').innerText = project.nome;
     document.getElementById('project-selection-view').style.display = 'none';
     document.getElementById('project-details-view').style.display = 'block';
-    switchOperacaoTab('dashboard');
+
+    // Gerenciar visibilidade de botões por papel/cientista/posição
+    const isScientist = project.cientista === true;
+    const authGT = hasGTAuth();
+    const authAcc = hasAccountAuth();
+
+    // 1. Botões de GT (Plano de Mídia, Otimização, KPIs, Relatório GT)
+    document.querySelectorAll('.btn-auth-gt').forEach(btn => {
+        const text = btn.innerHTML || "";
+        const isRelGT = text.includes('relatorio_gt') || text.includes('Relatório GT') || text.includes('Relatório Mensal (GT)');
+        const show = authGT && (!isScientist || !isRelGT) && (window.__USER_ROLE__ !== 'Cientista' || !isRelGT);
+        const displayType = btn.classList.contains('access-link-card') ? 'flex' : 'inline-flex';
+        btn.style.setProperty('display', show ? displayType : 'none', 'important');
+    });
+
+    // 2. Botões de Account (Forecasting, Checkin, Relatório Account)
+    document.querySelectorAll('.btn-auth-account').forEach(btn => {
+        const text = btn.innerHTML || "";
+        const isRelAcc = text.includes('relatorio_account') || text.includes('Relatório Acc') || text.includes('Relatório Mensal (Acc)');
+        const show = hasAuth && (!isScientist || !isRelAcc) && (globalRole !== 'Cientista' || !isRelAcc);
+        const displayType = btn.classList.contains('access-link-card') ? 'flex' : 'inline-flex';
+        btn.style.setProperty('display', show ? displayType : 'none', 'important');
+    });
+
+    // 3. Botões de Cientista (Relatório Consolidado)
+    document.querySelectorAll('.btn-auth-cientista').forEach(btn => {
+        btn.style.setProperty('display', isScientist ? 'flex' : 'none', 'important');
+    });
+
+    switchOperacaoTab('metas');
     loadProjectData();
 }
 
@@ -115,6 +183,10 @@ function switchOperacaoTab(tabId) {
         if (tabId === 'checkin') loadCheckins(pid);
         if (tabId === 'otimizacao') loadOtimizacoes(pid);
         if (tabId === 'links') loadLinks(pid);
+        if (tabId === 'midia') {
+            loadPlanoMidia(pid, currentMonth, currentYear);
+            loadHistoricoPlanos(pid);
+        }
         if (tabId === 'entregas') loadEntregas(pid, currentMonth, currentYear);
     }
 }
@@ -125,19 +197,61 @@ async function loadProjectData() {
     if (!currentProject) return;
     const pipefyId = currentProject.pipefy_id;
 
-    loadTarefas(pipefyId, 'semanal', 'main-task-list');
-    
-    // Carrega o snapshot de metas (Default: Trimestral do período atual)
-    const q = `Q${Math.floor((currentMonth - 1) / 3) + 1}`;
-    const ref = `${currentYear}-${q}`;
+    initMetasMonthNav();
+    const ref = `${currentYear}-M${String(currentMonth).padStart(2, '0')}`;
+    currentMetaPeriod = ref;
     loadTarefas(pipefyId, 'goal_snapshot', 'quarter-task-list', ref);
-    
-    // Reseta o seletor visual para Trimestral
-    const filter = document.getElementById('meta-period-filter');
-    if (filter) filter.value = 'quarter';
 
     loadPlanoMidia(pipefyId, currentMonth, currentYear);
     loadEntregas(pipefyId, currentMonth, currentYear);
+}
+
+let currentMetaPeriod = null;
+let allOtimizacoes = [];
+let allCheckins = [];
+
+function initMonthSelect(selectId) {
+    const select = document.getElementById(selectId);
+    if (!select) return null;
+    const now = new Date();
+    const m = now.getMonth() + 1;
+    const y = now.getFullYear();
+    let html = '';
+    for (let i = 11; i >= 0; i--) {
+        let month = m - i;
+        let year = y;
+        if (month <= 0) { month += 12; year--; }
+        const val = `${year}-${String(month).padStart(2, '0')}`;
+        html += `<option value="${val}"${i === 0 ? ' selected' : ''}>${MESES_PT[month - 1]} ${year}</option>`;
+    }
+    select.innerHTML = html;
+    return `${y}-${String(m).padStart(2, '0')}`;
+}
+
+function initMetasMonthNav() {
+    const select = document.getElementById('metas-month-select');
+    if (!select) return;
+    const now = new Date();
+    const m = now.getMonth() + 1;
+    const y = now.getFullYear();
+    let html = '';
+    for (let i = 11; i >= 0; i--) {
+        let month = m - i;
+        let year = y;
+        if (month <= 0) { month += 12; year--; }
+        const ref = `${year}-M${String(month).padStart(2, '0')}`;
+        const label = `${MESES_PT[month - 1]} ${year}`;
+        const selected = i === 0 ? 'selected' : '';
+        html += `<option value="${ref}" ${selected}>${label}</option>`;
+    }
+    select.innerHTML = html;
+}
+
+function switchMetaMonth(ref) {
+    currentMetaPeriod = ref;
+    if (currentProject) {
+        loadTarefas(currentProject.pipefy_id, 'goal_snapshot', 'quarter-task-list', ref);
+    }
 }
 
 // ─── TAREFAS ─────────────────────────────────────────────────────────────────
@@ -166,145 +280,89 @@ async function loadTarefas(pipefyId, tipo, listId, referencia = "") {
             item.innerHTML = `
                 <div class="task-checkbox" onclick="toggleTask(${t.id}, this)"><i class="fas fa-check"></i></div>
                 <div class="task-text">${t.descricao}</div>
-                <button class="btn-delete-task" style="opacity:0.3;pointer-events:none;"><i class="fas fa-lock"></i></button>
+                ${tipo === 'semanal' ? `<button class="btn-delete-task" onclick="window.decrementPlannerMonday(currentProject?.pipefy_id)" style="background:none;border:none;cursor:pointer;color:var(--accent-red);margin-left:auto;"><i class="fas fa-minus-circle"></i></button>` : `<button class="btn-delete-task" style="opacity:0.3;pointer-events:none;"><i class="fas fa-lock"></i></button>`}
             `;
             list.appendChild(item);
         });
     } catch (e) { console.error("Erro ao carregar tasks:", e); }
 }
 
-function renderMetasDashboard(metas, referencia = "") {
+
+
+function renderMetasDashboard(metas) {
     const mainGoalContainer = document.getElementById('main-goal-card-container');
     const subGoalsList = document.getElementById('quarter-task-list');
-    const totalProgressEl = document.getElementById('total-progress-percent');
-    const periodLabelEl = document.getElementById('display-period-label');
-    
-    if (!mainGoalContainer || !subGoalsList) return;
-
-    // Atualiza Label do Período
-    if (periodLabelEl) {
-        if (referencia === "quarter") periodLabelEl.innerText = "TRIMESTRE ATUAL";
-        else if (referencia.includes('-Q')) periodLabelEl.innerText = `TRIMESTRE: ${referencia.split('-')[1]}`;
-        else if (referencia.includes('-M')) {
-            const months = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
-            const parts = referencia.split('-M');
-            const mIdx = parseInt(parts[1]) - 1;
-            periodLabelEl.innerText = `MÊS: ${months[mIdx].toUpperCase()} ${parts[0]}`;
-        } else {
-            periodLabelEl.innerText = "PERÍODO ATIVO";
-        }
-    }
+    if (!mainGoalContainer) return;
 
     if (!metas || metas.length === 0) {
-        if (totalProgressEl) totalProgressEl.innerText = '0%';
         mainGoalContainer.innerHTML = `
-            <div class="op-card-premium main-goal-card empty" style="background: rgba(255,255,255,0.01); border: 1px dashed var(--border-color); height: 150px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; border-radius: 16px;">
-                <i class="fas fa-bullseye" style="font-size: 2rem; color: var(--border-color); margin-bottom: 0.5rem;"></i>
-                <p style="color: var(--text-muted); font-size: 0.9rem;">Nenhum planejamento definido para este período.</p>
-                <button class="btn-add-task" style="margin-top: 1rem; font-size: 0.75rem;" onclick="openMetaUnificadoModal()">+ Iniciar Planejamento</button>
+            <div class="metas-empty-placeholder">
+                <i class="fas fa-bullseye"></i>
+                <p>Nenhuma meta definida para este mês.</p>
+                <button class="btn-add-task" style="margin-top: 0.5rem; font-size: 0.78rem;" onclick="openMetaUnificadoModal()">+ Definir Meta</button>
             </div>`;
-        subGoalsList.innerHTML = '';
+        if (subGoalsList) subGoalsList.innerHTML = '';
         return;
     }
 
-    // O novo formato usa um único objeto (Snapshot)
     const snapshot = metas[0];
     let data = {};
-    try {
-        data = JSON.parse(snapshot.descricao);
-    } catch(e) {
-        console.error("Erro ao processar snapshot de meta:", e);
-        return;
-    }
+    try { data = JSON.parse(snapshot.descricao); } catch(e) { return; }
 
-    // Cálculo de Progresso Geral
     const krs = data.krs || [];
-    const totalItems = 1 + krs.length; // Objetivo Principal + KRs
     const completedMain = snapshot.concluida ? 1 : 0;
     const completedKRs = krs.filter(k => k.concluida).length;
+    const totalItems = 1 + krs.length;
     const totalPercent = Math.round(((completedMain + completedKRs) / totalItems) * 100);
-    
-    if (totalProgressEl) {
-        totalProgressEl.innerText = `${totalPercent}%`;
-        totalProgressEl.style.color = totalPercent >= 100 ? '#4caf50' : (totalPercent >= 50 ? '#ff9800' : 'var(--accent-red)');
-    }
 
-    const goalTypeIcons = {
-        faturamento: 'fa-dollar-sign',
-        leads: 'fa-bullseye',
-        vendas: 'fa-shopping-cart',
-        engajamento: 'fa-chart-line',
-        outros: 'fa-rocket'
-    };
+    const typeMap  = { faturamento: 'Faturamento', leads: 'Leads / MQL', vendas: 'Vendas', engajamento: 'Engajamento', outros: 'Outro' };
+    const iconMap  = { faturamento: 'fa-dollar-sign', leads: 'fa-bullseye', vendas: 'fa-shopping-cart', engajamento: 'fa-chart-line', outros: 'fa-rocket' };
+    const typeName = typeMap[data.tipo_meta] || 'Meta';
+    const typeIcon = iconMap[data.tipo_meta] || 'fa-rocket';
+    const targetFmt = data.valor_alvo
+        ? (data.tipo_meta === 'faturamento' ? 'R$ ' : '') + parseFloat(data.valor_alvo).toLocaleString('pt-BR')
+        : null;
 
-    const progress = snapshot.concluida ? 100 : 0;
-    
-    // Renderiza Meta Principal
     mainGoalContainer.innerHTML = `
-        <div class="op-card-premium main-goal-card highlight" style="position: relative; overflow: hidden; background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(0,0,0,0.4) 100%); border: 1px solid var(--accent-red); padding: 2rem; border-radius: 20px; min-height: 180px; display: flex; flex-direction: column; justify-content: center;">
-            <div style="position: absolute; top: -10px; right: -10px; font-size: 6rem; color: rgba(214, 22, 22, 0.08); transform: rotate(-10deg); pointer-events: none;">
-                <i class="fas ${goalTypeIcons[data.tipo_meta] || 'fa-rocket'}"></i>
-            </div>
-            
-            <div style="z-index: 1;">
-                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 0.5rem;">
-                    <span class="badge-gt" style="background: var(--accent-red); display: inline-block;">OBJETIVO PRIMÁRIO</span>
-                </div>
-                <h2 style="font-size: 1.8rem; margin: 0.5rem 0; color: #fff;">${data.nome}</h2>
-                ${data.valor_alvo ? `<p style="color: #fff; font-size: 1rem; font-weight: 600; opacity: 0.8;">Alvo: ${data.tipo_meta === 'faturamento' ? 'R$ ' : ''}${parseFloat(data.valor_alvo).toLocaleString('pt-BR')}</p>` : ''}
-                
-                <div style="margin-top: 1.5rem;">
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.4rem; font-size: 0.85rem;">
-                        <span style="color: #aaa;">Status da Meta</span>
-                        <span style="color: ${snapshot.concluida ? '#4caf50' : 'var(--accent-red)'}; font-weight: 700;">${snapshot.concluida ? 'Concluída' : 'Em andamento'}</span>
-                    </div>
-                    <div style="height: 6px; background: rgba(255,255,255,0.1); border-radius: 10px; overflow: hidden;">
-                        <div style="height: 100%; width: ${progress}%; background: var(--accent-red); box-shadow: 0 0 10px var(--accent-red); transition: width 1s ease-in-out;"></div>
-                    </div>
-                </div>
-            </div>
-            
-            <div style="position: absolute; top: 15px; right: 15px; display: flex; gap: 10px; z-index: 2;">
-                <button onclick="openMetaUnificadoModal(${snapshot.id})" class="btn-icon-subtle" title="Editar Planejamento"><i class="fas fa-edit"></i></button>
-                <button onclick="toggleUnifiedMainGoal(${snapshot.id}, ${snapshot.concluida})" style="background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); color: #fff; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; transition: all 0.3s;" title="Marcar como Concluída" onmouseover="this.style.background='var(--accent-red)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'">
+        <div class="metas-goal-card ${snapshot.concluida ? 'done' : ''}">
+            <i class="fas ${typeIcon} metas-goal-bg-icon"></i>
+            <div class="metas-goal-actions">
+                <button class="btn-icon-subtle" onclick="openMetaUnificadoModal(${snapshot.id})" title="Editar"><i class="fas fa-edit"></i></button>
+                <button class="btn-icon-subtle" onclick="toggleUnifiedMainGoal(${snapshot.id}, ${snapshot.concluida})" title="Marcar como concluída" style="${snapshot.concluida ? 'background:rgba(16,185,129,0.15);color:#10b981;' : ''}">
                     <i class="fas fa-check"></i>
                 </button>
             </div>
+            <span class="metas-goal-type-badge"><i class="fas ${typeIcon}"></i> ${typeName}</span>
+            <h3 class="metas-goal-name">${data.nome}</h3>
+            ${targetFmt ? `<div class="metas-goal-target">Alvo: <strong>${targetFmt}</strong></div>` : '<div style="margin-bottom:1.25rem;"></div>'}
+            <div class="metas-progress-bar">
+                <div class="metas-progress-fill ${snapshot.concluida ? 'done' : ''}" style="width:${totalPercent}%;"></div>
+            </div>
+            <div class="metas-progress-stats">
+                <span>${totalPercent}% concluído</span>
+                <span>${completedMain + completedKRs} / ${totalItems} itens</span>
+            </div>
         </div>`;
 
-    // Render Key Results (KRs)
+    if (!subGoalsList) return;
     subGoalsList.innerHTML = '';
-    if (krs.length === 0) {
-        subGoalsList.innerHTML = '<p style="color:var(--text-muted);padding:1rem;font-size:0.9rem;text-align:center;">Nenhum Key Result definido para este planejamento.</p>';
-    } else {
-        krs.forEach((kr, idx) => {
-            const krItem = document.createElement('div');
-            krItem.className = `task-item goal-kr-item ${kr.concluida ? 'completed' : ''}`;
-            krItem.style.marginBottom = '0.8rem';
-            krItem.style.padding = '1rem';
-            krItem.style.background = 'rgba(255,255,255,0.02)';
-            krItem.style.borderRadius = '12px';
-            krItem.style.border = '1px solid var(--border-color)';
-            krItem.style.display = 'flex';
-            krItem.style.alignItems = 'center';
-            krItem.style.gap = '1.2rem';
 
-            krItem.innerHTML = `
-                <div class="task-checkbox" onclick="toggleUnifiedKR(${snapshot.id}, ${idx})" style="width: 26px; height: 26px; min-width: 26px; font-size: 0.75rem;"><i class="fas fa-check"></i></div>
-                <div style="flex: 1;">
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px;">
-                        <div>
-                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 2px;">
-                                <i class="fas fa-bullseye" style="color: var(--accent-red); font-size: 0.8rem;"></i>
-                                <span style="font-size: 0.65rem; color: #888; text-transform: uppercase; font-weight: 600;">KR #0${idx + 1}</span>
-                            </div>
-                            <div class="task-text" style="font-weight: 500; font-size: 0.95rem; color: #eee;">${kr.titulo}</div>
-                        </div>
-                        ${kr.alvo ? `<div style="text-align: right;"><span style="font-size: 0.8rem; font-weight: 700; color: #fff;">${parseFloat(kr.alvo).toLocaleString('pt-BR')}</span><div style="font-size: 0.6rem; color: #888; text-transform: uppercase;">Meta</div></div>` : ''}
-                    </div>
-                </div>
+    if (krs.length > 0) {
+        const header = document.createElement('div');
+        header.className = 'metas-section-label';
+        header.innerHTML = `<i class="fas fa-list-check" style="color:var(--accent-red);"></i> Resultados Chave &nbsp;<span style="color:var(--text-main);font-weight:700;">${completedKRs}/${krs.length}</span>`;
+        subGoalsList.appendChild(header);
+
+        krs.forEach((kr, idx) => {
+            const item = document.createElement('div');
+            item.className = `metas-kr-item ${kr.concluida ? 'done' : ''}`;
+            item.innerHTML = `
+                <div class="task-checkbox" onclick="toggleUnifiedKR(${snapshot.id}, ${idx})" style="width:26px;height:26px;min-width:26px;font-size:0.75rem;"><i class="fas fa-check"></i></div>
+                <span class="metas-kr-num">KR${String(idx + 1).padStart(2, '0')}</span>
+                <span class="metas-kr-text">${kr.titulo}</span>
+                ${kr.alvo ? `<span class="metas-kr-target">${parseFloat(kr.alvo).toLocaleString('pt-BR')}</span>` : ''}
             `;
-            subGoalsList.appendChild(krItem);
+            subGoalsList.appendChild(item);
         });
     }
 }
@@ -367,8 +425,7 @@ async function saveUnifiedGoalsSnapshot() {
     const nome = document.getElementById('unified-goal-name').value;
     const target = document.getElementById('unified-goal-target').value;
     const type = document.getElementById('unified-goal-type').value;
-    const periodType = document.getElementById('unified-goal-period').value;
-    
+
     if (!nome) { showToast('Nome do objetivo é obrigatório', 'error'); return; }
 
     const krs = [];
@@ -380,21 +437,15 @@ async function saveUnifiedGoalsSnapshot() {
         }
     });
 
+    const referencia = currentMetaPeriod || `${currentYear}-M${String(currentMonth).padStart(2, '0')}`;
     const snapshotData = {
         nome,
         valor_alvo: target,
         tipo_meta: type,
-        periodo: periodType,
-        krs: krs,
+        periodo: 'mensal',
+        krs,
         versao: '3.0'
     };
-
-    let referencia = "";
-    if (periodType === 'mensal') {
-        referencia = `${currentYear}-M${String(currentMonth).padStart(2, '0')}`;
-    } else {
-        referencia = `${currentYear}-Q${Math.floor((currentMonth - 1) / 3) + 1}`;
-    }
 
     const payload = {
         id: activeSnapshotId,
@@ -414,18 +465,15 @@ async function saveUnifiedGoalsSnapshot() {
         if (res.ok) {
             showToast('Planejamento salvo com sucesso!');
             closeGTModal('modal-metas-unificado');
-            handlePeriodFilterChange(document.getElementById('meta-period-filter'));
+            handlePeriodFilterChange();
         }
     } catch (e) { console.error(e); }
 }
 
-async function handlePeriodFilterChange(select) {
-    const val = select.value;
-    let referencia = val;
-    if (val === 'quarter') {
-        referencia = `${currentYear}-Q${Math.floor((currentMonth - 1) / 3) + 1}`;
+function handlePeriodFilterChange() {
+    if (currentProject && currentMetaPeriod) {
+        loadTarefas(currentProject.pipefy_id, 'goal_snapshot', 'quarter-task-list', currentMetaPeriod);
     }
-    loadTarefas(currentProject.pipefy_id, 'goal_snapshot', 'quarter-task-list', referencia);
 }
 
 async function toggleUnifiedMainGoal(id, currentStatus) {
@@ -435,7 +483,7 @@ async function toggleUnifiedMainGoal(id, currentStatus) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ id: id, concluida: !currentStatus })
         });
-        handlePeriodFilterChange(document.getElementById('meta-period-filter'));
+        handlePeriodFilterChange();
     } catch (e) { console.error(e); }
 }
 
@@ -458,7 +506,7 @@ async function toggleUnifiedKR(id, krIndex) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ id: id, descricao: JSON.stringify(data) })
         });
-        handlePeriodFilterChange(document.getElementById('meta-period-filter'));
+        handlePeriodFilterChange();
     } catch (e) { console.error(e); }
 }
 
@@ -545,7 +593,8 @@ async function loadEntregas(pipefyId, mes, ano) {
     const container = document.getElementById('entregas-grid');
     if (!container) return;
 
-    const userRole = window.__USER_ROLE__ || "";
+    const rawRole = (currentProject && currentProject.cientista) ? "Cientista" : (window.__USER_ROLE__ || "");
+    const userRole = ROLE_MAP_ENTREGAS[rawRole] || rawRole;
     const config = DELIVERY_CONFIG[userRole];
     if (!config) {
         container.innerHTML = '<p style="color:var(--text-muted);padding:2rem;text-align:center;">Cargo sem entregas configuradas.</p>';
@@ -561,8 +610,28 @@ async function loadEntregas(pipefyId, mes, ano) {
         meta: customOverride[c.tipo] !== undefined ? customOverride[c.tipo] : c.meta,
     }));
 
-    // Obter realizados: mock por ora — substituir pelo retorno da API quando disponível
-    const realizadosRaw = MOCK_REALIZADOS[userRole] || {};
+    // Buscar realizados reais do backend (MonthlyDelivery por projeto/mês/ano)
+    const realizadosRaw = {};
+    try {
+        const resp = await fetch(`/api/operacao/monthly-deliveries/${pipefyId}/${mes}/${ano}`);
+        if (resp.ok) {
+            const entregas = await resp.json();
+            for (const e of entregas) {
+                const frontendTipo = BACKEND_TO_FRONTEND_TIPO[e.delivery_type];
+                if (!frontendTipo) continue;
+                const cfgItem = configComMeta.find(c => c.tipo === frontendTipo);
+                if (!cfgItem) continue;
+                // Usar contagem real do backend quando disponível
+                if (e.count !== undefined) {
+                    realizadosRaw[frontendTipo] = Math.min(e.count, cfgItem.meta);
+                } else if (e.status === 'completed') {
+                    realizadosRaw[frontendTipo] = cfgItem.meta;
+                }
+            }
+        }
+    } catch (err) {
+        console.warn('Erro ao buscar entregas do mês:', err);
+    }
 
     renderEntregasSummary(configComMeta, realizadosRaw);
     renderEntregasCards(configComMeta, realizadosRaw);
@@ -580,11 +649,11 @@ function renderEntregasSummary(config, realizados) {
     const kpisEl = document.getElementById('entregas-kpis-grid');
     if (!panel || !kpisEl) return;
 
-    const PESO_POR_TIPO  = 25; // cada tipo vale 25% do total
+    const PESO_POR_TIPO  = 100 / config.length; 
     const totalMeta      = config.reduce((s, c) => s + c.meta, 0);
     const totalRealizado = config.reduce((s, c) => s + Math.min(realizados[c.tipo] || 0, c.meta), 0);
     const concluidas     = config.filter(c => (realizados[c.tipo] || 0) >= c.meta).length;
-    // Percentual total: soma de (realizado/meta)*25 para cada tipo
+    // Percentual total: soma de (realizado/meta)*PESO para cada tipo
     const pct            = Math.round(config.reduce((s, c) => {
         const r = Math.min(realizados[c.tipo] || 0, c.meta);
         return s + (c.meta > 0 ? (r / c.meta) * PESO_POR_TIPO : 0);
@@ -695,45 +764,47 @@ function renderEntregasCards(config, realizados) {
     const container = document.getElementById('entregas-grid');
     if (!container) return;
 
-    const PESO_POR_TIPO = 25; // cada tipo vale 25%
-
-    container.innerHTML = config.map((c, i) => {
+    const listHtml = config.map((c) => {
         const realizado       = realizados[c.tipo] || 0;
         const meta            = c.meta;
         const pct             = meta > 0 ? Math.min(Math.round((realizado / meta) * 100), 100) : 0;
         const cor             = _corProgresso(pct);
-        const completo        = realizado >= meta;
-        const pesoPorEntrega  = meta > 0 ? (PESO_POR_TIPO / meta) : PESO_POR_TIPO;
+        const pesoPorTipo     = 100 / config.length;
+        const pesoPorEntrega  = meta > 0 ? (pesoPorTipo / meta) : pesoPorTipo;
         const contribuicao    = Math.min(realizado, meta) * pesoPorEntrega;
         const contribuicaoFmt = Number.isInteger(contribuicao) ? contribuicao : contribuicao.toFixed(2);
+        
+        const isCoordenador = (currentProject && currentProject.cientista) || window.__USER_ROLE__ === 'Account' || window.__USER_ROLE__ === 'Gerência' || window.__USER_POSICAO__ === 'Gerência' || window.__USER_ROLE__ === 'Coordenador de CX' || window.__USER_POSICAO__ === 'Sócio';
 
         return `
-        <div class="entrega-progress-card ${completo ? 'completo' : ''}">
-            <div class="epc-icon" style="background:${completo ? 'rgba(34,197,94,0.15)' : 'rgba(255,255,255,0.04)'};color:${completo ? '#22c55e' : 'var(--text-muted)'};border:1px solid ${completo ? 'rgba(34,197,94,0.3)' : 'var(--border-color)'};">
-                <i class="fas ${c.icone}"></i>
-            </div>
-            <div class="epc-body">
-                <div class="epc-header-row">
-                    <h4>${c.label}</h4>
-                    <span class="epc-count" style="color:${cor};">${realizado}<span style="color:var(--text-muted);font-weight:400;"> / ${meta}</span></span>
+            <div class="op-entrega-row">
+                <div class="op-entrega-info">
+                    <i class="fas ${c.icone}" style="color:#D61616;width:16px;text-align:center;flex-shrink:0;margin-top:2px;"></i>
+                    <div class="op-entrega-texts">
+                        <span class="op-entrega-label">${c.label}</span>
+                        <span class="op-entrega-peso">Peso: <strong style="color:var(--text-main)">${pesoPorTipo % 1 === 0 ? pesoPorTipo : pesoPorTipo.toFixed(2)}%</strong>${meta > 1 ? ` <span style="opacity:0.6;">(${pesoPorEntrega % 1 === 0 ? pesoPorEntrega : pesoPorEntrega.toFixed(2)}% × ${meta})</span>` : ''} &nbsp;·&nbsp; <strong style="color:${cor}">${contribuicaoFmt}%</strong> conquistado</span>
+                    </div>
                 </div>
-                <p class="epc-desc">${c.desc}</p>
-                <div class="epc-bar-track">
-                    <div class="epc-bar-fill" style="width:${pct}%;background:linear-gradient(90deg,${cor},${cor}bb);box-shadow:0 0 8px ${cor}44;"></div>
+                <div class="op-entrega-controls">
+                    ${c.tipo === 'planner_monday' && isCoordenador ? `
+                        <button class="btn-delta btn-minus" onclick="window.decrementPlannerMonday(${currentProject.pipefy_id})" title="Remover último registro manual">−</button>
+                    ` : ''}
+                    <span style="min-width:48px;text-align:center;font-weight:600;color:${cor};">${realizado}<span style="color:var(--text-muted);font-weight:400"> / ${meta}</span></span>
+                    ${c.tipo === 'planner_monday' && isCoordenador ? `
+                        <button class="btn-delta btn-plus" onclick="window.incrementPlannerMonday(${currentProject.pipefy_id})" title="Adicionar registro manual">+</button>
+                    ` : ''}
                 </div>
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-top:0.4rem;">
-                    <span style="font-size:0.72rem;color:var(--text-muted);">Peso: <strong style="color:var(--text-main);">25%</strong>${meta > 1 ? ` <span style="opacity:0.6;">(${pesoPorEntrega % 1 === 0 ? pesoPorEntrega : pesoPorEntrega.toFixed(2)}% × ${meta})</span>` : ''}</span>
-                    <span style="font-size:0.72rem;color:${cor};font-weight:600;">${contribuicaoFmt}% / 25%</span>
+                <div class="op-entrega-bar-wrap">
+                    <div class="op-entrega-bar" style="width:${pct}%;background:${cor};box-shadow:0 0 6px ${cor}44;"></div>
                 </div>
-            </div>
-            <div class="epc-badge">
-                <span class="epc-status ${completo ? 'ok' : (realizado > 0 ? 'parcial' : 'pendente')}">
-                    <i class="fas ${completo ? 'fa-circle-check' : (realizado > 0 ? 'fa-circle-half-stroke' : 'fa-circle-xmark')}"></i>
-                    ${completo ? 'Concluída' : (realizado > 0 ? 'Em progresso' : 'Pendente')}
-                </span>
-            </div>
-        </div>`;
+            </div>`;
     }).join('');
+
+    container.innerHTML = `
+        <div class="criativa-table-card" style="padding:1.5rem; margin-top: 1rem;">
+            <div class="op-entregas-lista">${listHtml}</div>
+        </div>
+    `;
 }
 
 function updateMRRDisplay(totalMrr) {
@@ -744,7 +815,8 @@ function updateMRRDisplay(totalMrr) {
 // ─── MODAL EDITAR METAS (COORDENADOR) ────────────────────────────────────────
 
 function openMetasModal() {
-    const userRole = window.__USER_ROLE__ || "";
+    const rawRole = window.__USER_ROLE__ || "";
+    const userRole = ROLE_MAP_ENTREGAS[rawRole] || rawRole;
     const config = DELIVERY_CONFIG[userRole];
     if (!config || !currentProject) return;
 
@@ -829,11 +901,17 @@ async function loadPlanoMidia(pipefyId, mes, ano) {
                     <td colspan="5" style="padding:3rem;color:var(--text-muted);text-align:center;">
                         <i class="fas fa-file-invoice-dollar" style="font-size:2rem;margin-bottom:1rem;display:block;opacity:0.3;"></i>
                         Nenhum plano de mídia lançado para este mês.<br>
-                        <button class="btn-add-task" style="margin-top:1rem;background:var(--accent-red);" onclick="openGTModal('modal-novo-plano')">
+                        <button class="btn-add-task btn-auth-gt" style="margin-top:1rem;background:var(--accent-red);" onclick="openGTModal('modal-novo-plano')">
                             <i class="fas fa-plus"></i> Lançar Plano de Mídia
                         </button>
                     </td>
                 </tr>`;
+            
+            // Aplicar visibilidade antes do return
+            const authGT = hasGTAuth();
+            body.querySelectorAll('.btn-auth-gt').forEach(btn => {
+                btn.style.setProperty('display', authGT ? 'inline-flex' : 'none', 'important');
+            });
             return;
         }
 
@@ -859,6 +937,25 @@ async function loadPlanoMidia(pipefyId, mes, ano) {
             <td>R$ ${totalBudget.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
             <td>R$ ${totalDaily.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>`;
         body.appendChild(footer);
+
+        // Adicionar botão de deletar no cabeçalho de ações da seção (se ainda não existir)
+        const actionsHeader = document.querySelector('#section-midia header div[style*="display: flex; gap: 12px"]');
+        if (actionsHeader && !document.getElementById('btn-clear-plano')) {
+            const btn = document.createElement('button');
+            btn.id = 'btn-clear-plano';
+            btn.className = 'btn-add-task btn-auth-gt';
+            btn.style.cssText = 'background: transparent; color: #D61616; border: 1px solid rgba(214, 22, 22, 0.3); font-size: 0.75rem;';
+            btn.innerHTML = '<i class="fas fa-trash-alt"></i> Limpar';
+            btn.onclick = () => window.deletePlanoMidia();
+            actionsHeader.prepend(btn);
+        }
+
+        // Atualizar visibilidade dos botões de GT recém-criados
+        const authGT = hasGTAuth();
+        document.querySelectorAll('.btn-auth-gt').forEach(btn => {
+            btn.style.setProperty('display', authGT ? 'inline-flex' : 'none', 'important');
+        });
+
     } catch (e) { console.error("Erro ao carregar plano de mídia:", e); }
 }
 
@@ -866,43 +963,67 @@ async function loadPlanoMidia(pipefyId, mes, ano) {
 
 async function loadOtimizacoes(pipefyId) {
     const listEl = document.getElementById('otimizacao-list');
-    const emptyEl = document.getElementById('otimizacao-empty-state');
     if (!listEl) return;
-
+    const defaultMonth = initMonthSelect('otimizacao-month-select');
     try {
         const res = await fetch(`/api/operacao/otimizacoes/${pipefyId}`);
-        const data = await res.json();
-
-        if (!data || data.length === 0) {
-            listEl.innerHTML = '';
-            if (emptyEl) emptyEl.style.display = 'block';
-            return;
-        }
-
-        if (emptyEl) emptyEl.style.display = 'none';
-        listEl.innerHTML = '';
-
-        data.forEach(o => {
-            const card = document.createElement('div');
-            card.className = 'op-card-premium';
-            card.style.cssText = 'padding:1.2rem;border-left:4px solid var(--accent-red);';
-            card.innerHTML = `
-                <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-                    <div style="flex:1;">
-                        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
-                            <span class="badge-gt badge-estavel" style="font-size:0.75rem;">${o.tipo || ''}</span>
-                            <span style="font-size:0.75rem;color:#888;">${o.canal || ''}</span>
-                            <span style="font-size:0.75rem;color:#888;">${o.data || ''}</span>
-                        </div>
-                        <p style="font-size:0.85rem;color:var(--text-muted);margin:0;line-height:1.5;">
-                            ${o.detalhes || '<em>Sem detalhes.</em>'}
-                        </p>
-                    </div>
-                </div>`;
-            listEl.appendChild(card);
-        });
+        const raw = await res.json();
+        allOtimizacoes = Array.isArray(raw) ? raw : [];
+        const sel = document.getElementById('otimizacao-month-select');
+        renderOtimizacoesByMonth(sel ? sel.value : defaultMonth);
     } catch (e) { console.error("Erro ao carregar otimizações:", e); }
 }
+
+function renderOtimizacoesByMonth(monthVal) {
+    const listEl = document.getElementById('otimizacao-list');
+    const emptyEl = document.getElementById('otimizacao-empty-state');
+    if (!listEl) return;
+    const filtered = monthVal
+        ? allOtimizacoes.filter(o => o.data && o.data.substring(0, 7) === monthVal)
+        : allOtimizacoes;
+    if (!filtered.length) {
+        listEl.innerHTML = '';
+        if (emptyEl) emptyEl.style.display = 'block';
+        return;
+    }
+    if (emptyEl) emptyEl.style.display = 'none';
+    listEl.innerHTML = '';
+    filtered.forEach(o => {
+        const card = document.createElement('div');
+        card.className = 'op-card-premium';
+        card.style.cssText = 'padding:1.2rem;border-left:4px solid var(--accent-red);';
+        card.innerHTML = `
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+                <div style="flex:1;">
+                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+                        <span class="badge-gt badge-estavel" style="font-size:0.75rem;">${o.tipo || ''}</span>
+                        <span style="font-size:0.75rem;color:#888;">${o.canal || ''}</span>
+                        <span style="font-size:0.75rem;color:#888;">${o.data || ''}</span>
+                    </div>
+                    <p style="font-size:0.85rem;color:var(--text-muted);margin:0;line-height:1.5;">
+                        ${o.detalhes || '<em>Sem detalhes.</em>'}
+                    </p>
+                </div>
+                <button onclick="window.deleteOtimizacao(${o.mes}, ${o.ano}, ${o.original_index})" 
+                    class="btn-add-task btn-auth-gt btn-auth-account"
+                    style="background: transparent; color: #888; border: 1px solid var(--border-color); padding: 6px 10px; width: auto; height: auto;"
+                    onmouseover="this.style.color='#D61616'; this.style.borderColor='#D61616';"
+                    onmouseout="this.style.color='#888'; this.style.borderColor='var(--border-color)';"
+                    title="Excluir otimização">
+                    <i class="fas fa-trash-alt"></i>
+                </button>
+            </div>`;
+        listEl.appendChild(card);
+    });
+
+    // Atualizar visibilidade dos botões de GT recém-criados
+    const authGT = hasGTAuth();
+    document.querySelectorAll('.btn-auth-gt').forEach(btn => {
+        btn.style.setProperty('display', authGT ? 'inline-flex' : 'none', 'important');
+    });
+}
+
+function filterOtimizacoesByMonth(val) { renderOtimizacoesByMonth(val); }
 
 async function saveOtimizacao() {
     const type = document.getElementById('opt-type').value;
@@ -930,21 +1051,130 @@ async function saveOtimizacao() {
             document.getElementById('opt-details').value = '';
             loadOtimizacoes(currentProject.pipefy_id);
             loadEntregas(currentProject.pipefy_id, currentMonth, currentYear);
+        } else {
+            const errorData = await res.json();
+            showToast(errorData.error || 'Erro ao salvar otimização.', 'error');
         }
-    } catch (e) { console.error(e); }
+    } catch (e) { 
+        console.error(e);
+        showToast('Erro de conexão com o servidor.', 'error');
+    }
 }
 
 // ─── LINKS ÚTEIS ─────────────────────────────────────────────────────────────
 
+async function loadFixedLinks(pipefyId, monthVal = null) {
+    let m = currentMonth;
+    let y = currentYear;
+    if (monthVal) {
+        const parts = monthVal.split('-');
+        if (parts.length === 2) {
+            y = parseInt(parts[0], 10);
+            m = parseInt(parts[1], 10);
+        }
+    }
+
+    try {
+        const res = await fetch(`/api/operacao/snapshot/${pipefyId}/${m}/${y}`);
+        if (!res.ok) return;
+        const snap = await res.json();
+
+        const kpiUrl = (snap.kpis || {}).link || '';
+        const forecastUrl = (snap.forecasting || {}).link || '';
+        const relatorioAccUrl = (snap.relatorio_account || {}).link || '';
+        const relatorioGtUrl  = (snap.relatorio_gt || {}).link || '';
+        const relatorioConsolUrl = (snap.relatorio_mensal || {}).link || '';
+
+        const setLink = (idPrefix, url) => {
+            const anchor = document.getElementById(`fixed-link-${idPrefix}`);
+            const label  = document.getElementById(`fixed-link-${idPrefix}-url`);
+            if (anchor) anchor.href = url || '#';
+            if (label)  label.textContent = url || 'Sem link definido';
+        };
+
+        setLink('kpi', kpiUrl);
+        setLink('forecasting', forecastUrl);
+        setLink('relatorio_account', relatorioAccUrl);
+        setLink('relatorio_gt', relatorioGtUrl);
+        setLink('relatorio_mensal', relatorioConsolUrl);
+    } catch (e) {
+        console.error('Erro ao carregar links fixos:', e);
+    }
+}
+
+async function openFixedLinkModal(key) {
+    const titles = { 
+        kpi: "KPI's", 
+        forecasting: 'Forecasting',
+        relatorio_account: 'Relatório Mensal (Account)',
+        relatorio_gt: 'Relatório Mensal (GT)',
+        relatorio_mensal: 'Relatório Mensal Consolidado'
+    };
+    document.getElementById('fixed-link-key').value = key;
+    document.getElementById('fixed-link-modal-title').textContent = `Definir Link — ${titles[key] || key}`;
+
+    // Carrega valor atual do BD
+    let currentUrl = '';
+    try {
+        const res = await fetch(`/api/operacao/snapshot/${currentProject?.pipefy_id}/${currentMonth}/${currentYear}`);
+        if (res.ok) {
+            const snap = await res.json();
+            const tipoMap = { kpi: 'kpis', forecasting: 'forecasting' };
+            currentUrl = (snap[tipoMap[key] || key] || {}).link || '';
+        }
+    } catch (e) { /* silencioso */ }
+
+    document.getElementById('fixed-link-url-input').value = currentUrl;
+    openGTModal('modal-fixed-link');
+}
+
+async function saveFixedLink() {
+    const key = document.getElementById('fixed-link-key').value;
+    const url = document.getElementById('fixed-link-url-input').value.trim();
+    if (!url || !currentProject) return;
+
+    // Mapeia 'kpi' → 'kpis' para o nome da seção no BD
+    const tipoMap = { kpi: 'kpis', forecasting: 'forecasting' };
+    const tipo = tipoMap[key] || key;
+
+    try {
+        const res = await fetch('/api/operacao/snapshot/links', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                pipefy_id: currentProject.pipefy_id,
+                mes: currentMonth,
+                ano: currentYear,
+                tipo,
+                link: url,
+            }),
+        });
+        if (!res.ok) {
+            const err = await res.json();
+            alert("Erro ao salvar link: " + (err.error || "Erro desconhecido"));
+            return;
+        }
+        loadFixedLinks(currentProject.pipefy_id);
+        closeGTModal('modal-fixed-link');
+    } catch (e) {
+        console.error('Erro ao salvar link fixo:', e);
+        alert('Erro ao salvar link fixo: ' + e.message);
+    }
+}
+
 async function loadLinks(pipefyId) {
+    initMonthSelect('links-month-select');
     const grid = document.getElementById('links-grid');
     if (!grid) return;
+    
+    const sel = document.getElementById('links-month-select');
+    loadFixedLinks(pipefyId, sel ? sel.value : null);
 
     try {
         const res = await fetch(`/api/operacao/links/${pipefyId}`);
         const data = await res.json();
 
-        if (!data || data.length === 0) {
+        if (!Array.isArray(data) || data.length === 0) {
             grid.innerHTML = '<p style="color:var(--text-muted);padding:2rem;">Nenhum link cadastrado ainda.</p>';
             return;
         }
@@ -1004,59 +1234,103 @@ async function deleteLink(linkId) {
     } catch (e) { console.error(e); }
 }
 
+function filterLinksByMonth(val) {
+    if (!currentProject) return;
+    loadFixedLinks(currentProject.pipefy_id, val);
+}
+
 // ─── CHECKIN ─────────────────────────────────────────────────────────────────
 
 async function loadCheckins(pipefyId) {
+    initMonthSelect('checkin-month-select');
     try {
         const res = await fetch(`/api/operacao/checkins/${pipefyId}`);
-        const data = await res.json();
+        const raw = await res.json();
+        allCheckins = Array.isArray(raw) ? raw : [];
         const list = document.getElementById('checkin-list');
         if (!list) return;
 
-        list.innerHTML = '';
-        if (data.length === 0) {
-            list.innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:2rem;">Nenhum checkin realizado ainda.</p>';
-            return;
-        }
+        const sel = document.getElementById('checkin-month-select');
+        renderCheckinsByMonth(sel ? sel.value : null);
 
-        data.forEach(c => {
-            const item = document.createElement('div');
-            item.className = 'op-card-premium';
-            item.style.cssText = `padding:1.2rem;margin-bottom:12px;border-left:4px solid ${c.compareceu ? '#28a745' : '#ffc107'};`;
-            const campanhasIcon = c.campanhas_ativas ? '<i class="fas fa-bolt" style="color:#28a745;"></i>' : '<i class="fas fa-exclamation-triangle" style="color:#D61616;"></i>';
-            const gapIcon = c.gap_comunicacao ? '<i class="fas fa-comment-slash" style="color:#D61616;"></i>' : '<i class="fas fa-comments" style="color:#28a745;"></i>';
-            const reclamacaoIcon = c.cliente_reclamou ? '<i class="fas fa-thumbs-down" style="color:#D61616;"></i>' : '<i class="fas fa-thumbs-up" style="color:#28a745;"></i>';
-            item.innerHTML = `
-                <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-                    <div style="flex:1;">
-                        <div style="display:flex;align-items:center;gap:10px;margin-bottom:5px;">
-                            <strong style="color:#D61616;font-size:0.9rem;">Semana ${c.semana.split('-W')[1]}</strong>
-                            <span style="font-size:0.75rem;color:#888;">${c.data}</span>
-                        </div>
-                        <p style="font-size:0.8rem;color:var(--text-muted);margin:5px 0 0;line-height:1.4;">
-                            ${c.obs || '<em>Sem observações registradas.</em>'}
-                        </p>
-                    </div>
-                    <div style="display:flex;gap:12px;margin-left:15px;background:rgba(255,255,255,0.03);padding:8px 12px;border-radius:8px;">
-                        <span>${c.compareceu ? '<i class="fas fa-user-check" style="color:#28a745;"></i>' : '<i class="fas fa-user-times" style="color:#ffc107;"></i>'}</span>
-                        ${campanhasIcon}${gapIcon}${reclamacaoIcon}
-                    </div>
-                </div>`;
-            list.appendChild(item);
-        });
-
-        // Status da semana atual
-        const now = new Date();
-        const week = Math.ceil(((now - new Date(now.getFullYear(), 0, 1)) / 86400000 + 1) / 7);
-        const ref = `${currentYear}-W${String(week).padStart(2, '0')}`;
-        const badge = document.getElementById('checkin-status-badge');
-        if (badge) {
-            const feito = data.some(c => c.semana === ref);
-            badge.innerHTML = feito ? 'Realizado <i class="fas fa-check-circle"></i>' : 'Pendente <i class="fas fa-clock"></i>';
-            badge.style.color = feito ? '#28a745' : '#ffc107';
-        }
     } catch (e) { console.error("Erro ao carregar checkins:", e); }
 }
+
+function renderCheckinsByMonth(monthVal) {
+    const list = document.getElementById('checkin-list');
+    if (!list) return;
+    const filtered = monthVal
+        ? allCheckins.filter(c => c.data && c.data.substring(0, 7) === monthVal)
+        : allCheckins;
+    list.innerHTML = '';
+    if (!filtered.length) {
+        list.innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:2rem;">Nenhum checkin realizado ainda.</p>';
+        return;
+    }
+    filtered.forEach(c => {
+        const item = document.createElement('div');
+        item.className = 'op-card-premium';
+        item.style.cssText = `padding:1.5rem; margin-bottom:16px; border-left:4px solid ${c.compareceu ? '#10b981' : '#f59e0b'}; background: var(--card-bg);`;
+        
+        // Tags de Status Coordenadas
+        const statusTags = `
+            <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:12px;">
+                <span style="font-size:0.65rem; font-weight:700; padding:4px 10px; border-radius:6px; background:${c.compareceu ? 'rgba(16,185,129,0.1)' : 'rgba(245,158,11,0.1)'}; color:${c.compareceu ? '#10b981' : '#f59e0b'}; border:1px solid ${c.compareceu ? 'rgba(16,185,129,0.2)' : 'rgba(245,158,11,0.2)'};">
+                    <i class="fas ${c.compareceu ? 'fa-user-check' : 'fa-user-clock'}"></i> STAKEHOLDER
+                </span>
+                <span style="font-size:0.65rem; font-weight:700; padding:4px 10px; border-radius:6px; background:${c.campanhas_ativas ? 'rgba(16,185,129,0.1)' : 'rgba(214,22,22,0.1)'}; color:${c.campanhas_ativas ? '#10b981' : '#D61616'}; border:1px solid ${c.campanhas_ativas ? 'rgba(16,185,129,0.2)' : 'rgba(214,22,22,0.2)'};">
+                    <i class="fas ${c.campanhas_ativas ? 'fa-bolt' : 'fa-pause-circle'}"></i> CAMPANHAS
+                </span>
+                <span style="font-size:0.65rem; font-weight:700; padding:4px 10px; border-radius:6px; background:${!c.gap_comunicacao ? 'rgba(16,185,129,0.1)' : 'rgba(214,22,22,0.1)'}; color:${!c.gap_comunicacao ? '#10b981' : '#D61616'}; border:1px solid ${!c.gap_comunicacao ? 'rgba(16,185,129,0.2)' : 'rgba(214,22,22,0.2)'};">
+                    <i class="fas ${!c.gap_comunicacao ? 'fa-comments' : 'fa-comment-slash'}"></i> COMUNICAÇÃO
+                </span>
+                <span style="font-size:0.65rem; font-weight:700; padding:4px 10px; border-radius:6px; background:${!c.cliente_reclamou ? 'rgba(16,185,129,0.1)' : 'rgba(245,158,11,0.1)'}; color:${!c.cliente_reclamou ? '#10b981' : '#f59e0b'}; border:1px solid ${!c.cliente_reclamou ? 'rgba(16,185,129,0.2)' : 'rgba(245,158,11,0.2)'};">
+                    <i class="fas ${!c.cliente_reclamou ? 'fa-smile' : 'fa-frown'}"></i> SATISFAÇÃO
+                </span>
+            </div>
+        `;
+
+        item.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                <div style="flex:1;">
+                    <div style="display:flex; align-items:center; gap:12px; margin-bottom:8px;">
+                        <div style="background:var(--accent-red); color:white; font-size:0.7rem; font-weight:800; padding:4px 12px; border-radius:20px; text-transform:uppercase; letter-spacing:0.5px;">
+                            Semana ${c.semana.split('-W')[1] || c.semana}
+                        </div>
+                        <span style="font-size:0.85rem; font-weight:500; color:var(--text-muted);"><i class="far fa-calendar-alt"></i> ${c.data}</span>
+                    </div>
+                    
+                    <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-color); border-radius:12px; padding:1rem; margin-top:12px;">
+                        <p style="font-size:0.9rem; color:var(--text-main); margin:0; line-height:1.6;">
+                            ${c.obs ? c.obs : '<span style="opacity:0.5; font-style:italic;">Sem observações adicionais.</span>'}
+                        </p>
+                    </div>
+
+                    ${statusTags}
+
+                    ${c.transcricao_url ? `
+                        <div style="margin-top:15px;">
+                            <a href="${c.transcricao_url}" target="_blank" rel="noopener" style="display:inline-flex; align-items:center; gap:6px; font-size:0.78rem; font-weight:600; color:var(--accent-red); text-decoration:none; padding:6px 12px; border-radius:8px; background:rgba(214,22,22,0.05); border:1px solid rgba(214,22,22,0.1); transition:all 0.2s;">
+                                <i class="fas fa-file-waveform"></i> Ouvir Transcrição do Check-in
+                            </a>
+                        </div>
+                    ` : ''}
+                </div>
+                
+                <button onclick="window.deleteCheckin(${c.mes}, ${c.ano}, ${c.original_index})" 
+                    class="btn-add-task btn-auth-account"
+                    style="background: transparent; color: #888; border: 1px solid var(--border-color); padding: 10px; width: 40px; height: 40px; border-radius:10px; display:flex; align-items:center; justify-content:center;"
+                    onmouseover="this.style.color='#D61616'; this.style.borderColor='#D61616'; this.style.background='rgba(214,22,22,0.05)';"
+                    onmouseout="this.style.color='#888'; this.style.borderColor='var(--border-color)'; this.style.background='transparent';"
+                    title="Excluir este check-in">
+                    <i class="fas fa-trash-alt"></i>
+                </button>
+            </div>`;
+        list.appendChild(item);
+    });
+}
+
+function filterCheckinsByMonth(val) { renderCheckinsByMonth(val); }
 
 async function saveCheckin() {
     const compareceu = document.getElementById('checkin-compareceu').value === 'true';
@@ -1064,6 +1338,7 @@ async function saveCheckin() {
     const gapComunicacao = document.getElementById('checkin-gap-comunicacao').value === 'true';
     const clienteReclamou = document.getElementById('checkin-cliente-reclamou').value === 'true';
     const obs = document.getElementById('checkin-obs').value;
+    const transcricao = document.getElementById('checkin-transcricao').value.trim();
 
     const now = new Date();
     const week = Math.ceil(((now - new Date(now.getFullYear(), 0, 1)) / 86400000 + 1) / 7);
@@ -1075,7 +1350,8 @@ async function saveCheckin() {
         campanhas_ativas: campanhasAtivas,
         gap_comunicacao: gapComunicacao,
         cliente_reclamou: clienteReclamou,
-        satisfeito: true, obs
+        satisfeito: true, obs,
+        transcricao_url: transcricao || null
     };
 
     try {
@@ -1086,6 +1362,8 @@ async function saveCheckin() {
         });
         if (res.ok) {
             showToast('Checkin registrado com sucesso!');
+            document.getElementById('checkin-transcricao').value = '';
+            document.getElementById('checkin-obs').value = '';
             closeGTModal('modal-novo-checkin');
             loadCheckins(currentProject.pipefy_id);
             loadEntregas(currentProject.pipefy_id, currentMonth, currentYear);
@@ -1093,27 +1371,104 @@ async function saveCheckin() {
     } catch (e) { console.error(e); }
 }
 
+let pendingDeleteCheckin = null;
+
+async function deleteCheckin(mes, ano, index) {
+    if (!currentProject) { 
+        showToast("Selecione um projeto primeiro", "error"); 
+        return; 
+    }
+    pendingDeleteCheckin = { mes, ano, index };
+    openGTModal('modal-confirm-delete-checkin');
+}
+
+async function confirmDeleteCheckin() {
+    if (!pendingDeleteCheckin || !currentProject) return;
+    const { mes, ano, index } = pendingDeleteCheckin;
+    
+    try {
+        const res = await fetch(`/api/operacao/checkin/${currentProject.pipefy_id}/${mes}/${ano}/${index}`, { method: 'DELETE' });
+        if (res.ok) {
+            showToast('Check-in removido');
+            loadCheckins(currentProject.pipefy_id);
+            loadEntregas(currentProject.pipefy_id, currentMonth, currentYear);
+        } else {
+            const err = await res.json();
+            showToast(err.error || 'Falha ao deletar', 'error');
+        }
+    } catch (e) { console.error("[deleteCheckin] erro:", e); }
+    
+    closeGTModal('modal-confirm-delete-checkin');
+    pendingDeleteCheckin = null;
+}
+
+window.deleteCheckin = deleteCheckin;
+window.confirmDeleteCheckin = confirmDeleteCheckin;
+
+async function deleteOtimizacao(mes, ano, index) {
+    console.log(`[deleteOtimizacao] INÍCIO - mes=${mes} ano=${ano} index=${index}`);
+    if (!currentProject) { 
+        console.error("[deleteOtimizacao] currentProject é null!");
+        showToast("Selecione um projeto primeiro", "error"); 
+        return; 
+    }
+    if (!confirm('Deseja excluir esta otimização?')) return;
+    try {
+        const res = await fetch(`/api/operacao/otimizacao/${currentProject.pipefy_id}/${mes}/${ano}/${index}`, { method: 'DELETE' });
+        console.log(`[deleteOtimizacao] resposta do servidor: ${res.status}`);
+        if (res.ok) {
+            showToast('Otimização removida');
+            loadOtimizacoes(currentProject.pipefy_id);
+            loadEntregas(currentProject.pipefy_id, currentMonth, currentYear);
+        } else {
+            const err = await res.json();
+            showToast(err.error || 'Falha ao deletar', 'error');
+        }
+    } catch (e) { console.error("[deleteOtimizacao] erro:", e); }
+}
+window.deleteOtimizacao = deleteOtimizacao;
+
+async function deletePlanoMidia() {
+    console.log(`[deletePlanoMidia] INÍCIO - mes=${currentMonth} ano=${currentYear}`);
+    if (!currentProject) { 
+        console.error("[deletePlanoMidia] currentProject é null!");
+        showToast("Selecione um projeto primeiro", "error"); 
+        return; 
+    }
+    if (!confirm('Deseja limpar todo o plano de mídia deste mês?')) return;
+    try {
+        const url = `/api/operacao/plano-midia/${currentProject.pipefy_id}/${currentMonth}/${currentYear}`;
+        console.log(`[deletePlanoMidia] DELETE ${url}`);
+        const res = await fetch(url, { method: 'DELETE' });
+        if (res.ok) {
+            showToast('Plano de mídia removido');
+            loadPlanoMidia(currentProject.pipefy_id, currentMonth, currentYear);
+            loadEntregas(currentProject.pipefy_id, currentMonth, currentYear);
+        } else {
+            const err = await res.json();
+            showToast(err.error || 'Falha ao deletar', 'error');
+        }
+    } catch (e) { console.error("[deletePlanoMidia] erro:", e); }
+}
+window.deletePlanoMidia = deletePlanoMidia;
+
 // ─── WIZARD PLANO DE MÍDIA ────────────────────────────────────────────────────
 
 let editorRows = [];
 
-function backToPlanStep1() {
-    document.getElementById('plan-step-2').classList.remove('active');
-    document.getElementById('plan-step-1').classList.add('active');
-}
+function openNovoPlanModal() {
+    const label = `${MESES_PT[currentMonth - 1]} ${currentYear}`;
+    const el = document.getElementById('display-wizard-date');
+    if (el) el.innerText = label;
 
-function goToPlanStep2() {
-    const m = document.getElementById('wizard-month').value;
-    const y = document.getElementById('wizard-year').value;
-    document.getElementById('display-wizard-date').innerText = `${m} ${y}`;
-    document.getElementById('plan-step-1').classList.remove('active');
-    document.getElementById('plan-step-2').classList.add('active');
+    editorRows = [];
+    addEditorRow();
 
-    // Inicializa editorRows apenas se estiver vazio
-    if (editorRows.length === 0) {
-        addEditorRow();
-    }
+    const budgetInput = document.getElementById('wizard-total-budget');
+    if (budgetInput) budgetInput.value = 0;
+
     calculateEditorValues();
+    openGTModal('modal-novo-plano');
 }
 
 function addEditorRow() {
@@ -1178,15 +1533,12 @@ function calculateEditorValues() {
 
 function editCurrentPlan() {
     // Abre o wizard de criação para editar o plano atual
-    openGTModal('modal-novo-plano');
+    openNovoPlanModal();
 }
 
 async function saveFinalPlan() {
-    const mesesMap = { "Janeiro": 1, "Fevereiro": 2, "Março": 3, "Abril": 4, "Maio": 5, "Junho": 6, "Julho": 7, "Agosto": 8, "Setembro": 9, "Outubro": 10, "Novembro": 11, "Dezembro": 12 };
-    const m = document.getElementById('wizard-month').value;
-    const y = document.getElementById('wizard-year').value;
     const total = parseFloat(document.getElementById('wizard-total-budget')?.value || 0);
-    const days = new Date(parseInt(y), mesesMap[m], 0).getDate();
+    const days = new Date(currentYear, currentMonth, 0).getDate();
 
     if (editorRows.length === 0) {
         showToast('Adicione ao menos uma campanha.', 'error');
@@ -1203,25 +1555,102 @@ async function saveFinalPlan() {
 
     const payload = {
         pipefy_id: currentProject.pipefy_id,
-        mes: mesesMap[m],
-        ano: parseInt(y),
+        mes: currentMonth,
+        ano: currentYear,
         dados_plano: { budget_total: total, canais }
     };
 
+    console.log('[plano-midia] enviando payload:', payload);
     try {
         const res = await fetch('/api/operacao/plano-midia', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
-        if (res.ok) {
-            showToast('Plano de Mídia salvo! Entrega validada automaticamente.');
+        const result = await res.json().catch(() => ({}));
+        console.log('[plano-midia] resposta:', res.status, result);
+
+        if (res.ok && result.saved) {
+            showToast(`Plano salvo! ${result.rows_total_for_project} linha(s) na tabela operacao para este projeto.`);
+            console.log('[plano-midia] snapshot atual no BD:', result.snapshot);
             closeGTModal('modal-novo-plano');
-            loadPlanoMidia(currentProject.pipefy_id, mesesMap[m], parseInt(y));
+            loadPlanoMidia(currentProject.pipefy_id, currentMonth, currentYear);
             loadEntregas(currentProject.pipefy_id, currentMonth, currentYear);
+        } else {
+            showToast('Falha ao salvar: ' + (result.error || `status ${res.status}`), 'error');
         }
-    } catch (e) { console.error(e); }
+    } catch (e) {
+        console.error('[plano-midia] fetch error:', e);
+        showToast('Erro de rede ao salvar o plano.', 'error');
+    }
 }
+
+// ─── HISTÓRICO DE PLANOS DE MÍDIA ─────────────────────────────────────────────
+
+async function loadHistoricoPlanos(pipefyId) {
+    console.log(`[loadHistoricoPlanos] pipefy_id=${pipefyId}`);
+    try {
+        const res = await fetch(`/api/operacao/planos-midia/${pipefyId}`);
+        const data = await res.json();
+        renderHistoricoPlanos(data);
+    } catch (e) { console.error("Erro ao carregar histórico:", e); }
+}
+
+function renderHistoricoPlanos(data) {
+    const container = document.getElementById('history-accordion-container');
+    if (!container) return;
+
+    if (!data.length) {
+        container.innerHTML = '<p style="text-align:center;color:var(--text-muted);padding:2rem;">Nenhum histórico encontrado para este projeto.</p>';
+        return;
+    }
+
+    container.innerHTML = data.map((p, idx) => {
+        const monthId = `history-${p.mes}-${p.ano}`;
+        const canaisHtml = p.canais.map(c => `
+            <tr>
+                <td>${c.canal}</td>
+                <td>${c.campanhas}</td>
+                <td>${c.percent_budget}%</td>
+                <td>R$ ${c.budget.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+            </tr>
+        `).join('');
+
+        return `
+            <div class="history-month-item" id="${monthId}">
+                <div class="history-month-header" onclick="toggleHistoryMonth('${monthId}')" style="display:flex; justify-content:space-between; align-items:center; cursor:pointer; padding:1.2rem; background:rgba(255,255,255,0.03); border-radius:12px; margin-bottom:8px; border:1px solid var(--border-color); transition:all 0.3s;">
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <span class="badge-gt" style="background:var(--accent-red); color:white; padding:4px 12px; border-radius:20px; font-weight:600; font-size:0.75rem;">${MESES_PT[p.mes - 1]} ${p.ano}</span>
+                        <span style="color: var(--text-main); font-size: 0.85rem; font-weight:600;">Budget Total: R$ ${p.budget_total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                    <i class="fas fa-chevron-down history-arrow" style="transition:transform 0.3s;"></i>
+                </div>
+                <div class="history-month-content" style="padding:1rem; background:rgba(0,0,0,0.1); border-radius:0 0 12px 12px; margin-top:-12px; margin-bottom:15px; border:1px solid var(--border-color); border-top:none;">
+                    <table class="op-spreadsheet" style="font-size: 0.78rem; width:100%;">
+                        <thead>
+                            <tr>
+                                <th>Canal</th>
+                                <th>Campanha</th>
+                                <th>%</th>
+                                <th>Budget R$</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${canaisHtml}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function toggleHistoryMonth(id) {
+    const item = document.getElementById(id);
+    if (!item) return;
+    item.classList.toggle('active');
+}
+window.toggleHistoryMonth = toggleHistoryMonth;
 
 // ─── FILTRO DE BUSCA DE PROJETOS ──────────────────────────────────────────────
 
@@ -1240,3 +1669,68 @@ function filterProjects() {
 document.addEventListener('DOMContentLoaded', () => {
     console.log('Operação JS V10.0 Ativo 🚀');
 });
+
+/**
+ * Registra manualmente uma tarefa semanal para o Planner Monday.
+ */
+async function decrementPlannerMonday(pipefyId) {
+    if (!pipefyId) return;
+    if (!confirm('Deseja remover o último registro manual do Planner Monday?')) return;
+
+    try {
+        const res = await fetch('/api/operacao/tarefas', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pipefy_id: pipefyId })
+        });
+        if (res.ok) {
+            showToast('Registro do Planner Monday removido.');
+            loadProjectData();
+        } else {
+            const err = await res.json();
+            showToast(err.error || 'Erro ao remover.', 'error');
+        }
+    } catch (e) {
+        console.error(e);
+        showToast('Erro de conexão.', 'error');
+    }
+}
+window.decrementPlannerMonday = decrementPlannerMonday;
+
+async function incrementPlannerMonday(pipefyId) {
+    if (!pipefyId) return;
+    
+    const now = new Date();
+    const start = new Date(now.getFullYear(), 0, 1);
+    const week = Math.ceil(((now - start) / 86400000 + 1) / 7);
+    const referencia = `${now.getFullYear()}-W${String(week).padStart(2, '0')}`;
+
+    const payload = {
+        pipefy_id: pipefyId,
+        tipo: 'semanal',
+        descricao: `Registro manual via dashboard em ${now.toLocaleDateString('pt-BR')}`,
+        referencia: referencia,
+        ano: now.getFullYear()
+    };
+
+    try {
+        const res = await fetch('/api/operacao/tarefas', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+            showToast('Registro do Planner Monday adicionado!');
+            // Recarrega os dados da tela para atualizar contadores
+            loadProjectData();
+        } else {
+            const err = await res.json();
+            showToast(err.error || 'Erro ao registrar.', 'error');
+        }
+    } catch (e) {
+        console.error(e);
+        showToast('Erro de conexão.', 'error');
+    }
+}
+window.incrementPlannerMonday = incrementPlannerMonday;
+

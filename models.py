@@ -380,3 +380,6 @@ class OperacaoLinkUtil(Base):
     icone = Column(String(50), default='fa-link')
     criado_por = Column(Text)
     created_at = Column(DateTime)
+
+
+# Tabela 'operacao' acessada via SQL puro em OperacaoSnapshotService

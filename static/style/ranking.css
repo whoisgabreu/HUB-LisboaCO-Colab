@@ -380,12 +380,13 @@
     height: 24px;
     border-radius: 50%;
     z-index: 5;
-    box-shadow: 0 0 15px rgba(0,0,0,0.5); /* Sombra interna para destaque sem borda preta */
+    box-shadow: 0 0 15px rgba(0,0,0,0.5);
+    display: none;
 }
 
-.flag-dot.green { background: var(--flag-green); }
-.flag-dot.yellow { background: var(--flag-yellow); }
-.flag-dot.red { background: var(--flag-red); }
+.flag-dot.green  { display: block; background: var(--flag-green); }
+.flag-dot.yellow { display: block; background: var(--flag-yellow); }
+.flag-dot.red    { display: block; background: var(--flag-red); }
 
 /* Vertical Bars with Glassmorphism */
 .podium-bar {
@@ -481,10 +482,11 @@
     border-radius: 50%;
     z-index: 2;
     box-shadow: 0 0 10px rgba(0,0,0,0.5);
+    display: none;
 }
-.flag-badge.green { background: var(--flag-green); }
-.flag-badge.yellow { background: var(--flag-yellow); }
-.flag-badge.red { background: var(--flag-red); }
+.flag-badge.green  { display: block; background: var(--flag-green); }
+.flag-badge.yellow { display: block; background: var(--flag-yellow); }
+.flag-badge.red    { display: block; background: var(--flag-red); }
 
 .card-overlay-info { flex: 1; }
 .card-name { font-size: 1.1rem !important; font-weight: 800 !important; color: white !important; margin: 0 0 4px 0 !important; }
