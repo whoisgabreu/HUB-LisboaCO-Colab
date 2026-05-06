@@ -203,9 +203,15 @@ class OperacaoSnapshotService:
         if not investidor:
             return None
 
+        # Verifica se o investidor é cientista NESTE projeto (E8)
+        inv_proj = db.query(InvestidorProjeto).filter_by(
+            email_investidor=email, pipefy_id_projeto=id_projeto
+        ).first()
+        is_cientista_projeto = inv_proj.cientista if inv_proj else False
+
         funcao = investidor.funcao or ""
-        is_gt      = funcao in ("Gestor de Tráfego", "Cientista", "Desenvolvedor")
-        is_account = funcao in ("Account", "Cientista")
+        is_gt      = is_cientista_projeto or funcao in ("Gestor de Tráfego", "Cientista", "Desenvolvedor")
+        is_account = is_cientista_projeto or funcao in ("Account", "Cientista", "Coordenador de CX")
 
         snap = OperacaoSnapshotService.get_snapshot(db, id_projeto, mes, ano)
         if snap is None:
