@@ -2944,27 +2944,35 @@ option {
     transition: all 0.3s ease;
 }
 
-.toast.sucesso {
+.toast.sucesso, .toast.success, .toast-sucesso, .toast-success {
     border-left: 4px solid #2ecc71;
 }
 
-.toast.sucesso i {
+.toast.sucesso i, .toast.success i, .toast-sucesso i, .toast-success i {
     color: #2ecc71;
 }
 
-.toast.erro {
+.toast.erro, .toast.error, .toast-erro, .toast-error {
     border-left: 4px solid #e74c3c;
 }
 
-.toast.erro i {
+.toast.erro i, .toast.error i, .toast-erro i, .toast-error i {
     color: #e74c3c;
 }
 
-/* DIVISÃÂRIAS NA TABELA DE REMUNERAÃÂÃÂO */
+.toast.info, .toast-info {
+    border-left: 4px solid #3498db;
+}
+
+.toast.info i, .toast-info i {
+    color: #3498db;
+}
+
+/* DIVISÃƒÂ“RIAS NA TABELA DE REMUNERAÃƒÂ‡ÃƒÂƒO */
 .remu-table th,
 .remu-table td {
     border-right: 1px solid var(--border-color);
-    /* Mais visÃÂ­vel no escuro */
+    /* Mais visÃƒÂ­vel no escuro */
 }
 
 .remu-table {

@@ -158,47 +158,6 @@
         }
     };
 
-    // // Sistema de Notificação (Toast)
-    window.showToast = function (mensagem, tipo = 'sucesso') {
-        let container = document.getElementById('toast-container');
-        if (!container) {
-            container = document.createElement('div');
-            container.id = 'toast-container';
-            document.body.appendChild(container);
-        }
-
-        const toast = document.createElement('div');
-        toast.className = `toast ${tipo}`;
-        const icone = tipo === 'sucesso' ? 'fa-check-circle' : 'fa-exclamation-circle';
-
-        toast.innerHTML = `
-            <i class="fas ${icone}"></i>
-            <span>${mensagem}</span>
-        `;
-        container.appendChild(toast);
-
-        setTimeout(() => {
-            toast.style.opacity = '1';
-            toast.style.transform = 'translateY(0)';
-        }, 10);
-
-        // setTimeout(() => {
-        //     toast.style.opacity = '0';
-        //     toast.style.transform = 'translateY(-20px)';
-        //     setTimeout(() => toast.remove(), 500);
-        // }, 7000);
-        setTimeout(() => {
-            toast.style.opacity = '0';
-            toast.style.transform = 'translateY(-20px)';
-
-            // Remove quando a transição terminar
-            toast.addEventListener('transitionend', () => {
-                toast.remove();
-            }, { once: true });
-
-        }, 7000);
-
-    };
 
     // =============================================
     // 5. SEGURANÇA (VISUAL APENAS)

@@ -18,9 +18,18 @@ class OperacaoService:
         meus_projetos_dict = {}
 
         if squad == "Gerência" or posicao in ["Gerência", "Sócio"]:
-            # Para gerência, buscar de todas as tabelas
+            # Para gerência/sócio, buscar de todas as tabelas (acesso global)
             for model in todas_tabelas:
                 projetos = db.query(model).all()
+                for p in projetos:
+                    if p.pipefy_id not in meus_projetos_dict:
+                        meus_projetos_dict[p.pipefy_id] = p
+        elif posicao == "Coordenador":
+            # Coordenador vê todos os projetos da sua squad
+            if not squad:
+                return []
+            for model in todas_tabelas:
+                projetos = db.query(model).filter(model.squad_atribuida == squad).all()
                 for p in projetos:
                     if p.pipefy_id not in meus_projetos_dict:
                         meus_projetos_dict[p.pipefy_id] = p

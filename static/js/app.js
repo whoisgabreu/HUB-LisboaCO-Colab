@@ -208,10 +208,21 @@ const Utils = {
 
 /**
  * Exibe uma notificação Toast premium na tela.
+ * Centralizado para evitar conflitos de implementação.
  * @param {string} message - Mensagem a ser exibida
- * @param {string} type - Tipo: 'success', 'error', 'info'
+ * @param {string} type - Tipo: 'success'/'sucesso', 'error'/'erro', 'info'
  */
 function showToast(message, type = 'success') {
+    // Normalização de tipos para compatibilidade (PT/EN)
+    const typeMap = {
+        'success': 'sucesso',
+        'error': 'erro',
+        'info': 'info',
+        'sucesso': 'sucesso',
+        'erro': 'erro'
+    };
+    const normalizedType = typeMap[type] || 'info';
+
     let container = document.getElementById('toast-container');
     if (!container) {
         container = document.createElement('div');
@@ -220,11 +231,15 @@ function showToast(message, type = 'success') {
     }
 
     const toast = document.createElement('div');
-    toast.className = `toast toast-${type}`;
+    // Adiciona classes para ambos os padrões encontrados no CSS
+    toast.className = `toast ${normalizedType} toast-${normalizedType}`;
 
-    let icon = 'fa-check-circle';
-    if (type === 'error') icon = 'fa-exclamation-circle';
-    if (type === 'info') icon = 'fa-info-circle';
+    const iconMap = {
+        'sucesso': 'fa-check-circle',
+        'erro': 'fa-exclamation-circle',
+        'info': 'fa-info-circle'
+    };
+    const icon = iconMap[normalizedType];
 
     toast.innerHTML = `
         <i class="fas ${icon}"></i>
@@ -233,14 +248,25 @@ function showToast(message, type = 'success') {
 
     container.appendChild(toast);
 
-    // Erros ficam mais tempo para garantir leitura
-    const duracao = type === 'error' ? 5000 : 4000;
-
+    // Entrada suave (força reflow para transição CSS)
     setTimeout(() => {
-        toast.classList.add('hiding');
+        toast.style.opacity = '1';
+        toast.style.transform = 'translateY(0)';
+    }, 10);
+
+    // Tempo de exibição: Erros ficam mais tempo (6s), outros (4s)
+    const duracao = normalizedType === 'erro' ? 6000 : 4000;
+
+    // Saída robusta: Usa setTimeout em vez de confiar apenas no transitionend
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(-20px)';
+        
+        // Remove do DOM após a animação de saída (300ms definido no CSS)
         setTimeout(() => {
             toast.remove();
-            if (container.childNodes.length === 0) {
+            // Limpa o container se estiver vazio
+            if (container && container.childNodes.length === 0) {
                 container.remove();
             }
         }, 350);
