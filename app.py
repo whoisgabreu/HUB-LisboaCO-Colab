@@ -71,8 +71,8 @@ def check_access(roles):
             user_role = session.get("funcao", "").strip()
             user_posicao = session.get("posicao", "").strip()
             
-            # Se for Gerência ou Sócio via posição, concede acesso a quase tudo
-            is_high_level = user_posicao in ["Gerência", "Sócio"]
+            # Se for Gerência, Sócio ou Coordenador via posição, concede acesso a quase tudo
+            is_high_level = user_posicao in ["Gerência", "Sócio", "Coordenador"]
             
             # Verifica se o cargo solicitado está na lista ou se é Gerência/Sócio
             if not is_high_level and not any(role.lower() == user_role.lower() for role in roles):
@@ -118,6 +118,7 @@ def _build_entregas_op_list(responsavel):
             if nome not in seen:
                 seen.add(nome)
                 e["nome"] = nome
+                e["tipo"] = "CIENTISTA"
                 result.append(e)
         return result
     return []
@@ -154,7 +155,16 @@ def _update_entrega_op_entregues(entregas_list, projeto_id, cliente_nome, respon
     entry = dict(entregas_list[idx])
     itens = [dict(e) for e in (entry.get("entregas") or [])]
     for item in itens:
-        if item.get("nome") == nome_entrega and item.get("tipo") == tipo_entrega:
+        is_match = False
+        if responsavel == "cientista":
+            if item.get("nome") == nome_entrega:
+                is_match = True
+                item["tipo"] = "CIENTISTA" # Normaliza legado
+        else:
+            if item.get("nome") == nome_entrega and item.get("tipo") == tipo_entrega:
+                is_match = True
+
+        if is_match:
             item["entregues"] = max(0, min(int(valor), item.get("meta", 1)))
             break
     entry["entregas"] = itens
@@ -716,8 +726,14 @@ def _buscar_projetos_db(model_class, email_investidor, squad_usuario):
     """Busca projetos no banco com a lógica do n8n: Gerência vê tudo, outros veem só o seu squad."""
     try:
         with Session() as db:
-            if squad_usuario == "Gerência" or session.get("posicao") == "Gerência":
+            u_posicao = session.get("posicao")
+            if squad_usuario == "Gerência" or u_posicao in ["Gerência", "Sócio"]:
                 projetos = db.query(model_class).all()
+            elif u_posicao == "Coordenador":
+                # Coordenador só vê dados da sua Squad; sem Squad, não vê nada
+                if not squad_usuario:
+                    return []
+                projetos = db.query(model_class).filter_by(squad_atribuida=squad_usuario).all()
             else:
                 projetos = db.query(model_class).filter_by(squad_atribuida=squad_usuario).all()
             return [_projeto_to_dict(p) for p in projetos]
@@ -1019,8 +1035,15 @@ def hub_projetos():
     # Busca squads disponíveis para o usuário (projetos ativos onde ele está no squad)
     try:
         with Session() as db:
-            if squad == "Gerência" or session.get("posicao") == "Gerência":
+            u_posicao = session.get("posicao")
+            if squad == "Gerência" or u_posicao in ["Gerência", "Sócio"]:
                 projetos_squad = db.query(ProjetoAtivo).all()
+            elif u_posicao == "Coordenador":
+                # Coordenador só vê sua própria squad; se não tiver squad, não vê nada
+                if not squad:
+                    projetos_squad = []
+                else:
+                    projetos_squad = db.query(ProjetoAtivo).filter_by(squad_atribuida=squad).all()
             else:
                 projetos_squad = db.query(ProjetoAtivo).filter_by(squad_atribuida=squad).all()
             squads = list(set(p.squad_atribuida for p in projetos_squad if p.squad_atribuida))
@@ -1048,7 +1071,7 @@ def hub_projetos():
 
 @app.route("/hub-remuneracao")
 @check_session
-@check_access(["Gerência"])
+@check_access(["Gerência", "Sócio", "Coordenador"])
 def hub_remuneracao():
     try:
         with Session() as db:
@@ -1091,21 +1114,37 @@ def hub_remuneracao():
 
 
             # 2. Busca métricas mais recentes agrupadas por investidor
-            metricas_raw = db.query(MetricaMensal, Investidor).join(
+            u_posicao = session.get("posicao")
+            u_squad = session.get("squad")
+
+            query_metricas = db.query(MetricaMensal, Investidor).join(
                 Investidor, MetricaMensal.email_investidor == Investidor.email
-            ).order_by(
-                MetricaMensal.email_investidor,
-                MetricaMensal.ano.desc(),
-                MetricaMensal.mes.desc()
-            ).all()
+            )
+
+            # Se for Coordenador, filtra apenas pela própria squad
+            if u_posicao == "Coordenador":
+                if not u_squad:
+                    metricas_raw = []
+                else:
+                    metricas_raw = query_metricas.filter(Investidor.squad == u_squad).order_by(
+                        MetricaMensal.email_investidor,
+                        MetricaMensal.ano.desc(),
+                        MetricaMensal.mes.desc()
+                    ).all()
+            else:
+                metricas_raw = query_metricas.order_by(
+                    MetricaMensal.email_investidor,
+                    MetricaMensal.ano.desc(),
+                    MetricaMensal.mes.desc()
+                ).all()
 
         # Agrupa histórico por investidor
         investidores_dict = {}
         for metrica, investidor in metricas_raw:
             email = metrica.email_investidor
 
-            # Filtra posição Gerência
-            if investidor.posicao and investidor.posicao.lower() == "gerência":
+            # Filtra posições de gestão/coordenação da listagem
+            if investidor.posicao and investidor.posicao in ["Gerência", "Sócio", "Coordenador"]:
                 continue
 
             if email not in investidores_dict:
@@ -1192,7 +1231,7 @@ def gerenciar_usuarios():
             niveis = db.query(RemuneracaoCargo.fixo_level).distinct().all()
             
             # Posições e Squads fixas ou do banco
-            posicoes = ["Operação", "Gerência", "Meio", "Sócio"]
+            posicoes = ["Operação", "Gerência", "Meio", "Sócio", "Coordenador"]
             squads_db = db.query(Investidor.squad).filter(Investidor.squad != None).distinct().all()
             squads = sorted(list(set([s[0] for s in squads_db if s[0]] + ["Gerência", "Strike Force", "Shark", "Tigers"])))
 
@@ -1620,8 +1659,8 @@ def update_criativa_contratados():
     """
     user_posicao = session.get("posicao", "")
     user_nivel = session.get("nivel_acesso", "")
-    if user_posicao not in ("Gerência", "Sócio") and user_nivel != "Admin":
-        return jsonify({"error": "Acesso restrito ao Coordenador."}), 403
+    if user_posicao not in ("Gerência", "Sócio", "Coordenador") and user_nivel != "Admin":
+        return jsonify({"error": "Acesso restrito."}), 403
 
     data = request.json or {}
     email = data.get("email_investidor")
@@ -1638,6 +1677,15 @@ def update_criativa_contratados():
 
     try:
         with Session() as db:
+            # Validação de Squad para Coordenador
+            if user_posicao == "Coordenador":
+                u_squad = session.get("squad")
+                if not u_squad:
+                    return jsonify({"error": "Coordenador sem Squad atribuída."}), 403
+                target_user = db.query(Investidor).filter_by(email=email).first()
+                if not target_user or target_user.squad != u_squad:
+                    return jsonify({"error": "Acesso restrito à sua Squad."}), 403
+
             record = _get_or_create_entrega_record(db, email, int(mes), int(ano))
             lista = list(record.entregas_criativos or [])
 
@@ -1685,7 +1733,7 @@ def update_criativa_entregues():
     user_email = session.get("email")
     user_posicao = session.get("posicao", "")
     user_nivel = session.get("nivel_acesso", "")
-    is_high_level = user_posicao in ("Gerência", "Sócio") or user_nivel == "Admin"
+    is_high_level = user_posicao in ("Gerência", "Sócio", "Coordenador") or user_nivel == "Admin"
     if not is_high_level and user_email != email:
         return jsonify({"error": "Você só pode editar suas próprias entregas."}), 403
 
@@ -1695,6 +1743,15 @@ def update_criativa_entregues():
 
     try:
         with Session() as db:
+            # Validação de Squad para Coordenador
+            if user_posicao == "Coordenador" and user_email != email:
+                u_squad = session.get("squad")
+                if not u_squad:
+                    return jsonify({"error": "Coordenador sem Squad atribuída."}), 403
+                target_user = db.query(Investidor).filter_by(email=email).first()
+                if not target_user or target_user.squad != u_squad:
+                    return jsonify({"error": "Acesso restrito à sua Squad."}), 403
+
             record = _get_or_create_entrega_record(db, email, int(mes), int(ano))
             lista_atual = list(record.entregas_criativos or [])
 
@@ -1762,7 +1819,7 @@ def update_criativa_link():
     user_email = session.get("email")
     user_posicao = session.get("posicao", "")
     user_nivel = session.get("nivel_acesso", "")
-    is_high_level = user_posicao in ("Gerência", "Sócio") or user_nivel == "Admin"
+    is_high_level = user_posicao in ("Gerência", "Sócio", "Coordenador") or user_nivel == "Admin"
     if not is_high_level and user_email != email:
         return jsonify({"error": "Você só pode editar suas próprias entregas."}), 403
 
@@ -1933,7 +1990,7 @@ def get_entregas_operacao(email, mes, ano):
     user_email = session.get("email")
     user_posicao = session.get("posicao", "")
     user_nivel = session.get("nivel_acesso", "")
-    is_high_level = user_posicao in ("Gerência", "Sócio") or user_nivel == "Admin"
+    is_high_level = user_posicao in ("Gerência", "Sócio", "Coordenador") or user_nivel == "Admin"
     if not is_high_level and user_email != email:
         return jsonify({"error": "Acesso restrito"}), 403
     try:
@@ -1974,7 +2031,7 @@ def update_entregas_operacao_entregues():
     user_email = session.get("email")
     user_posicao = session.get("posicao", "")
     user_nivel = session.get("nivel_acesso", "")
-    is_high_level = user_posicao in ("Gerência", "Sócio") or user_nivel == "Admin"
+    is_high_level = user_posicao in ("Gerência", "Sócio", "Coordenador") or user_nivel == "Admin"
     if not is_high_level and user_email != email:
         return jsonify({"error": "Você só pode editar suas próprias entregas."}), 403
 
@@ -1983,6 +2040,45 @@ def update_entregas_operacao_entregues():
 
     try:
         with Session() as db:
+            # ── VALIDAÇÃO DE CONSISTÊNCIA DE TIPO DE ENTREGA (E8) ──────────
+            # Busca vínculo para verificar status de cientista
+            inv_proj = db.query(InvestidorProjeto).filter_by(
+                email_investidor=email, pipefy_id_projeto=projeto_id
+            ).first()
+            is_cientista = inv_proj.cientista if inv_proj else False
+
+            if is_cientista:
+                # Se é cientista, forçamos o tipo e responsavel corretos
+                responsavel = "cientista"
+                tipo_entrega = "CIENTISTA"
+            else:
+                # Se não é cientista, validamos contra o cargo base
+                investidor = db.query(Investidor).filter_by(email=email).first()
+                if not investidor:
+                    return jsonify({"error": "Investidor não encontrado."}), 404
+                
+                cargo_base = (investidor.funcao or "").strip()
+                expected = "gt" if cargo_base == "Gestor de Tráfego" else "account"
+                
+                if tipo_entrega.lower() != expected:
+                    return jsonify({
+                        "error": f"Inconsistência: tipo_entrega '{tipo_entrega}' inválido para investidor '{cargo_base}' (não cientista neste projeto)."
+                    }), 400
+                
+                # Normaliza para o padrão esperado
+                tipo_entrega = expected
+                responsavel = expected
+            # ──────────────────────────────────────────────────────────────
+
+            # Validação de Squad para Coordenador
+            if user_posicao == "Coordenador" and user_email != email:
+                u_squad = session.get("squad")
+                if not u_squad:
+                    return jsonify({"error": "Coordenador sem Squad atribuída."}), 403
+                target_user = db.query(Investidor).filter_by(email=email).first()
+                if not target_user or target_user.squad != u_squad:
+                    return jsonify({"error": "Acesso restrito à sua Squad."}), 403
+
             record = _get_or_create_entrega_record(db, email, int(mes), int(ano))
             lista = _update_entrega_op_entregues(
                 list(record.entregas_operacao or []),
@@ -2037,7 +2133,7 @@ def update_entregas_operacao_links():
     user_email = session.get("email")
     user_posicao = session.get("posicao", "")
     user_nivel = session.get("nivel_acesso", "")
-    is_high_level = user_posicao in ("Gerência", "Sócio") or user_nivel == "Admin"
+    is_high_level = user_posicao in ("Gerência", "Sócio", "Coordenador") or user_nivel == "Admin"
     if not is_high_level and user_email != email:
         return jsonify({"error": "Você só pode editar suas próprias entregas."}), 403
 
@@ -2098,10 +2194,19 @@ def get_op_deliveries_coord(email, mes, ano):
     """Retorna status das entregas mensais de um Account/GT para coordenadores."""
     posicao = session.get("posicao", "").strip()
     nivel   = session.get("nivel_acesso", "").strip()
-    if posicao not in ("Gerência", "Sócio") and nivel != "Admin":
+    if posicao not in ("Gerência", "Sócio", "Coordenador") and nivel != "Admin":
         return jsonify({"error": "Acesso restrito"}), 403
     try:
         with Session() as db:
+            # Validação de Squad para Coordenador
+            if posicao == "Coordenador":
+                u_squad = session.get("squad")
+                if not u_squad:
+                    return jsonify({"error": "Coordenador sem Squad atribuída."}), 403
+                target_user = db.query(Investidor).filter_by(email=email).first()
+                if not target_user or target_user.squad != u_squad:
+                    return jsonify({"error": "Acesso restrito à sua Squad."}), 403
+
             entregas = db.query(MonthlyDelivery).filter_by(
                 email=email, month=mes, year=ano
             ).all()
@@ -2122,7 +2227,7 @@ def update_op_delivery_coord():
     """Permite coordenador marcar/desmarcar entrega manualmente."""
     posicao = session.get("posicao", "").strip()
     nivel   = session.get("nivel_acesso", "").strip()
-    if posicao not in ("Gerência", "Sócio") and nivel != "Admin":
+    if posicao not in ("Gerência", "Sócio", "Coordenador") and nivel != "Admin":
         return jsonify({"error": "Acesso restrito"}), 403
     data = request.get_json()
     email         = data.get("email")
@@ -2135,6 +2240,15 @@ def update_op_delivery_coord():
         return jsonify({"error": "Dados inválidos"}), 400
     try:
         with Session() as db:
+            # Validação de Squad para Coordenador
+            if posicao == "Coordenador":
+                u_squad = session.get("squad")
+                if not u_squad:
+                    return jsonify({"error": "Coordenador sem Squad atribuída."}), 403
+                target_user = db.query(Investidor).filter_by(email=email).first()
+                if not target_user or target_user.squad != u_squad:
+                    return jsonify({"error": "Acesso restrito à sua Squad."}), 403
+
             entry = db.query(MonthlyDelivery).filter_by(
                 email=email, client_id=int(client_id),
                 delivery_type=delivery_type, month=mes, year=ano
@@ -2937,13 +3051,32 @@ def get_projeto_vinculos(pipefy_id):
 
 @app.route("/api/projetos/vincular", methods=["POST"])
 @check_session
-@check_access(["Gerência"])
+@check_access(["Gerência", "Sócio", "Coordenador"])
 def vincular_investidor():
     """Vincula um investidor a um projeto."""
     data = request.json
     email_investidor = data.get("email_investidor")
     pipefy_id = data.get("pipefy_id_projeto")
     cientista = data.get("cientista", False)
+
+    user_posicao = session.get("posicao")
+    user_squad = session.get("squad")
+
+    if user_posicao == "Coordenador":
+        if not user_squad:
+            return jsonify({"error": "Coordenador sem Squad atribuída."}), 403
+        
+        # Valida se o projeto pertence à squad do coordenador
+        try:
+            with Session() as db:
+                projeto = db.query(ProjetoAtivo).filter_by(pipefy_id=str(pipefy_id)).first()
+                if not projeto:
+                    projeto = db.query(ProjetoOnetime).filter_by(pipefy_id=str(pipefy_id)).first()
+                
+                if not projeto or projeto.squad_atribuida != user_squad:
+                    return jsonify({"error": "Acesso restrito à sua Squad."}), 403
+        except SQLAlchemyError:
+            pass # Continua para a lógica principal que lidará com erros de banco
     
     if not email_investidor or not pipefy_id:
         return jsonify({"error": "E-mail e ID do projeto são obrigatórios."}), 400
@@ -2993,10 +3126,13 @@ def vincular_investidor():
 
 @app.route("/api/projetos/<int:pipefy_id>", methods=["PUT"])
 @check_session
-@check_access(["Gerência"])
+@check_access(["Gerência", "Sócio", "Coordenador"])
 def update_projeto_local(pipefy_id):
     """Atualiza dados do projeto e sincroniza vínculos."""
     data = request.json
+    user_posicao = session.get("posicao")
+    user_squad = session.get("squad")
+
     try:
         from decimal import Decimal
         with Session() as db:
@@ -3008,6 +3144,11 @@ def update_projeto_local(pipefy_id):
             
             if not projeto:
                 return jsonify({"error": "Projeto não encontrado."}), 404
+
+            # Validação de Squad para Coordenador
+            if user_posicao == "Coordenador":
+                if not user_squad or projeto.squad_atribuida != user_squad:
+                    return jsonify({"error": "Acesso restrito à sua Squad."}), 403
 
             # Rastreamento de alterações para o histórico
             changes = {}

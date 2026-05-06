@@ -744,13 +744,13 @@ const OP_ENTREGAS_CONFIG = {
         { tipo: 'doc_otimizacao', nome: 'documento_de_otimizacao', db_tipo: 'gt', label: 'Documento de Otimização', icone: 'fa-sliders-h', padrao: 4, link: false },
     ],
     'Cientista': [
-        { tipo: 'relatorio_mensal', nome: 'relatorio_mensal', db_tipo: 'account', label: 'Relatório Mensal', icone: 'fa-file-alt', padrao: 1, link: true, link_field: 'link_relatorio' },
-        { tipo: 'csat_checkin', nome: 'csat_checkin', db_tipo: 'account', label: 'CSAT Check-in', icone: 'fa-comments', padrao: 4, link: false },
-        { tipo: 'planner_monday', nome: 'planner_monday', db_tipo: 'account', label: 'Planner Monday', icone: 'fa-calendar-check', padrao: 4, link: false },
-        { tipo: 'forecast', nome: 'forecasting', db_tipo: 'account', label: 'Forecasting', icone: 'fa-chart-line', padrao: 1, link: true, link_field: 'link_forecast' },
-        { tipo: 'plano_midia', nome: 'plano_de_midia', db_tipo: 'gt', label: 'Plano de Mídia', icone: 'fa-bullhorn', padrao: 1, link: false },
-        { tipo: 'kpi', nome: 'kpis', db_tipo: 'gt', label: 'KPIs', icone: 'fa-tachometer-alt', padrao: 1, link: true, link_field: 'link_kpi' },
-        { tipo: 'doc_otimizacao', nome: 'documento_de_otimizacao', db_tipo: 'gt', label: 'Documento de Otimização', icone: 'fa-sliders-h', padrao: 4, link: false },
+        { tipo: 'relatorio_mensal', nome: 'relatorio_mensal', db_tipo: 'CIENTISTA', label: 'Relatório Mensal', icone: 'fa-file-alt', padrao: 1, link: true, link_field: 'link_relatorio' },
+        { tipo: 'csat_checkin', nome: 'csat_checkin', db_tipo: 'CIENTISTA', label: 'CSAT Check-in', icone: 'fa-comments', padrao: 4, link: false },
+        { tipo: 'planner_monday', nome: 'planner_monday', db_tipo: 'CIENTISTA', label: 'Planner Monday', icone: 'fa-calendar-check', padrao: 4, link: false },
+        { tipo: 'forecast', nome: 'forecasting', db_tipo: 'CIENTISTA', label: 'Forecasting', icone: 'fa-chart-line', padrao: 1, link: true, link_field: 'link_forecast' },
+        { tipo: 'plano_midia', nome: 'plano_de_midia', db_tipo: 'CIENTISTA', label: 'Plano de Mídia', icone: 'fa-bullhorn', padrao: 1, link: false },
+        { tipo: 'kpi', nome: 'kpis', db_tipo: 'CIENTISTA', label: 'KPIs', icone: 'fa-tachometer-alt', padrao: 1, link: true, link_field: 'link_kpi' },
+        { tipo: 'doc_otimizacao', nome: 'documento_de_otimizacao', db_tipo: 'CIENTISTA', label: 'Documento de Otimização', icone: 'fa-sliders-h', padrao: 4, link: false },
     ]
 };
 
