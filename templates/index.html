@@ -208,7 +208,11 @@
                                 <div class="remu-mini-project-name">${p.nome || 'N/A'} ${badge}</div>
                                 <div class="remu-mini-project-id">${p.id}</div>
                             </td>
-                            <td class="remu-mini-project-fee">${fmt(p.fee)}</td>
+                            <td class="remu-mini-project-fee">${
+                                (p.moeda === 'USD') 
+                                ? `US$ ${parseFloat(p.fee).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+                                : fmt(p.fee)
+                            }</td>
                         </tr>`;
                 });
                 html += '</tbody></table>';

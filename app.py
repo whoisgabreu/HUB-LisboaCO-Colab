@@ -350,7 +350,13 @@ def _recalcular_mrr_por_entregas(record):
         for v in todos_vinculos:
             pid = str(v.pipefy_id_projeto)
 
+            from models import ProjetoAtivo, ProjetoOnetime, ProjetoInativo
             proj = db_aux.query(ProjetoAtivo).filter_by(pipefy_id=v.pipefy_id_projeto).first()
+            if not proj:
+                proj = db_aux.query(ProjetoOnetime).filter_by(pipefy_id=v.pipefy_id_projeto).first()
+            if not proj:
+                proj = db_aux.query(ProjetoInativo).filter_by(pipefy_id=v.pipefy_id_projeto).first()
+                
             moeda_proj = str(proj.moeda).strip().upper() if proj and proj.moeda else "BRL"
 
             if moeda_proj == "USD":
@@ -432,6 +438,8 @@ def _recalcular_mrr_por_entregas(record):
                 # Churn: apenas vinculos inativados no mês deste record
                 if v.inactivated_at and v.inactivated_at.strftime("%Y-%m") == mes_atual_str:
                     churn_calculado += fee
+                    # Portfólio Total deve incluir quem saiu no mês também!
+                    mrr_portfolio_total += fee_full
                     
                     # Detalhes do Churn (snapshot para o JSON)
                     novos_detalhes.append({
@@ -935,7 +943,11 @@ def home():
                 ProjetoAtivo.squad_atribuida != ""
             ).distinct().count()
 
-            projetos = db.query(ProjetoAtivo).all()
+            # MRR Global: Ativos + Onetime
+            projetos_ativos = db.query(ProjetoAtivo).all()
+            projetos_onetime = db.query(ProjetoOnetime).all()
+            projetos = projetos_ativos + projetos_onetime
+            
             mrr_total = 0
             usd_rate = None
             for p in projetos:
@@ -956,6 +968,9 @@ def home():
                 "squads": squads_count
             }
     except Exception as e:
+        import traceback
+        with open("error_log_home1.txt", "w") as f:
+            f.write(traceback.format_exc())
         print(f"Erro ao carregar dados operacionais: {e}")
         operational_data = {
             "mrr": 0,
@@ -998,10 +1013,35 @@ def home():
                     )
                 ).all()
 
-                projetos_vinculados = [
-                    {"id": v.pipefy_id_projeto, "nome": v.nome_projeto, "fee": float(v.fee_projeto or 0), "active": v.active}
-                    for v in vinculos
-                ]
+                # Buscar metadata dos projetos (moeda) para conversão
+                projeto_metadata = {}
+                for table in [ProjetoAtivo, ProjetoOnetime, ProjetoInativo]:
+                    rows = db.query(table.pipefy_id, table.moeda).all()
+                    for r in rows:
+                        if r.pipefy_id:
+                            projeto_metadata[str(r.pipefy_id)] = str(r.moeda).strip().upper() if r.moeda else "BRL"
+
+                usd_rate = None
+                projetos_vinculados = []
+                for v in vinculos:
+                    pid_str = str(v.pipefy_id_projeto)
+                    moeda = projeto_metadata.get(pid_str, "BRL")
+                    fee = float(v.fee_projeto or 0)
+                    
+                    if moeda == "USD":
+                        if usd_rate is None:
+                            usd_rate = float(CurrencyService.get_usd_to_brl_rate())
+                        # fee = fee * usd_rate # Opcional: converter aqui ou passar a moeda
+                        # Decidimos passar o fee original e a moeda para que o JS saiba como exibir
+                        pass
+
+                    projetos_vinculados.append({
+                        "id": v.pipefy_id_projeto,
+                        "nome": v.nome_projeto,
+                        "fee": fee,
+                        "moeda": moeda,
+                        "active": v.active
+                    })
 
                 clients_count_user = db.query(InvestidorProjeto).filter_by(
                     email_investidor=user_email, active=True
@@ -1055,10 +1095,13 @@ def home():
                     "churn_rs": last_row.get("churn_rs", 0),
                     "clients_count": clients_count_user,
                     "projetos_total": len(projetos_vinculados),
-                    "projetos_vinculados": json.dumps(projetos_vinculados),
+                    "projetos_vinculados": projetos_vinculados,
                     "rows": rows,
                 }
     except Exception as e:
+        import traceback
+        with open("error_log_home2.txt", "w") as f:
+            f.write(traceback.format_exc())
         print(f"Erro ao carregar remuneração do usuário: {e}")
         my_remuneracao = None
     # ── Fim métricas de remuneração ────────────────────────────────────────────
@@ -1149,15 +1192,26 @@ def hub_remuneracao():
                 )
             ).all()
 
+            # Buscar de todas as tabelas para garantir cobertura de onetimes e inativos
+            from models import ProjetoAtivo, ProjetoOnetime, ProjetoInativo
+            projeto_metadata = {}
+            for table in [ProjetoAtivo, ProjetoOnetime, ProjetoInativo]:
+                rows = db.query(table.pipefy_id, table.moeda).all()
+                for r in rows:
+                    if r.pipefy_id:
+                        projeto_metadata[str(r.pipefy_id)] = str(r.moeda).strip().upper() if r.moeda else "BRL"
+
             projetos_map = {}
             for v in all_vinculos:
                 if v.email_investidor not in projetos_map:
                     projetos_map[v.email_investidor] = []
-                # Inclui ID, Nome e Fee para exibição detalhada
+                # Inclui ID, Nome, Fee e Moeda para exibição detalhada
+                pid_str = str(v.pipefy_id_projeto)
                 projetos_map[v.email_investidor].append({
                     "id": v.pipefy_id_projeto,
                     "nome": v.nome_projeto,
                     "fee": float(v.fee_projeto or 0),
+                    "moeda": projeto_metadata.get(pid_str, "BRL"),
                     "active": v.active
                 })
 
@@ -1523,8 +1577,16 @@ def criativa():
 
             # Fee e moeda por projeto (pipefy_id → {fee, moeda})
             projeto_fees = {}
-            fee_rows = db.query(ProjetoAtivo.pipefy_id, ProjetoAtivo.fee, ProjetoAtivo.moeda).all()
-            for row in fee_rows:
+            
+            # Buscar de todas as tabelas para garantir cobertura de onetimes e inativos
+            from models import ProjetoOnetime, ProjetoInativo
+            fee_rows_ativos = db.query(ProjetoAtivo.pipefy_id, ProjetoAtivo.fee, ProjetoAtivo.moeda).all()
+            fee_rows_onetime = db.query(ProjetoOnetime.pipefy_id, ProjetoOnetime.fee, ProjetoOnetime.moeda).all()
+            fee_rows_inativo = db.query(ProjetoInativo.pipefy_id, ProjetoInativo.fee, ProjetoInativo.moeda).all()
+            
+            all_fee_rows = fee_rows_ativos + fee_rows_onetime + fee_rows_inativo
+            
+            for row in all_fee_rows:
                 if row.pipefy_id:
                     try:
                         projeto_fees[str(row.pipefy_id)] = {
@@ -3519,8 +3581,14 @@ def hub_cs_cx():
             # 1. KPIs Gerais (Dashboard) - Sincronizado com a Home
             usd_rate = float(CurrencyService.get_usd_to_brl_rate())
             
-            projetos_todos = db.query(ProjetoAtivo).all()
+            # 1. KPIs Gerais (Dashboard)
+            p_ativos = db.query(ProjetoAtivo).all()
+            p_onetime = db.query(ProjetoOnetime).all()
+            projetos_todos = p_ativos + p_onetime
+            
             mrr_total = 0
+            usd_rate = float(CurrencyService.get_usd_to_brl_rate())
+            
             for p in projetos_todos:
                 fee_p = float(p.fee or 0)
                 if str(p.moeda).strip().upper() == "USD":
@@ -3531,8 +3599,8 @@ def hub_cs_cx():
             active_clients = db.query(ProjetoAtivo).count()
             nps_avg = db.query(func.avg(OperacaoCheckin.csat_pontuacao)).filter(OperacaoCheckin.csat_pontuacao != None).scalar() or 0
             
-            # 2. Dados para o Ranking
-            ranking = db.query(ProjetoAtivo).order_by(ProjetoAtivo.data_de_inicio.asc()).all()
+            # 2. Ranking: Para LTV completo, precisamos de Ativos + Onetime + Inativos
+            ranking = db.query(ProjetoAtivo).all() + db.query(ProjetoOnetime).all() + db.query(ProjetoInativo).all()
             today = date.today()
             
             def calculate_meses_to(start_date, end_date):
@@ -3562,7 +3630,11 @@ def hub_cs_cx():
                 try: cid = int(client_id)
                 except: cid = 0
 
-                projetos_cliente = db.query(ProjetoAtivo).filter(ProjetoAtivo.pipefy_id == cid).all()
+                projetos_cliente = (
+                    db.query(ProjetoAtivo).filter(ProjetoAtivo.pipefy_id == cid).all() +
+                    db.query(ProjetoOnetime).filter(ProjetoOnetime.pipefy_id == cid).all() +
+                    db.query(ProjetoInativo).filter(ProjetoInativo.pipefy_id == cid).all()
+                )
                 cliente = projetos_cliente[0] if projetos_cliente else None
                 
                 if not cliente:

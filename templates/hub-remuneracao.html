@@ -449,7 +449,11 @@ Menor churn e maior eficiência = maior remuneração.
                                 <div class="remu-mini-project-name">${p.nome || 'N/A'} ${churnBadge}</div>
                                 <div class="remu-mini-project-id">${p.id}</div>
                             </td>
-                            <td class="remu-mini-project-fee">${window.Utils ? Utils.formatBRL(p.fee) : p.fee}</td>
+                            <td class="remu-mini-project-fee">${
+                                (p.moeda === 'USD') 
+                                ? `US$ ${parseFloat(p.fee).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+                                : (window.Utils ? Utils.formatBRL(p.fee) : p.fee)
+                            }</td>
                         </tr>`;
                 });
                 tableHtml += `</tbody></table>`;

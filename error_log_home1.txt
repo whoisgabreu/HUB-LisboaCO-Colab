@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "/home/anthares/Documentos/Projetos/V4/HUB-LisboaCO-Colab/app.py", line 939, in home
+    clients_count = db.query(ProjetoAtivo).count()
+                             ^^^^^^^^^^^^
+UnboundLocalError: cannot access local variable 'ProjetoAtivo' where it is not associated with a value
