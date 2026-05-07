@@ -27,25 +27,25 @@ function _isCoordinador() {
  * - Se estiver na view de equipe: recarrega a página normalmente.
  */
 function handlePeriodoChange() {
-    const novoMes = parseInt(document.getElementById('sel-mes').value);
-    const novoAno = parseInt(document.getElementById('sel-ano').value);
-
     const isDetalhe = document.getElementById('criativa-view-designer-detalhe')
         ?.classList.contains('active');
-    if (isDetalhe && _designerEmailAtual) {
-        _mesSelecionado = novoMes;
-        _anoSelecionado = novoAno;
+    const isOpDetalhe = document.getElementById('criativa-view-operacional-detalhe')
+        ?.classList.contains('active');
 
-        const url = new URL(window.location);
-        url.searchParams.set('mes', novoMes);
-        url.searchParams.set('ano', novoAno);
-        history.replaceState({}, '', url);
+    const form = document.getElementById('form-periodo');
+    let emailToOpen = '';
+    if (isDetalhe && _designerEmailAtual) emailToOpen = _designerEmailAtual;
+    else if (isOpDetalhe && _opEmail) emailToOpen = _opEmail;
 
-        _renderDesignerRemu(_opRemuJson);
-        _fetchAndRefreshDetalhe();
-    } else {
-        document.getElementById('form-periodo').submit();
+    if (emailToOpen) {
+        let input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'open_email';
+        input.value = emailToOpen;
+        form.appendChild(input);
     }
+    
+    form.submit();
 }
 
 /**
@@ -128,6 +128,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
         });
+    }
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const openEmail = urlParams.get('open_email');
+    if (openEmail) {
+        const card = document.querySelector(`.criativa-card[data-designer-email="${openEmail}"]`);
+        if (card) {
+            const funcao = card.getAttribute('data-designer-funcao') || '';
+            if (funcao === 'Account' || funcao === 'Gestor de Tráfego') {
+                openOperacionalDetalhe(card);
+            } else {
+                openDesignerDetalhe(card);
+            }
+        }
+        
+        urlParams.delete('open_email');
+        const newUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '');
+        history.replaceState({}, '', newUrl);
     }
 });
 

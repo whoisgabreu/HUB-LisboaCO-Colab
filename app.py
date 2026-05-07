@@ -934,10 +934,9 @@ def home():
                 ProjetoAtivo.squad_atribuida != ""
             ).distinct().count()
 
-            # MRR Global: Ativos + Onetime
+            # MRR Global: Apenas Ativos (recorrentes)
             projetos_ativos = db.query(ProjetoAtivo).all()
-            projetos_onetime = db.query(ProjetoOnetime).all()
-            projetos = projetos_ativos + projetos_onetime
+            projetos = projetos_ativos
             
             mrr_total = 0
             usd_rate = None
