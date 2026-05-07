@@ -534,17 +534,7 @@ async function updateProject(event) {
     data.investidores = projectVinculosLocal;
     
     try {
-        // 1. Atualiza no n8n (para compatibilidade externa)
-        await fetch('https://n8n.v4lisboatech.com.br/webhook/update_projeto', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'x-api-key': data.userToken
-            },
-            body: JSON.stringify(data)
-        });
-
-        // 2. Atualiza no HUB LOCAL (Backend Flask)
+        // 1. Atualiza no HUB LOCAL (Backend Flask)
         const response = await fetch(`/api/projetos/${data.pipefy_id}`, {
             method: 'PUT',
             headers: {

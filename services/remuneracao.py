@@ -70,12 +70,14 @@ def calcular_metricas_mensais(mes, ano):
             for v in vinculos:
                 pid = str(v.pipefy_id_projeto)
                 # Achar a moeda do projeto
-                from models import ProjetoAtivo, ProjetoOnetime
-                proj_ativo = db.query(ProjetoAtivo).filter_by(pipefy_id=v.pipefy_id_projeto).first()
-                if not proj_ativo:
-                    proj_ativo = db.query(ProjetoOnetime).filter_by(pipefy_id=v.pipefy_id_projeto).first()
+                from models import ProjetoAtivo, ProjetoOnetime, ProjetoInativo
+                proj = db.query(ProjetoAtivo).filter_by(pipefy_id=v.pipefy_id_projeto).first()
+                if not proj:
+                    proj = db.query(ProjetoOnetime).filter_by(pipefy_id=v.pipefy_id_projeto).first()
+                if not proj:
+                    proj = db.query(ProjetoInativo).filter_by(pipefy_id=v.pipefy_id_projeto).first()
 
-                moeda = proj_ativo.moeda if proj_ativo else "BRL"
+                moeda = proj.moeda if proj else "BRL"
 
                 # FEE COMPLETO — base para portfolio, flag e churn (fee integral, não proporcional)
                 fee_full = Decimal(str(v.fee_projeto or 0))
@@ -120,6 +122,20 @@ def calcular_metricas_mensais(mes, ano):
                     if v.inactivated_at:
                         if v.inactivated_at.strftime("%Y-%m") == mes_atual_str:
                             churn_atual += fee_prop
+                            # Portfólio Total deve incluir quem saiu no mês também!
+                            mrr_portfolio_total += fee_full
+                            
+                            # Detalhes do Churn (snapshot para o JSON)
+                            detalhes.append({
+                                "id": v.pipefy_id_projeto,
+                                "nome": v.nome_projeto,
+                                "moeda": moeda,
+                                "cientista": v.cientista,
+                                "ativo": False,
+                                "churned": True,
+                                "data_churn": v.inactivated_at.strftime("%d/%m/%Y"),
+                                "fee": float(fee_full)
+                            })
 
             # Buscar limites do cargo
             cargo_config = None
