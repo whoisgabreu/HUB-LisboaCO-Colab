@@ -250,7 +250,12 @@ def calcular_metricas_mensais(mes, ano):
             novo_mrr = Decimal("0")
             for v in vinculos:
                 if not v.active:
-                    continue
+                    # Inclui no cálculo os projetos inativos apenas se o churn ocorreu no mês atual
+                    eh_churn_atual_proj = False
+                    if v.inactivated_at and v.inactivated_at.strftime("%Y-%m") == mes_atual_str:
+                        eh_churn_atual_proj = True
+                    if not eh_churn_atual_proj:
+                        continue
 
                 pid = str(v.pipefy_id_projeto)
                 p = entregas_map.get(pid)
