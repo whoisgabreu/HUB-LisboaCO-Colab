@@ -120,6 +120,18 @@ def calcular_metricas_mensais(mes, ano):
                     if v.inactivated_at:
                         if v.inactivated_at.strftime("%Y-%m") == mes_atual_str:
                             churn_atual += fee_prop
+                            
+                            # Detalhes do Churn (snapshot para o JSON)
+                            detalhes.append({
+                                "id": v.pipefy_id_projeto,
+                                "nome": v.nome_projeto,
+                                "moeda": moeda,
+                                "cientista": v.cientista,
+                                "ativo": False,
+                                "churned": True,
+                                "data_churn": v.inactivated_at.strftime("%d/%m/%Y"),
+                                "fee": float(fee_full)
+                            })
 
             # Buscar limites do cargo
             cargo_config = None

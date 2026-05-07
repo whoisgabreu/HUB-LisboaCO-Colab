@@ -336,6 +336,7 @@ def _recalcular_mrr_por_entregas(record):
     total_mrr_entregue = Decimal("0")
     mrr_portfolio_total = Decimal("0")
     churn_calculado = Decimal("0")
+    novos_detalhes = []
 
     with Session() as db_aux:
         # Busca todos os vínculos (ativos + inativados no mês para churn)
@@ -378,6 +379,16 @@ def _recalcular_mrr_por_entregas(record):
 
             if v.active:
                 mrr_portfolio_total += fee_full  # portfolio = fees completos
+                
+                # Detalhes (snapshot para o JSON)
+                novos_detalhes.append({
+                    "id": v.pipefy_id_projeto,
+                    "nome": v.nome_projeto,
+                    "moeda": moeda_proj,
+                    "cientista": bool(v.cientista),
+                    "ativo": True,
+                    "fee": float(fee_full)
+                })
 
                 # Regra: Meses 02 e 03 de 2026 estão zerados para todos (nenhuma entrega)
                 p = entregas_map.get(pid)
@@ -421,16 +432,30 @@ def _recalcular_mrr_por_entregas(record):
                 # Churn: apenas vinculos inativados no mês deste record
                 if v.inactivated_at and v.inactivated_at.strftime("%Y-%m") == mes_atual_str:
                     churn_calculado += fee
+                    
+                    # Detalhes do Churn (snapshot para o JSON)
+                    novos_detalhes.append({
+                        "id": v.pipefy_id_projeto,
+                        "nome": v.nome_projeto,
+                        "moeda": moeda_proj,
+                        "cientista": bool(v.cientista),
+                        "ativo": False,
+                        "churned": True,
+                        "data_churn": v.inactivated_at.strftime("%d/%m/%Y"),
+                        "fee": float(fee_full)
+                    })
 
     record.fixo_mrr_entrega = total_mrr_entregue
     record.fixo_mrr_atual = max(Decimal("0"), total_mrr_entregue - churn_calculado)
     record.fixo_churn_atual = churn_calculado
     record.fixo_mrr_projeto_total = mrr_portfolio_total
+    record.detalhes = {"produtos": novos_detalhes}
 
     flag_modified(record, "fixo_mrr_entrega")
     flag_modified(record, "fixo_mrr_atual")
     flag_modified(record, "fixo_churn_atual")
     flag_modified(record, "fixo_mrr_projeto_total")
+    flag_modified(record, "detalhes")
 
 
 # ─── HELPERS TABELA OPERACAO (UNICA TABELA DE ENTREGAS) ──────────────────────
@@ -1107,10 +1132,11 @@ def hub_remuneracao():
             clients_map = {email: count for email, count in client_counts}
 
             # 2. Busca projetos vinculados por investidor para mapeamento
-            # Considera apenas projetos ativos ou inativados no mês corrente
+            # Considera projetos ativos ou inativados nos últimos 2 meses para rastreabilidade
             hoje = dt.now()
-            mes_atual = hoje.month
-            ano_atual = hoje.year
+            from datetime import timedelta
+            primeiro_dia_mes_atual = dt(hoje.year, hoje.month, 1)
+            mes_passado = primeiro_dia_mes_atual - timedelta(days=1)
 
             from sqlalchemy import extract, or_, and_
             all_vinculos = db.query(InvestidorProjeto).filter(
@@ -1118,8 +1144,7 @@ def hub_remuneracao():
                     InvestidorProjeto.active == True,
                     and_(
                         InvestidorProjeto.active == False,
-                        extract('month', InvestidorProjeto.inactivated_at) == mes_atual,
-                        extract('year', InvestidorProjeto.inactivated_at) == ano_atual
+                        InvestidorProjeto.inactivated_at >= dt(mes_passado.year, mes_passado.month, 1)
                     )
                 )
             ).all()
@@ -3160,9 +3185,14 @@ def update_projeto_local(pipefy_id):
         with Session() as db:
             projeto = db.query(ProjetoAtivo).filter_by(pipefy_id=pipefy_id).first()
             is_onetime = False
+            is_inativo = False
             if not projeto:
                 projeto = db.query(ProjetoOnetime).filter_by(pipefy_id=pipefy_id).first()
                 is_onetime = True
+            
+            if not projeto:
+                projeto = db.query(ProjetoInativo).filter_by(pipefy_id=pipefy_id).first()
+                is_inativo = True
             
             if not projeto:
                 return jsonify({"error": "Projeto não encontrado."}), 404
@@ -3176,13 +3206,22 @@ def update_projeto_local(pipefy_id):
             changes = {}
             fields_to_track = {
                 "nome": "Nome",
+                "pipefy_id": "Pipefy ID",
+                "documento": "Documento",
                 "fee": "Fee",
                 "moeda": "Moeda",
                 "squad_atribuida": "Squad",
                 "produto_contratado": "Produto",
+                "cohort": "Cohort",
+                "meta_account_id": "Meta Account ID",
+                "google_account_id": "Google Account ID",
+                "fase_do_pipefy": "Fase Pipefy",
+                "url_webhook_gchat": "Webhook GChat",
+                "ekyte_workspace": "Ekyte Workspace",
                 "step": "Fase",
                 "informacoes_gerais": "Informações Gerais",
-                "ekyte_workspace": "Ekyte Workspace"
+                "orcamento_midia_meta": "Orçamento Meta",
+                "orcamento_midia_google": "Orçamento Google"
             }
 
             for field, label in fields_to_track.items():
@@ -3200,13 +3239,47 @@ def update_projeto_local(pipefy_id):
 
             # Atualiza campos básicos do projeto
             if "nome" in data: projeto.nome = data["nome"]
-            if "fee" in data: projeto.fee = int(data["fee"])
+            if "documento" in data: projeto.documento = data["documento"]
+            if "fee" in data: projeto.fee = int(float(data["fee"] or 0))
             if "moeda" in data: projeto.moeda = data["moeda"]
             if "squad_atribuida" in data: projeto.squad_atribuida = data["squad_atribuida"]
             if "produto_contratado" in data: projeto.produto_contratado = data["produto_contratado"]
+            if "cohort" in data: projeto.cohort = data["cohort"]
+            if "meta_account_id" in data: projeto.meta_account_id = data["meta_account_id"]
+            if "google_account_id" in data: projeto.google_account_id = data["google_account_id"]
+            if "fase_do_pipefy" in data: projeto.fase_do_pipefy = data["fase_do_pipefy"]
+            if "url_webhook_gchat" in data: projeto.url_webhook_gchat = data["url_webhook_gchat"]
             if "step" in data: projeto.step = data["step"]
             if "informacoes_gerais" in data: projeto.informacoes_gerais = data["informacoes_gerais"]
             if "ekyte_workspace" in data: projeto.ekyte_workspace = data["ekyte_workspace"]
+            
+            # Orçamentos: Resetar se for inativo, senão atualizar
+            if is_inativo or data.get("tipo_projeto") == "inativo":
+                projeto.orcamento_midia_meta = 0
+                projeto.orcamento_midia_google = 0
+            else:
+                if "orcamento_midia_meta" in data:
+                    projeto.orcamento_midia_meta = int(float(data["orcamento_midia_meta"] or 0))
+                if "orcamento_midia_google" in data:
+                    projeto.orcamento_midia_google = int(float(data["orcamento_midia_google"] or 0))
+
+            # Datas: Seguir o padrão 2900-01-01 se vazio (conforme n8n)
+            from datetime import date as date_type
+            data_placeholder = date_type(2900, 1, 1)
+
+            if "data_de_inicio" in data:
+                val = data["data_de_inicio"]
+                try:
+                    projeto.data_de_inicio = date_type.fromisoformat(val) if val else data_placeholder
+                except ValueError:
+                    projeto.data_de_inicio = data_placeholder
+
+            if "data_fim" in data:
+                val = data["data_fim"]
+                try:
+                    projeto.data_fim = date_type.fromisoformat(val) if val else data_placeholder
+                except ValueError:
+                    projeto.data_fim = data_placeholder
             
             # Atualiza notas
             if "notas" in data:
