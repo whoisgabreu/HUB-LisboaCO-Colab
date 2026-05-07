@@ -383,20 +383,30 @@ def _recalcular_mrr_por_entregas(record):
             else:
                 fee = fee_full  # sem histórico proporcional, usa fee completo
 
-            if v.active:
-                mrr_portfolio_total += fee_full  # portfolio = fees completos
+            eh_churn_atual_proj = False
+            if not v.active:
+                if v.inactivated_at and v.inactivated_at.strftime("%Y-%m") == mes_atual_str:
+                    eh_churn_atual_proj = True
+
+            if v.active or eh_churn_atual_proj:
+                mrr_portfolio_total += fee_full
                 
-                # Detalhes (snapshot para o JSON)
-                novos_detalhes.append({
+                detalhe = {
                     "id": v.pipefy_id_projeto,
                     "nome": v.nome_projeto,
                     "moeda": moeda_proj,
                     "cientista": bool(v.cientista),
-                    "ativo": True,
+                    "ativo": v.active,
                     "fee": float(fee_full)
-                })
+                }
 
-                # Regra: Meses 02 e 03 de 2026 estão zerados para todos (nenhuma entrega)
+                if eh_churn_atual_proj:
+                    churn_calculado += fee
+                    detalhe["churned"] = True
+                    detalhe["data_churn"] = v.inactivated_at.strftime("%d/%m/%Y")
+                
+                novos_detalhes.append(detalhe)
+
                 p = entregas_map.get(pid)
                 if record.ano == 2026 and record.mes in (2, 3):
                     progresso = Decimal("0")
@@ -433,25 +443,6 @@ def _recalcular_mrr_por_entregas(record):
                         progresso = Decimal("1") if is_criativo else Decimal("0")
 
                 total_mrr_entregue += fee * progresso
-
-            else:
-                # Churn: apenas vinculos inativados no mês deste record
-                if v.inactivated_at and v.inactivated_at.strftime("%Y-%m") == mes_atual_str:
-                    churn_calculado += fee
-                    # Portfólio Total deve incluir quem saiu no mês também!
-                    mrr_portfolio_total += fee_full
-                    
-                    # Detalhes do Churn (snapshot para o JSON)
-                    novos_detalhes.append({
-                        "id": v.pipefy_id_projeto,
-                        "nome": v.nome_projeto,
-                        "moeda": moeda_proj,
-                        "cientista": bool(v.cientista),
-                        "ativo": False,
-                        "churned": True,
-                        "data_churn": v.inactivated_at.strftime("%d/%m/%Y"),
-                        "fee": float(fee_full)
-                    })
 
     record.fixo_mrr_entrega = total_mrr_entregue
     record.fixo_mrr_atual = max(Decimal("0"), total_mrr_entregue - churn_calculado)
