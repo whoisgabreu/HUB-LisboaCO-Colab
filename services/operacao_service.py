@@ -114,6 +114,22 @@ class OperacaoSnapshotService:
         return row
 
     @staticmethod
+    def _resolve_nome(db, id_projeto):
+        """Busca o nome do projeto em projetos_ativos → projetos_onetime → projetos."""
+        from sqlalchemy import text
+        for tname in ("projetos_ativos", "projetos_onetime", "projetos"):
+            try:
+                nome = db.execute(text(
+                    f"SELECT TRIM(nome) FROM {OperacaoSnapshotService.SCHEMA}.{tname} "
+                    "WHERE pipefy_id::text = :pid LIMIT 1"
+                ), {"pid": str(id_projeto)}).scalar()
+                if nome:
+                    return nome
+            except Exception:
+                continue
+        return None
+
+    @staticmethod
     def _insert_row(db, id_projeto, mes, ano, nome, entregas_json):
         from sqlalchemy import text
         import json as _json
@@ -159,7 +175,8 @@ class OperacaoSnapshotService:
                 entregas[section_key] = [new_data]
             else:
                 entregas[section_key] = new_data
-            OperacaoSnapshotService._insert_row(db, id_projeto, mes, ano, nome, entregas)
+            nome_final = nome or OperacaoSnapshotService._resolve_nome(db, id_projeto)
+            OperacaoSnapshotService._insert_row(db, id_projeto, mes, ano, nome_final, entregas)
         else:
             # Atualizar seção no registro existente
             import json as _json
@@ -172,7 +189,8 @@ class OperacaoSnapshotService:
                 entregas[section_key] = lst
             else:
                 entregas[section_key] = new_data
-            nome_final = nome or (row.nome if row.nome else None)
+            # Preserva nome existente; se vazio, tenta resolver do cadastro
+            nome_final = nome or (row.nome if row.nome else OperacaoSnapshotService._resolve_nome(db, id_projeto))
             OperacaoSnapshotService._update_row(db, row.id, entregas, nome=nome_final)
 
     @staticmethod
@@ -299,9 +317,15 @@ class OperacaoSnapshotService:
         changed = False
         for entrega in proj_entry.get("entregas", []):
             n = entrega.get("nome")
-            if n in entregues_map and entrega.get("entregues") != entregues_map[n]:
-                entrega["entregues"] = entregues_map[n]
-                changed = True
+            # Itens com nome 'relatorio_gt'/'relatorio_account' (template pós PR #27)
+            # são sincronizados pela mesma chave 'relatorio_mensal' do entregues_map
+            n_lookup = "relatorio_mensal" if n in ("relatorio_gt", "relatorio_account") else n
+            if n_lookup in entregues_map:
+                # Auto-sync só sobe valor (max) — nunca derruba o que o usuário marcou manual em /criativa
+                novo = max(int(entrega.get("entregues") or 0), int(entregues_map[n_lookup]))
+                if entrega.get("entregues") != novo:
+                    entrega["entregues"] = novo
+                    changed = True
         for k, v in links_map.items():
             if proj_entry.get(k) != v:
                 proj_entry[k] = v

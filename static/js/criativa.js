@@ -283,14 +283,11 @@ function renderChartPorCliente(clientes) {
         const val = v => (v != null && v !== undefined) ? v : '—';
         const row = document.createElement('tr');
 
-        // Mapa categoria → campo contratado (para verificar limite)
-        const limiteMap = { criativos: c.criativos_c, lp: c.lps_c, videos: c.videos_c };
-
-        // Célula de entregue com +/- (o botão + fica desabilitado se atingiu o limite)
+        // Célula de entregue com +/- (botão + sem teto — pode entregar acima do contratado;
+        // o cálculo do MRR cappa por categoria no backend)
         const makeEntregueCell = (categoria, valor) => {
             const nomeSeguro = (c.nome || '').replace(/"/g, '&quot;');
-            const limite = limiteMap[categoria] || 0;
-            const atingiuMax = c.churned || (limite > 0 && (valor || 0) >= limite);
+            const atingiuMax = c.churned;
             const atingiuMin = c.churned || ((valor || 0) <= 0);
             const churnClick = c.churned ? 'return false;' : '';
             return `<td class="text-entregue cell-entregue" style="${c.churned ? 'opacity:0.6;' : ''}">
@@ -372,18 +369,11 @@ async function deltaEntregue(projId, clienteNome, categoria, delta) {
     if (!cliente) return;
 
     const campoLocal = categoria === 'lp' ? 'lps_e' : `${categoria}_e`;
-    const campoContratado = { criativos: 'criativos_c', lp: 'lps_c', videos: 'videos_c' }[categoria];
-    const categoriaLabel = { criativos: 'Criativos', lp: 'LPs', videos: 'Vídeos' }[categoria] || categoria;
-    const limite = cliente[campoContratado] || 0;
     const valorAtual = cliente[campoLocal] || 0;
     const novoValor = Math.max(0, valorAtual + delta);
     if (novoValor === valorAtual) return;
-
-    // Bloqueia se ultrapassar o limite contratado
-    if (delta > 0 && limite > 0 && novoValor > limite) {
-        showToast(`Limite atingido! ${categoriaLabel} contratados: ${limite}.`, 'error');
-        return;
-    }
+    // Sem teto: designer pode entregar acima do contratado.
+    // O cap por categoria no MRR é aplicado no backend (entrega "extra" não conta no fee).
 
     // Atualização otimista
     cliente[campoLocal] = novoValor;
@@ -672,12 +662,16 @@ function renderChartConclusao(pct) {
     if (pct < 50) corPrincipal = '#ef4444';
     else if (pct < 80) corPrincipal = '#f59e0b';
 
+    // Quando passa de 100% (entrega acima do contratado) mostra donut cheio sem fatia cinza
+    const acima100 = pct >= 100;
+    const dataDoughnut = acima100 ? [100, 0] : [pct, 100 - pct];
+
     chartConclusao = new Chart(ctx, {
         type: 'doughnut',
         data: {
             labels: ['Entregue', 'Pendente'],
             datasets: [{
-                data: [pct, 100 - pct],
+                data: dataDoughnut,
                 backgroundColor: [
                     corPrincipal,
                     isTemaClaro ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)'
@@ -869,9 +863,16 @@ function openOperacionalDetalhe(card) {
                     const pid = String(projEntry.projeto_id);
                     if (!_opFeitos[pid]) _opFeitos[pid] = {};
                     (projEntry.entregas || []).forEach(e => {
-                        // Mapeia nome+db_tipo do banco de volta para o tipo interno do JS
+                        // Normaliza nome do DB: 'relatorio_gt'/'relatorio_account' (template novo)
+                        // são apelidos de 'relatorio_mensal' (config do JS)
+                        const nomeNorm = (e.nome === 'relatorio_gt' || e.nome === 'relatorio_account')
+                            ? 'relatorio_mensal' : e.nome;
+                        // Match por nome (com tolerância para registros legados tipo='CIENTISTA')
                         for (const cfgList of Object.values(OP_ENTREGAS_CONFIG)) {
-                            const item = cfgList.find(d => d.nome === e.nome && d.db_tipo === e.tipo);
+                            const item = cfgList.find(d =>
+                                d.nome === nomeNorm &&
+                                (d.db_tipo === e.tipo || e.tipo === 'CIENTISTA')
+                            );
                             if (item) {
                                 _opFeitos[pid][item.tipo] = e.entregues || 0;
                                 if (e.meta !== undefined) {

@@ -154,6 +154,7 @@ def _update_entrega_op_entregues(entregas_list, projeto_id, cliente_nome, respon
 
     entry = dict(entregas_list[idx])
     itens = [dict(e) for e in (entry.get("entregas") or [])]
+    REL_ALIASES = {"relatorio_mensal", "relatorio_gt", "relatorio_account"}
     for item in itens:
         is_match = False
         if responsavel == "cientista":
@@ -161,7 +162,7 @@ def _update_entrega_op_entregues(entregas_list, projeto_id, cliente_nome, respon
             # Unifica nomes de relatórios para cientistas no match
             if nome_item in ("relatorio_account", "relatorio_gt"):
                 nome_item = "relatorio_mensal"
-            
+
             target_nome = nome_entrega
             if target_nome in ("relatorio_account", "relatorio_gt"):
                 target_nome = "relatorio_mensal"
@@ -171,7 +172,19 @@ def _update_entrega_op_entregues(entregas_list, projeto_id, cliente_nome, respon
                 item["tipo"] = "CIENTISTA" # Normaliza legado
                 item["nome"] = nome_item   # Normaliza nome se necessário
         else:
-            if item.get("nome") == nome_entrega and item.get("tipo") == tipo_entrega:
+            nome_item = item.get("nome")
+            target_nome = nome_entrega
+            # 'relatorio_mensal' (frontend) é alias de 'relatorio_gt'/'relatorio_account' (template novo)
+            if nome_item in REL_ALIASES and target_nome in REL_ALIASES:
+                nome_match = True
+            else:
+                nome_match = (nome_item == target_nome)
+
+            # Aceita item legado com tipo='CIENTISTA' quando o vínculo virou gt/account
+            tipo_item = item.get("tipo")
+            tipo_match = (tipo_item == tipo_entrega) or (tipo_item == "CIENTISTA")
+
+            if nome_match and tipo_match:
                 is_match = True
 
         if is_match:
@@ -380,8 +393,9 @@ def _recalcular_mrr_por_entregas(record):
                             l_c = p.get("lp", {}).get("contratados", 0)
                             l_e = p.get("lp", {}).get("entregues", 0)
                             total_meta = c_c + v_c + l_c
-                            total_entregues = c_e + v_e + l_e
-                            progresso = min(Decimal(str(total_entregues / total_meta)), Decimal("1.0")) if total_meta > 0 else Decimal("1")
+                            # Cap por categoria: entrega acima do contratado não conta no MRR
+                            total_entregues = min(c_e, c_c) + min(v_e, v_c) + min(l_e, l_c)
+                            progresso = Decimal(str(total_entregues / total_meta)) if total_meta > 0 else Decimal("1")
                         else:
                             itens = p.get("entregas", [])
                             if not itens:
@@ -1765,12 +1779,10 @@ def update_criativa_entregues():
             record = _get_or_create_entrega_record(db, email, int(mes), int(ano))
             lista_atual = list(record.entregas_criativos or [])
 
-            # Valida limite contratado (bloqueia se não houver contrato ou se exceder)
-            entry = get_entregas_by_projeto(lista_atual, projeto_id)
-            contratados = entry.get(categoria, {}).get("contratados", 0) if entry else 0
-            if int(valor) > contratados:
-                label = {"criativos": "Criativos", "videos": "Vídeos", "lp": "LPs"}.get(categoria, categoria)
-                return jsonify({"error": f"Limite excedido: apenas {contratados} {label} contratados para este cliente."}), 400
+            # Designer pode entregar acima do contratado — o "extra" não conta no MRR
+            # (cap por categoria aplicado em _recalcular_mrr_por_entregas)
+            if int(valor) < 0:
+                return jsonify({"error": "Valor não pode ser negativo."}), 400
 
             lista = update_entregues(lista_atual, projeto_id, cliente_nome, categoria, valor)
             record.entregas_criativos = lista

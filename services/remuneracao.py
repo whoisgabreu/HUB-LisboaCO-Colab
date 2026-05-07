@@ -254,9 +254,10 @@ def calcular_metricas_mensais(mes, ano):
                         l_c = p.get('lp', {}).get('contratados', 0)
                         l_e = p.get('lp', {}).get('entregues', 0)
                         t_meta = c_c + v_c + l_c
-                        t_feito = c_e + v_e + l_e
+                        # Cap por categoria: entrega acima do contratado não conta no MRR
+                        t_feito = min(c_e, c_c) + min(v_e, v_c) + min(l_e, l_c)
                         # Regra: Se meta é 0, ganha 100%
-                        progresso = min(Decimal(str(t_feito / t_meta)), Decimal("1.0")) if t_meta > 0 else Decimal("1")
+                        progresso = Decimal(str(t_feito / t_meta)) if t_meta > 0 else Decimal("1")
                     else:
                         itens = p.get('entregas', [])
                         t_meta = sum(item.get('meta', 0) for item in itens)
