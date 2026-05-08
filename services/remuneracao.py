@@ -122,8 +122,8 @@ def calcular_metricas_mensais(mes, ano):
                     if v.inactivated_at:
                         if v.inactivated_at.strftime("%Y-%m") == mes_atual_str:
                             churn_atual += fee_prop
-                            # Portfólio Total deve incluir quem saiu no mês também!
-                            mrr_portfolio_total += fee_full
+                            # Portfólio Total NÃO deve incluir quem saiu no mês
+                            pass
                             
                             # Detalhes do Churn (snapshot para o JSON)
                             detalhes.append({
@@ -297,7 +297,7 @@ def calcular_metricas_mensais(mes, ano):
                 novo_mrr += fee_proj * progresso
             
             metrica.fixo_mrr_entrega = novo_mrr
-            metrica.fixo_mrr_atual = max(Decimal("0"), novo_mrr - churn_atual)
+            metrica.fixo_mrr_atual = novo_mrr
             metrica.fixo_churn_atual = churn_atual
             if cargo_config:
                 metrica.fixo_remuneracao_fixa = cargo_config.fixo_remuneracao_fixa
