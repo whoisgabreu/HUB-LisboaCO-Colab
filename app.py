@@ -3095,9 +3095,20 @@ def get_investidores_ativos():
 @app.route("/api/projetos/<int:pipefy_id>/vinculos", methods=["GET"])
 @check_session
 def get_projeto_vinculos(pipefy_id):
-    """Retorna investidores vinculados a um projeto, com data_inicio resolvida."""
+    """Retorna investidores vinculados a um projeto, com data_inicio resolvida e metadata."""
     try:
         with Session() as db:
+            # Busca o projeto para pegar o metadata no campo extra
+            projeto = db.query(ProjetoAtivo).filter_by(pipefy_id=pipefy_id).first()
+            if not projeto:
+                projeto = db.query(ProjetoOnetime).filter_by(pipefy_id=pipefy_id).first()
+            if not projeto:
+                projeto = db.query(ProjetoInativo).filter_by(pipefy_id=pipefy_id).first()
+            
+            investidores_metadata = {}
+            if projeto and projeto.extra and isinstance(projeto.extra, dict):
+                investidores_metadata = projeto.extra.get("investidores_metadata", {})
+
             vinculos = db.query(InvestidorProjeto).filter_by(pipefy_id_projeto=pipefy_id).all()
 
             # Pré-carrega MetricaMensal mais recente de cada email para buscar data_inicio no historico
@@ -3135,13 +3146,20 @@ def get_projeto_vinculos(pipefy_id):
                     data_inicio = v.created_at.isoformat()
                 else:
                     data_inicio = historico_map.get(v.email_investidor)
+                
+                # Metadata do cientista
+                meta = investidores_metadata.get(v.email_investidor, {})
+                
                 result.append({
                     "id": v.id,
                     "email": v.email_investidor,
                     "cientista": v.cientista,
                     "active": v.active,
                     "fee_contribuicao": float(v.fee_contribuicao or 0),
-                    "data_inicio": data_inicio
+                    "data_inicio": data_inicio,
+                    "data_fim": v.inactivated_at.isoformat() if v.inactivated_at else None,
+                    "cientista_entrada": meta.get("cientista_entrada"),
+                    "cientista_saida": meta.get("cientista_saida")
                 })
             return jsonify(result)
     except SQLAlchemyError as e:
@@ -3363,6 +3381,11 @@ def update_projeto_local(pipefy_id):
             incoming_investidores = data.get("investidores", [])
             current_emails = [inv.get("email") for inv in incoming_investidores if inv.get("email")]
             
+            # Metadata para cientista (será salvo no projeto.extra)
+            investidores_metadata = {}
+            if projeto.extra and isinstance(projeto.extra, dict):
+                investidores_metadata = dict(projeto.extra.get("investidores_metadata", {}))
+
             # 1. Remove vínculos que não estão na lista recebida
             db.query(InvestidorProjeto).filter(
                 InvestidorProjeto.pipefy_id_projeto == pipefy_id,
@@ -3380,23 +3403,34 @@ def update_projeto_local(pipefy_id):
                 ).first()
                 
                 cientista = inv_data.get("cientista", False)
+                active = inv_data.get("active", True)
                 
-                # Parse da data_inicio enviada pelo front (YYYY-MM-DD)
-                data_inicio_str = inv_data.get("data_inicio")
+                # Parse de datas
                 from datetime import date as date_type
-                if data_inicio_str:
+                
+                def parse_date(d_str):
+                    if not d_str: return None
                     try:
-                        data_inicio_obj = date_type.fromisoformat(data_inicio_str)
+                        return date_type.fromisoformat(d_str.split('T')[0])
                     except ValueError:
-                        data_inicio_obj = None
-                else:
-                    data_inicio_obj = None
+                        return None
+
+                data_inicio_obj = parse_date(inv_data.get("data_inicio"))
+                data_fim_obj = parse_date(inv_data.get("data_fim"))
+                
+                # Metadata do cientista
+                investidores_metadata[email] = {
+                    "cientista_entrada": inv_data.get("cientista_entrada"),
+                    "cientista_saida": inv_data.get("cientista_saida")
+                }
 
                 if v:
                     # Atualiza existente
                     v.nome_projeto = data.get("nome", v.nome_projeto)
                     v.fee_projeto = Decimal(str(data.get("fee", v.fee_projeto) or 0))
                     v.cientista = cientista
+                    v.active = active
+                    v.inactivated_at = data_fim_obj
                     if data_inicio_obj:
                         v.created_at = data_inicio_obj
                         # Propaga a nova data_inicio para historico_projetos em todos os meses
@@ -3409,14 +3443,16 @@ def update_projeto_local(pipefy_id):
                             for item in metrica.historico_projetos:
                                 if str(item.get("projeto_id")) == str(pipefy_id):
                                     item = dict(item)
-                                    item["data_inicio"] = data_inicio_str
+                                    item["data_inicio"] = data_inicio_obj.isoformat()
+                                    item["data_fim"] = data_fim_obj.isoformat() if data_fim_obj else None
+                                    item["active"] = active
                                     atualizado = True
                                 novo_hist.append(item)
                             if atualizado:
                                 metrica.historico_projetos = novo_hist
                                 flag_modified(metrica, "historico_projetos")
                 else:
-                    # Cria novo — usa data_inicio se fornecida, senão hoje
+                    # Cria novo
                     created = data_inicio_obj if data_inicio_obj else dt.now().date()
                     novo_v = InvestidorProjeto(
                         pipefy_id_projeto=pipefy_id,
@@ -3424,10 +3460,19 @@ def update_projeto_local(pipefy_id):
                         nome_projeto=data.get("nome", projeto.nome),
                         fee_projeto=Decimal(str(data.get("fee", projeto.fee) or 0)),
                         cientista=cientista,
-                        active=True,
-                        created_at=created
+                        active=active,
+                        created_at=created,
+                        inactivated_at=data_fim_obj
                     )
                     db.add(novo_v)
+
+            # Salva o metadata no extra do projeto
+            if not projeto.extra:
+                projeto.extra = {}
+            new_extra = dict(projeto.extra)
+            new_extra["investidores_metadata"] = investidores_metadata
+            projeto.extra = new_extra
+            flag_modified(projeto, "extra")
 
             db.commit()
             

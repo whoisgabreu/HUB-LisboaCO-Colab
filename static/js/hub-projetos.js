@@ -771,7 +771,7 @@ async function loadActiveInvestors() {
         const response = await fetch('/api/admin/investidores-ativos');
         const investidores = await response.json();
         
-        const select = document.getElementById('investidorSelect');
+        const select = document.getElementById('vinculoInvestidorSelect');
         if (!select) return;
 
         select.innerHTML = '<option value="">Vincular investidor...</option>';
@@ -821,117 +821,180 @@ function renderVinculos() {
     }
 
     container.innerHTML = projectVinculosLocal.map(v => {
-        const dataExibir = _formatDateBR(v.data_inicio);
-
-        // Tag de data: clicável no modo edição
-        const dataTag = isEditMode
-            ? `<span class="tag-data-inicio tag-data-editavel"
-                     onclick="openEditDataInicioModal('${v.email}')"
-                     title="Clique para alterar a data de início">
-                   <i class="fa-solid fa-calendar-day"></i> ${dataExibir}
-                   <i class="fa-solid fa-pen" style="font-size:0.6rem;opacity:0.7;margin-left:3px;"></i>
-               </span>`
-            : `<span class="tag-data-inicio">
-                   <i class="fa-solid fa-calendar-day"></i> ${dataExibir}
-               </span>`;
-
+        const dataInicioExibir = _formatDateBR(v.data_inicio);
+        const isChurn = v.active === false || (v.data_fim && new Date(v.data_fim) <= new Date());
+        
         return `
-        <div class="vinculo-item">
-            <div class="vinculo-info">
-                <span class="vinculo-email">${v.email}</span>
-                <div class="vinculo-tags">
-                    ${v.cientista ? '<span class="tag-cientista">Cientista</span>' : ''}
-                    ${v.active === false ? '<span class="tag-inactive">Churn</span>' : ''}
-                    ${dataTag}
+        <div class="vinculo-card-v2 ${isChurn ? 'churn' : ''}" onclick="isEditMode ? openInvestidorVinculoModal('${v.email}', 'edit') : null">
+            <div class="vinculo-card-header">
+                <div class="vinculo-user-info">
+                    <span class="vinculo-name">${v.email}</span>
+                    <span class="vinculo-status-tag ${isChurn ? 'status-inactive' : 'status-active'}">
+                        ${isChurn ? 'Churn' : 'Ativo'}
+                    </span>
+                </div>
+                ${isEditMode ? `
+                <button type="button" class="btn-card-edit" title="Editar vínculo">
+                    <i class="fa-solid fa-pen"></i>
+                </button>
+                ` : ''}
+            </div>
+            <div class="vinculo-card-body">
+                <div class="vinculo-meta-row">
+                    <div class="meta-item">
+                        <i class="fa-solid fa-calendar-plus"></i>
+                        <span>${dataInicioExibir}</span>
+                    </div>
+                    ${v.data_fim ? `
+                    <div class="meta-item">
+                        <i class="fa-solid fa-calendar-minus"></i>
+                        <span>${_formatDateBR(v.data_fim)}</span>
+                    </div>
+                    ` : ''}
+                </div>
+                <div class="vinculo-badges">
+                    ${v.cientista ? `
+                        <span class="badge-cientista-v2" title="Entrada: ${_formatDateBR(v.cientista_entrada) || '—'}">
+                            <i class="fa-solid fa-flask"></i> Cientista
+                        </span>
+                    ` : ''}
                 </div>
             </div>
-            <div class="vinculo-controls">
-                <button type="button" class="btn-remove-vinculo"
-                        onclick="removerVinculoLocal('${v.email}')"
-                        title="Remover investidor"
-                        ${!isEditMode ? 'style="display:none"' : ''}>
-                    <i class="fa-solid fa-user-minus"></i>
-                </button>
-            </div>
+            ${isEditMode ? `
+            <button type="button" class="btn-remove-vinculo-v2" 
+                    onclick="event.stopPropagation(); removerVinculoLocal('${v.email}')" 
+                    title="Remover investidor">
+                <i class="fa-solid fa-trash-can"></i>
+            </button>
+            ` : ''}
         </div>`;
     }).join('');
 }
-
 function _todayISO() {
     return new Date().toISOString().split('T')[0];
 }
 
 function _formatDateBR(iso) {
     if (!iso) return '—';
-    const [y, m, d] = iso.split('T')[0].split('-');
+    const parts = iso.split('T')[0].split('-');
+    if (parts.length !== 3) return iso;
+    const [y, m, d] = parts;
     return `${d}/${m}/${y}`;
 }
 
-function vincularNovoInvestidor() {
-    const email      = document.getElementById('investidorSelect').value;
-    const cientista  = document.getElementById('isCientista').checked;
-    const dataInicio = document.getElementById('vincularDataInicio').value || _todayISO();
-
-    if (!email) {
-        if (window.showToast) showToast('Selecione um investidor para vincular.', 'error');
-        else alert('Selecione um investidor para vincular.');
-        return;
-    }
-
-    if (projectVinculosLocal.find(v => v.email === email)) {
-        if (window.showToast) showToast('Este investidor já está vinculado ao projeto.', 'error');
-        else alert('Este investidor já está vinculado ao projeto.');
-        return;
-    }
-
-    projectVinculosLocal.push({ email, cientista, active: true, data_inicio: dataInicio });
-    renderVinculos();
-
-    document.getElementById('investidorSelect').value   = '';
-    document.getElementById('isCientista').checked      = false;
-    document.getElementById('vincularDataInicio').value = _todayISO();
-}
-
-function removerVinculoLocal(email) {
-    projectVinculosLocal = projectVinculosLocal.filter(v => v.email !== email);
-    renderVinculos();
-}
-
 /* ==============================
-EDIÇÃO DE DATA DE INÍCIO DO VÍNCULO
+MODAL DE VÍNCULO (V2)
 ================================ */
 
-let _editDataInicioEmail = null;
+let _vinculoEditEmail = null;
+let _vinculoMode = 'add'; // 'add' ou 'edit'
 
-function openEditDataInicioModal(email) {
-    _editDataInicioEmail = email;
-    const v = projectVinculosLocal.find(x => x.email === email);
-    const dataAtual = v?.data_inicio || _todayISO();
+function openInvestidorVinculoModal(email = null, mode = 'add') {
+    _vinculoMode = mode;
+    _vinculoEditEmail = email;
 
-    document.getElementById('editDataInicioEmail').textContent = `Investidor: ${email}`;
-    document.getElementById('editDataInicioInput').value = dataAtual;
-    document.getElementById('editDataInicioModal').classList.add('active');
+    const modal = document.getElementById('investidorVinculoModal');
+    const title = document.getElementById('vinculoModalTitle');
+    const selectGroup = document.getElementById('vinculoSelectGroup');
+    const nameGroup = document.getElementById('vinculoNameGroup');
+    const nameInput = document.getElementById('vinculoInvestidorName');
+    
+    // Reset inputs
+    document.getElementById('vinculoInvestidorSelect').value = '';
+    document.getElementById('vinculoDataInicio').value = _todayISO();
+    document.getElementById('vinculoDataFim').value = '';
+    document.getElementById('vinculoIsCientista').checked = false;
+    document.getElementById('vinculoCientistaInicio').value = '';
+    document.getElementById('vinculoCientistaFim').value = '';
+    
+    if (mode === 'edit' && email) {
+        title.innerHTML = '<i class="fa-solid fa-user-pen"></i> Editar Vínculo';
+        if (selectGroup) selectGroup.style.display = 'none';
+        if (nameGroup) nameGroup.style.display = 'block';
+        if (nameInput) nameInput.value = email;
+
+        const v = projectVinculosLocal.find(x => x.email === email);
+        if (v) {
+            document.getElementById('vinculoDataInicio').value = v.data_inicio ? v.data_inicio.split('T')[0] : '';
+            document.getElementById('vinculoDataFim').value = v.data_fim ? v.data_fim.split('T')[0] : '';
+            document.getElementById('vinculoIsCientista').checked = v.cientista || false;
+            document.getElementById('vinculoCientistaInicio').value = v.cientista_entrada ? v.cientista_entrada.split('T')[0] : '';
+            document.getElementById('vinculoCientistaFim').value = v.cientista_saida ? v.cientista_saida.split('T')[0] : '';
+        }
+    } else {
+        title.innerHTML = '<i class="fa-solid fa-user-plus"></i> Vincular Investidor';
+        if (selectGroup) selectGroup.style.display = 'block';
+        if (nameGroup) nameGroup.style.display = 'none';
+    }
+
+    toggleScientistDates();
+    modal.classList.add('active');
     document.body.style.overflow = 'hidden';
 }
 
-function closeEditDataInicioModal() {
-    document.getElementById('editDataInicioModal').classList.remove('active');
-    _editDataInicioEmail = null;
+function closeInvestidorVinculoModal() {
+    document.getElementById('investidorVinculoModal').classList.remove('active');
+    document.body.style.overflow = 'auto';
+    _vinculoEditEmail = null;
 }
 
-function confirmarEditDataInicio() {
-    const novaData = document.getElementById('editDataInicioInput').value;
-    if (!novaData) {
-        if (window.showToast) showToast('Selecione uma data válida.', 'error');
+function toggleScientistDates() {
+    const isCientista = document.getElementById('vinculoIsCientista').checked;
+    const group = document.getElementById('scientistDatesGroup');
+    if (group) group.style.display = isCientista ? 'block' : 'none';
+}
+
+function confirmarVinculo() {
+    const email = _vinculoMode === 'add' 
+        ? document.getElementById('vinculoInvestidorSelect').value 
+        : _vinculoEditEmail;
+    
+    if (!email) {
+        if (window.showToast) showToast('Selecione um investidor.', 'error');
         return;
     }
 
-    const v = projectVinculosLocal.find(x => x.email === _editDataInicioEmail);
-    if (v) {
-        v.data_inicio = novaData;
-        if (window.showToast) showToast(`Data de início de ${_editDataInicioEmail} atualizada para ${_formatDateBR(novaData)}. Clique em "Salvar" para confirmar.`, 'success');
+    const dataInicio = document.getElementById('vinculoDataInicio').value;
+    const dataFim = document.getElementById('vinculoDataFim').value;
+    const isCientista = document.getElementById('vinculoIsCientista').checked;
+    const cientistaInicio = document.getElementById('vinculoCientistaInicio').value;
+    const cientistaFim = document.getElementById('vinculoCientistaFim').value;
+
+    if (!dataInicio) {
+        if (window.showToast) showToast('A data de início é obrigatória.', 'error');
+        return;
     }
 
-    closeEditDataInicioModal();
+    const vinculoData = {
+        email: email,
+        data_inicio: dataInicio,
+        data_fim: dataFim || null,
+        active: !dataFim,
+        cientista: isCientista,
+        cientista_entrada: isCientista ? (cientistaInicio || null) : null,
+        cientista_saida: isCientista ? (cientistaFim || null) : null
+    };
+
+    if (_vinculoMode === 'add') {
+        if (projectVinculosLocal.find(v => v.email === email)) {
+            if (window.showToast) showToast('Este investidor já está vinculado.', 'error');
+            return;
+        }
+        projectVinculosLocal.push(vinculoData);
+    } else {
+        const idx = projectVinculosLocal.findIndex(v => v.email === email);
+        if (idx !== -1) {
+            projectVinculosLocal[idx] = vinculoData;
+        }
+    }
+
+    renderVinculos();
+    closeInvestidorVinculoModal();
+    if (window.showToast) showToast('Vínculo atualizado localmente. Clique em "Salvar" para confirmar no banco.', 'info');
+}
+
+function removerVinculoLocal(email) {
+    if (!confirm(`Deseja remover o vínculo de ${email}?`)) return;
+    projectVinculosLocal = projectVinculosLocal.filter(v => v.email !== email);
     renderVinculos();
 }

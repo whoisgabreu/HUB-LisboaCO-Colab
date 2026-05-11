@@ -384,19 +384,12 @@
                                     <div class="vinculos-header">
                                         <label><i class="fa-solid fa-users"></i> Investidores Vinculados</label>
                                         <div class="vinculos-actions" id="vinculosActions" style="display: none;">
-                                            <select id="investidorSelect">
-                                                <option value="">Vincular investidor...</option>
-                                            </select>
-                                            <label class="checkbox-label">
-                                                <input type="checkbox" id="isCientista"> Cientista
-                                            </label>
-                                            <input type="date" id="vincularDataInicio" class="vincular-data-input" title="Data de início no projeto">
-                                            <button type="button" class="btn-add-vinculo" onclick="vincularNovoInvestidor()">
+                                            <button type="button" class="btn-add-vinculo-v2" onclick="openInvestidorVinculoModal(null, 'add')" title="Vincular Novo Investidor">
                                                 <i class="fa-solid fa-plus"></i>
                                             </button>
                                         </div>
                                     </div>
-                                    <div id="vinculosContainer" class="vinculos-container">
+                                    <div id="vinculosContainer" class="vinculos-container-v2">
                                         <!-- Vinculos serão adicionados aqui dinamicamente -->
                                     </div>
                                 </div>
@@ -439,26 +432,67 @@
             </div>
 
 
-            <!-- MODAL: EDITAR DATA DE INÍCIO DO VÍNCULO -->
-            <div id="editDataInicioModal" class="modal">
-                <div class="modal-content modal-small">
+            <!-- MODAL: EDITAR VÍNCULO DO INVESTIDOR -->
+            <div id="investidorVinculoModal" class="modal">
+                <div class="modal-content modal-medium">
                     <div class="modal-header">
-                        <h2><i class="fa-solid fa-calendar-pen"></i> Alterar Data de Início</h2>
-                        <button class="close-btn" onclick="closeEditDataInicioModal()">
+                        <h2 id="vinculoModalTitle"><i class="fa-solid fa-user-gear"></i> Vincular Investidor</h2>
+                        <button type="button" class="close-btn" onclick="closeInvestidorVinculoModal()">
                             <i class="fa-solid fa-xmark"></i>
                         </button>
                     </div>
                     <div class="modal-body">
-                        <p id="editDataInicioEmail" style="font-size:0.85rem;color:var(--text-muted);margin-bottom:1rem;"></p>
-                        <div class="form-group">
-                            <label>Data de Início no Projeto</label>
-                            <input type="date" id="editDataInicioInput" style="width:100%;padding:0.6rem;background:var(--input-bg,rgba(255,255,255,0.07));border:1px solid var(--border-color);border-radius:8px;color:var(--text-color);font-family:inherit;">
-                            <small style="color:var(--text-muted);margin-top:6px;display:block;">Esta data será salva ao clicar em "Salvar" no projeto.</small>
+                        <div class="vinculo-form-v2">
+                            <!-- Seleção de Investidor (Apenas no modo ADD) -->
+                            <div class="form-group" id="vinculoSelectGroup">
+                                <label>Investidor</label>
+                                <select id="vinculoInvestidorSelect" class="form-input">
+                                    <option value="">Selecione um investidor...</option>
+                                </select>
+                            </div>
+                            <!-- Nome do Investidor (Apenas no modo EDIT) -->
+                            <div class="form-group" id="vinculoNameGroup" style="display:none;">
+                                <label>Investidor</label>
+                                <input type="text" id="vinculoInvestidorName" class="form-input" readonly disabled>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Data de Início no Projeto</label>
+                                    <input type="date" id="vinculoDataInicio" class="form-input">
+                                </div>
+                                <div class="form-group">
+                                    <label>Data de Saída do Projeto</label>
+                                    <input type="date" id="vinculoDataFim" class="form-input">
+                                    <small class="help-text">Deixe vazio se estiver ativo</small>
+                                </div>
+                            </div>
+
+                            <div class="scientist-toggle-area">
+                                <label class="premium-switch">
+                                    <input type="checkbox" id="vinculoIsCientista" onchange="toggleScientistDates()">
+                                    <span class="switch-slider"></span>
+                                    <span class="switch-label">Cientista no Projeto</span>
+                                </label>
+                            </div>
+
+                            <div id="scientistDatesGroup" class="scientist-dates-group" style="display:none;">
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Data de Entrada como Cientista</label>
+                                        <input type="date" id="vinculoCientistaInicio" class="form-input">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Data de Saída como Cientista</label>
+                                        <input type="date" id="vinculoCientistaFim" class="form-input">
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn-secondary" onclick="closeEditDataInicioModal()">Cancelar</button>
-                        <button type="button" class="btn-primary" onclick="confirmarEditDataInicio()">
+                        <button type="button" class="btn-secondary" onclick="closeInvestidorVinculoModal()">Cancelar</button>
+                        <button type="button" class="btn-primary" onclick="confirmarVinculo()">
                             <i class="fa-solid fa-check"></i> Confirmar
                         </button>
                     </div>
