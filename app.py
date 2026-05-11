@@ -757,6 +757,8 @@ def _projeto_to_dict(projeto):
         "ekyte_workspace": projeto.ekyte_workspace,
         "extra": projeto.extra or {},
         "notas": projeto.notas or {},
+        # Flag de contrato variável — lida do campo JSONB extra
+        "contrato_variavel": bool((projeto.extra or {}).get("contrato_variavel", False)),
     }
 
 
@@ -3355,6 +3357,17 @@ def update_projeto_local(pipefy_id):
             if "notas" in data:
                 projeto.notas = data["notas"]
 
+            # Atualiza flag de contrato variável (persistida no campo JSONB extra)
+            if "contrato_variavel" in data:
+                contrato_var_val = bool(data.get("contrato_variavel"))
+                # Rastrear mudança no histórico
+                old_contrato_var = bool((projeto.extra or {}).get("contrato_variavel", False))
+                if old_contrato_var != contrato_var_val:
+                    changes["contrato_variavel"] = {
+                        "antes": "Sim" if old_contrato_var else "Não",
+                        "depois": "Sim" if contrato_var_val else "Não"
+                    }
+
             # Registra no histórico se houver mudanças
             if changes:
                 historico_entry = {
@@ -3475,11 +3488,14 @@ def update_projeto_local(pipefy_id):
                     )
                     db.add(novo_v)
 
-            # Salva o metadata no extra do projeto
+            # Salva o metadata no extra do projeto (inclui contrato_variavel e investidores_metadata)
             if not projeto.extra:
                 projeto.extra = {}
             new_extra = dict(projeto.extra)
             new_extra["investidores_metadata"] = investidores_metadata
+            # Persiste a flag de contrato variável no extra
+            if "contrato_variavel" in data:
+                new_extra["contrato_variavel"] = bool(data.get("contrato_variavel"))
             projeto.extra = new_extra
             flag_modified(projeto, "extra")
 
@@ -3490,6 +3506,13 @@ def update_projeto_local(pipefy_id):
                 ProjetoParticipacaoService.sincronizar_remuneracao(dt.now().month, dt.now().year)
             except Exception as e:
                 print(f"Erro na sincronização pós-update: {e}")
+
+            # Aplica valores de faturamento variável sobre o MRR calculado (serviço isolado)
+            try:
+                from services.faturamento_variavel import aplicar_faturamento_variavel
+                aplicar_faturamento_variavel(dt.now().month, dt.now().year)
+            except Exception as e:
+                print(f"Erro ao aplicar faturamento variável pós-update: {e}")
 
             return jsonify({"status": "success", "message": "Projeto e vínculos sincronizados com sucesso."})
 
@@ -3516,6 +3539,134 @@ def api_listar_projetos():
         "onetime": [{"projetos": p} for p in onetime],
         "inativos": [{"projetos": p} for p in inativos]
     })
+
+
+# ─── FATURAMENTO VARIÁVEL ──────────────────────────────────────────────────────
+# Rotas isoladas para CRUD do faturamento variável por projeto/mês/ano.
+# Não alteram modelos, serviços existentes nem schema do banco.
+
+@app.route("/api/projetos/<int:pipefy_id>/faturamento-variavel", methods=["GET"])
+@check_session
+def get_faturamento_variavel(pipefy_id):
+    """Retorna registros de faturamento variável de um projeto. Aceita ?mes=&ano= para filtrar."""
+    try:
+        from services.faturamento_variavel import get_registros_por_projeto
+        mes = request.args.get("mes", type=int)
+        ano = request.args.get("ano", type=int)
+        registros = get_registros_por_projeto(pipefy_id, mes=mes, ano=ano)
+        return jsonify({"registros": registros})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/projetos/<int:pipefy_id>/faturamento-variavel", methods=["POST"])
+@check_session
+def post_faturamento_variavel(pipefy_id):
+    """Cria ou atualiza o registro de faturamento variável para um mês/ano.
+    Acesso restrito: somente usuários com permissão de edição de projetos."""
+    nivel = session.get("nivel_acesso", "Usuário")
+    if nivel == "Usuário":
+        return jsonify({"error": "Sem permissão para criar registros de faturamento variável."}), 403
+
+    data = request.json or {}
+    mes = data.get("mes")
+    ano = data.get("ano")
+    faturamento_cliente = data.get("faturamento_cliente")
+    percentual = data.get("percentual")
+
+    if not all([mes, ano, faturamento_cliente is not None, percentual is not None]):
+        return jsonify({"error": "Campos obrigatórios: mes, ano, faturamento_cliente, percentual"}), 400
+
+    try:
+        from services.faturamento_variavel import salvar_registro, aplicar_faturamento_variavel
+        ok, msg = salvar_registro(
+            pipefy_id=pipefy_id,
+            mes=int(mes),
+            ano=int(ano),
+            faturamento_cliente=float(faturamento_cliente),
+            percentual=float(percentual),
+            usuario_email=session.get("email", "sistema")
+        )
+        if not ok:
+            return jsonify({"error": msg}), 500
+
+        # Re-aplica o faturamento variável ao MRR do mês atual
+        try:
+            aplicar_faturamento_variavel(int(mes), int(ano))
+        except Exception as e:
+            print(f"[fat_var] Erro ao aplicar MRR pós-save: {e}")
+
+        return jsonify({"status": "success", "message": msg})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/projetos/<int:pipefy_id>/faturamento-variavel/<int:mes>/<int:ano>", methods=["PUT"])
+@check_session
+def put_faturamento_variavel(pipefy_id, mes, ano):
+    """Atualiza o registro de faturamento variável de um mês/ano específico.
+    Delega ao POST (upsert idempotente)."""
+    nivel = session.get("nivel_acesso", "Usuário")
+    if nivel == "Usuário":
+        return jsonify({"error": "Sem permissão para editar registros de faturamento variável."}), 403
+
+    data = request.json or {}
+    data["mes"] = mes
+    data["ano"] = ano
+    # Reutiliza lógica do POST
+    try:
+        from services.faturamento_variavel import salvar_registro, aplicar_faturamento_variavel
+        faturamento_cliente = data.get("faturamento_cliente")
+        percentual = data.get("percentual")
+        if faturamento_cliente is None or percentual is None:
+            return jsonify({"error": "Campos obrigatórios: faturamento_cliente, percentual"}), 400
+
+        ok, msg = salvar_registro(
+            pipefy_id=pipefy_id,
+            mes=int(mes),
+            ano=int(ano),
+            faturamento_cliente=float(faturamento_cliente),
+            percentual=float(percentual),
+            usuario_email=session.get("email", "sistema")
+        )
+        if not ok:
+            return jsonify({"error": msg}), 500
+
+        try:
+            aplicar_faturamento_variavel(int(mes), int(ano))
+        except Exception as e:
+            print(f"[fat_var] Erro ao aplicar MRR pós-edit: {e}")
+
+        return jsonify({"status": "success", "message": msg})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/projetos/<int:pipefy_id>/faturamento-variavel/<int:mes>/<int:ano>", methods=["DELETE"])
+@check_session
+def delete_faturamento_variavel(pipefy_id, mes, ano):
+    """Remove o registro de faturamento variável de um mês/ano específico."""
+    nivel = session.get("nivel_acesso", "Usuário")
+    if nivel == "Usuário":
+        return jsonify({"error": "Sem permissão para remover registros de faturamento variável."}), 403
+
+    try:
+        from services.faturamento_variavel import deletar_registro, aplicar_faturamento_variavel
+        ok, msg = deletar_registro(pipefy_id=pipefy_id, mes=int(mes), ano=int(ano))
+        if not ok:
+            return jsonify({"error": msg}), 404
+
+        # Recalcula MRR sem o valor removido
+        try:
+            from services.remuneracao import calcular_metricas_mensais
+            calcular_metricas_mensais(int(mes), int(ano))
+            aplicar_faturamento_variavel(int(mes), int(ano))
+        except Exception as e:
+            print(f"[fat_var] Erro ao recalcular MRR pós-delete: {e}")
+
+        return jsonify({"status": "success", "message": msg})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/api/ranking", methods=["GET"])

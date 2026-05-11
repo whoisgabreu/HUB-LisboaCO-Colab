@@ -147,42 +147,58 @@ window.showConfirmModal = showConfirmModal;
 
 // ─── NAVEGAÇÃO ────────────────────────────────────────────────────────────────
 
-function openProjectDetails(project) {
-    currentProject = project;
-    document.getElementById('display-project-name').innerText = project.nome;
-    document.getElementById('project-selection-view').style.display = 'none';
-    document.getElementById('project-details-view').style.display = 'block';
+function openProjectDetails(data) {
+    let project = data;
+    try {
+        if (data instanceof HTMLElement) {
+            project = JSON.parse(data.dataset.project);
+        }
+        
+        currentProject = project;
+        document.getElementById('display-project-name').innerText = project.nome;
+        document.getElementById('project-selection-view').style.display = 'none';
+        document.getElementById('project-details-view').style.display = 'block';
 
-    // Gerenciar visibilidade de botões por papel/cientista/posição
-    const isScientist = project.cientista === true;
-    const authGT = hasGTAuth();
-    const authAcc = hasAccountAuth();
+        // Gerenciar visibilidade de botões por papel/cientista/posição
+        const isScientist = project.cientista === true;
+        const authGT = hasGTAuth();
+        const authAcc = hasAccountAuth();
 
-    // 1. Botões de GT (Plano de Mídia, Otimização, KPIs, Relatório GT)
-    document.querySelectorAll('.btn-auth-gt').forEach(btn => {
-        const text = btn.innerHTML || "";
-        const isRelGT = text.includes('relatorio_gt') || text.includes('Relatório GT') || text.includes('Relatório Mensal (GT)');
-        const show = authGT && (!isScientist || !isRelGT) && (window.__USER_ROLE__ !== 'Cientista' || !isRelGT);
-        const displayType = btn.classList.contains('access-link-card') ? 'flex' : 'inline-flex';
-        btn.style.setProperty('display', show ? displayType : 'none', 'important');
-    });
+        // 1. Botões de GT
+        document.querySelectorAll('.btn-auth-gt').forEach(btn => {
+            const text = btn.innerHTML || "";
+            const isRelGT = text.includes('relatorio_gt') || text.includes('Relatório GT') || text.includes('Relatório Mensal (GT)');
+            const show = authGT && (!isScientist || !isRelGT) && (window.__USER_ROLE__ !== 'Cientista' || !isRelGT);
+            const displayType = btn.classList.contains('access-link-card') ? 'flex' : 'inline-flex';
+            btn.style.setProperty('display', show ? displayType : 'none', 'important');
+        });
 
-    // 2. Botões de Account (Forecasting, Checkin, Relatório Account)
-    document.querySelectorAll('.btn-auth-account').forEach(btn => {
-        const text = btn.innerHTML || "";
-        const isRelAcc = text.includes('relatorio_account') || text.includes('Relatório Acc') || text.includes('Relatório Mensal (Acc)');
-        const show = authAcc && (!isScientist || !isRelAcc) && (window.__USER_ROLE__ !== 'Cientista' || !isRelAcc);
-        const displayType = btn.classList.contains('access-link-card') ? 'flex' : 'inline-flex';
-        btn.style.setProperty('display', show ? displayType : 'none', 'important');
-    });
+        // 2. Botões de Account
+        document.querySelectorAll('.btn-auth-account').forEach(btn => {
+            const text = btn.innerHTML || "";
+            const isRelAcc = text.includes('relatorio_account') || text.includes('Relatório Acc') || text.includes('Relatório Mensal (Acc)');
+            const show = authAcc && (!isScientist || !isRelAcc) && (window.__USER_ROLE__ !== 'Cientista' || !isRelAcc);
+            const displayType = btn.classList.contains('access-link-card') ? 'flex' : 'inline-flex';
+            btn.style.setProperty('display', show ? displayType : 'none', 'important');
+        });
 
-    // 3. Botões de Cientista (Relatório Consolidado)
-    document.querySelectorAll('.btn-auth-cientista').forEach(btn => {
-        btn.style.setProperty('display', isScientist ? 'flex' : 'none', 'important');
-    });
+        // 3. Botões de Cientista
+        document.querySelectorAll('.btn-auth-cientista').forEach(btn => {
+            btn.style.setProperty('display', isScientist ? 'flex' : 'none', 'important');
+        });
 
-    switchOperacaoTab('metas');
-    loadProjectData();
+        switchOperacaoTab('metas');
+        loadProjectData();
+
+        // Exibe/oculta aba de Faturamento Variável conforme flag do projeto
+        const tabFatVariavel = document.getElementById('tab-fat-variavel');
+        if (tabFatVariavel) {
+            tabFatVariavel.style.display = project.contrato_variavel ? 'flex' : 'none';
+        }
+    } catch (e) {
+        console.error('[operacao] Erro ao abrir detalhes do projeto:', e);
+        showToast('Erro ao carregar detalhes do projeto.', 'error');
+    }
 }
 
 function backToProjects() {
@@ -215,6 +231,10 @@ function switchOperacaoTab(tabId) {
             loadHistoricoPlanos(pid);
         }
         if (tabId === 'entregas') loadEntregas(pid, currentMonth, currentYear);
+        if (tabId === 'fat-variavel') {
+            initFatVariavelMonthSelect();
+            loadFaturamentoVariavel();
+        }
     }
 }
 
@@ -1839,3 +1859,326 @@ async function incrementPlannerMonday(pipefyId) {
 }
 window.incrementPlannerMonday = incrementPlannerMonday;
 
+
+// ═══ FATURAMENTO VARIÁVEL ═════════════════════════════════════════════════════════════════════
+// Módulo isolado para CRUD do faturamento variável por projeto/mês/ano.
+// Não altera regras existentes de remuneração. O backend cuida de somar ao MRR.
+// Regra do Cientista: (fee_fixo × 1.5) + valor_variavel (não: (fee_fixo + valor_variavel) × 1.5)
+
+/**
+ * Inicializa o seletor de mês/ano da aba de Faturamento Variável.
+ * Gera as últimas 12 competências.
+ */
+function initFatVariavelMonthSelect() {
+    const select = document.getElementById('fat-variavel-month-select');
+    if (!select) return;
+    const now = new Date();
+    const m = now.getMonth() + 1;
+    const y = now.getFullYear();
+    let html = '';
+    for (let i = 0; i < 12; i++) {
+        let month = m - i;
+        let year = y;
+        if (month <= 0) { month += 12; year--; }
+        const val = `${year}-${String(month).padStart(2, '0')}`;
+        html += `<option value="${val}"${i === 0 ? ' selected' : ''}>${MESES_PT[month - 1]} ${year}</option>`;
+    }
+    select.innerHTML = html;
+}
+
+/**
+ * Carrega os registros de faturamento variável do mês/ano selecionado.
+ */
+async function loadFaturamentoVariavel() {
+    if (!currentProject) return;
+    const pid = currentProject.pipefy_id;
+    const fee = parseFloat(currentProject.fee || 0);
+    const isCientista = currentProject.cientista === true;
+
+    const select = document.getElementById('fat-variavel-month-select');
+    let mes = currentMonth, ano = currentYear;
+    if (select && select.value) {
+        const parts = select.value.split('-');
+        ano = parseInt(parts[0]);
+        mes = parseInt(parts[1]);
+    }
+
+    try {
+        const res = await fetch(`/api/projetos/${pid}/faturamento-variavel?mes=${mes}&ano=${ano}`);
+        const data = await res.json();
+        const registros = data.registros || [];
+        renderFaturamentoVariavel(registros, fee, isCientista);
+    } catch (e) {
+        console.error('[fat_variavel] Erro ao carregar:', e);
+    }
+}
+
+/**
+ * Formata número como moeda BRL.
+ */
+function _fmtBRL(val) {
+    return 'R$ ' + parseFloat(val || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+/**
+ * Renderiza a lista de registros e o painel de resumo.
+ * Regra de Cientista: total = (fee_fixo × 1.5) + valor_variavel
+ */
+function renderFaturamentoVariavel(registros, feeProjeto, isCientista) {
+    const emptyEl  = document.getElementById('fat-variavel-empty');
+    const listEl   = document.getElementById('fat-variavel-list');
+    const resumoEl = document.getElementById('fat-variavel-resumo');
+
+    if (!emptyEl || !listEl) return;
+
+    if (!registros || registros.length === 0) {
+        emptyEl.style.display = 'block';
+        listEl.style.display  = 'none';
+        if (resumoEl) resumoEl.style.display = 'none';
+        return;
+    }
+
+    emptyEl.style.display = 'none';
+    listEl.style.display  = 'block';
+
+    // Usa o registro mais recente/único do mês
+    const reg = registros[0];
+    const fatCliente  = parseFloat(reg.faturamento_cliente || 0);
+    const percentual  = parseFloat(reg.percentual || 0);
+    const valorVar    = parseFloat(reg.valor_variavel || 0);
+    const feeBase     = isCientista ? feeProjeto * 1.5 : feeProjeto;
+    const feeTotal    = feeBase + valorVar;
+
+    // Atualiza KPI cards
+    const elFat  = document.getElementById('fat-variavel-faturamento');
+    const elPct  = document.getElementById('fat-variavel-percentual');
+    const elVar  = document.getElementById('fat-variavel-valor');
+    const elTot  = document.getElementById('fat-variavel-total');
+    const elBrk  = document.getElementById('fat-variavel-breakdown');
+
+    if (elFat) elFat.textContent = _fmtBRL(fatCliente);
+    if (elPct) elPct.textContent = `${percentual}%`;
+    if (elVar) elVar.textContent = _fmtBRL(valorVar);
+    if (elTot) elTot.textContent = _fmtBRL(feeTotal);
+    if (elBrk) {
+        if (isCientista) {
+            elBrk.textContent = `(${_fmtBRL(feeProjeto)} × 1.5) + ${_fmtBRL(valorVar)} = ${_fmtBRL(feeTotal)}`;
+        } else {
+            elBrk.textContent = `${_fmtBRL(feeProjeto)} + ${_fmtBRL(valorVar)} = ${_fmtBRL(feeTotal)}`;
+        }
+    }
+
+    if (resumoEl) resumoEl.style.display = 'block';
+
+    // Tabela de registros
+    const podeOperar = window.__CAN_OPERAR__ === true;
+    const criado = reg.criado_em ? new Date(reg.criado_em).toLocaleString('pt-BR') : '—';
+    const criadoPor = reg.criado_por || '—';
+
+    listEl.innerHTML = `
+        <div class="op-card-premium" style="overflow:hidden;">
+            <table style="width:100%;border-collapse:collapse;font-size:0.85rem;">
+                <thead>
+                    <tr style="background:rgba(214,22,22,0.08);">
+                        <th style="padding:0.75rem 1rem;text-align:left;color:var(--text-muted);font-weight:600;font-size:0.75rem;text-transform:uppercase;letter-spacing:1px;">Competência</th>
+                        <th style="padding:0.75rem 1rem;text-align:right;color:var(--text-muted);font-weight:600;font-size:0.75rem;text-transform:uppercase;letter-spacing:1px;">Faturamento Cliente</th>
+                        <th style="padding:0.75rem 1rem;text-align:right;color:var(--text-muted);font-weight:600;font-size:0.75rem;text-transform:uppercase;letter-spacing:1px;">%</th>
+                        <th style="padding:0.75rem 1rem;text-align:right;color:var(--text-muted);font-weight:600;font-size:0.75rem;text-transform:uppercase;letter-spacing:1px;">Valor Variável</th>
+                        <th style="padding:0.75rem 1rem;text-align:center;color:var(--text-muted);font-weight:600;font-size:0.75rem;text-transform:uppercase;letter-spacing:1px;">Registrado</th>
+                        ${podeOperar ? '<th style="padding:0.75rem 1rem;text-align:center;width:80px;"></th>' : ''}
+                    </tr>
+                </thead>
+                <tbody>
+                    ${registros.map((r, idx) => `
+                        <tr style="border-top:1px solid rgba(255,255,255,0.05);transition:background 0.15s;" 
+                            onmouseover="this.style.background='rgba(214,22,22,0.04)'" 
+                            onmouseout="this.style.background='transparent'">
+                            <td style="padding:0.8rem 1rem;font-weight:600;">
+                                ${MESES_PT[(r.mes || 1) - 1]} ${r.ano || ''}
+                            </td>
+                            <td style="padding:0.8rem 1rem;text-align:right;">${_fmtBRL(r.faturamento_cliente)}</td>
+                            <td style="padding:0.8rem 1rem;text-align:right;color:var(--accent-red);font-weight:600;">${r.percentual}%</td>
+                            <td style="padding:0.8rem 1rem;text-align:right;color:#10b981;font-weight:700;">${_fmtBRL(r.valor_variavel)}</td>
+                            <td style="padding:0.8rem 1rem;text-align:center;font-size:0.75rem;color:var(--text-muted);">
+                                ${r.criado_por ? `<div style="font-weight:600;color:var(--text-main);">${r.criado_por.split('@')[0]}</div>` : ''}
+                                <div>${r.criado_em ? new Date(r.criado_em).toLocaleDateString('pt-BR') : '—'}</div>
+                            </td>
+                            ${podeOperar ? `
+                            <td style="padding:0.8rem 1rem;text-align:center;">
+                                <button onclick="openFatVariavelModal(${r.mes}, ${r.ano})" 
+                                    style="background:none;border:none;cursor:pointer;color:var(--text-muted);margin-right:4px;font-size:0.9rem;" title="Editar">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button onclick="deleteFatVariavel(${r.mes}, ${r.ano})" 
+                                    style="background:none;border:none;cursor:pointer;color:var(--accent-red);font-size:0.9rem;" title="Excluir">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>` : ''}
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
+}
+
+/**
+ * Abre o modal de registro de faturamento variável.
+ * Se mes/ano forem fornecidos, modo de edição.
+ */
+function openFatVariavelModal(mes = null, ano = null) {
+    const now = new Date();
+    const mesSel = document.getElementById('fat-variavel-form-mes');
+    const anoSel = document.getElementById('fat-variavel-form-ano');
+    const fatInput = document.getElementById('fat-variavel-form-faturamento');
+    const pctInput = document.getElementById('fat-variavel-form-percentual');
+
+    // Preenche com mês atual por padrão ou com valores do registro
+    const mesRef = mes || (currentMonth);
+    const anoRef = ano || (currentYear);
+
+    if (mesSel) mesSel.value = mesRef;
+    if (anoSel) anoSel.value = anoRef;
+    if (fatInput) fatInput.value = '';
+    if (pctInput) pctInput.value = '';
+
+    // Se for edição, pre-popula com dados existentes
+    if (mes && ano && currentProject) {
+        fetch(`/api/projetos/${currentProject.pipefy_id}/faturamento-variavel?mes=${mes}&ano=${ano}`)
+            .then(r => r.json())
+            .then(data => {
+                const reg = (data.registros || [])[0];
+                if (reg) {
+                    if (fatInput) fatInput.value = reg.faturamento_cliente || '';
+                    if (pctInput) pctInput.value = reg.percentual || '';
+                    calcPreviewFatVariavel();
+                }
+            });
+    }
+
+    document.getElementById('fat-variavel-preview').style.display = 'none';
+    openGTModal('modal-fat-variavel');
+}
+
+/**
+ * Fecha o modal de faturamento variável.
+ */
+function closeFatVariavelModal() {
+    closeGTModal('modal-fat-variavel');
+}
+
+/**
+ * Calcula e exibe o preview do valor variável em tempo real.
+ */
+function calcPreviewFatVariavel() {
+    const fat = parseFloat(document.getElementById('fat-variavel-form-faturamento')?.value || 0);
+    const pct = parseFloat(document.getElementById('fat-variavel-form-percentual')?.value || 0);
+    const previewEl = document.getElementById('fat-variavel-preview');
+    const valorEl   = document.getElementById('fat-variavel-preview-valor');
+    const formulaEl = document.getElementById('fat-variavel-preview-formula');
+
+    if (!previewEl) return;
+
+    if (!fat || !pct) {
+        previewEl.style.display = 'none';
+        return;
+    }
+
+    const valorVar = fat * (pct / 100);
+    previewEl.style.display = 'block';
+    if (valorEl) valorEl.textContent = _fmtBRL(valorVar);
+    if (formulaEl) formulaEl.textContent = `${_fmtBRL(fat)} × ${pct}% = ${_fmtBRL(valorVar)}`;
+}
+
+/**
+ * Salva um registro de faturamento variável via API.
+ */
+async function saveFatVariavel() {
+    if (!currentProject) return;
+
+    const mes  = parseInt(document.getElementById('fat-variavel-form-mes')?.value || 0);
+    const ano  = parseInt(document.getElementById('fat-variavel-form-ano')?.value || 0);
+    const fat  = parseFloat(document.getElementById('fat-variavel-form-faturamento')?.value || 0);
+    const pct  = parseFloat(document.getElementById('fat-variavel-form-percentual')?.value || 0);
+
+    if (!mes || !ano || !fat || pct === undefined || pct === null) {
+        showToast('Preencha todos os campos obrigatórios.', 'error');
+        return;
+    }
+    if (pct < 0 || pct > 100) {
+        showToast('Percentual deve estar entre 0 e 100.', 'error');
+        return;
+    }
+
+    try {
+        const res = await fetch(`/api/projetos/${currentProject.pipefy_id}/faturamento-variavel`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                mes, ano,
+                faturamento_cliente: fat,
+                percentual: pct
+            })
+        });
+
+        const data = await res.json();
+        if (res.ok) {
+            showToast(data.message || 'Faturamento variável salvo com sucesso!', 'success');
+            closeFatVariavelModal();
+            // Sincroniza o seletor de mês com o mês salvo
+            const select = document.getElementById('fat-variavel-month-select');
+            if (select) {
+                const val = `${ano}-${String(mes).padStart(2, '0')}`;
+                if (select.querySelector(`option[value="${val}"]`)) {
+                    select.value = val;
+                }
+            }
+            loadFaturamentoVariavel();
+        } else {
+            showToast(data.error || 'Erro ao salvar.', 'error');
+        }
+    } catch (e) {
+        console.error('[fat_variavel] Erro ao salvar:', e);
+        showToast('Erro de conexão.', 'error');
+    }
+}
+
+/**
+ * Remove um registro de faturamento variável.
+ */
+async function deleteFatVariavel(mes, ano) {
+    if (!currentProject) return;
+
+    showConfirmModal({
+        title: 'Excluir Faturamento Variável',
+        message: `Deseja remover o registro de ${MESES_PT[mes - 1]} ${ano}? O MRR do mês será recalculado.`,
+        confirmText: 'Sim, excluir',
+        icon: 'fa-trash-alt',
+        onConfirm: async () => {
+            try {
+                const res = await fetch(
+                    `/api/projetos/${currentProject.pipefy_id}/faturamento-variavel/${mes}/${ano}`,
+                    { method: 'DELETE' }
+                );
+                const data = await res.json();
+                if (res.ok) {
+                    showToast(data.message || 'Registro removido.', 'success');
+                    loadFaturamentoVariavel();
+                } else {
+                    showToast(data.error || 'Erro ao excluir.', 'error');
+                }
+            } catch (e) {
+                console.error('[fat_variavel] Erro ao excluir:', e);
+                showToast('Erro de conexão.', 'error');
+            }
+        }
+    });
+}
+
+// Expor funções globalmente
+window.loadFaturamentoVariavel  = loadFaturamentoVariavel;
+window.openFatVariavelModal     = openFatVariavelModal;
+window.closeFatVariavelModal    = closeFatVariavelModal;
+window.calcPreviewFatVariavel   = calcPreviewFatVariavel;
+window.saveFatVariavel          = saveFatVariavel;
+window.deleteFatVariavel        = deleteFatVariavel;

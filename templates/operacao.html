@@ -310,6 +310,12 @@
     {% include "components/header.html" %}
     {% include "components/sidebar.html" %}
 
+    {# Variáveis de permissão globais para o template #}
+    {% set pode_tudo = session.posicao in ["Gerência", "Sócio"] or session.funcao == "Cientista" %}
+    {% set is_gestor = session.funcao in ["Gestor de Tráfego", "Desenvolvedor"] %}
+    {% set is_account = session.funcao == "Account" %}
+    {% set pode_operar = pode_tudo or is_gestor or is_account %}
+
     <div class="app-container">
         <div class="sidebar-overlay"></div>
         <main class="main-container">
@@ -336,7 +342,7 @@
                     <div class="op-premium-grid">
                         {% for p in projetos %}
                         <div class="op-card-premium" data-project="{{ p | tojson | forceescape }}"
-                            onclick="openProjectDetails(JSON.parse(this.dataset.project))">
+                            onclick="openProjectDetails(this)">
                             <div class="op-card-header">
                                 <div class="op-card-icon"><i class="fas fa-rocket"></i></div>
                                 <span class="op-card-status">Ativo</span>
@@ -360,10 +366,6 @@
                 </div>
 
                 <!-- VIEW 2: DETALHES DO PROJETO (PAINEL DE GT) -->
-                {% set pode_tudo = session.posicao in ["Gerência", "Sócio"] or session.funcao == "Cientista" %}
-                {% set is_gestor = session.funcao in ["Gestor de Tráfego", "Desenvolvedor"] %}
-                {% set is_account = session.funcao == "Account" %}
-                {% set pode_operar = pode_tudo or is_gestor or is_account %}
                 <div id="project-details-view" style="display: none;">
                     <div
                         style="margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
@@ -398,6 +400,11 @@
                             <button class="op-pill-btn" onclick="switchOperacaoTab('entregas')">
                                 <div class="op-icon-box"><i class="fas fa-list-check"></i></div>
                                 <span>Entregas do Mês</span>
+                            </button>
+                            <!-- Aba Faturamento Variável: só aparece se contrato_variavel = true -->
+                            <button class="op-pill-btn" id="tab-fat-variavel" onclick="switchOperacaoTab('fat-variavel')" style="display:none;">
+                                <div class="op-icon-box"><i class="fas fa-percent"></i></div>
+                                <span>Fat. Variável</span>
                             </button>
                         </div>
                     </div>
@@ -703,6 +710,62 @@
                         <!-- Cards de progresso por tipo de entrega -->
                         <div id="entregas-grid" class="entregas-progress-grid"></div>
                     </section>
+
+                    <!-- ABA: FATURAMENTO VARIÁVEL -->
+                    <section id="section-fat-variavel" class="op-content-section">
+                        <header class="tasks-header-actions" style="margin-bottom: 2rem;">
+                            <div class="op-section-title" style="margin-bottom: 0;">
+                                <div class="op-icon-box"><i class="fas fa-percent"></i></div>
+                                <h3>Faturamento Variável</h3>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <select id="fat-variavel-month-select" class="gt-form-select" onchange="loadFaturamentoVariavel()" style="width:auto;padding:0.4rem 0.7rem;font-size:0.82rem;max-width:150px;">
+                                    <!-- Gerado via JS -->
+                                </select>
+                                {% if pode_operar %}
+                                <button class="btn-add-task" id="btn-add-fat-variavel" onclick="openFatVariavelModal()" style="white-space:nowrap;">
+                                    <i class="fas fa-plus"></i> Registrar
+                                </button>
+                                {% endif %}
+                            </div>
+                        </header>
+
+                        <!-- Resumo do mês -->
+                        <div id="fat-variavel-resumo" style="display:none; margin-bottom:1.5rem;">
+                            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px,1fr)); gap:1rem;">
+                                <div class="op-card-premium" style="padding:1.2rem 1.5rem;">
+                                    <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:0.4rem;">Faturamento do Cliente</div>
+                                    <div id="fat-variavel-faturamento" style="font-size:1.4rem;font-weight:700;color:var(--text-main);">R$ 0</div>
+                                </div>
+                                <div class="op-card-premium" style="padding:1.2rem 1.5rem;">
+                                    <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:0.4rem;">Percentual Acordado</div>
+                                    <div id="fat-variavel-percentual" style="font-size:1.4rem;font-weight:700;color:var(--accent-red);">0%</div>
+                                </div>
+                                <div class="op-card-premium" style="padding:1.2rem 1.5rem; border:1px solid rgba(16,185,129,0.3);">
+                                    <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:0.4rem;">Valor Variável (agência)</div>
+                                    <div id="fat-variavel-valor" style="font-size:1.4rem;font-weight:700;color:#10b981;">R$ 0</div>
+                                </div>
+                                <div class="op-card-premium" style="padding:1.2rem 1.5rem; background: rgba(214,22,22,0.05);">
+                                    <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:0.4rem;">Fee Total do Mês</div>
+                                    <div id="fat-variavel-total" style="font-size:1.4rem;font-weight:700;color:var(--accent-red);">R$ 0</div>
+                                    <div id="fat-variavel-breakdown" style="font-size:0.72rem;color:var(--text-muted);margin-top:4px;"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Tabela de histórico -->
+                        <div id="fat-variavel-table-wrap">
+                            <div class="op-card-premium" style="padding:3rem;text-align:center;" id="fat-variavel-empty">
+                                <div class="op-icon-box" style="margin:0 auto 1rem;width:56px;height:56px;"><i class="fas fa-percent" style="font-size:1.4rem;"></i></div>
+                                <p style="color:var(--text-muted);">Nenhum faturamento variável registrado para este mês.</p>
+                                {% if pode_operar %}
+                                <button class="btn-add-task" onclick="openFatVariavelModal()" style="margin-top:1rem;"><i class="fas fa-plus"></i> Registrar Faturamento</button>
+                                {% endif %}
+                            </div>
+                            <div id="fat-variavel-list" style="display:none;"></div>
+                        </div>
+                    </section>
+
                 </div>
             </div>
         </main>
@@ -729,7 +792,65 @@
         </div>
     </div>
 
-    <!-- Modal: Nova Tarefa -->
+    <!-- Modal: Faturamento Variável -->
+    <div id="modal-fat-variavel" class="gt-modal">
+        <div class="gt-modal-content" style="max-width: 500px;">
+            <div class="gt-modal-header">
+                <h3 class="gt-modal-title"><i class="fas fa-percent" style="margin-right:8px;"></i>Registrar Faturamento Variável</h3>
+                <button class="gt-modal-close" onclick="closeFatVariavelModal()">&times;</button>
+            </div>
+            <input type="hidden" id="fat-variavel-edit-mes">
+            <input type="hidden" id="fat-variavel-edit-ano">
+
+            <div class="gt-form-group" style="margin-top:1.2rem;">
+                <label class="gt-form-label">Competência (Mês/Ano)</label>
+                <div style="display:flex;gap:8px;">
+                    <select id="fat-variavel-form-mes" class="gt-form-select" style="flex:1;" onchange="calcPreviewFatVariavel()">
+                        <option value="1">Janeiro</option>
+                        <option value="2">Fevereiro</option>
+                        <option value="3">Março</option>
+                        <option value="4">Abril</option>
+                        <option value="5">Maio</option>
+                        <option value="6">Junho</option>
+                        <option value="7">Julho</option>
+                        <option value="8">Agosto</option>
+                        <option value="9">Setembro</option>
+                        <option value="10">Outubro</option>
+                        <option value="11">Novembro</option>
+                        <option value="12">Dezembro</option>
+                    </select>
+                    <input type="number" id="fat-variavel-form-ano" class="gt-form-input" placeholder="2026"
+                        min="2020" max="2099" style="width:90px;" onchange="calcPreviewFatVariavel()">
+                </div>
+            </div>
+
+            <div class="gt-form-group">
+                <label class="gt-form-label">Faturamento do Cliente no Mês (R$)</label>
+                <input type="number" id="fat-variavel-form-faturamento" class="gt-form-input"
+                    placeholder="Ex: 1000000" min="0" step="0.01" oninput="calcPreviewFatVariavel()">
+            </div>
+
+            <div class="gt-form-group">
+                <label class="gt-form-label">Percentual Acordado (%)</label>
+                <input type="number" id="fat-variavel-form-percentual" class="gt-form-input"
+                    placeholder="Ex: 1.5" min="0" max="100" step="0.01" oninput="calcPreviewFatVariavel()">
+            </div>
+
+            <!-- Preview calculado -->
+            <div id="fat-variavel-preview" style="display:none; background:rgba(16,185,129,0.08); border:1px solid rgba(16,185,129,0.25); border-radius:10px; padding:1rem 1.25rem; margin-bottom:1.2rem;">
+                <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:0.5rem;">Valor Variável Calculado</div>
+                <div id="fat-variavel-preview-valor" style="font-size:1.6rem;font-weight:800;color:#10b981;">R$ 0,00</div>
+                <div id="fat-variavel-preview-formula" style="font-size:0.75rem;color:var(--text-muted);margin-top:4px;"></div>
+            </div>
+
+            <div class="gt-form-footer">
+                <button class="btn-gt-cancel" onclick="closeFatVariavelModal()">Cancelar</button>
+                <button class="btn-gt-confirm" onclick="saveFatVariavel()"><i class="fas fa-save" style="margin-right:6px;"></i>Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Editar Link Fixo -->
     <div id="modal-nova-tarefa" class="gt-modal">
         <div class="gt-modal-content">
             <div class="gt-modal-header">
@@ -1096,6 +1217,7 @@
         window.__USER_ROLE__    = "{{ session.funcao }}";
         window.__USER_POSICAO__ = "{{ session.posicao }}";
         window.__CURRENT_FEE__  = 0;
+        window.__CAN_OPERAR__   = {{ "true" if pode_operar else "false" }};
     </script>
 
 
