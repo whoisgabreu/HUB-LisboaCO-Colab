@@ -3446,6 +3446,15 @@ def update_projeto_local(pipefy_id):
                                     item["data_inicio"] = data_inicio_obj.isoformat()
                                     item["data_fim"] = data_fim_obj.isoformat() if data_fim_obj else None
                                     item["active"] = active
+                                    item["cientista"] = cientista
+                                    
+                                    # Datas de cientista do metadata recém-coletado
+                                    inv_m = investidores_metadata.get(email, {})
+                                    c_ent = inv_m.get("cientista_entrada")
+                                    c_sai = inv_m.get("cientista_saida")
+                                    item["cientista_entrada"] = c_ent.split('T')[0] if c_ent else None
+                                    item["cientista_saida"] = c_sai.split('T')[0] if c_sai else None
+                                    
                                     atualizado = True
                                 novo_hist.append(item)
                             if atualizado:
