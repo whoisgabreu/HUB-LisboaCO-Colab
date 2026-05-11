@@ -1,6 +1,6 @@
 import calendar
 from decimal import Decimal
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from sqlalchemy import extract, and_, or_
 from database import Session
 from sqlalchemy.orm.attributes import flag_modified
@@ -78,18 +78,21 @@ class ProjetoParticipacaoService:
                 )
             ).all()
 
-            # 3. Mapear moedas dos projetos (fonte: projetos_ativos, onetime, inativos)
+            # 3. Mapear moedas e metadados dos projetos (fonte: projetos_ativos, onetime, inativos)
             proj_ids = [v.pipefy_id_projeto for v in vinculos]
             moedas_map = {}
+            metadata_map = {} # pipefy_id -> extra_dict
             
-            # Busca em todas as tabelas de projetos para garantir que pegamos a moeda correta
+            # Busca em todas as tabelas de projetos para garantir que pegamos a moeda e o metadata
             tabelas_projetos = [ProjetoAtivo, ProjetoOnetime, ProjetoInativo]
             for Model in tabelas_projetos:
-                projs = db.query(Model.pipefy_id, Model.moeda).filter(Model.pipefy_id.in_(proj_ids)).all()
-                for pid, moeda in projs:
+                projs = db.query(Model.pipefy_id, Model.moeda, Model.extra).filter(Model.pipefy_id.in_(proj_ids)).all()
+                for pid, moeda, extra in projs:
                     if pid not in moedas_map:
                         m_str = str(moeda).strip().upper() if moeda else "BRL"
                         moedas_map[pid] = "USD" if m_str == "USD" else "BRL"
+                    if pid not in metadata_map:
+                        metadata_map[pid] = extra if extra and isinstance(extra, dict) else {}
 
 
             # 4. Agrupar vínculos por e-mail
@@ -157,27 +160,90 @@ class ProjetoParticipacaoService:
                     # Se ativo (v.active != False), v_fim será None e o helper assumirá o fim do mês.
                     v_fim = None if v.active != False else v.inactivated_at
                     
-                    # Regra do Cientista: 1.5x no fee base para cálculo do proporcional
+                    # --- NOVO CÁLCULO CIENTISTA PROPORCIONAL ---
                     fee_base = Decimal(str(v.fee_projeto or 0))
-                    if v.cientista:
-                        fee_base *= Decimal("1.5")
-                        
-                    v_valor_prop = ProjetoParticipacaoService.calcular_valor_proporcional(
-                        fee_base, v_inicio, v_fim, mes, ano
-                    )
+                    
+                    # Buscar datas de cientista no metadata
+                    p_meta = metadata_map.get(v.pipefy_id_projeto, {})
+                    inv_meta = p_meta.get("investidores_metadata", {}).get(v.email_investidor, {})
+                    
+                    c_entrada_str = inv_meta.get("cientista_entrada")
+                    c_saida_str = inv_meta.get("cientista_saida")
+                    
+                    c_entrada = date.fromisoformat(c_entrada_str.split('T')[0]) if c_entrada_str else None
+                    c_saida = date.fromisoformat(c_saida_str.split('T')[0]) if c_saida_str else None
 
+                    # Se v.cientista é True mas não tem data de entrada, assume o início do vínculo no projeto
+                    if v.cientista and not c_entrada:
+                        c_entrada = v_inicio
+                    
+                    if v.cientista and c_entrada:
+                        # O período de cientista é [c_entrada, c_saida]
+                        # Se c_saida for nulo, assume que continua até o fim da participação no projeto (v_fim ou fim do mês)
+                        real_v_fim = v_fim if v_fim else data_fim_ref
+                        actual_c_saida = c_saida if c_saida else real_v_fim
+                        
+                        # Intersecção entre o período de participação no projeto e o período de cientista
+                        # Participação no projeto: [v_inicio, real_v_fim]
+                        # Cientista: [c_entrada, actual_c_saida]
+                        
+                        s_start = max(v_inicio, c_entrada)
+                        s_end = min(real_v_fim, actual_c_saida)
+                        
+                        if s_start <= s_end:
+                            # Calculamos em duas partes:
+                            # 1. Período como cientista (multiplier 1.5)
+                            valor_cientista = ProjetoParticipacaoService.calcular_valor_proporcional(
+                                fee_base * Decimal("1.5"), s_start, s_end, mes, ano
+                            )
+                            
+                            # 2. Período como investidor puro (o resto do tempo de participação)
+                            # Calculamos o total e subtraímos os dias de cientista para ser mais preciso
+                            # Ou simplesmente calculamos os buracos.
+                            # Mais fácil: Valor Total = (Valor Cientista) + (Valor Normal nos dias não-cientista)
+                            
+                            # Dias totais no projeto: [v_inicio, real_v_fim]
+                            # Dias de cientista: [s_start, s_end]
+                            
+                            # Se o investidor não foi cientista o tempo todo que esteve no projeto:
+                            valor_investidor_puro = Decimal("0.00")
+                            
+                            # Antes do período cientista
+                            if v_inicio < s_start:
+                                valor_investidor_puro += ProjetoParticipacaoService.calcular_valor_proporcional(
+                                    fee_base, v_inicio, s_start - timedelta(days=1), mes, ano
+                                )
+                            # Depois do período cientista
+                            if real_v_fim > s_end:
+                                valor_investidor_puro += ProjetoParticipacaoService.calcular_valor_proporcional(
+                                    fee_base, s_end + timedelta(days=1), real_v_fim, mes, ano
+                                )
+                            
+                            v_valor_prop = valor_cientista + valor_investidor_puro
+                        else:
+                            # Período cientista fora da participação no projeto (erro de cadastro?)
+                            v_valor_prop = ProjetoParticipacaoService.calcular_valor_proporcional(
+                                fee_base, v_inicio, v_fim, mes, ano
+                            )
+                    else:
+                        # Não é cientista ou dados incompletos
+                        v_valor_prop = ProjetoParticipacaoService.calcular_valor_proporcional(
+                            fee_base, v_inicio, v_fim, mes, ano
+                        )
 
                     item = {
                         "projeto_id": p_id,
                         "fee_projeto": float(v.fee_projeto) if v.fee_projeto is not None else 0.0,
                         "moeda": moedas_map.get(v.pipefy_id_projeto, "BRL"),
-                        "valor_proporcional": float(v_valor_prop),
+                        "valor_proporcional": float(v_valor_prop.quantize(Decimal("0.01"))),
                         "mes_referencia": f"{ano}-{mes:02d}",
                         "total_dias_mes": total_dias_mes,
                         "data_inicio": v_inicio.isoformat(),
                         "data_fim": v_fim.isoformat() if v_fim else None,
                         "ativo": v.active != False,
-                        "cientista": v.cientista or False
+                        "cientista": v.cientista or False,
+                        "cientista_entrada": c_entrada.isoformat() if c_entrada else None,
+                        "cientista_saida": c_saida.isoformat() if c_saida else None
                     }
 
                     novo_historico.append(item)
