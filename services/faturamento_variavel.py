@@ -77,7 +77,6 @@ def aplicar_faturamento_variavel(mes, ano):
     try:
         with Session() as db:
             # 1. Buscar todos os projetos ativos com contrato_variavel = True
-            #    A flag está em ProjetoAtivo.extra["contrato_variavel"]
             projetos_ativos = db.query(ProjetoAtivo).all()
             projetos_variaveis = {
                 p.pipefy_id: p
@@ -86,53 +85,41 @@ def aplicar_faturamento_variavel(mes, ano):
             }
 
             if not projetos_variaveis:
+                # Opcional: se não houver projetos variáveis, podemos querer "limpar" 
+                # o mrr_atual (resetar para mrr_entrega) de todos? 
+                # Melhor focar apenas em quem tinha ou tem variável.
                 print(f"[faturamento_variavel] Nenhum projeto com contrato variável encontrado.")
                 return
-
-            print(f"[faturamento_variavel] Projetos variáveis: {list(projetos_variaveis.keys())}")
 
             # 2. Para cada projeto variável, buscar o valor do mês
             valores_por_projeto = {}
             with engine.connect() as conn:
-                for pid, projeto in projetos_variaveis.items():
+                for pid in projetos_variaveis.keys():
                     registros = _get_faturamentos_variavel_projeto(conn, pid, mes, ano)
                     total_variavel = Decimal("0")
                     for reg in registros:
                         if reg.get("mes") == mes and reg.get("ano") == ano:
                             total_variavel += Decimal(str(reg.get("valor_variavel", 0)))
-                    if total_variavel > 0:
-                        valores_por_projeto[pid] = total_variavel
-                        print(f"[faturamento_variavel] Projeto {pid}: R$ {total_variavel}")
+                    
+                    # Armazena mesmo que seja 0, para permitir o "reset" se um registro for deletado
+                    valores_por_projeto[pid] = total_variavel
 
-            if not valores_por_projeto:
-                print(f"[faturamento_variavel] Nenhum valor variável registrado para {mes}/{ano}.")
-                return
-
-            # 3. Para cada investidor vinculado a projetos variáveis, atualizar MetricaMensal
+            # 3. Identificar investidores vinculados a esses projetos
             vinculos = db.query(InvestidorProjeto).filter(
-                InvestidorProjeto.pipefy_id_projeto.in_(list(valores_por_projeto.keys())),
+                InvestidorProjeto.pipefy_id_projeto.in_(list(projetos_variaveis.keys())),
                 InvestidorProjeto.active == True
             ).all()
 
-            # Agrupa por investidor: email → soma de valores variáveis dos projetos vinculados
             soma_por_investidor = {}
             for v in vinculos:
-                pid = v.pipefy_id_projeto
-                val = valores_por_projeto.get(pid, Decimal("0"))
-                if val == Decimal("0"):
-                    continue
-
+                val = valores_por_projeto.get(v.pipefy_id_projeto, Decimal("0"))
                 email = v.email_investidor
                 if email not in soma_por_investidor:
                     soma_por_investidor[email] = Decimal("0")
                 soma_por_investidor[email] += val
 
-            print(f"[faturamento_variavel] Investidores impactados: {list(soma_por_investidor.keys())}")
-
-            # 4. Atualizar fixo_mrr_atual e fixo_mrr_entrega somando o valor variável
-            #    O valor base já contém o multiplicador 1.5x do cientista (feito pelo remuneracao.py)
-            #    Apenas somamos o valor variável por cima — respeitando a regra:
-            #        resultado = fee_cientista_base + valor_variavel
+            # 4. Atualizar MetricaMensal: fixo_mrr_atual = fixo_mrr_entrega + variável
+            #    O fixo_mrr_entrega é usado como base limpa (idempotência)
             for email, valor_variavel_total in soma_por_investidor.items():
                 metrica = db.query(MetricaMensal).filter_by(
                     email_investidor=email,
@@ -141,25 +128,21 @@ def aplicar_faturamento_variavel(mes, ano):
                 ).first()
 
                 if not metrica:
-                    print(f"[faturamento_variavel] Sem MetricaMensal para {email} {mes}/{ano} — pulando.")
                     continue
 
-                mrr_base = Decimal(str(metrica.fixo_mrr_atual or 0))
-                novo_mrr = mrr_base + valor_variavel_total
+                # Base é sempre o valor de entrega (calculado pelo remuneracao.py)
+                mrr_base = Decimal(str(metrica.fixo_mrr_entrega or 0))
+                novo_mrr_atual = mrr_base + valor_variavel_total
 
-                metrica.fixo_mrr_atual = novo_mrr
-                metrica.fixo_mrr_entrega = novo_mrr
+                metrica.fixo_mrr_atual = novo_mrr_atual
+                # NOTA: NÃO atualizamos fixo_mrr_entrega para manter a base limpa para a próxima execução
 
-                print(
-                    f"[faturamento_variavel] {email}: "
-                    f"mrr_base={float(mrr_base):.2f} + variavel={float(valor_variavel_total):.2f} "
-                    f"= {float(novo_mrr):.2f}"
-                )
-
+                print(f"[faturamento_variavel] Sync {email}: Base {mrr_base} + Var {valor_variavel_total} = {novo_mrr_atual}")
                 db.flush()
 
             db.commit()
             print(f"[faturamento_variavel] Concluído para {mes}/{ano}.")
+
 
     except Exception as e:
         import traceback
@@ -200,24 +183,15 @@ def get_registros_por_projeto(pipefy_id, mes=None, ano=None):
         return []
 
 
-def salvar_registro(pipefy_id, mes, ano, faturamento_cliente, percentual, usuario_email):
+def salvar_registro(pipefy_id, mes, ano, faturamento_cliente, percentual, usuario_email, registro_id=None):
     """
-    Cria ou atualiza o registro de faturamento variável de um projeto/mês/ano.
-    O valor_variavel é calculado automaticamente.
-    Retorna (sucesso: bool, mensagem: str).
+    Cria ou atualiza um registro de faturamento variável.
+    Se 'registro_id' for fornecido, atualiza o registro correspondente.
+    Caso contrário, adiciona um novo.
     """
     try:
+        import uuid
         valor_variavel = float(faturamento_cliente) * (float(percentual) / 100)
-
-        novo_registro = {
-            "mes": int(mes),
-            "ano": int(ano),
-            "faturamento_cliente": float(faturamento_cliente),
-            "percentual": float(percentual),
-            "valor_variavel": round(valor_variavel, 2),
-            "criado_em": datetime.now().isoformat(),
-            "criado_por": usuario_email
-        }
 
         with engine.begin() as conn:
             row = conn.execute(text(
@@ -230,12 +204,38 @@ def salvar_registro(pipefy_id, mes, ano, faturamento_cliente, percentual, usuari
                 current = current_raw if isinstance(current_raw, dict) else (
                     json.loads(current_raw) if current_raw else {}
                 )
-                # Substitui o registro do mês (apenas um por mês/ano)
-                current["faturamento_variavel"] = [
-                    r for r in current.get("faturamento_variavel", [])
-                    if not (r.get("mes") == int(mes) and r.get("ano") == int(ano))
-                ]
-                current["faturamento_variavel"].append(novo_registro)
+                
+                fat_var = current.get("faturamento_variavel", [])
+                
+                if registro_id:
+                    # Modo Edição: procura pelo ID e atualiza
+                    encontrado = False
+                    for r in fat_var:
+                        if r.get("id") == registro_id:
+                            r["faturamento_cliente"] = float(faturamento_cliente)
+                            r["percentual"] = float(percentual)
+                            r["valor_variavel"] = round(valor_variavel, 2)
+                            r["atualizado_em"] = datetime.now().isoformat()
+                            r["atualizado_por"] = usuario_email
+                            encontrado = True
+                            break
+                    if not encontrado:
+                        return False, "Registro original não encontrado para edição."
+                else:
+                    # Modo Novo: Adiciona um novo registro com ID único
+                    novo_registro = {
+                        "id": str(uuid.uuid4())[:8],
+                        "mes": int(mes),
+                        "ano": int(ano),
+                        "faturamento_cliente": float(faturamento_cliente),
+                        "percentual": float(percentual),
+                        "valor_variavel": round(valor_variavel, 2),
+                        "criado_em": datetime.now().isoformat(),
+                        "criado_por": usuario_email
+                    }
+                    fat_var.append(novo_registro)
+
+                current["faturamento_variavel"] = fat_var
 
                 conn.execute(text(
                     "UPDATE plataforma_geral.operacao "
@@ -248,17 +248,25 @@ def salvar_registro(pipefy_id, mes, ano, faturamento_cliente, percentual, usuari
                     "ano": int(ano)
                 })
             else:
-                # Cria novo snapshot mínimo com o registro variável
-                from database import engine as _engine
-                # Busca nome do projeto
+                # Se a linha não existe, cria snapshot com o primeiro registro
+                from models import ProjetoAtivo, ProjetoOnetime
                 with Session() as ndb:
-                    from models import ProjetoAtivo, ProjetoOnetime
                     proj = (
                         ndb.query(ProjetoAtivo).filter_by(pipefy_id=pipefy_id).first()
                         or ndb.query(ProjetoOnetime).filter_by(pipefy_id=pipefy_id).first()
                     )
                     nome_proj = proj.nome if proj else ""
 
+                novo_registro = {
+                    "id": str(uuid.uuid4())[:8],
+                    "mes": int(mes),
+                    "ano": int(ano),
+                    "faturamento_cliente": float(faturamento_cliente),
+                    "percentual": float(percentual),
+                    "valor_variavel": round(valor_variavel, 2),
+                    "criado_em": datetime.now().isoformat(),
+                    "criado_por": usuario_email
+                }
                 novo_snap = {"faturamento_variavel": [novo_registro]}
                 conn.execute(text(
                     "INSERT INTO plataforma_geral.operacao (id_projeto, mes, ano, nome, entregas) "
@@ -279,10 +287,9 @@ def salvar_registro(pipefy_id, mes, ano, faturamento_cliente, percentual, usuari
         return False, str(e)
 
 
-def deletar_registro(pipefy_id, mes, ano):
+def deletar_registro(pipefy_id, mes, ano, registro_id=None):
     """
-    Remove o registro de faturamento variável de um projeto/mês/ano.
-    Retorna (sucesso: bool, mensagem: str).
+    Remove um registro de faturamento variável pelo seu ID (ou todos do mês se ID não fornecido - legado).
     """
     try:
         with engine.begin() as conn:
@@ -292,17 +299,23 @@ def deletar_registro(pipefy_id, mes, ano):
             ), {"id": str(pipefy_id), "mes": int(mes), "ano": int(ano)}).mappings().first()
 
             if not row:
-                return False, "Registro não encontrado."
+                return False, "Snapshot de operação não encontrado."
 
             current_raw = row["entregas"]
             current = current_raw if isinstance(current_raw, dict) else (
                 json.loads(current_raw) if current_raw else {}
             )
             fat_var = current.get("faturamento_variavel", [])
-            nova_lista = [
-                r for r in fat_var
-                if not (r.get("mes") == int(mes) and r.get("ano") == int(ano))
-            ]
+            
+            if registro_id:
+                nova_lista = [r for r in fat_var if r.get("id") != registro_id]
+            else:
+                # Comportamento legado: remove todos do mês
+                nova_lista = [
+                    r for r in fat_var
+                    if not (r.get("mes") == int(mes) and r.get("ano") == int(ano))
+                ]
+            
             current["faturamento_variavel"] = nova_lista
 
             conn.execute(text(
@@ -317,6 +330,7 @@ def deletar_registro(pipefy_id, mes, ano):
             })
 
         return True, "Registro removido com sucesso."
+
 
     except Exception as e:
         import traceback

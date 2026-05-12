@@ -3585,7 +3585,8 @@ def post_faturamento_variavel(pipefy_id):
             ano=int(ano),
             faturamento_cliente=float(faturamento_cliente),
             percentual=float(percentual),
-            usuario_email=session.get("email", "sistema")
+            usuario_email=session.get("email", "sistema"),
+            registro_id=data.get("id")
         )
         if not ok:
             return jsonify({"error": msg}), 500
@@ -3627,7 +3628,8 @@ def put_faturamento_variavel(pipefy_id, mes, ano):
             ano=int(ano),
             faturamento_cliente=float(faturamento_cliente),
             percentual=float(percentual),
-            usuario_email=session.get("email", "sistema")
+            usuario_email=session.get("email", "sistema"),
+            registro_id=data.get("id")
         )
         if not ok:
             return jsonify({"error": msg}), 500
@@ -3652,17 +3654,16 @@ def delete_faturamento_variavel(pipefy_id, mes, ano):
 
     try:
         from services.faturamento_variavel import deletar_registro, aplicar_faturamento_variavel
-        ok, msg = deletar_registro(pipefy_id=pipefy_id, mes=int(mes), ano=int(ano))
+        registro_id = request.args.get("id")
+        ok, msg = deletar_registro(pipefy_id=pipefy_id, mes=int(mes), ano=int(ano), registro_id=registro_id)
         if not ok:
             return jsonify({"error": msg}), 404
 
-        # Recalcula MRR sem o valor removido
+        # Recalcula apenas o impacto do faturamento variável (rápido)
         try:
-            from services.remuneracao import calcular_metricas_mensais
-            calcular_metricas_mensais(int(mes), int(ano))
             aplicar_faturamento_variavel(int(mes), int(ano))
         except Exception as e:
-            print(f"[fat_var] Erro ao recalcular MRR pós-delete: {e}")
+            print(f"[fat_var] Erro ao sincronizar MRR pós-delete: {e}")
 
         return jsonify({"status": "success", "message": msg})
     except Exception as e:

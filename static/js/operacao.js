@@ -9,6 +9,7 @@ let currentMonth = new Date().getMonth() + 1;
 let currentYear = new Date().getFullYear();
 
 const MESES_PT = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+let currentFatVariavelRecords = [];
 
 // ─── CONFIGURAÇÃO DE ENTREGAS POR CARGO ──────────────────────────────────────
 // Regras pré-definidas: cada cargo tem metas fixas por tipo de entrega.
@@ -232,7 +233,6 @@ function switchOperacaoTab(tabId) {
         }
         if (tabId === 'entregas') loadEntregas(pid, currentMonth, currentYear);
         if (tabId === 'fat-variavel') {
-            initFatVariavelMonthSelect();
             loadFaturamentoVariavel();
         }
     }
@@ -1862,32 +1862,9 @@ window.incrementPlannerMonday = incrementPlannerMonday;
 
 // ═══ FATURAMENTO VARIÁVEL ═════════════════════════════════════════════════════════════════════
 // Módulo isolado para CRUD do faturamento variável por projeto/mês/ano.
-// Não altera regras existentes de remuneração. O backend cuida de somar ao MRR.
-// Regra do Cientista: (fee_fixo × 1.5) + valor_variavel (não: (fee_fixo + valor_variavel) × 1.5)
 
 /**
- * Inicializa o seletor de mês/ano da aba de Faturamento Variável.
- * Gera as últimas 12 competências.
- */
-function initFatVariavelMonthSelect() {
-    const select = document.getElementById('fat-variavel-month-select');
-    if (!select) return;
-    const now = new Date();
-    const m = now.getMonth() + 1;
-    const y = now.getFullYear();
-    let html = '';
-    for (let i = 0; i < 12; i++) {
-        let month = m - i;
-        let year = y;
-        if (month <= 0) { month += 12; year--; }
-        const val = `${year}-${String(month).padStart(2, '0')}`;
-        html += `<option value="${val}"${i === 0 ? ' selected' : ''}>${MESES_PT[month - 1]} ${year}</option>`;
-    }
-    select.innerHTML = html;
-}
-
-/**
- * Carrega os registros de faturamento variável do mês/ano selecionado.
+ * Carrega todos os registros de faturamento variável do projeto.
  */
 async function loadFaturamentoVariavel() {
     if (!currentProject) return;
@@ -1895,19 +1872,11 @@ async function loadFaturamentoVariavel() {
     const fee = parseFloat(currentProject.fee || 0);
     const isCientista = currentProject.cientista === true;
 
-    const select = document.getElementById('fat-variavel-month-select');
-    let mes = currentMonth, ano = currentYear;
-    if (select && select.value) {
-        const parts = select.value.split('-');
-        ano = parseInt(parts[0]);
-        mes = parseInt(parts[1]);
-    }
-
     try {
-        const res = await fetch(`/api/projetos/${pid}/faturamento-variavel?mes=${mes}&ano=${ano}`);
+        const res = await fetch(`/api/projetos/${pid}/faturamento-variavel`);
         const data = await res.json();
-        const registros = data.registros || [];
-        renderFaturamentoVariavel(registros, fee, isCientista);
+        currentFatVariavelRecords = data.registros || [];
+        renderFaturamentoVariavel(currentFatVariavelRecords, fee, isCientista);
     } catch (e) {
         console.error('[fat_variavel] Erro ao carregar:', e);
     }
@@ -1921,33 +1890,38 @@ function _fmtBRL(val) {
 }
 
 /**
- * Renderiza a lista de registros e o painel de resumo.
- * Regra de Cientista: total = (fee_fixo × 1.5) + valor_variavel
+ * Renderiza o painel de resumo focado no mês atual (currentMonth/currentYear).
+ * Agora suporta múltiplos registros por mês, somando os valores para o KPI.
  */
 function renderFaturamentoVariavel(registros, feeProjeto, isCientista) {
     const emptyEl  = document.getElementById('fat-variavel-empty');
-    const listEl   = document.getElementById('fat-variavel-list');
     const resumoEl = document.getElementById('fat-variavel-resumo');
+    const listEl   = document.getElementById('fat-variavel-list');
 
-    if (!emptyEl || !listEl) return;
+    if (!emptyEl || !resumoEl || !listEl) return;
 
-    if (!registros || registros.length === 0) {
+    // Busca todos os registros específicos do mês atual
+    const regsMes = registros.filter(r => r.mes === currentMonth && r.ano === currentYear);
+
+    if (regsMes.length === 0) {
         emptyEl.style.display = 'block';
-        listEl.style.display  = 'none';
-        if (resumoEl) resumoEl.style.display = 'none';
+        resumoEl.style.display = 'none';
+        listEl.style.display = 'none';
+        const pEmpty = emptyEl.querySelector('p');
+        if (pEmpty) pEmpty.textContent = `Nenhum faturamento registrado para ${MESES_PT[currentMonth-1]} ${currentYear}.`;
         return;
     }
 
     emptyEl.style.display = 'none';
-    listEl.style.display  = 'block';
+    resumoEl.style.display = 'block';
+    listEl.style.display = 'block';
 
-    // Usa o registro mais recente/único do mês
-    const reg = registros[0];
-    const fatCliente  = parseFloat(reg.faturamento_cliente || 0);
-    const percentual  = parseFloat(reg.percentual || 0);
-    const valorVar    = parseFloat(reg.valor_variavel || 0);
+    // Soma os valores de todos os registros do mês
+    const totalFatCliente = regsMes.reduce((acc, r) => acc + parseFloat(r.faturamento_cliente || 0), 0);
+    const totalValorVar   = regsMes.reduce((acc, r) => acc + parseFloat(r.valor_variavel || 0), 0);
+    
     const feeBase     = isCientista ? feeProjeto * 1.5 : feeProjeto;
-    const feeTotal    = feeBase + valorVar;
+    const feeTotal    = feeBase + totalValorVar;
 
     // Atualiza KPI cards
     const elFat  = document.getElementById('fat-variavel-faturamento');
@@ -1956,61 +1930,52 @@ function renderFaturamentoVariavel(registros, feeProjeto, isCientista) {
     const elTot  = document.getElementById('fat-variavel-total');
     const elBrk  = document.getElementById('fat-variavel-breakdown');
 
-    if (elFat) elFat.textContent = _fmtBRL(fatCliente);
-    if (elPct) elPct.textContent = `${percentual}%`;
-    if (elVar) elVar.textContent = _fmtBRL(valorVar);
+    if (elFat) elFat.textContent = _fmtBRL(totalFatCliente);
+    if (elPct) {
+        if (regsMes.length === 1) elPct.textContent = `${regsMes[0].percentual}%`;
+        else elPct.textContent = "Variado";
+    }
+    if (elVar) elVar.textContent = _fmtBRL(totalValorVar);
     if (elTot) elTot.textContent = _fmtBRL(feeTotal);
     if (elBrk) {
-        if (isCientista) {
-            elBrk.textContent = `(${_fmtBRL(feeProjeto)} × 1.5) + ${_fmtBRL(valorVar)} = ${_fmtBRL(feeTotal)}`;
-        } else {
-            elBrk.textContent = `${_fmtBRL(feeProjeto)} + ${_fmtBRL(valorVar)} = ${_fmtBRL(feeTotal)}`;
-        }
+        const formulaFixa = isCientista ? `(${_fmtBRL(feeProjeto)} × 1.5)` : _fmtBRL(feeProjeto);
+        elBrk.textContent = `${formulaFixa} + ${_fmtBRL(totalValorVar)} = ${_fmtBRL(feeTotal)}`;
     }
 
-    if (resumoEl) resumoEl.style.display = 'block';
-
-    // Tabela de registros
+    // Renderiza a tabela do mês atual na aba
     const podeOperar = window.__CAN_OPERAR__ === true;
-    const criado = reg.criado_em ? new Date(reg.criado_em).toLocaleString('pt-BR') : '—';
-    const criadoPor = reg.criado_por || '—';
-
     listEl.innerHTML = `
         <div class="op-card-premium" style="overflow:hidden;">
+            <div style="padding:1rem 1.2rem; border-bottom:1px solid rgba(255,255,255,0.05); display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-weight:600; font-size:0.85rem; color:var(--text-muted);">Registros de ${MESES_PT[currentMonth-1]} ${currentYear}</span>
+            </div>
             <table style="width:100%;border-collapse:collapse;font-size:0.85rem;">
                 <thead>
-                    <tr style="background:rgba(214,22,22,0.08);">
-                        <th style="padding:0.75rem 1rem;text-align:left;color:var(--text-muted);font-weight:600;font-size:0.75rem;text-transform:uppercase;letter-spacing:1px;">Competência</th>
-                        <th style="padding:0.75rem 1rem;text-align:right;color:var(--text-muted);font-weight:600;font-size:0.75rem;text-transform:uppercase;letter-spacing:1px;">Faturamento Cliente</th>
-                        <th style="padding:0.75rem 1rem;text-align:right;color:var(--text-muted);font-weight:600;font-size:0.75rem;text-transform:uppercase;letter-spacing:1px;">%</th>
-                        <th style="padding:0.75rem 1rem;text-align:right;color:var(--text-muted);font-weight:600;font-size:0.75rem;text-transform:uppercase;letter-spacing:1px;">Valor Variável</th>
-                        <th style="padding:0.75rem 1rem;text-align:center;color:var(--text-muted);font-weight:600;font-size:0.75rem;text-transform:uppercase;letter-spacing:1px;">Registrado</th>
+                    <tr style="background:rgba(214,22,22,0.04);">
+                        <th style="padding:0.75rem 1rem;text-align:left;color:var(--text-muted);font-weight:600;font-size:0.75rem;text-transform:uppercase;">Faturamento Cliente</th>
+                        <th style="padding:0.75rem 1rem;text-align:right;color:var(--text-muted);font-weight:600;font-size:0.75rem;text-transform:uppercase;">%</th>
+                        <th style="padding:0.75rem 1rem;text-align:right;color:var(--text-muted);font-weight:600;font-size:0.75rem;text-transform:uppercase;">Valor Variável</th>
+                        <th style="padding:0.75rem 1rem;text-align:center;color:var(--text-muted);font-weight:600;font-size:0.75rem;text-transform:uppercase;">Registrado em</th>
                         ${podeOperar ? '<th style="padding:0.75rem 1rem;text-align:center;width:80px;"></th>' : ''}
                     </tr>
                 </thead>
                 <tbody>
-                    ${registros.map((r, idx) => `
-                        <tr style="border-top:1px solid rgba(255,255,255,0.05);transition:background 0.15s;" 
-                            onmouseover="this.style.background='rgba(214,22,22,0.04)'" 
-                            onmouseout="this.style.background='transparent'">
-                            <td style="padding:0.8rem 1rem;font-weight:600;">
-                                ${MESES_PT[(r.mes || 1) - 1]} ${r.ano || ''}
-                            </td>
-                            <td style="padding:0.8rem 1rem;text-align:right;">${_fmtBRL(r.faturamento_cliente)}</td>
+                    ${regsMes.map(r => `
+                        <tr style="border-top:1px solid rgba(255,255,255,0.05);">
+                            <td style="padding:0.8rem 1rem;">${_fmtBRL(r.faturamento_cliente)}</td>
                             <td style="padding:0.8rem 1rem;text-align:right;color:var(--accent-red);font-weight:600;">${r.percentual}%</td>
                             <td style="padding:0.8rem 1rem;text-align:right;color:#10b981;font-weight:700;">${_fmtBRL(r.valor_variavel)}</td>
                             <td style="padding:0.8rem 1rem;text-align:center;font-size:0.75rem;color:var(--text-muted);">
-                                ${r.criado_por ? `<div style="font-weight:600;color:var(--text-main);">${r.criado_por.split('@')[0]}</div>` : ''}
-                                <div>${r.criado_em ? new Date(r.criado_em).toLocaleDateString('pt-BR') : '—'}</div>
+                                ${r.criado_em ? new Date(r.criado_em).toLocaleDateString('pt-BR') : '—'}
                             </td>
                             ${podeOperar ? `
                             <td style="padding:0.8rem 1rem;text-align:center;">
-                                <button onclick="openFatVariavelModal(${r.mes}, ${r.ano})" 
-                                    style="background:none;border:none;cursor:pointer;color:var(--text-muted);margin-right:4px;font-size:0.9rem;" title="Editar">
+                                <button onclick="openFatVariavelModal(${r.mes}, ${r.ano}, '${r.id}')" 
+                                    style="background:none;border:none;cursor:pointer;color:var(--text-muted);margin-right:4px;" title="Editar">
                                     <i class="fas fa-edit"></i>
                                 </button>
-                                <button onclick="deleteFatVariavel(${r.mes}, ${r.ano})" 
-                                    style="background:none;border:none;cursor:pointer;color:var(--accent-red);font-size:0.9rem;" title="Excluir">
+                                <button onclick="deleteFatVariavel(${r.mes}, ${r.ano}, '${r.id}')" 
+                                    style="background:none;border:none;cursor:pointer;color:var(--accent-red);" title="Excluir">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </td>` : ''}
@@ -2023,38 +1988,104 @@ function renderFaturamentoVariavel(registros, feeProjeto, isCientista) {
 }
 
 /**
- * Abre o modal de registro de faturamento variável.
- * Se mes/ano forem fornecidos, modo de edição.
+ * Abre o modal de histórico e renderiza a tabela com todos os registros.
  */
-function openFatVariavelModal(mes = null, ano = null) {
-    const now = new Date();
-    const mesSel = document.getElementById('fat-variavel-form-mes');
-    const anoSel = document.getElementById('fat-variavel-form-ano');
+function openFatVariavelHistory() {
+    const container = document.getElementById('fat-variavel-history-list');
+    if (!container) return;
+
+    if (!currentFatVariavelRecords || currentFatVariavelRecords.length === 0) {
+        container.innerHTML = '<p style="text-align:center;color:var(--text-muted);padding:2rem;">Nenhum registro no histórico.</p>';
+        openGTModal('modal-fat-variavel-historico');
+        return;
+    }
+
+    const podeOperar = window.__CAN_OPERAR__ === true;
+
+    container.innerHTML = `
+        <div class="op-card-premium" style="overflow:hidden; background:rgba(0,0,0,0.2);">
+            <table style="width:100%;border-collapse:collapse;font-size:0.85rem;">
+                <thead>
+                    <tr style="background:rgba(214,22,22,0.08);">
+                        <th style="padding:0.75rem 1rem;text-align:left;color:var(--text-muted);font-weight:600;font-size:0.75rem;text-transform:uppercase;">Competência</th>
+                        <th style="padding:0.75rem 1rem;text-align:right;color:var(--text-muted);font-weight:600;font-size:0.75rem;text-transform:uppercase;">Faturamento</th>
+                        <th style="padding:0.75rem 1rem;text-align:right;color:var(--text-muted);font-weight:600;font-size:0.75rem;text-transform:uppercase;">%</th>
+                        <th style="padding:0.75rem 1rem;text-align:right;color:var(--text-muted);font-weight:600;font-size:0.75rem;text-transform:uppercase;">Variável</th>
+                        <th style="padding:0.75rem 1rem;text-align:center;color:var(--text-muted);font-weight:600;font-size:0.75rem;text-transform:uppercase;">Data</th>
+                        ${podeOperar ? '<th style="padding:0.75rem 1rem;text-align:center;width:80px;"></th>' : ''}
+                    </tr>
+                </thead>
+                <tbody>
+                    ${currentFatVariavelRecords.map(r => `
+                        <tr style="border-top:1px solid rgba(255,255,255,0.05);">
+                            <td style="padding:0.8rem 1rem;font-weight:600;">${MESES_PT[r.mes - 1]} ${r.ano}</td>
+                            <td style="padding:0.8rem 1rem;text-align:right;">${_fmtBRL(r.faturamento_cliente)}</td>
+                            <td style="padding:0.8rem 1rem;text-align:right;color:var(--accent-red);">${r.percentual}%</td>
+                            <td style="padding:0.8rem 1rem;text-align:right;color:#10b981;font-weight:700;">${_fmtBRL(r.valor_variavel)}</td>
+                            <td style="padding:0.8rem 1rem;text-align:center;font-size:0.7rem;color:var(--text-muted);">
+                                ${r.criado_em ? new Date(r.criado_em).toLocaleDateString('pt-BR') : '—'}
+                            </td>
+                            ${podeOperar ? `
+                            <td style="padding:0.8rem 1rem;text-align:center;">
+                                <button onclick="closeGTModal('modal-fat-variavel-historico'); openFatVariavelModal(${r.mes}, ${r.ano}, '${r.id}')" 
+                                    style="background:none;border:none;cursor:pointer;color:var(--text-muted);margin-right:4px;" title="Editar">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button onclick="deleteFatVariavel(${r.mes}, ${r.ano}, '${r.id}')" 
+                                    style="background:none;border:none;cursor:pointer;color:var(--accent-red);" title="Excluir">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>` : ''}
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
+    openGTModal('modal-fat-variavel-historico');
+}
+
+/**
+ * Abre o modal de registro de faturamento variável.
+ * Agora suporta 'registroId' para edição específica.
+ */
+function openFatVariavelModal(mes = null, ano = null, registroId = null) {
     const fatInput = document.getElementById('fat-variavel-form-faturamento');
     const pctInput = document.getElementById('fat-variavel-form-percentual');
+    const mesHid   = document.getElementById('fat-variavel-form-mes');
+    const anoHid   = document.getElementById('fat-variavel-form-ano');
+    const idHid    = document.getElementById('fat-variavel-form-id');
 
-    // Preenche com mês atual por padrão ou com valores do registro
-    const mesRef = mes || (currentMonth);
-    const anoRef = ano || (currentYear);
+    const mesRef = mes || currentMonth;
+    const anoRef = ano || currentYear;
 
-    if (mesSel) mesSel.value = mesRef;
-    if (anoSel) anoSel.value = anoRef;
+    if (mesHid) mesHid.value = mesRef;
+    if (anoHid) anoHid.value = anoRef;
+    if (idHid)  idHid.value  = registroId || '';
     if (fatInput) fatInput.value = '';
     if (pctInput) pctInput.value = '';
 
-    // Se for edição, pre-popula com dados existentes
-    if (mes && ano && currentProject) {
-        fetch(`/api/projetos/${currentProject.pipefy_id}/faturamento-variavel?mes=${mes}&ano=${ano}`)
-            .then(r => r.json())
-            .then(data => {
-                const reg = (data.registros || [])[0];
-                if (reg) {
-                    if (fatInput) fatInput.value = reg.faturamento_cliente || '';
-                    if (pctInput) pctInput.value = reg.percentual || '';
-                    calcPreviewFatVariavel();
-                }
-            });
+
+    // Se for edição por ID
+    if (registroId) {
+        const reg = currentFatVariavelRecords.find(r => r.id === registroId);
+        if (reg) {
+            if (fatInput) fatInput.value = reg.faturamento_cliente || '';
+            if (pctInput) pctInput.value = reg.percentual || '';
+            if (mesHid) mesHid.value = reg.mes;
+            if (anoHid) anoHid.value = reg.ano;
+            
+            // Bloqueia troca de mês/ano na edição para evitar inconsistência de banco
+            if (mesHid) mesHid.disabled = true;
+            if (anoHid) anoHid.disabled = true;
+            
+            calcPreviewFatVariavel();
+        }
+    } else {
+        if (mesHid) mesHid.disabled = false;
+        if (anoHid) anoHid.disabled = false;
     }
+
 
     document.getElementById('fat-variavel-preview').style.display = 'none';
     openGTModal('modal-fat-variavel');
@@ -2078,7 +2109,6 @@ function calcPreviewFatVariavel() {
     const formulaEl = document.getElementById('fat-variavel-preview-formula');
 
     if (!previewEl) return;
-
     if (!fat || !pct) {
         previewEl.style.display = 'none';
         return;
@@ -2100,39 +2130,31 @@ async function saveFatVariavel() {
     const ano  = parseInt(document.getElementById('fat-variavel-form-ano')?.value || 0);
     const fat  = parseFloat(document.getElementById('fat-variavel-form-faturamento')?.value || 0);
     const pct  = parseFloat(document.getElementById('fat-variavel-form-percentual')?.value || 0);
+    const id   = document.getElementById('fat-variavel-form-id')?.value || null;
 
     if (!mes || !ano || !fat || pct === undefined || pct === null) {
-        showToast('Preencha todos os campos obrigatórios.', 'error');
-        return;
-    }
-    if (pct < 0 || pct > 100) {
-        showToast('Percentual deve estar entre 0 e 100.', 'error');
+        showToast('Preencha os campos de faturamento e percentual.', 'error');
         return;
     }
 
     try {
+        const payload = { mes, ano, faturamento_cliente: fat, percentual: pct };
+        if (id) payload.id = id;
+
         const res = await fetch(`/api/projetos/${currentProject.pipefy_id}/faturamento-variavel`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                mes, ano,
-                faturamento_cliente: fat,
-                percentual: pct
-            })
+            body: JSON.stringify(payload)
         });
 
         const data = await res.json();
         if (res.ok) {
-            showToast(data.message || 'Faturamento variável salvo com sucesso!', 'success');
-            closeFatVariavelModal();
-            // Sincroniza o seletor de mês com o mês salvo
-            const select = document.getElementById('fat-variavel-month-select');
-            if (select) {
-                const val = `${ano}-${String(mes).padStart(2, '0')}`;
-                if (select.querySelector(`option[value="${val}"]`)) {
-                    select.value = val;
-                }
+            let msg = data.message || 'Faturamento variável salvo!';
+            if (mes !== currentMonth || ano !== currentYear) {
+                msg += ` (Calculado para ${MESES_PT[mes-1]} ${ano})`;
             }
+            showToast(msg, 'success');
+            closeFatVariavelModal();
             loadFaturamentoVariavel();
         } else {
             showToast(data.error || 'Erro ao salvar.', 'error');
@@ -2146,26 +2168,26 @@ async function saveFatVariavel() {
 /**
  * Remove um registro de faturamento variável.
  */
-async function deleteFatVariavel(mes, ano) {
+async function deleteFatVariavel(mes, ano, registroId = null) {
     if (!currentProject) return;
 
     showConfirmModal({
         title: 'Excluir Faturamento Variável',
-        message: `Deseja remover o registro de ${MESES_PT[mes - 1]} ${ano}? O MRR do mês será recalculado.`,
+        message: `Deseja remover este registro de ${MESES_PT[mes - 1]} ${ano}?`,
         confirmText: 'Sim, excluir',
-        icon: 'fa-trash-alt',
         onConfirm: async () => {
             try {
-                const res = await fetch(
-                    `/api/projetos/${currentProject.pipefy_id}/faturamento-variavel/${mes}/${ano}`,
-                    { method: 'DELETE' }
-                );
-                const data = await res.json();
+                let url = `/api/projetos/${currentProject.pipefy_id}/faturamento-variavel/${mes}/${ano}`;
+                if (registroId) url += `?id=${registroId}`;
+
+                const res = await fetch(url, { method: 'DELETE' });
                 if (res.ok) {
-                    showToast(data.message || 'Registro removido.', 'success');
+                    showToast('Registro removido.');
+                    closeGTModal('modal-fat-variavel-historico');
                     loadFaturamentoVariavel();
                 } else {
-                    showToast(data.error || 'Erro ao excluir.', 'error');
+                    const err = await res.json();
+                    showToast(err.error || 'Erro ao excluir.', 'error');
                 }
             } catch (e) {
                 console.error('[fat_variavel] Erro ao excluir:', e);
@@ -2182,3 +2204,4 @@ window.closeFatVariavelModal    = closeFatVariavelModal;
 window.calcPreviewFatVariavel   = calcPreviewFatVariavel;
 window.saveFatVariavel          = saveFatVariavel;
 window.deleteFatVariavel        = deleteFatVariavel;
+window.openFatVariavelHistory   = openFatVariavelHistory;
