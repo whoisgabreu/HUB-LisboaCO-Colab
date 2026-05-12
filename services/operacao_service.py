@@ -61,7 +61,7 @@ class OperacaoService:
                 "pipefy_id": p.pipefy_id,
                 "nome": p.nome,
                 "documento": getattr(p, "documento", ""),
-                "fee": getattr(p, "fee", 0),
+                "fee": float(getattr(p, "fee", 0) or 0),
                 "moeda": getattr(p, "moeda", ""),
                 "squad_atribuida": getattr(p, "squad_atribuida", ""),
                 "produto_contratado": getattr(p, "produto_contratado", ""),
@@ -76,7 +76,8 @@ class OperacaoService:
                 "orcamento_midia_google": getattr(p, "orcamento_midia_google", 0),
                 "data_fim": p.data_fim.isoformat() if getattr(p, "data_fim", None) else None,
                 "ekyte_workspace": getattr(p, "ekyte_workspace", ""),
-                "cientista": vinculos_map.get(p.pipefy_id, False)
+                "cientista": vinculos_map.get(p.pipefy_id, False),
+                "contrato_variavel": p.extra.get("contrato_variavel", False) if p.extra else False
             })
 
         return meus_projetos

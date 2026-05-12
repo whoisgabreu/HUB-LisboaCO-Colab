@@ -204,6 +204,27 @@ function openProjectModal(projectData, tipoProjeto) {
     document.getElementById('modal_fase_pipefy').value = projectData.fase_do_pipefy || '';
     document.getElementById('modal_webhook_url').value = projectData.url_webhook_gchat || '';
     document.getElementById('modal_ekyte_workspace').value = projectData.ekyte_workspace || '';
+    
+    // Campo: Contrato Variável
+    const checkboxContratoVar = document.getElementById('modal_contrato_variavel');
+    const labelContratoVar = document.getElementById('contrato_variavel_label');
+    if (checkboxContratoVar) {
+        checkboxContratoVar.checked = !!projectData.contrato_variavel;
+        if (labelContratoVar) {
+            labelContratoVar.textContent = projectData.contrato_variavel
+                ? 'Faturamento variável ativo'
+                : 'Faturamento variável inativo';
+        }
+        // Atualiza label ao mudar o checkbox
+        checkboxContratoVar.onchange = function() {
+            if (labelContratoVar) {
+                labelContratoVar.textContent = this.checked
+                    ? 'Faturamento variável ativo'
+                    : 'Faturamento variável inativo';
+            }
+        };
+    }
+
 
     let pipefyButton = document.getElementById("pipefyButton");
 
@@ -302,7 +323,13 @@ function setEditMode(enable) {
     inputs.forEach(input => {
         // PERMITIR EDIÇÃO DE NOME E FEE NO HUB LOCAL
         if (input.id !== 'modal_projeto_id' && input.id !== 'modal_tipo_projeto' && input.id !== 'modal_pipefy_id' && input.id !== 'modal_fase_pipefy') {
-            input.disabled = !enable;
+            if (input.id === 'modal_contrato_variavel') {
+                const nivelAcesso = window.APP_CONFIG && window.APP_CONFIG.nivelAcesso;
+                const temPermissao = nivelAcesso && nivelAcesso !== 'Usuário';
+                input.disabled = !enable || !temPermissao;
+            } else {
+                input.disabled = !enable;
+            }
         }
     });
 
@@ -527,12 +554,18 @@ async function updateProject(event) {
     data.usuario = window.APP_CONFIG.userEmail;
     data.userToken = window.APP_CONFIG.userToken;
 
-    // Coletas notas do formulário
-    data.notas = collectNotesFromForm();
+    // Flag de contrato variável
+    const checkboxContratoVar = document.getElementById('modal_contrato_variavel');
+    if (checkboxContratoVar) {
+        data.contrato_variavel = checkboxContratoVar.checked;
+    }
 
     // Coleta dados dos investidores vinculados do estado local
     data.investidores = projectVinculosLocal;
-    
+
+    // Coletas notas do formulário
+    data.notas = collectNotesFromForm();
+
     try {
         // 1. Atualiza no HUB LOCAL (Backend Flask)
         const response = await fetch(`/api/projetos/${data.pipefy_id}`, {

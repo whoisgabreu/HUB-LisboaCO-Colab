@@ -314,3 +314,12 @@ def calcular_metricas_mensais(mes, ano):
             db.flush()
 
         db.commit()
+
+        # 4. Pós-processamento: Aplicar Faturamento Variável (se houver)
+        try:
+            from services.faturamento_variavel import aplicar_faturamento_variavel
+            aplicar_faturamento_variavel(mes, ano)
+        except Exception as e:
+            print(f"[remuneracao] Erro ao aplicar faturamento variável: {e}")
+
+        print(f"[remuneracao] Cálculo concluído para {mes}/{ano}.")
