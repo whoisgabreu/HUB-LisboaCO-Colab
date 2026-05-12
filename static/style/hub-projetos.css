@@ -1613,20 +1613,16 @@ ESTILOS VÍNCULOS V2
     border: 1px solid rgba(147, 51, 234, 0.1);
 }
 
-.premium-switch-wrapper {
+.premium-switch {
     display: flex;
     align-items: center;
     gap: 12px;
+    cursor: pointer;
+    width: auto !important;
+    height: auto !important;
 }
 
-.premium-switch {
-    display: block !important;
-    position: relative !important;
-    width: 44px !important;
-    height: 22px !important;
-    flex-shrink: 0;
-    cursor: pointer;
-}
+
 
 
 .premium-switch input {
@@ -1661,6 +1657,12 @@ ESTILOS VÍNCULOS V2
 .premium-switch input:checked + .switch-slider::after {
     left: 24px;
 }
+
+/* Evita o duplo knob vindo do styles.css */
+.premium-switch .switch-slider:before {
+    display: none !important;
+}
+
 
 .switch-label {
     font-size: 0.9rem;
