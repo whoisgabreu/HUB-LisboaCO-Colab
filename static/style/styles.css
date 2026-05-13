@@ -62,6 +62,7 @@ body::-webkit-scrollbar-thumb:hover {
     display: flex;
     align-items: center;
     gap: 1rem;
+    padding-left: 1.5rem
 }
 
 .logo {
@@ -2098,80 +2099,33 @@ option {
 
 /* sidebar-top removido */
 
-.sidebar-close-btn {
-    position: absolute;
-    right: -15px;
-    top: 10px;
-    background: var(--bg-hover);
-    border: 1px solid var(--accent-red);
-    color: var(--text-main);
-    cursor: pointer;
-    font-size: 0.9rem;
-    width: 30px;
-    height: 30px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.4);
-    z-index: 10;
-    transition: all 0.3s ease;
-    
-    /* Inicialmente invisível */
-    opacity: 0;
-    visibility: hidden;
-}
 
-.sidebar.open .sidebar-close-btn {
-    opacity: 1;
-    visibility: visible;
-    transition-delay: 0.3s; /* Aparece só depois que o menu começa a deslizar */
-}
-
-.sidebar-close-btn:hover {
-    color: #ffffff;
-    background-color: var(--accent-red);
-    transform: scale(1.1);
-}
-
-/* Floating Burger Button (Center-Left) */
+/* Persistent Toggle Burger */
 .floating-burger {
     position: fixed;
-    left: 0;
-    top: 20%;
+    left: 0.5rem;
+    top: calc(var(--header-height) / 2);
     transform: translateY(-50%);
     z-index: 2000;
-    background: #6f6f6f33;
-    color: white;
+    background: transparent;
+    color: var(--text-main);
     border: none;
-    width: 30px;
-    height: 60px;
-    border-radius: 0 10px 10px 0;
+    width: 45px;
+    height: 45px;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.1rem;
-    box-shadow: 4px 0 15px rgb(214 22 22 / 38%);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-body.sidebar-open .floating-burger {
-    transform: translateY(-50%) scale(0);
-    opacity: 0;
-    pointer-events: none;
-    transition-delay: 0s;
-}
-
 .floating-burger:hover {
-    width: 40px;
-    background: #333333;
-    padding-left: 0px;
-    transition: all 0.2s ease; /* Hover mais rápido */
+    color: var(--accent-red);
 }
 
 .floating-burger i {
-    transition: transform 0.3s;
+    font-size: 1.4rem;
+    transition: transform 0.3s ease;
 }
 
 .floating-burger:hover i {
@@ -2186,26 +2140,49 @@ body.sidebar-open .floating-burger {
 }
 
 /* Efeito Staggered (um item por vez) */
-.sidebar-nav > * {
+.sidebar-nav>* {
     opacity: 0;
     transform: translateX(-20px);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.sidebar.open .sidebar-nav > * {
+.sidebar.open .sidebar-nav>* {
     opacity: 1;
     transform: translateX(0);
 }
 
 /* Delays progressivos para os itens diretos do sidebar-nav (Acelerados) */
-.sidebar.open .sidebar-nav > *:nth-child(1) { transition-delay: 0.05s; }
-.sidebar.open .sidebar-nav > *:nth-child(2) { transition-delay: 0.09s; }
-.sidebar.open .sidebar-nav > *:nth-child(3) { transition-delay: 0.13s; }
-.sidebar.open .sidebar-nav > *:nth-child(4) { transition-delay: 0.17s; }
-.sidebar.open .sidebar-nav > *:nth-child(5) { transition-delay: 0.21s; }
-.sidebar.open .sidebar-nav > *:nth-child(6) { transition-delay: 0.25s; }
-.sidebar.open .sidebar-nav > *:nth-child(7) { transition-delay: 0.29s; }
-.sidebar.open .sidebar-nav > *:nth-child(8) { transition-delay: 0.33s; }
+.sidebar.open .sidebar-nav>*:nth-child(1) {
+    transition-delay: 0.05s;
+}
+
+.sidebar.open .sidebar-nav>*:nth-child(2) {
+    transition-delay: 0.09s;
+}
+
+.sidebar.open .sidebar-nav>*:nth-child(3) {
+    transition-delay: 0.13s;
+}
+
+.sidebar.open .sidebar-nav>*:nth-child(4) {
+    transition-delay: 0.17s;
+}
+
+.sidebar.open .sidebar-nav>*:nth-child(5) {
+    transition-delay: 0.21s;
+}
+
+.sidebar.open .sidebar-nav>*:nth-child(6) {
+    transition-delay: 0.25s;
+}
+
+.sidebar.open .sidebar-nav>*:nth-child(7) {
+    transition-delay: 0.29s;
+}
+
+.sidebar.open .sidebar-nav>*:nth-child(8) {
+    transition-delay: 0.33s;
+}
 
 /* Nav items refind size */
 .nav-item {
