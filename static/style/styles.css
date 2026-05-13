@@ -2105,6 +2105,69 @@ option {
     border-left-color: #d61616;
 }
 
+/* Sidebar Groups */
+.nav-group {
+    margin-bottom: 0.5rem;
+}
+
+.nav-group-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.8rem 1.5rem;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: 0.2s;
+    user-select: none;
+}
+
+.nav-group-header:hover {
+    color: var(--text-main);
+}
+
+.nav-group-header i.toggle-icon {
+    font-size: 0.7rem;
+    transition: transform 0.3s ease;
+}
+
+.nav-group.is-open .nav-group-header i.toggle-icon {
+    transform: rotate(90deg);
+}
+
+.nav-group-items {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s cubic-bezier(0, 1, 0, 1);
+}
+
+.nav-group.is-open .nav-group-items {
+    max-height: 1000px; /* Large enough to fit items */
+    transition: max-height 0.3s cubic-bezier(1, 0, 1, 0);
+}
+
+.nav-group .nav-item {
+    padding-left: 2.5rem; /* Indent items inside groups */
+}
+
+/* Hide group headers when sidebar is collapsed */
+.sidebar.is-collapsed .nav-group-header {
+    display: none;
+}
+
+.sidebar.is-collapsed .nav-group-items {
+    max-height: none;
+    overflow: visible;
+}
+
+.sidebar.is-collapsed .nav-group .nav-item {
+    padding-left: 0;
+    justify-content: center;
+}
+
 /* Sidebar Footer */
 .sidebar-footer {
     padding: 1.2rem;
