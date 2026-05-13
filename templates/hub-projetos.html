@@ -84,6 +84,13 @@
                             onkeyup="filterClients()">
                         {% endif %}
                     </div>
+                    <div class="squad-filter-wrap">
+                        <i class="fa-solid fa-sitemap"></i>
+                        <select id="squadFilter" onchange="filterClients()">
+                            <option value="">Todas as squads</option>
+                            <!-- preenchido via JS -->
+                        </select>
+                    </div>
                 </div>
 
                 <!-- CONTAINER DE SLIDES -->
@@ -100,7 +107,6 @@
                                     <div class="project-icon">
                                         <i class="fa-solid fa-building"></i>
                                     </div>
-                                    <span class="project-status status-ativo">{{ projetos|length }} projeto(s)</span>
                                 </div>
                                 <h3 class="project-title">{{ cliente_nome|title }}</h3>
                                 <p class="project-description">
@@ -135,12 +141,12 @@
                             {% for cliente_nome, projetos in clientes_onetime.items() %}
                             <div class="project-card" data-cliente="{{ cliente_nome|lower }}"
                                 data-projetos='{{ projetos|tojson|safe }}' data-tipo="onetime"
+                                data-squad="{{ projetos[0].squad_atribuida|lower if projetos[0].squad_atribuida else '' }}"
                                 onclick="openClientModal(this)">
                                 <div class="project-header">
                                     <div class="project-icon">
                                         <i class="fa-solid fa-building"></i>
                                     </div>
-                                    <span class="project-status status-onetime">{{ projetos|length }} projeto(s)</span>
                                 </div>
                                 <h3 class="project-title">{{ cliente_nome|title }}</h3>
                                 <p class="project-description">
@@ -174,12 +180,12 @@
                             {% for cliente_nome, projetos in clientes_inativos.items() %}
                             <div class="project-card" data-cliente="{{ cliente_nome|lower }}"
                                 data-projetos='{{ projetos|tojson|safe }}' data-tipo="inativo"
+                                data-squad="{{ projetos[0].squad_atribuida|lower if projetos[0].squad_atribuida else '' }}"
                                 onclick="openClientModal(this)">
                                 <div class="project-header">
                                     <div class="project-icon inactive">
                                         <i class="fa-solid fa-building"></i>
                                     </div>
-                                    <span class="project-status status-inativo">{{ projetos|length }} projeto(s)</span>
                                 </div>
                                 <h3 class="project-title">{{ cliente_nome|title }}</h3>
                                 <p class="project-description">

@@ -11,7 +11,10 @@
       "Bash(pip install *)",
       "Bash(.venv/Scripts/python.exe -m py_compile app.py)",
       "Bash(.venv/Scripts/python.exe -m py_compile services/remuneracao.py)",
-      "Bash(.venv/Scripts/python.exe scratch/test_operacao_save.py)"
+      "Bash(.venv/Scripts/python.exe scratch/test_operacao_save.py)",
+      "Bash(.venv/Scripts/python.exe scratch/check_universal_v2.py)",
+      "Bash(.venv/Scripts/python.exe scratch/analise_junio_abril.py)",
+      "Bash(.venv/Scripts/python.exe scratch/check_universal_moeda.py)"
     ]
   }
 }

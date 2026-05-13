@@ -71,6 +71,9 @@ function filterClients() {
         .value
         .toLowerCase();
 
+    const squadFilterEl = document.getElementById('squadFilter');
+    const squadValue = squadFilterEl ? squadFilterEl.value.toLowerCase() : '';
+
     const activeSlide = document.querySelector('.slide-content.active');
     const cards = activeSlide.querySelectorAll('.project-card');
 
@@ -78,13 +81,36 @@ function filterClients() {
         const clientName = (card.getAttribute('data-cliente') || '').toLowerCase();
         const squadName  = (card.getAttribute('data-squad') || '').toLowerCase();
 
-        const match =
-            clientName.includes(searchValue) ||
-            squadName.includes(searchValue);
+        const matchSearch = !searchValue
+            || clientName.includes(searchValue)
+            || squadName.includes(searchValue);
 
-        card.style.display = match ? 'block' : 'none';
+        const matchSquad = !squadValue || squadName === squadValue;
+
+        card.style.display = (matchSearch && matchSquad) ? 'block' : 'none';
     });
 }
+
+function populateSquadFilter() {
+    const select = document.getElementById('squadFilter');
+    if (!select) return;
+
+    const squads = new Set();
+    document.querySelectorAll('.project-card').forEach(card => {
+        const s = (card.getAttribute('data-squad') || '').trim();
+        if (s) squads.add(s);
+    });
+
+    const sorted = Array.from(squads).sort();
+    sorted.forEach(squad => {
+        const opt = document.createElement('option');
+        opt.value = squad;
+        opt.textContent = squad.replace(/\b\w/g, c => c.toUpperCase());
+        select.appendChild(opt);
+    });
+}
+
+document.addEventListener('DOMContentLoaded', populateSquadFilter);
 
 
 /* ==============================
@@ -856,15 +882,23 @@ function renderVinculos() {
     container.innerHTML = projectVinculosLocal.map(v => {
         const dataInicioExibir = _formatDateBR(v.data_inicio);
         const isChurn = v.active === false || (v.data_fim && new Date(v.data_fim) <= new Date());
-        
+        const nome = v.nome || v.email;
+        const cargo = v.funcao || v.posicao || '';
+        const initials = _buildInitials(nome);
+        const avatarHTML = v.profile_picture
+            ? `<img class="vinculo-avatar" src="${v.profile_picture}" alt="${nome}" onerror="this.outerHTML='<div class=\\'vinculo-avatar vinculo-avatar-fallback\\'>${initials}</div>'">`
+            : `<div class="vinculo-avatar vinculo-avatar-fallback">${initials}</div>`;
+
         return `
         <div class="vinculo-card-v2 ${isChurn ? 'churn' : ''}" onclick="isEditMode ? openInvestidorVinculoModal('${v.email}', 'edit') : null">
             <div class="vinculo-card-header">
-                <div class="vinculo-user-info">
-                    <span class="vinculo-name">${v.email}</span>
-                    <span class="vinculo-status-tag ${isChurn ? 'status-inactive' : 'status-active'}">
-                        ${isChurn ? 'Churn' : 'Ativo'}
-                    </span>
+                <div class="vinculo-identity">
+                    ${avatarHTML}
+                    <div class="vinculo-user-info">
+                        <span class="vinculo-name" title="${nome}">${nome}</span>
+                        ${cargo ? `<span class="vinculo-role">${cargo}</span>` : ''}
+                        <span class="vinculo-email" title="${v.email}">${v.email}</span>
+                    </div>
                 </div>
                 ${isEditMode ? `
                 <button type="button" class="btn-card-edit" title="Editar vínculo">
@@ -873,6 +907,16 @@ function renderVinculos() {
                 ` : ''}
             </div>
             <div class="vinculo-card-body">
+                <div class="vinculo-tags-row">
+                    <span class="vinculo-status-tag ${isChurn ? 'status-inactive' : 'status-active'}">
+                        ${isChurn ? 'Churn' : 'Ativo'}
+                    </span>
+                    ${v.cientista ? `
+                        <span class="badge-cientista-v2" title="Entrada: ${_formatDateBR(v.cientista_entrada) || '—'}">
+                            <i class="fa-solid fa-flask"></i> Cientista
+                        </span>
+                    ` : ''}
+                </div>
                 <div class="vinculo-meta-row">
                     <div class="meta-item">
                         <i class="fa-solid fa-calendar-plus"></i>
@@ -885,23 +929,23 @@ function renderVinculos() {
                     </div>
                     ` : ''}
                 </div>
-                <div class="vinculo-badges">
-                    ${v.cientista ? `
-                        <span class="badge-cientista-v2" title="Entrada: ${_formatDateBR(v.cientista_entrada) || '—'}">
-                            <i class="fa-solid fa-flask"></i> Cientista
-                        </span>
-                    ` : ''}
-                </div>
             </div>
             ${isEditMode ? `
-            <button type="button" class="btn-remove-vinculo-v2" 
-                    onclick="event.stopPropagation(); removerVinculoLocal('${v.email}')" 
+            <button type="button" class="btn-remove-vinculo-v2"
+                    onclick="event.stopPropagation(); removerVinculoLocal('${v.email}')"
                     title="Remover investidor">
                 <i class="fa-solid fa-trash-can"></i>
             </button>
             ` : ''}
         </div>`;
     }).join('');
+}
+
+function _buildInitials(nome) {
+    if (!nome) return '?';
+    const parts = String(nome).trim().split(/\s+/);
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 function _todayISO() {
     return new Date().toISOString().split('T')[0];
