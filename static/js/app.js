@@ -6,8 +6,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     initSidebar();
     initUserDropdown();
-    initSidebarCollapse();
-    initSidebarGroups(); // Nova inicialização
+    initSidebarGroups();
     highlightActiveLink();
     disableSearchAutofill();
 });
@@ -43,66 +42,50 @@ function disableSearchAutofill() {
     });
 }
 
-// Sidebar Logic (Mobile)
+// Sidebar Logic (Floating Burger & Overlay)
 function initSidebar() {
-    const burgerBtn = document.querySelector('.burger-menu');
     const sidebar = document.querySelector('.sidebar');
     const overlay = document.querySelector('.sidebar-overlay');
+    const floatingBurger = document.getElementById('floatingBurgerBtn');
+    const closeBtn = document.getElementById('closeSidebarBtn');
+    const headerBurger = document.querySelector('.burger-menu');
 
-    if (burgerBtn && sidebar && overlay) {
-        burgerBtn.addEventListener('click', () => {
-            sidebar.classList.toggle('open');
-            overlay.classList.toggle('active');
-        });
+    if (!sidebar || !overlay) return;
 
-        overlay.addEventListener('click', () => {
-            sidebar.classList.remove('open');
-            overlay.classList.remove('active');
-        });
-
-        // Close on ESC
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && sidebar.classList.contains('open')) {
-                sidebar.classList.remove('open');
-                overlay.classList.remove('active');
-            }
-        });
-    }
-}
-
-// Sidebar Collapse Logic (Desktop)
-function initSidebarCollapse() {
-    const sidebar = document.querySelector('.sidebar');
-    const collapseBtn = document.getElementById('sidebarCollapseBtn');
-
-    if (!sidebar || !collapseBtn) return;
-
-    const icon = collapseBtn.querySelector('i');
-
-    // Load state
-    const isCollapsed = localStorage.getItem('sidebarCollapsed') === '1';
-    if (isCollapsed) {
-        sidebar.classList.add('is-collapsed');
-        if (icon) icon.className = 'fas fa-chevron-right';
-    }
-
-    collapseBtn.addEventListener('click', () => {
-        const nowCollapsed = sidebar.classList.toggle('is-collapsed');
-        localStorage.setItem('sidebarCollapsed', nowCollapsed ? '1' : '0');
-
-        if (icon) {
-            icon.className = nowCollapsed ? 'fas fa-chevron-right' : 'fas fa-chevron-left';
+    const openSidebar = () => {
+        sidebar.classList.add('open');
+        overlay.classList.add('active');
+        document.body.classList.add('sidebar-open');
+        if (floatingBurger) {
+            floatingBurger.style.opacity = '0';
+            floatingBurger.style.pointerEvents = 'none';
         }
+    };
 
-        // Se estiver expandindo a sidebar, garante que os grupos voltem ao estado correto
-        if (!nowCollapsed) {
-            document.querySelectorAll('.nav-group').forEach(group => {
-                const hasActive = group.querySelector('.nav-item.active');
-                if (hasActive) group.classList.add('is-open');
-            });
+    const closeSidebar = () => {
+        sidebar.classList.remove('open');
+        overlay.classList.remove('active');
+        document.body.classList.remove('sidebar-open');
+        if (floatingBurger) {
+            floatingBurger.style.opacity = '1';
+            floatingBurger.style.pointerEvents = 'auto';
+        }
+    };
+
+    if (floatingBurger) floatingBurger.addEventListener('click', openSidebar);
+    if (headerBurger) headerBurger.addEventListener('click', openSidebar);
+    if (closeBtn) closeBtn.addEventListener('click', closeSidebar);
+    if (overlay) overlay.addEventListener('click', closeSidebar);
+
+    // Close on ESC
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && sidebar.classList.contains('open')) {
+            closeSidebar();
         }
     });
 }
+
+/* initSidebarCollapse removido */
 
 // Sidebar Groups Logic
 function initSidebarGroups() {

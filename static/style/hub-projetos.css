@@ -226,7 +226,7 @@ body::-webkit-scrollbar-thumb:hover {
     min-width: 200px;
 }
 
-.squad-filter-wrap > i {
+.squad-filter-wrap>i {
     position: absolute;
     left: 0.75rem;
     top: 50%;
@@ -441,9 +441,18 @@ body.tema-claro .slides-wrapper .project-card:hover {
     border-color: rgba(214, 22, 22, 0.45);
 }
 
-body.tema-claro .slides-wrapper .project-card .project-title { color: #111827; }
-body.tema-claro .slides-wrapper .project-card .project-description { color: #6b7280; }
-body.tema-claro .slides-wrapper .project-card .project-meta { color: #6b7280; border-top-color: #e5e7eb; }
+body.tema-claro .slides-wrapper .project-card .project-title {
+    color: #111827;
+}
+
+body.tema-claro .slides-wrapper .project-card .project-description {
+    color: #6b7280;
+}
+
+body.tema-claro .slides-wrapper .project-card .project-meta {
+    color: #6b7280;
+    border-top-color: #e5e7eb;
+}
 
 /* GRID DE CARDS */
 .projects-grid {
@@ -1440,17 +1449,12 @@ option {
 }
 
 /* SEÇÃO DE INVESTIDORES VINCULADOS */
-.vinculados-section {
-    margin-top: 1.5rem;
-    padding-top: 1.5rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-}
 
 .vinculos-header {
+
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 1rem;
 }
 
 .vinculos-actions {
@@ -1607,8 +1611,8 @@ option {
 /* Input de data no vincular — discreto, sem label */
 .vincular-data-input {
     padding: 0.45rem 0.5rem;
-    background: rgba(255,255,255,0.05);
-    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 6px;
     color: var(--text-muted, #9ca3af);
     font-family: inherit;
@@ -1619,9 +1623,10 @@ option {
 
 .vincular-data-input:focus {
     outline: none;
-    border-color: rgba(255,255,255,0.25);
+    border-color: rgba(255, 255, 255, 0.25);
     color: var(--text-color, #e5e7eb);
 }
+
 /* ==============================
 ESTILOS VÍNCULOS V2
 ================================ */
@@ -1910,11 +1915,11 @@ ESTILOS VÍNCULOS V2
     transition: 0.3s;
 }
 
-.premium-switch input:checked + .switch-slider {
+.premium-switch input:checked+.switch-slider {
     background: #9333ea;
 }
 
-.premium-switch input:checked + .switch-slider::after {
+.premium-switch input:checked+.switch-slider::after {
     left: 24px;
 }
 
@@ -1940,8 +1945,15 @@ ESTILOS VÍNCULOS V2
 }
 
 @keyframes fadeInDown {
-    from { opacity: 0; transform: translateY(-10px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .btn-add-vinculo-v2 {
