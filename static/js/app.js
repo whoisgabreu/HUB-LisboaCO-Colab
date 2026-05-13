@@ -116,6 +116,44 @@ function initSidebarGroups() {
         if (group.querySelector('.nav-item.active')) {
             group.classList.add('is-open');
         }
+
+        // Se estiver expandindo a sidebar, garante que os grupos voltem ao estado correto
+        if (!nowCollapsed) {
+            document.querySelectorAll('.nav-group').forEach(group => {
+                const hasActive = group.querySelector('.nav-item.active');
+                if (hasActive) group.classList.add('is-open');
+            });
+        }
+    });
+}
+
+// Sidebar Groups Logic
+function initSidebarGroups() {
+    const groups = document.querySelectorAll('.nav-group');
+    
+    groups.forEach(group => {
+        const header = group.querySelector('.nav-group-header');
+        const items = group.querySelector('.nav-group-items');
+        
+        if (header) {
+            header.addEventListener('click', () => {
+                const isOpen = group.classList.toggle('is-open');
+                
+                // Opcional: fechar outros grupos ao abrir um (acordeão)
+                /*
+                if (isOpen) {
+                    groups.forEach(other => {
+                        if (other !== group) other.classList.remove('is-open');
+                    });
+                }
+                */
+            });
+        }
+
+        // Abrir automaticamente se houver um item ativo dentro
+        if (group.querySelector('.nav-item.active')) {
+            group.classList.add('is-open');
+        }
     });
 }
 
