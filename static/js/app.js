@@ -47,6 +47,10 @@ function initSidebar() {
     const sidebar = document.querySelector('.sidebar');
     const overlay = document.querySelector('.sidebar-overlay');
     const floatingBurger = document.getElementById('floatingBurgerBtn');
+    const headerBurger = document.querySelector('.burger-menu');
+
+    if (!sidebar || !overlay) return;
+
     const toggleSidebar = () => {
         const isOpen = sidebar.classList.contains('open');
         if (isOpen) {
@@ -61,7 +65,8 @@ function initSidebar() {
         overlay.classList.add('active');
         document.body.classList.add('sidebar-open');
         if (floatingBurger) {
-            floatingBurger.querySelector('i').className = 'fas fa-times';
+            const icon = floatingBurger.querySelector('i');
+            if (icon) icon.className = 'fas fa-times';
         }
     };
 
@@ -70,13 +75,13 @@ function initSidebar() {
         overlay.classList.remove('active');
         document.body.classList.remove('sidebar-open');
         if (floatingBurger) {
-            floatingBurger.querySelector('i').className = 'fas fa-bars';
+            const icon = floatingBurger.querySelector('i');
+            if (icon) icon.className = 'fas fa-bars';
         }
     };
 
     if (floatingBurger) floatingBurger.addEventListener('click', toggleSidebar);
     if (headerBurger) headerBurger.addEventListener('click', toggleSidebar);
-    if (overlay) overlay.addEventListener('click', closeSidebar);
     if (overlay) overlay.addEventListener('click', closeSidebar);
 
     // Close on ESC
@@ -95,34 +100,16 @@ function initSidebarGroups() {
     
     groups.forEach(group => {
         const header = group.querySelector('.nav-group-header');
-        const items = group.querySelector('.nav-group-items');
         
         if (header) {
             header.addEventListener('click', () => {
-                const isOpen = group.classList.toggle('is-open');
-                
-                // Opcional: fechar outros grupos ao abrir um (acordeão)
-                /*
-                if (isOpen) {
-                    groups.forEach(other => {
-                        if (other !== group) other.classList.remove('is-open');
-                    });
-                }
-                */
+                group.classList.toggle('is-open');
             });
         }
 
         // Abrir automaticamente se houver um item ativo dentro
         if (group.querySelector('.nav-item.active')) {
             group.classList.add('is-open');
-        }
-
-        // Se estiver expandindo a sidebar, garante que os grupos voltem ao estado correto
-        if (!nowCollapsed) {
-            document.querySelectorAll('.nav-group').forEach(group => {
-                const hasActive = group.querySelector('.nav-item.active');
-                if (hasActive) group.classList.add('is-open');
-            });
         }
     });
 }
