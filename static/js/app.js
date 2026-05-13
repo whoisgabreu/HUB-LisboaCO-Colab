@@ -47,18 +47,21 @@ function initSidebar() {
     const sidebar = document.querySelector('.sidebar');
     const overlay = document.querySelector('.sidebar-overlay');
     const floatingBurger = document.getElementById('floatingBurgerBtn');
-    const closeBtn = document.getElementById('closeSidebarBtn');
-    const headerBurger = document.querySelector('.burger-menu');
-
-    if (!sidebar || !overlay) return;
+    const toggleSidebar = () => {
+        const isOpen = sidebar.classList.contains('open');
+        if (isOpen) {
+            closeSidebar();
+        } else {
+            openSidebar();
+        }
+    };
 
     const openSidebar = () => {
         sidebar.classList.add('open');
         overlay.classList.add('active');
         document.body.classList.add('sidebar-open');
         if (floatingBurger) {
-            floatingBurger.style.opacity = '0';
-            floatingBurger.style.pointerEvents = 'none';
+            floatingBurger.querySelector('i').className = 'fas fa-times';
         }
     };
 
@@ -67,14 +70,13 @@ function initSidebar() {
         overlay.classList.remove('active');
         document.body.classList.remove('sidebar-open');
         if (floatingBurger) {
-            floatingBurger.style.opacity = '1';
-            floatingBurger.style.pointerEvents = 'auto';
+            floatingBurger.querySelector('i').className = 'fas fa-bars';
         }
     };
 
-    if (floatingBurger) floatingBurger.addEventListener('click', openSidebar);
-    if (headerBurger) headerBurger.addEventListener('click', openSidebar);
-    if (closeBtn) closeBtn.addEventListener('click', closeSidebar);
+    if (floatingBurger) floatingBurger.addEventListener('click', toggleSidebar);
+    if (headerBurger) headerBurger.addEventListener('click', toggleSidebar);
+    if (overlay) overlay.addEventListener('click', closeSidebar);
     if (overlay) overlay.addEventListener('click', closeSidebar);
 
     // Close on ESC
