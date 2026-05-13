@@ -258,6 +258,37 @@
                     <form id="projectForm" onsubmit="updateProject(event)">
                         <div class="modal-body">
                             <div class="form-grid">
+                                <!-- SEÇÃO DE INVESTIDORES VINCULADOS (AGORA NO TOPO) -->
+                                <div class="form-group full-width vinculados-section" id="vinculosSection">
+                                    <div class="vinculos-header">
+                                        <label><i class="fa-solid fa-users"></i> Investidores Vinculados</label>
+                                        <div class="vinculos-actions" id="vinculosActions" style="display: none;">
+                                            <button type="button" class="btn-add-vinculo-v2" onclick="openInvestidorVinculoModal(null, 'add')" title="Vincular Novo Investidor">
+                                                <i class="fa-solid fa-plus"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div id="vinculosContainer" class="vinculos-container-v2">
+                                        <!-- Vinculos serão adicionados aqui dinamicamente -->
+                                    </div>
+                                </div>
+
+                                <!-- CAMPO: CONTRATO VARIÁVEL (AGORA NO TOPO) -->
+                                <div class="form-group full-width">
+                                    <label><i class="fa-solid fa-percent" style="margin-right: 6px;"></i>Contrato Variável</label>
+                                    <div class="contrato-variavel-toggle">
+                                        <label class="premium-switch">
+                                            <input type="checkbox" id="modal_contrato_variavel" name="contrato_variavel" disabled>
+                                            <span class="switch-slider"></span>
+                                        </label>
+                                        <span class="contrato-variavel-label" id="contrato_variavel_label">
+                                            Faturamento variável inativo
+                                        </span>
+                                    </div>
+                                    <small class="help-text" style="margin-top: 4px; display: block;">
+                                        Quando ativo, habilita a aba "Faturamento Variável" na tela de Operação deste projeto.
+                                    </small>
+                                </div>
                                 <div class="form-group">
                                     <label>Nome do Projeto</label>
                                     <input type="text" name="nome" id="modal_nome" required disabled>
@@ -385,37 +416,6 @@
                                         disabled></textarea>
                                 </div>
 
-                                <!-- CAMPO: CONTRATO VARIÁVEL -->
-                                <div class="form-group full-width">
-                                    <label><i class="fa-solid fa-percent" style="margin-right: 6px;"></i>Contrato Variável</label>
-                                    <div class="contrato-variavel-toggle">
-                                        <label class="premium-switch">
-                                            <input type="checkbox" id="modal_contrato_variavel" name="contrato_variavel" disabled>
-                                            <span class="switch-slider"></span>
-                                        </label>
-                                        <span class="contrato-variavel-label" id="contrato_variavel_label">
-                                            Faturamento variável inativo
-                                        </span>
-                                    </div>
-                                    <small class="help-text" style="margin-top: 4px; display: block;">
-                                        Quando ativo, habilita a aba "Faturamento Variável" na tela de Operação deste projeto.
-                                    </small>
-                                </div>
-
-                                <!-- SEÇÃO DE INVESTIDORES VINCULADOS -->
-                                <div class="form-group full-width vinculados-section" id="vinculosSection">
-                                    <div class="vinculos-header">
-                                        <label><i class="fa-solid fa-users"></i> Investidores Vinculados</label>
-                                        <div class="vinculos-actions" id="vinculosActions" style="display: none;">
-                                            <button type="button" class="btn-add-vinculo-v2" onclick="openInvestidorVinculoModal(null, 'add')" title="Vincular Novo Investidor">
-                                                <i class="fa-solid fa-plus"></i>
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div id="vinculosContainer" class="vinculos-container-v2">
-                                        <!-- Vinculos serão adicionados aqui dinamicamente -->
-                                    </div>
-                                </div>
 
                                 <!-- SEÇÃO DE NOTAS CUSTOMIZADAS -->
                                 <div class="form-group full-width notes-section" id="notesSection">

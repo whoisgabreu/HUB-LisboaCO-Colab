@@ -6,8 +6,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     initSidebar();
     initUserDropdown();
-    initSidebarCollapse();
-    initSidebarGroups(); // Nova inicialização
+    initSidebarGroups();
     highlightActiveLink();
     disableSearchAutofill();
 });
@@ -43,55 +42,77 @@ function disableSearchAutofill() {
     });
 }
 
-// Sidebar Logic (Mobile)
+// Sidebar Logic (Floating Burger & Overlay)
 function initSidebar() {
-    const burgerBtn = document.querySelector('.burger-menu');
     const sidebar = document.querySelector('.sidebar');
     const overlay = document.querySelector('.sidebar-overlay');
+    const floatingBurger = document.getElementById('floatingBurgerBtn');
+    const closeBtn = document.getElementById('closeSidebarBtn');
+    const headerBurger = document.querySelector('.burger-menu');
 
-    if (burgerBtn && sidebar && overlay) {
-        burgerBtn.addEventListener('click', () => {
-            sidebar.classList.toggle('open');
-            overlay.classList.toggle('active');
-        });
+    if (!sidebar || !overlay) return;
 
-        overlay.addEventListener('click', () => {
-            sidebar.classList.remove('open');
-            overlay.classList.remove('active');
-        });
+    const openSidebar = () => {
+        sidebar.classList.add('open');
+        overlay.classList.add('active');
+        document.body.classList.add('sidebar-open');
+        if (floatingBurger) {
+            floatingBurger.style.opacity = '0';
+            floatingBurger.style.pointerEvents = 'none';
+        }
+    };
 
-        // Close on ESC
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && sidebar.classList.contains('open')) {
-                sidebar.classList.remove('open');
-                overlay.classList.remove('active');
-            }
-        });
-    }
+    const closeSidebar = () => {
+        sidebar.classList.remove('open');
+        overlay.classList.remove('active');
+        document.body.classList.remove('sidebar-open');
+        if (floatingBurger) {
+            floatingBurger.style.opacity = '1';
+            floatingBurger.style.pointerEvents = 'auto';
+        }
+    };
+
+    if (floatingBurger) floatingBurger.addEventListener('click', openSidebar);
+    if (headerBurger) headerBurger.addEventListener('click', openSidebar);
+    if (closeBtn) closeBtn.addEventListener('click', closeSidebar);
+    if (overlay) overlay.addEventListener('click', closeSidebar);
+
+    // Close on ESC
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && sidebar.classList.contains('open')) {
+            closeSidebar();
+        }
+    });
 }
 
-// Sidebar Collapse Logic (Desktop)
-function initSidebarCollapse() {
-    const sidebar = document.querySelector('.sidebar');
-    const collapseBtn = document.getElementById('sidebarCollapseBtn');
+/* initSidebarCollapse removido */
 
-    if (!sidebar || !collapseBtn) return;
+// Sidebar Groups Logic
+function initSidebarGroups() {
+    const groups = document.querySelectorAll('.nav-group');
+    
+    groups.forEach(group => {
+        const header = group.querySelector('.nav-group-header');
+        const items = group.querySelector('.nav-group-items');
+        
+        if (header) {
+            header.addEventListener('click', () => {
+                const isOpen = group.classList.toggle('is-open');
+                
+                // Opcional: fechar outros grupos ao abrir um (acordeão)
+                /*
+                if (isOpen) {
+                    groups.forEach(other => {
+                        if (other !== group) other.classList.remove('is-open');
+                    });
+                }
+                */
+            });
+        }
 
-    const icon = collapseBtn.querySelector('i');
-
-    // Load state
-    const isCollapsed = localStorage.getItem('sidebarCollapsed') === '1';
-    if (isCollapsed) {
-        sidebar.classList.add('is-collapsed');
-        if (icon) icon.className = 'fas fa-chevron-right';
-    }
-
-    collapseBtn.addEventListener('click', () => {
-        const nowCollapsed = sidebar.classList.toggle('is-collapsed');
-        localStorage.setItem('sidebarCollapsed', nowCollapsed ? '1' : '0');
-
-        if (icon) {
-            icon.className = nowCollapsed ? 'fas fa-chevron-right' : 'fas fa-chevron-left';
+        // Abrir automaticamente se houver um item ativo dentro
+        if (group.querySelector('.nav-item.active')) {
+            group.classList.add('is-open');
         }
 
         // Se estiver expandindo a sidebar, garante que os grupos voltem ao estado correto
