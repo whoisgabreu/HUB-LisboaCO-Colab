@@ -11,66 +11,95 @@
             <i class="fas fa-home"></i>
             <span>Home</span>
         </a>
-        <a href="/painel-ranking" class="nav-item">
-            <i class="fas fa-trophy"></i>
-            <span>Painel de Ranking</span>
-        </a>
-        <a href="/hub-projetos" class="nav-item">
-            <i class="fas fa-project-diagram"></i>
-            <span>Hub de Projetos</span>
-        </a>
 
-        {# Menu Operação: Gerência, Sócio, Account e Gestor de Tráfego #}
-        {% if session.posicao in ["Gerência", "Sócio"] or session.funcao in ["Account", "Gestor de Tráfego"] %}
-        <a href="/operacao" class="nav-item">
-            <i class="fas fa-gears"></i>
-            <span>Operação</span>
-        </a>
+        <!-- Grupo Dashboard -->
+        <div class="nav-group">
+            <div class="nav-group-header">
+                <span>Dashboard</span>
+                <i class="fas fa-chevron-right toggle-icon"></i>
+            </div>
+            <div class="nav-group-items">
+                <a href="/painel-ranking" class="nav-item">
+                    <i class="fas fa-trophy"></i>
+                    <span>Painel de Ranking</span>
+                </a>
+                <a href="/hub-projetos" class="nav-item">
+                    <i class="fas fa-project-diagram"></i>
+                    <span>Hub de Projetos</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- Grupo Operação -->
+        {% set can_see_operacao = session.posicao in ["Gerência", "Sócio"] or session.funcao in ["Account", "Gestor de Tráfego"] %}
+        {% set can_see_criativa = session.posicao in ["Gerência", "Sócio", "Coordenador"] or session.funcao in ["Designer", "WebDesigner", "Account", "Gestor de Tráfego"] %}
+        
+        {% if can_see_operacao or can_see_criativa %}
+        <div class="nav-group">
+            <div class="nav-group-header">
+                <span>Operação</span>
+                <i class="fas fa-chevron-right toggle-icon"></i>
+            </div>
+            <div class="nav-group-items">
+                {% if can_see_operacao %}
+                <a href="/operacao" class="nav-item">
+                    <i class="fas fa-gears"></i>
+                    <span>Operação</span>
+                </a>
+                {% endif %}
+
+                {% if can_see_criativa %}
+                <a href="/criativa" class="nav-item">
+                    <i class="fas fa-pencil-ruler"></i>
+                    <span>Entregas da Operação</span>
+                </a>
+                {% endif %}
+            </div>
+        </div>
         {% endif %}
 
-        {# Menu Remuneração Ocultado: agora integrado em Entregas da Operação #}
-        <!--
-        {% if session.posicao in ["Gerência", "Sócio"] %}
-        <a href="/hub-remuneracao" class="nav-item">
-            <i class="fas fa-wallet"></i>
-            <span>Remuneração</span>
-        </a>
-        {% endif %}
-        -->
-
-        {# Menu Admin: Apenas Admin #}
-        {% if session.nivel_acesso == "Admin" %}
-        <a href="/gerenciar-usuarios" class="nav-item">
-            <i class="fas fa-users-cog"></i>
-            <span>Gerenciar Usuários</span>
-        </a>
-        {% endif %}
-
-        {# Menu Entregas da Operação: Designers, Operação e Liderança #}
-        {% if session.posicao in ["Gerência", "Sócio", "Coordenador"] or session.funcao in ["Designer", "WebDesigner", "Account", "Gestor de Tráfego"] %}
-        <a href="/criativa" class="nav-item">
-            <i class="fas fa-pencil-ruler"></i>
-            <span>Entregas da Operação</span>
-        </a>
-        {% endif %}
-
+        <!-- Grupo Gestão & CS -->
         {% if session.email in ["martins.gabriel@v4company.com", "gabriel.lasaro@v4company.com"] %}
-        <a href="/hub-cs-cx" class="nav-item">
-            <i class="fas fa-users"></i>
-            <span>Hub de CS/CX</span>
-        </a>
-        <a href="/painel-atribuicao" class="nav-item">
-            <i class="fas fa-tasks"></i>
-            <span>Painel de Atribuição</span>
-        </a>
-        <a href="/vendas" class="nav-item">
-            <i class="fas fa-shopping-cart"></i>
-            <span>Vendas</span>
-        </a>
-        <a href="/cockpit" class="nav-item">
-            <i class="fas fa-tachometer-alt"></i>
-            <span>Cockpit</span>
-        </a>
+        <div class="nav-group">
+            <div class="nav-group-header">
+                <span>Gestão & CS</span>
+                <i class="fas fa-chevron-right toggle-icon"></i>
+            </div>
+            <div class="nav-group-items">
+                <a href="/hub-cs-cx" class="nav-item">
+                    <i class="fas fa-users"></i>
+                    <span>Hub de CS/CX</span>
+                </a>
+                <a href="/painel-atribuicao" class="nav-item">
+                    <i class="fas fa-tasks"></i>
+                    <span>Painel de Atribuição</span>
+                </a>
+                <a href="/vendas" class="nav-item">
+                    <i class="fas fa-shopping-cart"></i>
+                    <span>Vendas</span>
+                </a>
+                <a href="/cockpit" class="nav-item">
+                    <i class="fas fa-tachometer-alt"></i>
+                    <span>Cockpit</span>
+                </a>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Grupo Administração -->
+        {% if session.nivel_acesso == "Admin" %}
+        <div class="nav-group">
+            <div class="nav-group-header">
+                <span>Administração</span>
+                <i class="fas fa-chevron-right toggle-icon"></i>
+            </div>
+            <div class="nav-group-items">
+                <a href="/gerenciar-usuarios" class="nav-item">
+                    <i class="fas fa-users-cog"></i>
+                    <span>Gerenciar Usuários</span>
+                </a>
+            </div>
+        </div>
         {% endif %}
 
     </div>
