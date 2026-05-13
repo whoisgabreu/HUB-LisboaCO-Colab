@@ -1071,6 +1071,12 @@ def home():
                 rem_min = float(primeira_metrica.fixo_remuneracao_minima or 0)
                 rem_max = float(primeira_metrica.fixo_remuneracao_maxima or 0)
 
+                # Trava remuneração entre mínimo e máximo do colaborador
+                if rem_min and rem_atual < rem_min:
+                    rem_atual = rem_min
+                if rem_max and rem_atual > rem_max:
+                    rem_atual = rem_max
+
                 my_remuneracao = {
                     "name": investidor.nome,
                     "role": investidor.funcao or investidor.posicao,
@@ -3113,6 +3119,22 @@ def get_projeto_vinculos(pipefy_id):
 
             vinculos = db.query(InvestidorProjeto).filter_by(pipefy_id_projeto=pipefy_id).all()
 
+            # Pré-carrega dados dos investidores (nome, função, posição, foto)
+            todos_emails = list({v.email_investidor for v in vinculos})
+            investidores_info = {}
+            if todos_emails:
+                invs = db.query(Investidor).filter(Investidor.email.in_(todos_emails)).all()
+                for inv in invs:
+                    investidores_info[inv.email] = {
+                        "nome": inv.nome,
+                        "funcao": inv.funcao,
+                        "posicao": inv.posicao,
+                        "profile_picture": (
+                            f"/static/images/profile_pictures/{inv.profile_picture}"
+                            if inv.profile_picture else None
+                        ),
+                    }
+
             # Pré-carrega MetricaMensal mais recente de cada email para buscar data_inicio no historico
             emails = list({v.email_investidor for v in vinculos if not v.created_at})
             historico_map = {}  # email → data_inicio (str ISO)
@@ -3151,10 +3173,15 @@ def get_projeto_vinculos(pipefy_id):
                 
                 # Metadata do cientista
                 meta = investidores_metadata.get(v.email_investidor, {})
-                
+                info = investidores_info.get(v.email_investidor, {})
+
                 result.append({
                     "id": v.id,
                     "email": v.email_investidor,
+                    "nome": info.get("nome"),
+                    "funcao": info.get("funcao"),
+                    "posicao": info.get("posicao"),
+                    "profile_picture": info.get("profile_picture"),
                     "cientista": v.cientista,
                     "active": v.active,
                     "fee_contribuicao": float(v.fee_contribuicao or 0),
@@ -3733,8 +3760,8 @@ def api_ranking():
                 raw_level = m.level if m else (inv.nivel or "L1")
                 seniority_display = f"{inv.senioridade or 'Investidor'} | {raw_level}"
 
-                # Formatação de MRR
-                mrr_val = float(m.fixo_mrr_atual or 0) if m else 0.0
+                # Formatação de MRR (carteira sob gestão — portfolio total)
+                mrr_val = float(m.fixo_mrr_projeto_total or 0) if m else 0.0
                 mrr_formatted = f"R$ {mrr_val:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
 
                 ranking_list.append({

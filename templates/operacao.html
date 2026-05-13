@@ -348,8 +348,13 @@
                                 <span class="op-card-status">Ativo</span>
                             </div>
                             <h3>{{ p.nome }} {% if p.cientista %}<span class="badge-cientista">Cientista</span>{% endif %}</h3>
-                            <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1.2rem;">{{
-                                p.produto_contratado }} • Fee: R$ {{ p.fee }}</p>
+                            {% if p.produto_contratado %}
+                            <p class="op-card-produto">{{ p.produto_contratado }}</p>
+                            {% endif %}
+                            <p class="op-card-fee">
+                                <span class="op-card-fee-label">Fee:</span>
+                                <span class="op-card-fee-value">{% if p.moeda == 'USD' %}US$ {% else %}R$ {% endif %}{{ "%.2f"|format(p.fee|float) }}</span>
+                            </p>
                             <div class="op-card-meta">
                                 <span><i class="fas fa-users"></i> {{ p.squad_atribuida }}</span>
                                 <span><i class="fas fa-hashtag"></i> ID: {{ p.pipefy_id }}</span>
@@ -377,11 +382,7 @@
 
                     <div class="op-tabs-container" style="margin-bottom: 2rem;">
                         <div class="op-tabs-wrapper">
-                            <button class="op-pill-btn active" onclick="switchOperacaoTab('metas')">
-                                <div class="op-icon-box"><i class="fas fa-bullseye"></i></div>
-                                <span>Metas do Cliente</span>
-                            </button>
-                            <button class="op-pill-btn" onclick="switchOperacaoTab('midia')">
+                            <button class="op-pill-btn active" onclick="switchOperacaoTab('midia')">
                                 <div class="op-icon-box"><i class="fas fa-chart-pie"></i></div>
                                 <span>Plano de Mídia</span>
                             </button>
@@ -409,39 +410,8 @@
                         </div>
                     </div>
 
-                    <!-- 2. ABA METAS DO CLIENTE -->
-                    <section id="section-metas" class="op-content-section active">
-                        <header class="tasks-header-actions" style="margin-bottom: 2rem;">
-                            <div class="op-section-title" style="margin-bottom: 0;">
-                                <div class="op-icon-box"><i class="fas fa-bullseye"></i></div>
-                                <h3>Metas do Cliente</h3>
-                            </div>
-                            <div style="display: flex; align-items: center; gap: 12px;">
-                                <select id="metas-month-select" class="gt-form-select" onchange="switchMetaMonth(this.value)" style="width:auto;padding:0.4rem 0.7rem;font-size:0.82rem;max-width:150px;">
-                                    <!-- Gerado via JS -->
-                                </select>
-                                {% if pode_operar %}
-                                <button class="btn-add-task" onclick="openMetaUnificadoModal()" style="white-space:nowrap;">
-                                    <i class="fas fa-plus"></i> Nova Meta
-                                </button>
-                                {% endif %}
-                            </div>
-                        </header>
-
-                        <!-- Objetivo Principal -->
-                        <div id="main-goal-card-container">
-                            <div class="metas-empty-placeholder">
-                                <i class="fas fa-bullseye"></i>
-                                <p>Selecione um mês para visualizar as metas.</p>
-                            </div>
-                        </div>
-
-                        <!-- Key Results -->
-                        <div id="quarter-task-list"></div>
-                    </section>
-
-                    <!-- 3. PLANO DE MÍDIA -->
-                    <section id="section-midia" class="op-content-section">
+                    <!-- 2. PLANO DE MÍDIA -->
+                    <section id="section-midia" class="op-content-section active">
                         <header
                             style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
                             <div class="op-section-title" style="margin-bottom: 0;">

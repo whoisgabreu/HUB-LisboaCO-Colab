@@ -188,7 +188,7 @@ function openProjectDetails(data) {
             btn.style.setProperty('display', isScientist ? 'flex' : 'none', 'important');
         });
 
-        switchOperacaoTab('metas');
+        switchOperacaoTab('midia');
         loadProjectData();
 
         // Exibe/oculta aba de Faturamento Variável conforme flag do projeto
@@ -243,11 +243,6 @@ function switchOperacaoTab(tabId) {
 async function loadProjectData() {
     if (!currentProject) return;
     const pipefyId = currentProject.pipefy_id;
-
-    initMetasMonthNav();
-    const ref = `${currentYear}-M${String(currentMonth).padStart(2, '0')}`;
-    currentMetaPeriod = ref;
-    loadTarefas(pipefyId, 'goal_snapshot', 'quarter-task-list', ref);
 
     loadPlanoMidia(pipefyId, currentMonth, currentYear);
     loadEntregas(pipefyId, currentMonth, currentYear);

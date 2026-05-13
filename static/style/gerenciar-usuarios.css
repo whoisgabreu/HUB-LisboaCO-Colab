@@ -1,5 +1,13 @@
 /* ESTILOS PARA GERENCIAMENTO DE USUÁRIOS */
 
+/* Permite que o .main-content cresça com o conteúdo nesta página
+   (sem essa folga, o header sticky perde o containing block quando
+   a tabela é mais alta que a viewport e desaparece no scroll). */
+.main-content:has(> #admin-user-page) {
+    height: auto;
+    min-height: calc(100vh - var(--header-height));
+}
+
 /* ═══ Abas Ativos / Inativos ═══ */
 #admin-user-page .user-tab-nav {
     display: flex;
@@ -37,7 +45,7 @@
 }
 
 #admin-user-page .user-tab-count {
-    background: var(--bg-secondary, rgba(255,255,255,0.08));
+    background: var(--bg-secondary, rgba(255, 255, 255, 0.08));
     border-radius: 20px;
     padding: 1px 8px;
     font-size: 0.75rem;
@@ -129,12 +137,14 @@
 
 #admin-user-page .user-details .user-name {
     display: block;
+    text-align: left;
     font-weight: 600;
     color: var(--text-color);
 }
 
 #admin-user-page .user-details .user-email {
     display: block;
+    text-align: left;
     font-size: 0.8rem;
     color: var(--text-muted);
 }

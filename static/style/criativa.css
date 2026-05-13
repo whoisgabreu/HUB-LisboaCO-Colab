@@ -796,6 +796,144 @@ body.tema-claro .btn-delta {
 
 /* (Estilos de grid de designers herdados de hub-projetos.css via .projects-grid e .project-card) */
 
+/* ═══ Override: grid de membros da equipe da /criativa ═══
+   Mantém o DNA do card original (avatar vermelho, fundo #17171b) em escala menor.
+   Cargo vira micro-pill discreto. Acento vermelho sutil ao hover.
+   Escopado a esta página — não afeta /hub-projetos. */
+.criativa-container .projects-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 0.9rem;
+}
+
+.criativa-container .project-card {
+    padding: 1rem;
+    border-radius: 12px;
+    background: #17171b;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+    transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Acento vermelho no topo, aparece no hover — devolve vida sem virar “bloco preto” */
+.criativa-container .project-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #d61616, transparent);
+    opacity: 0;
+    transition: opacity 0.25s ease;
+}
+
+.criativa-container .project-card:hover {
+    border-color: rgba(214, 22, 22, 0.45);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 22px rgba(214, 22, 22, 0.15);
+}
+
+.criativa-container .project-card:hover::before {
+    opacity: 1;
+}
+
+.criativa-container .project-card .project-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 0;
+    gap: 0.5rem;
+}
+
+.criativa-container .project-card .project-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 9px;
+    background: linear-gradient(135deg, #d61616, #911414);
+    box-shadow: 0 3px 10px rgba(214, 22, 22, 0.25);
+    font-size: 0.95rem;
+    flex-shrink: 0;
+}
+
+.criativa-container .project-card .project-icon img {
+    border-radius: inherit !important;
+}
+
+/* Cargo: micro-pill quase “tag” */
+.criativa-container .project-card .project-status {
+    padding: 0.1rem 0.5rem;
+    font-size: 0.6rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-radius: 4px;
+    line-height: 1.5;
+    align-self: flex-start;
+}
+
+.criativa-container .project-card .project-title {
+    margin: 0;
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: #fff;
+    line-height: 1.25;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.criativa-container .project-card .project-description {
+    margin: 0;
+    font-size: 0.7rem;
+    color: #9ca3af;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 500;
+    line-height: 1;
+}
+
+.criativa-container .project-card .project-meta {
+    margin-top: 0.35rem;
+    padding-top: 0.65rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.7rem;
+    color: #a0a0a0;
+}
+
+.criativa-container .project-card .project-meta span {
+    gap: 0.35rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.criativa-container .project-card .project-meta i {
+    color: #d61616;
+    font-size: 0.72rem;
+}
+
+body.tema-claro .criativa-container .project-card {
+    background: #fff;
+    border-color: #e5e7eb;
+}
+
+body.tema-claro .criativa-container .project-card:hover {
+    border-color: rgba(214, 22, 22, 0.45);
+}
+
+body.tema-claro .criativa-container .project-card .project-title { color: #111827; }
+body.tema-claro .criativa-container .project-card .project-description { color: #6b7280; }
+body.tema-claro .criativa-container .project-card .project-meta { color: #6b7280; border-top-color: #e5e7eb; }
+
 /* ═══ Seção por Squad ═══ */
 .criativa-squad-section {
     margin-bottom: 2.5rem;

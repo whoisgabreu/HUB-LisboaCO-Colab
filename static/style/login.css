@@ -38,7 +38,7 @@
       overflow: hidden;
     }
 
-    /* --- LADO ESQUERDO (FORMULÃƒÂRIO) --- */
+    /* --- LADO ESQUERDO (FORMULÃƒÂRIO) --- */
     .form-section {
       flex: 0.5;
       display: flex;
@@ -184,7 +184,7 @@
       background-color: #17171b;;
       color: #ffffff8a;
       text-align: center;
-      padding: 10px; 
+      padding: 10px;
       position: fixed; /* fixa no rodapé */
       bottom: 0;
       width: 100%;
