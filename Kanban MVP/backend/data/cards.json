@@ -1,0 +1,122 @@
+﻿[
+  {
+    "card_id": "d2e30155-fe9c-4aec-b28f-9e4352fea775",
+    "kanban_id": "5dd26246-0524-4949-b405-6ab5abb39869",
+    "titulo": "aSDASDASDASD",
+    "fase_atual": "1",
+    "fases": [
+      {
+        "fase_id": "Onboarding",
+        "dados": {
+          "titulo": "aSDASDASDASD",
+          "field_1778509403113": false,
+          "field_1778509406984": "",
+          "field_1778509409404": "0",
+          "field_1778509415068": "",
+          "field_1778509417356": "Opção 1",
+          "field_1778509420393": [
+            "Opção 1",
+            "Opção 2"
+          ],
+          "field_1778509423693": "Opção 1",
+          "field_1778509425936": "https://google.com",
+          "_labels": {
+            "titulo": "Título",
+            "field_1778509403113": "Novo Campo",
+            "field_1778509406984": "Novo Campo",
+            "field_1778509409404": "Novo Campo",
+            "field_1778509415068": "Novo Campo",
+            "field_1778509417356": "Novo Campo",
+            "field_1778509420393": "Novo Campo",
+            "field_1778509423693": "Novo Campo",
+            "field_1778509425936": "Novo Campo"
+          }
+        },
+        "criado_em": "2026-05-11 11:26:15.201607"
+      },
+      {
+        "fase_id": "CHURN",
+        "dados": {
+          "_labels": {
+            "titulo": "Título"
+          }
+        },
+        "criado_em": "2026-05-11 11:26:11.822795"
+      },
+      {
+        "fase_id": "1",
+        "dados": {
+          "titulo": "QSDASDAS",
+          "_labels": {
+            "titulo": "Título"
+          }
+        },
+        "criado_em": "2026-05-11 11:31:04.960769"
+      },
+      {
+        "fase_id": "2",
+        "dados": {
+          "titulo": "ADSDASD",
+          "_labels": {
+            "titulo": "Título"
+          }
+        },
+        "criado_em": "2026-05-11 11:26:13.550261"
+      }
+    ],
+    "historico": [
+      {
+        "fase": "Onboarding",
+        "entrada": "2026-05-11 11:24:57.720243",
+        "saida": "2026-05-11 11:25:43.382331"
+      },
+      {
+        "fase": "CHURN",
+        "entrada": "2026-05-11 11:25:43.382331",
+        "saida": "2026-05-11 11:25:53.156075"
+      },
+      {
+        "fase": "Onboarding",
+        "entrada": "2026-05-11 11:25:53.156075",
+        "saida": "2026-05-11 11:26:07.779244"
+      },
+      {
+        "fase": "1",
+        "entrada": "2026-05-11 11:26:07.779244",
+        "saida": "2026-05-11 11:26:10.990555"
+      },
+      {
+        "fase": "2",
+        "entrada": "2026-05-11 11:26:10.990555",
+        "saida": "2026-05-11 11:26:11.822795"
+      },
+      {
+        "fase": "CHURN",
+        "entrada": "2026-05-11 11:26:11.822795",
+        "saida": "2026-05-11 11:26:13.550261"
+      },
+      {
+        "fase": "2",
+        "entrada": "2026-05-11 11:26:13.550261",
+        "saida": "2026-05-11 11:26:14.479832"
+      },
+      {
+        "fase": "1",
+        "entrada": "2026-05-11 11:26:14.479832",
+        "saida": "2026-05-11 11:26:15.201607"
+      },
+      {
+        "fase": "Onboarding",
+        "entrada": "2026-05-11 11:26:15.201607",
+        "saida": "2026-05-11 11:31:04.960769"
+      },
+      {
+        "fase": "1",
+        "entrada": "2026-05-11 11:31:04.960769",
+        "saida": null
+      }
+    ],
+    "criado_em": "2026-05-11 11:24:57.720243",
+    "atualizado_em": "2026-05-11 11:31:04.960769"
+  }
+]

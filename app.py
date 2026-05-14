@@ -18,10 +18,12 @@ from models import (
     OperacaoTarefa, OperacaoEntregaMensal, OperacaoPlanoMidia,
     OperacaoOtimizacao, OperacaoCheckin,
     MonthlyDelivery, OperacaoLinkUtil, EntregaCriativa,
+    KanbanConfig, KanbanHistorico
 )
 from services.remuneracao import calcular_metricas_mensais
 from services.operacao_service import OperacaoService, OperacaoSnapshotService
 from services.projeto_participacao_service import ProjetoParticipacaoService
+from services.kanban_service import KanbanService, PhaseTransitionError
 
 
 
@@ -3677,6 +3679,149 @@ def delete_faturamento_variavel(pipefy_id, mes, ano):
         return jsonify({"status": "success", "message": msg})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+
+# ─── KANBAN INTEGRADO ─────────────────────────────────────────────────────────
+
+@app.route("/kanban")
+@check_session
+def view_kanban():
+    """Renderiza a dashboard de Kanban."""
+    return render_template("kanban.html", user_name=session.get("nome"))
+
+@app.route("/api/kanban/config", methods=["GET"])
+@check_session
+def api_kanban_config():
+    """Retorna a configuração do Kanban."""
+    with Session() as db:
+        service = KanbanService(db)
+        config = service.get_board_config()
+        return jsonify(config)
+
+@app.route("/api/kanban/config", methods=["POST"])
+@check_session
+def api_kanban_save_config():
+    """Salva a configuração do board."""
+    data = request.json or {}
+    # No integrado usamos 'fluxo-projetos' como slug principal
+    slug = "fluxo-projetos"
+    configuracao = data
+    
+    if not configuracao:
+        return jsonify({"error": "Configuração é obrigatória."}), 400
+        
+    with Session() as db:
+        service = KanbanService(db)
+        try:
+            service.update_config(slug, configuracao)
+            return jsonify({"status": "success"})
+        except Exception as e:
+            import traceback; traceback.print_exc()
+            return jsonify({"error": str(e)}), 500
+
+@app.route("/api/kanban/cards", methods=["GET"])
+@check_session
+def api_kanban_cards():
+    """Lista os cards (projetos) para o Kanban."""
+    with Session() as db:
+        service = KanbanService(db)
+        cards = service.list_cards()
+        return jsonify(cards)
+
+@app.route("/api/kanban/cards/<int:card_id>", methods=["GET"])
+@check_session
+def api_kanban_get_card(card_id):
+    """Retorna detalhes e histórico de um card."""
+    with Session() as db:
+        projeto = db.query(Projeto).filter_by(pipefy_id=card_id).first()
+        if not projeto:
+            return jsonify({"error": "Projeto não encontrado."}), 404
+        
+        historico = db.query(KanbanHistorico).filter_by(projeto_id=card_id).order_by(KanbanHistorico.data_evento.desc()).all()
+        
+        return jsonify({
+            "card_id": projeto.pipefy_id,
+            "titulo": projeto.nome,
+            "fase_atual": projeto.fase_do_pipefy,
+            "status": projeto.status,
+            "dados": projeto.kanban_dados or {},
+            "fee": float(projeto.fee) if projeto.fee else 0,
+            "moeda": projeto.moeda,
+            "historico": [
+                {
+                    "fase_entrada": h.snapshot.get("fase_entrada") or h.snapshot.get("fase"),
+                    "dados": h.snapshot.get("dados") or h.snapshot.get("snapshot_completo"),
+                    "evento": h.snapshot.get("evento"),
+                    "usuario": h.usuario_email,
+                    "timestamp": h.data_evento.isoformat()
+                } for h in historico
+            ]
+        })
+
+@app.route("/api/kanban/cards/<int:card_id>/update", methods=["POST"])
+@check_session
+def api_kanban_update_card(card_id):
+    """Atualiza dados de um card sem mover de fase."""
+    data = request.json or {}
+    dados = data.get("dados", {})
+    with Session() as db:
+        projeto = db.query(Projeto).filter_by(pipefy_id=card_id).first()
+        if not projeto:
+            return jsonify({"error": "Projeto não encontrado."}), 404
+        
+        nome = data.get("nome")
+        if nome:
+            projeto.nome = nome
+
+        current_dados = projeto.kanban_dados or {}
+        current_dados.update(dados)
+        projeto.kanban_dados = current_dados
+        db.commit()
+        return jsonify({"status": "success"})
+
+@app.route("/api/kanban/move", methods=["POST"])
+@check_session
+def api_kanban_move():
+    """Processa a movimentação de um card."""
+    data = request.json or {}
+    card_id = data.get("card_id")
+    nova_fase_id = data.get("nova_fase_id")
+    dados_fase = data.get("dados", {})
+    usuario_email = session.get("email")
+
+    if not card_id or not nova_fase_id:
+        return jsonify({"error": "Parâmetros card_id e nova_fase_id são obrigatórios."}), 400
+
+    with Session() as db:
+        service = KanbanService(db)
+        try:
+            # card_id no kanban é o pipefy_id no projeto
+            service.move_card(int(card_id), nova_fase_id, dados_fase, usuario_email)
+            return jsonify({"status": "success"})
+        except PhaseTransitionError as e:
+            return jsonify({"error": str(e)}), 422
+        except Exception as e:
+            import traceback; traceback.print_exc()
+            return jsonify({"error": str(e)}), 500
+
+@app.route("/api/kanban/cards", methods=["POST"])
+@check_session
+def api_kanban_create_card():
+    """Cria um novo card (projeto)."""
+    data = request.json or {}
+    dados_iniciais = data.get("dados", {})
+    usuario_email = session.get("email")
+
+    with Session() as db:
+        service = KanbanService(db)
+        try:
+            nome = data.get("nome", "Novo Projeto")
+            projeto = service.create_card("fluxo-projetos", nome, dados_iniciais, usuario_email)
+            return jsonify({"status": "success", "card_id": projeto.pipefy_id})
+        except Exception as e:
+            import traceback; traceback.print_exc()
+            return jsonify({"error": str(e)}), 500
 
 
 @app.route("/api/ranking", methods=["GET"])

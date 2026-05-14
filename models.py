@@ -47,7 +47,7 @@ class Projeto(Base):
     __table_args__ = {"schema": "plataforma_geral"}
 
     pipefy_id = Column(Integer, primary_key=True)
-    id = Column(Integer)
+    id = Column(Integer, server_default=FetchedValue())
     nome = Column(String(250))
     documento = Column(String(250))
     fee = Column(DECIMAL(15, 2))
@@ -69,6 +69,7 @@ class Projeto(Base):
     notas = Column(JSONB)
     ekyte_workspace = Column(String(2500))
     status = Column(String(50))
+    kanban_dados = Column(JSONB) # Dados dinâmicos do Kanban
 
 class RemuneracaoCargo(Base):
     """Tabela: plataforma_geral.remuneracao_cargos"""
@@ -329,6 +330,29 @@ class OperacaoLinkUtil(Base):
     icone = Column(String(50), default='fa-link')
     criado_por = Column(Text)
     created_at = Column(DateTime)
+
+
+class KanbanConfig(Base):
+    """Tabela: plataforma_geral.kanban_config"""
+    __tablename__ = "kanban_config"
+    __table_args__ = {"schema": "plataforma_geral"}
+
+    id = Column(Integer, primary_key=True)
+    slug = Column(String(100), unique=True, nullable=False)
+    configuracao = Column(JSONB, nullable=False)
+    criado_em = Column(DateTime, server_default=FetchedValue())
+
+
+class KanbanHistorico(Base):
+    """Tabela: plataforma_geral.kanban_historico"""
+    __tablename__ = "kanban_historico"
+    __table_args__ = {"schema": "plataforma_geral"}
+
+    id = Column(Integer, primary_key=True)
+    projeto_id = Column(Integer, nullable=False)
+    data_evento = Column(DateTime, server_default=FetchedValue())
+    usuario_email = Column(String(255))
+    snapshot = Column(JSONB, nullable=False)
 
 
 # Tabela 'operacao' acessada via SQL puro em OperacaoSnapshotService
