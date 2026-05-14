@@ -1,0 +1,1521 @@
+{
+    "updated": [
+        {
+            "pipefy_id": 1313907605,
+            "nome": "M R C LOCACOES (LASER SCANNER)",
+            "fields": [
+                "moeda",
+                "squad_atribuida",
+                "produto_contratado",
+                "data_de_inicio",
+                "orcamento_midia_meta",
+                "orcamento_midia_google",
+                "data_fim",
+                "extra",
+                "notas"
+            ]
+        },
+        {
+            "pipefy_id": 1314651480,
+            "nome": "IRMANDADE NOSSA SENHORA DAS MERCES DE MONTES CLAROS",
+            "fields": [
+                "moeda",
+                "squad_atribuida",
+                "orcamento_midia_meta",
+                "orcamento_midia_google",
+                "data_fim",
+                "extra",
+                "notas"
+            ]
+        },
+        {
+            "pipefy_id": 1183318065,
+            "nome": "SS Equipamentos (Comatral)",
+            "fields": [
+                "moeda",
+                "squad_atribuida",
+                "orcamento_midia_meta",
+                "orcamento_midia_google",
+                "data_fim",
+                "extra",
+                "notas"
+            ]
+        },
+        {
+            "pipefy_id": 1206088544,
+            "nome": "X PICANHA BEACH",
+            "fields": [
+                "moeda",
+                "squad_atribuida",
+                "informacoes_gerais",
+                "orcamento_midia_meta",
+                "orcamento_midia_google",
+                "data_fim"
+            ]
+        },
+        {
+            "pipefy_id": 1214416274,
+            "nome": "AKEOS",
+            "fields": [
+                "moeda",
+                "squad_atribuida",
+                "orcamento_midia_meta",
+                "orcamento_midia_google",
+                "data_fim",
+                "extra",
+                "notas"
+            ]
+        },
+        {
+            "pipefy_id": 1255861420,
+            "nome": "MARANELO",
+            "fields": [
+                "moeda",
+                "squad_atribuida",
+                "orcamento_midia_meta",
+                "orcamento_midia_google",
+                "data_fim",
+                "extra",
+                "notas"
+            ]
+        },
+        {
+            "pipefy_id": 1115894961,
+            "nome": "Molas E Amortecedores Senador Ltda",
+            "fields": [
+                "moeda",
+                "squad_atribuida",
+                "orcamento_midia_meta",
+                "orcamento_midia_google",
+                "data_fim",
+                "extra",
+                "notas"
+            ]
+        },
+        {
+            "pipefy_id": 1328858714,
+            "nome": "IDEIA PHONE ASSISTENCIA E COMERCIO LTDA",
+            "fields": [
+                "moeda",
+                "squad_atribuida",
+                "orcamento_midia_meta",
+                "orcamento_midia_google",
+                "data_fim",
+                "extra",
+                "notas"
+            ]
+        },
+        {
+            "pipefy_id": 1291767668,
+            "nome": "Agra Astro",
+            "fields": [
+                "moeda",
+                "squad_atribuida",
+                "orcamento_midia_meta",
+                "orcamento_midia_google",
+                "data_fim",
+                "extra",
+                "notas"
+            ]
+        },
+        {
+            "pipefy_id": 1317781417,
+            "nome": "Sagrado Café",
+            "fields": [
+                "moeda",
+                "squad_atribuida",
+                "extra",
+                "notas"
+            ]
+        },
+        {
+            "pipefy_id": 1161755342,
+            "nome": "Tsa Tratores",
+            "fields": [
+                "moeda",
+                "squad_atribuida",
+                "orcamento_midia_meta",
+                "orcamento_midia_google",
+                "data_fim",
+                "extra",
+                "notas"
+            ]
+        },
+        {
+            "pipefy_id": 1089306110,
+            "nome": "Lojas Pavone (J A Pavone )",
+            "fields": [
+                "moeda",
+                "squad_atribuida",
+                "orcamento_midia_meta",
+                "orcamento_midia_google",
+                "data_fim",
+                "extra",
+                "notas"
+            ]
+        },
+        {
+            "pipefy_id": 1061680188,
+            "nome": "Estetica Raposo - Drs Da Beleza",
+            "fields": [
+                "moeda",
+                "squad_atribuida",
+                "orcamento_midia_meta",
+                "orcamento_midia_google",
+                "data_fim",
+                "extra",
+                "notas"
+            ]
+        },
+        {
+            "pipefy_id": 1291732048,
+            "nome": "KUNTZ SOCIEDADE DE ADVOGADOS",
+            "fields": [
+                "moeda",
+                "squad_atribuida",
+                "meta_account_id",
+                "orcamento_midia_meta",
+                "orcamento_midia_google",
+                "data_fim",
+                "extra",
+                "notas"
+            ]
+        },
+        {
+            "pipefy_id": 1129800883,
+            "nome": "Avanco Engenharia E Construcao Ltda",
+            "fields": [
+                "moeda",
+                "squad_atribuida",
+                "orcamento_midia_meta",
+                "orcamento_midia_google",
+                "data_fim",
+                "extra",
+                "notas"
+            ]
+        },
+        {
+            "pipefy_id": 1288673426,
+            "nome": "Grupo TGN",
+            "fields": [
+                "moeda",
+                "squad_atribuida",
+                "orcamento_midia_meta",
+                "orcamento_midia_google",
+                "data_fim",
+                "extra",
+                "notas"
+            ]
+        },
+        {
+            "pipefy_id": 1295732191,
+            "nome": "RECONLOG ",
+            "fields": [
+                "moeda",
+                "squad_atribuida",
+                "orcamento_midia_meta",
+                "orcamento_midia_google",
+                "data_fim",
+                "extra",
+                "notas"
+            ]
+        },
+        {
+            "pipefy_id": 1259693284,
+            "nome": "FIREBULL BURGER",
+            "fields": [
+                "moeda",
+                "squad_atribuida",
+                "orcamento_midia_meta",
+                "orcamento_midia_google",
+                "data_fim",
+                "extra",
+                "notas"
+            ]
+        },
+        {
+            "pipefy_id": 1075726362,
+            "nome": "Paraíso Implementos (Help Car)",
+            "fields": [
+                "moeda",
+                "squad_atribuida",
+                "produto_contratado",
+                "orcamento_midia_meta",
+                "orcamento_midia_google",
+                "data_fim",
+                "extra",
+                "notas"
+            ]
+        },
+        {
+            "pipefy_id": 1218767043,
+            "nome": "DANIELE MELO",
+            "fields": [
+                "moeda",
+                "squad_atribuida",
+                "orcamento_midia_meta",
+                "orcamento_midia_google",
+                "data_fim",
+                "extra",
+                "notas"
+            ]
+        },
+        {
+            "pipefy_id": 1313908918,
+            "nome": "MF SELECT",
+            "fields": [
+                "moeda",
+                "squad_atribuida",
+                "produto_contratado",
+                "data_de_inicio",
+                "orcamento_midia_meta",
+                "orcamento_midia_google",
+                "data_fim",
+                "extra",
+                "notas"
+            ]
+        },
+        {
+            "pipefy_id": 1321163098,
+            "nome": "TV SIM",
+            "fields": [
+                "moeda",
+                "squad_atribuida",
+                "data_de_inicio",
+                "orcamento_midia_meta",
+                "orcamento_midia_google",
+                "data_fim",
+                "extra",
+                "notas"
+            ]
+        },
+        {
+            "pipefy_id": 1271079032,
+            "nome": "FLUA",
+            "fields": [
+                "moeda",
+                "squad_atribuida",
+                "orcamento_midia_meta",
+                "orcamento_midia_google",
+                "data_fim",
+                "extra",
+                "notas"
+            ]
+        },
+        {
+            "pipefy_id": 1296525794,
+            "nome": "Reverso Academy",
+            "fields": [
+                "moeda",
+                "squad_atribuida",
+                "orcamento_midia_meta",
+                "orcamento_midia_google",
+                "data_fim",
+                "extra",
+                "notas"
+            ]
+        },
+        {
+            "pipefy_id": 1133534055,
+            "nome": "Saudepass Telemedicina E Beneficios Corporativos Ltda",
+            "fields": [
+                "moeda",
+                "orcamento_midia_meta",
+                "orcamento_midia_google",
+                "data_fim",
+                "extra",
+                "notas"
+            ]
+        },
+        {
+            "pipefy_id": 1073571499,
+            "nome": "Unitrier",
+            "fields": [
+                "moeda",
+                "squad_atribuida",
+                "orcamento_midia_meta",
+                "orcamento_midia_google",
+                "data_fim",
+                "extra",
+                "notas"
+            ]
+        },
+        {
+            "pipefy_id": 1064464967,
+            "nome": "Hoteis Uirapuru",
+            "fields": [
+                "moeda",
+                "squad_atribuida",
+                "informacoes_gerais",
+                "orcamento_midia_meta",
+                "orcamento_midia_google",
+                "data_fim",
+                "extra",
+                "notas"
+            ]
+        },
+        {
+            "pipefy_id": 1073571109,
+            "nome": "Dichopp Cervejas Especiais Ltda",
+            "fields": [
+                "moeda",
+                "squad_atribuida",
+                "orcamento_midia_meta",
+                "orcamento_midia_google",
+                "data_fim",
+                "extra",
+                "notas"
+            ]
+        },
+        {
+            "pipefy_id": 1075727019,
+            "nome": "Somaxi Group",
+            "fields": [
+                "squad_atribuida",
+                "orcamento_midia_meta",
+                "orcamento_midia_google",
+                "data_fim",
+                "extra",
+                "notas"
+            ]
+        },
+        {
+            "pipefy_id": 1135403957,
+            "nome": "Friedland Law",
+            "fields": [
+                "moeda",
+                "squad_atribuida",
+                "orcamento_midia_meta",
+                "orcamento_midia_google",
+                "data_fim",
+                "extra",
+                "notas"
+            ]
+        },
+        {
+            "pipefy_id": 1176746121,
+            "nome": "Kit Lanche Gostosuras 2",
+            "fields": [
+                "moeda",
+                "squad_atribuida",
+                "orcamento_midia_meta",
+                "orcamento_midia_google",
+                "data_fim",
+                "extra",
+                "notas"
+            ]
+        },
+        {
+            "pipefy_id": 1322834148,
+            "nome": "OPÇÃO CORRETORA DE SEGUROS",
+            "fields": [
+                "moeda",
+                "squad_atribuida",
+                "orcamento_midia_meta",
+                "orcamento_midia_google",
+                "data_fim",
+                "extra",
+                "notas"
+            ]
+        },
+        {
+            "pipefy_id": 1075727603,
+            "nome": "HTO Comércio de óculos e lentes  (Óticas A Fábrica)",
+            "fields": [
+                "squad_atribuida",
+                "orcamento_midia_meta",
+                "orcamento_midia_google",
+                "data_fim",
+                "extra",
+                "notas"
+            ]
+        },
+        {
+            "pipefy_id": 1075727084,
+            "nome": "Distriferro",
+            "fields": [
+                "moeda",
+                "squad_atribuida",
+                "produto_contratado",
+                "orcamento_midia_meta",
+                "orcamento_midia_google",
+                "data_fim",
+                "extra",
+                "notas",
+                "ekyte_workspace"
+            ]
+        },
+        {
+            "pipefy_id": 1133534407,
+            "nome": "Friedland Law",
+            "fields": [
+                "moeda",
+                "squad_atribuida",
+                "orcamento_midia_meta",
+                "orcamento_midia_google",
+                "data_fim",
+                "extra",
+                "notas"
+            ]
+        },
+        {
+            "pipefy_id": 1219928987,
+            "nome": "DROGARIA MACHADO (DROGARIA E PERFUMARIA PARAISO)",
+            "fields": [
+                "moeda",
+                "squad_atribuida",
+                "orcamento_midia_meta",
+                "orcamento_midia_google",
+                "data_fim",
+                "extra",
+                "notas"
+            ]
+        },
+        {
+            "pipefy_id": 1328843873,
+            "nome": "RICK LANCH LTDA",
+            "fields": [
+                "moeda",
+                "squad_atribuida",
+                "orcamento_midia_meta",
+                "orcamento_midia_google",
+                "data_fim",
+                "extra",
+                "notas"
+            ]
+        },
+        {
+            "pipefy_id": 1075726452,
+            "nome": "Câmbiogo",
+            "fields": [
+                "moeda",
+                "squad_atribuida",
+                "produto_contratado",
+                "orcamento_midia_meta",
+                "orcamento_midia_google",
+                "data_fim",
+                "extra",
+                "notas"
+            ]
+        },
+        {
+            "pipefy_id": 1194011734,
+            "nome": "Mpa (MENEZELLO E PEREIRA SOCIEDADE DE ADVOGADOS)",
+            "fields": [
+                "moeda",
+                "squad_atribuida",
+                "step",
+                "informacoes_gerais",
+                "orcamento_midia_meta",
+                "orcamento_midia_google",
+                "data_fim",
+                "extra",
+                "notas"
+            ]
+        },
+        {
+            "pipefy_id": 1313906974,
+            "nome": "SOFTFOCUS SOLUCOES TECNOLOGICAS LTDA",
+            "fields": [
+                "moeda",
+                "squad_atribuida",
+                "produto_contratado",
+                "data_de_inicio",
+                "cohort",
+                "orcamento_midia_meta",
+                "orcamento_midia_google",
+                "data_fim",
+                "extra",
+                "notas"
+            ]
+        },
+        {
+            "pipefy_id": 1073603273,
+            "nome": "Comercial Frigel Ltda",
+            "fields": [
+                "moeda",
+                "squad_atribuida",
+                "orcamento_midia_meta",
+                "orcamento_midia_google",
+                "data_fim",
+                "extra",
+                "notas"
+            ]
+        },
+        {
+            "pipefy_id": 1313906242,
+            "nome": "COOPRESA",
+            "fields": [
+                "moeda",
+                "squad_atribuida",
+                "data_de_inicio",
+                "orcamento_midia_meta",
+                "orcamento_midia_google",
+                "data_fim",
+                "extra",
+                "notas"
+            ]
+        },
+        {
+            "pipefy_id": 1291744101,
+            "nome": "CAGLIONI E FURLAN IMOVEIS LTDA (VÊNETTO)",
+            "fields": [
+                "moeda",
+                "squad_atribuida",
+                "orcamento_midia_meta",
+                "orcamento_midia_google",
+                "data_fim",
+                "extra",
+                "notas"
+            ]
+        },
+        {
+            "pipefy_id": 1252078011,
+            "nome": "MRB IMPORTS E ACESSORIOS LTDA",
+            "fields": [
+                "moeda",
+                "squad_atribuida",
+                "orcamento_midia_meta",
+                "orcamento_midia_google",
+                "data_fim",
+                "extra",
+                "notas"
+            ]
+        },
+        {
+            "pipefy_id": 1075727394,
+            "nome": "Água Branca",
+            "fields": [
+                "moeda",
+                "squad_atribuida",
+                "produto_contratado",
+                "orcamento_midia_meta",
+                "orcamento_midia_google",
+                "data_fim",
+                "extra",
+                "notas"
+            ]
+        },
+        {
+            "pipefy_id": 1221307659,
+            "nome": "Fator pastelaria",
+            "fields": [
+                "moeda",
+                "squad_atribuida",
+                "orcamento_midia_meta",
+                "orcamento_midia_google",
+                "data_fim",
+                "extra",
+                "notas"
+            ]
+        },
+        {
+            "pipefy_id": 1313908576,
+            "nome": "COPETRO",
+            "fields": [
+                "moeda",
+                "squad_atribuida",
+                "data_de_inicio",
+                "cohort",
+                "orcamento_midia_meta",
+                "orcamento_midia_google",
+                "data_fim",
+                "extra",
+                "notas"
+            ]
+        },
+        {
+            "pipefy_id": 1108737236,
+            "nome": "KM2 (DAIANA)",
+            "fields": [
+                "moeda",
+                "squad_atribuida",
+                "orcamento_midia_meta",
+                "orcamento_midia_google",
+                "data_fim",
+                "extra",
+                "notas"
+            ]
+        },
+        {
+            "pipefy_id": 1075727493,
+            "nome": "Rica Alimentos",
+            "fields": [
+                "moeda",
+                "squad_atribuida",
+                "produto_contratado",
+                "orcamento_midia_meta",
+                "orcamento_midia_google",
+                "data_fim",
+                "extra",
+                "notas"
+            ]
+        },
+        {
+            "pipefy_id": 1214430764,
+            "nome": "AV DOS SANTOS PERUZZO LTDA (POPULAR )",
+            "fields": [
+                "moeda",
+                "squad_atribuida",
+                "orcamento_midia_meta",
+                "orcamento_midia_google",
+                "data_fim",
+                "extra",
+                "notas"
+            ]
+        },
+        {
+            "pipefy_id": 1313908149,
+            "nome": "AUREA CLINIC & SPA",
+            "fields": [
+                "moeda",
+                "squad_atribuida",
+                "produto_contratado",
+                "data_de_inicio",
+                "cohort",
+                "orcamento_midia_meta",
+                "orcamento_midia_google",
+                "data_fim",
+                "extra",
+                "notas"
+            ]
+        },
+        {
+            "pipefy_id": 1313214091,
+            "nome": "WK ESTETICA ",
+            "fields": [
+                "moeda",
+                "squad_atribuida",
+                "orcamento_midia_meta",
+                "orcamento_midia_google",
+                "data_fim",
+                "extra",
+                "notas"
+            ]
+        },
+        {
+            "pipefy_id": 1075727408,
+            "nome": "Dfibra",
+            "fields": [
+                "moeda",
+                "squad_atribuida",
+                "produto_contratado",
+                "orcamento_midia_meta",
+                "orcamento_midia_google",
+                "data_fim",
+                "extra",
+                "notas",
+                "ekyte_workspace"
+            ]
+        },
+        {
+            "pipefy_id": 1330759883,
+            "nome": "Minas Summit",
+            "fields": [
+                "moeda",
+                "squad_atribuida",
+                "orcamento_midia_meta",
+                "orcamento_midia_google",
+                "data_fim",
+                "extra",
+                "notas"
+            ]
+        },
+        {
+            "pipefy_id": 1314606050,
+            "nome": "CBCLOUD",
+            "fields": [
+                "moeda",
+                "squad_atribuida",
+                "orcamento_midia_meta",
+                "orcamento_midia_google",
+                "data_fim",
+                "extra",
+                "notas"
+            ]
+        },
+        {
+            "pipefy_id": 1315706106,
+            "nome": "Burning Fest",
+            "fields": [
+                "moeda",
+                "squad_atribuida",
+                "orcamento_midia_meta",
+                "orcamento_midia_google",
+                "data_fim",
+                "extra",
+                "notas"
+            ]
+        },
+        {
+            "pipefy_id": 1070792458,
+            "nome": "Dr. Physio Therapy & Wellness",
+            "fields": [
+                "moeda",
+                "squad_atribuida",
+                "orcamento_midia_meta",
+                "orcamento_midia_google",
+                "data_fim",
+                "extra",
+                "notas",
+                "ekyte_workspace"
+            ]
+        },
+        {
+            "pipefy_id": 1075726212,
+            "nome": "Grunn",
+            "fields": [
+                "moeda",
+                "squad_atribuida",
+                "produto_contratado",
+                "orcamento_midia_meta",
+                "orcamento_midia_google",
+                "data_fim",
+                "extra",
+                "notas"
+            ]
+        },
+        {
+            "pipefy_id": 1161776321,
+            "nome": "Estecc Contabilidade",
+            "fields": [
+                "moeda",
+                "squad_atribuida",
+                "orcamento_midia_meta",
+                "orcamento_midia_google"
+            ]
+        },
+        {
+            "pipefy_id": 1218775852,
+            "nome": "LOGOS FOMENTO",
+            "fields": [
+                "moeda",
+                "orcamento_midia_meta",
+                "orcamento_midia_google"
+            ]
+        },
+        {
+            "pipefy_id": 1163551386,
+            "nome": "Ostrowski Advogados 1",
+            "fields": [
+                "moeda",
+                "orcamento_midia_meta",
+                "orcamento_midia_google"
+            ]
+        },
+        {
+            "pipefy_id": 1194372949,
+            "nome": "Red Mapple Tree Service Llc 1",
+            "fields": [
+                "moeda",
+                "orcamento_midia_meta",
+                "orcamento_midia_google"
+            ]
+        },
+        {
+            "pipefy_id": 1163553088,
+            "nome": "Ostrowski Advogados 2",
+            "fields": [
+                "moeda",
+                "orcamento_midia_meta",
+                "orcamento_midia_google"
+            ]
+        },
+        {
+            "pipefy_id": 1249431013,
+            "nome": "33 CRUZEIRO",
+            "fields": [
+                "moeda",
+                "orcamento_midia_meta",
+                "orcamento_midia_google"
+            ]
+        },
+        {
+            "pipefy_id": 1210264609,
+            "nome": "F&M BASKETBALL LTDA",
+            "fields": [
+                "moeda",
+                "orcamento_midia_meta",
+                "orcamento_midia_google"
+            ]
+        },
+        {
+            "pipefy_id": 1187911379,
+            "nome": "Tradicao Caipira 2",
+            "fields": [
+                "moeda",
+                "orcamento_midia_meta",
+                "orcamento_midia_google"
+            ]
+        },
+        {
+            "pipefy_id": 1133537800,
+            "nome": "Kidstore Atacado",
+            "fields": [
+                "moeda",
+                "orcamento_midia_meta",
+                "orcamento_midia_google"
+            ]
+        },
+        {
+            "pipefy_id": 1259789731,
+            "nome": "INSTITUTO KAREN FERNANDES",
+            "fields": [
+                "moeda",
+                "orcamento_midia_meta",
+                "orcamento_midia_google"
+            ]
+        },
+        {
+            "pipefy_id": 1161709775,
+            "nome": "Primavera Odontologia",
+            "fields": [
+                "moeda",
+                "orcamento_midia_meta",
+                "orcamento_midia_google"
+            ]
+        },
+        {
+            "pipefy_id": 1253835035,
+            "nome": "BLEND - MPS ESPECIALIST",
+            "fields": [
+                "moeda",
+                "orcamento_midia_meta",
+                "orcamento_midia_google"
+            ]
+        },
+        {
+            "pipefy_id": 1187914417,
+            "nome": "Tradicao Caipira 1",
+            "fields": [
+                "moeda",
+                "orcamento_midia_meta",
+                "orcamento_midia_google"
+            ]
+        },
+        {
+            "pipefy_id": 1205860403,
+            "nome": "GIGI PET'S",
+            "fields": [
+                "moeda",
+                "orcamento_midia_meta",
+                "orcamento_midia_google"
+            ]
+        },
+        {
+            "pipefy_id": 1217328593,
+            "nome": "LOGOS FOMENTO",
+            "fields": [
+                "moeda",
+                "orcamento_midia_meta",
+                "orcamento_midia_google"
+            ]
+        },
+        {
+            "pipefy_id": 1167777205,
+            "nome": "A Fabulosa Maquina De Doces Ltda",
+            "fields": [
+                "moeda",
+                "orcamento_midia_meta",
+                "orcamento_midia_google"
+            ]
+        },
+        {
+            "pipefy_id": 1110578153,
+            "nome": "Help Home",
+            "fields": [
+                "moeda",
+                "orcamento_midia_meta",
+                "orcamento_midia_google"
+            ]
+        },
+        {
+            "pipefy_id": 1249662617,
+            "nome": "MWS PUNTEC ",
+            "fields": [
+                "moeda",
+                "orcamento_midia_meta",
+                "orcamento_midia_google"
+            ]
+        },
+        {
+            "pipefy_id": 1154022763,
+            "nome": "Ehl Energia Solar",
+            "fields": [
+                "moeda",
+                "orcamento_midia_meta",
+                "orcamento_midia_google"
+            ]
+        },
+        {
+            "pipefy_id": 1182292121,
+            "nome": "Nattu Cozine",
+            "fields": [
+                "moeda",
+                "orcamento_midia_meta",
+                "orcamento_midia_google"
+            ]
+        },
+        {
+            "pipefy_id": 1249672973,
+            "nome": "MWS PUNTEC",
+            "fields": [
+                "moeda",
+                "orcamento_midia_meta",
+                "orcamento_midia_google"
+            ]
+        },
+        {
+            "pipefy_id": 1249441359,
+            "nome": "33 CRUZEIRO",
+            "fields": [
+                "moeda",
+                "orcamento_midia_meta",
+                "orcamento_midia_google"
+            ]
+        },
+        {
+            "pipefy_id": 1132915599,
+            "nome": "Component'S Industria E Comercio De Artefatos De Metais Ltda",
+            "fields": [
+                "moeda",
+                "orcamento_midia_meta",
+                "orcamento_midia_google"
+            ]
+        },
+        {
+            "pipefy_id": 1220893797,
+            "nome": "Petry Lar",
+            "fields": [
+                "moeda",
+                "orcamento_midia_meta",
+                "orcamento_midia_google"
+            ]
+        },
+        {
+            "pipefy_id": 1173062455,
+            "nome": "Cplife Cercas De Protecao Para Piscinas",
+            "fields": [
+                "moeda",
+                "orcamento_midia_meta",
+                "orcamento_midia_google"
+            ]
+        },
+        {
+            "pipefy_id": 1271094958,
+            "nome": "RICALI ",
+            "fields": [
+                "moeda",
+                "orcamento_midia_meta",
+                "orcamento_midia_google"
+            ]
+        },
+        {
+            "pipefy_id": 1117963751,
+            "nome": "Centro De Formacao De Condutores Mafrense",
+            "fields": [
+                "moeda",
+                "orcamento_midia_meta",
+                "orcamento_midia_google"
+            ]
+        },
+        {
+            "pipefy_id": 1268030772,
+            "nome": "TANIA MENEZES",
+            "fields": [
+                "moeda",
+                "orcamento_midia_meta",
+                "orcamento_midia_google"
+            ]
+        },
+        {
+            "pipefy_id": 1133536968,
+            "nome": "Imperio Das Bebidas 2",
+            "fields": [
+                "moeda",
+                "orcamento_midia_meta",
+                "orcamento_midia_google"
+            ]
+        },
+        {
+            "pipefy_id": 1276237219,
+            "nome": "VSP EMPREENDIMENTOS LTDA,",
+            "fields": [
+                "moeda",
+                "orcamento_midia_meta",
+                "orcamento_midia_google"
+            ]
+        },
+        {
+            "pipefy_id": 1256538699,
+            "nome": "CAMBRAIA AUTOMOVEIS ",
+            "fields": [
+                "moeda",
+                "orcamento_midia_meta",
+                "orcamento_midia_google"
+            ]
+        },
+        {
+            "pipefy_id": 1163356009,
+            "nome": "Gr - Contabil S/S Ltda 1",
+            "fields": [
+                "moeda",
+                "orcamento_midia_meta",
+                "orcamento_midia_google"
+            ]
+        },
+        {
+            "pipefy_id": 1271082963,
+            "nome": "FULLBOX",
+            "fields": [
+                "moeda",
+                "orcamento_midia_meta",
+                "orcamento_midia_google"
+            ]
+        },
+        {
+            "pipefy_id": 1135778634,
+            "nome": "Planus Energia Ltda",
+            "fields": [
+                "moeda",
+                "orcamento_midia_meta",
+                "orcamento_midia_google"
+            ]
+        },
+        {
+            "pipefy_id": 1075726651,
+            "nome": "Residenciais Krum",
+            "fields": [
+                "moeda",
+                "orcamento_midia_meta",
+                "orcamento_midia_google"
+            ]
+        },
+        {
+            "pipefy_id": 1257296397,
+            "nome": "A. F. BASTOS NETO LTDA",
+            "fields": [
+                "moeda",
+                "orcamento_midia_meta",
+                "orcamento_midia_google"
+            ]
+        },
+        {
+            "pipefy_id": 1112552137,
+            "nome": "G2I",
+            "fields": [
+                "moeda",
+                "orcamento_midia_meta",
+                "orcamento_midia_google"
+            ]
+        },
+        {
+            "pipefy_id": 1241131512,
+            "nome": "EDITORIAL MAGAZINE E COMERCIO DIGITAL DE DEPARTAMENTOS UNIT BRASIL LTDA",
+            "fields": [
+                "moeda",
+                "orcamento_midia_meta",
+                "orcamento_midia_google"
+            ]
+        },
+        {
+            "pipefy_id": 1180112227,
+            "nome": "Table Clinic",
+            "fields": [
+                "moeda",
+                "orcamento_midia_meta",
+                "orcamento_midia_google"
+            ]
+        },
+        {
+            "pipefy_id": 1163555338,
+            "nome": "Ostrowski Advogados 3",
+            "fields": [
+                "moeda",
+                "orcamento_midia_meta",
+                "orcamento_midia_google"
+            ]
+        },
+        {
+            "pipefy_id": 1205842305,
+            "nome": "INSTITUTO DA BOCA ODONTOLOGIA",
+            "fields": [
+                "moeda",
+                "orcamento_midia_meta",
+                "orcamento_midia_google"
+            ]
+        },
+        {
+            "pipefy_id": 1170414970,
+            "nome": "Prepara Academy",
+            "fields": [
+                "moeda",
+                "orcamento_midia_meta",
+                "orcamento_midia_google"
+            ]
+        },
+        {
+            "pipefy_id": 1238165561,
+            "nome": "REVISTA OESTE",
+            "fields": [
+                "moeda",
+                "orcamento_midia_meta",
+                "orcamento_midia_google"
+            ]
+        },
+        {
+            "pipefy_id": 1220898494,
+            "nome": "GUTO ARAUJO CORRETOR DE IMOVEIS",
+            "fields": [
+                "moeda",
+                "orcamento_midia_meta",
+                "orcamento_midia_google"
+            ]
+        },
+        {
+            "pipefy_id": 1259382565,
+            "nome": "CASA MUNDO TECNOLOGIA LTDA",
+            "fields": [
+                "moeda",
+                "orcamento_midia_meta",
+                "orcamento_midia_google"
+            ]
+        },
+        {
+            "pipefy_id": 1095609400,
+            "nome": "Mq Construtora",
+            "fields": [
+                "moeda",
+                "orcamento_midia_meta",
+                "orcamento_midia_google"
+            ]
+        },
+        {
+            "pipefy_id": 1237409803,
+            "nome": "SUPER MEAT ALIMENTOS LTDA (quebramar),",
+            "fields": [
+                "moeda",
+                "orcamento_midia_meta",
+                "orcamento_midia_google"
+            ]
+        },
+        {
+            "pipefy_id": 1158241313,
+            "nome": "Unitbrasil",
+            "fields": [
+                "moeda",
+                "squad_atribuida",
+                "orcamento_midia_meta",
+                "orcamento_midia_google"
+            ]
+        },
+        {
+            "pipefy_id": 1225659794,
+            "nome": "NUCHARGE",
+            "fields": [
+                "moeda",
+                "squad_atribuida",
+                "orcamento_midia_meta",
+                "orcamento_midia_google"
+            ]
+        },
+        {
+            "pipefy_id": 1149830932,
+            "nome": "Groupwork",
+            "fields": [
+                "moeda",
+                "squad_atribuida",
+                "url_webhook_gchat",
+                "orcamento_midia_meta",
+                "orcamento_midia_google"
+            ]
+        },
+        {
+            "pipefy_id": 1241542298,
+            "nome": "Meregali",
+            "fields": [
+                "moeda",
+                "url_webhook_gchat",
+                "orcamento_midia_meta",
+                "orcamento_midia_google"
+            ]
+        },
+        {
+            "pipefy_id": 1210249872,
+            "nome": "LiniEventos",
+            "fields": [
+                "moeda",
+                "orcamento_midia_meta",
+                "orcamento_midia_google",
+                "data_fim",
+                "extra",
+                "notas"
+            ]
+        },
+        {
+            "pipefy_id": 1202410929,
+            "nome": "Festival Volta ao Mundo",
+            "fields": [
+                "moeda",
+                "orcamento_midia_meta",
+                "orcamento_midia_google"
+            ]
+        },
+        {
+            "pipefy_id": 1064152514,
+            "nome": "Reverso Academy 2",
+            "fields": [
+                "moeda",
+                "orcamento_midia_meta",
+                "orcamento_midia_google"
+            ]
+        },
+        {
+            "pipefy_id": 1268173901,
+            "nome": "VÊNETTO",
+            "fields": [
+                "moeda"
+            ]
+        },
+        {
+            "pipefy_id": 1249697771,
+            "nome": "THE GAME",
+            "fields": [
+                "moeda",
+                "orcamento_midia_meta",
+                "orcamento_midia_google"
+            ]
+        },
+        {
+            "pipefy_id": 1225658554,
+            "nome": "NUCHARGE",
+            "fields": [
+                "moeda"
+            ]
+        },
+        {
+            "pipefy_id": 1231259823,
+            "nome": "Sofá Castelo",
+            "fields": [
+                "moeda"
+            ]
+        },
+        {
+            "pipefy_id": 1162005283,
+            "nome": "ESB MULTIMARCAS (ATLANTA)",
+            "fields": [
+                "moeda",
+                "orcamento_midia_meta",
+                "orcamento_midia_google"
+            ]
+        },
+        {
+            "pipefy_id": 1215850557,
+            "nome": "Holi Solar",
+            "fields": [
+                "moeda",
+                "orcamento_midia_meta",
+                "orcamento_midia_google"
+            ]
+        },
+        {
+            "pipefy_id": 1073570788,
+            "nome": "Nanuque Administradora De Consórcios Ltda",
+            "fields": [
+                "moeda"
+            ]
+        },
+        {
+            "pipefy_id": 1281927642,
+            "nome": "Geriátrico Paraíso Tropical",
+            "fields": [
+                "moeda"
+            ]
+        },
+        {
+            "pipefy_id": 1254349585,
+            "nome": "Goldara Celulares",
+            "fields": [
+                "moeda",
+                "orcamento_midia_meta",
+                "orcamento_midia_google"
+            ]
+        },
+        {
+            "pipefy_id": 1073606935,
+            "nome": "Boné Tintas",
+            "fields": [
+                "moeda",
+                "orcamento_midia_meta",
+                "orcamento_midia_google"
+            ]
+        },
+        {
+            "pipefy_id": 1255868331,
+            "nome": "MARANELO",
+            "fields": [
+                "moeda"
+            ]
+        },
+        {
+            "pipefy_id": 1268985595,
+            "nome": "AKEOS",
+            "fields": [
+                "moeda"
+            ]
+        },
+        {
+            "pipefy_id": 1163486377,
+            "nome": "Km2 Representações",
+            "fields": [
+                "moeda",
+                "orcamento_midia_meta",
+                "orcamento_midia_google"
+            ]
+        },
+        {
+            "pipefy_id": 1108699742,
+            "nome": "Planus Energia Ltda",
+            "fields": [
+                "moeda",
+                "orcamento_midia_meta",
+                "orcamento_midia_google"
+            ]
+        },
+        {
+            "pipefy_id": 1112558946,
+            "nome": "Bittencourt Gestao Empresarial Ltda",
+            "fields": [
+                "moeda",
+                "orcamento_midia_meta",
+                "orcamento_midia_google"
+            ]
+        },
+        {
+            "pipefy_id": 1239600634,
+            "nome": "A FEIJOADA COMERCIO DE ALIMENTOS LTDA",
+            "fields": [
+                "moeda"
+            ]
+        },
+        {
+            "pipefy_id": 1071290432,
+            "nome": "Universal Countertop",
+            "fields": [
+                "moeda",
+                "squad_atribuida"
+            ]
+        },
+        {
+            "pipefy_id": 1177672586,
+            "nome": "Universal Countertop 2",
+            "fields": [
+                "moeda",
+                "squad_atribuida"
+            ]
+        },
+        {
+            "pipefy_id": 1299140581,
+            "nome": "J&G GERIATRICO (Geriátrico Paraíso)",
+            "fields": [
+                "moeda",
+                "squad_atribuida",
+                "orcamento_midia_meta",
+                "orcamento_midia_google",
+                "data_fim",
+                "extra",
+                "notas"
+            ]
+        },
+        {
+            "pipefy_id": 1288683220,
+            "nome": "Grupo TGN",
+            "fields": [
+                "moeda"
+            ]
+        },
+        {
+            "pipefy_id": 1322739220,
+            "nome": "Marble Diamond Tools",
+            "fields": [
+                "moeda"
+            ]
+        },
+        {
+            "pipefy_id": 1333465935,
+            "nome": "New Star Fashion",
+            "fields": [
+                "moeda"
+            ]
+        },
+        {
+            "pipefy_id": 1327700797,
+            "nome": "Ingecold Indústria e Comércio de Refrigeração Ltda",
+            "fields": [
+                "moeda"
+            ]
+        },
+        {
+            "pipefy_id": 1326954959,
+            "nome": "Rv Aluminium",
+            "fields": [
+                "moeda"
+            ]
+        },
+        {
+            "pipefy_id": 1333920069,
+            "nome": "Agra Astro",
+            "fields": [
+                "moeda"
+            ]
+        },
+        {
+            "pipefy_id": 1335455689,
+            "nome": "Facility corretora de seguros",
+            "fields": [
+                "moeda"
+            ]
+        },
+        {
+            "pipefy_id": 1218788076,
+            "nome": "MARCOS & ADVOGADOS (MARADVOCACIA)",
+            "fields": [
+                "moeda"
+            ]
+        },
+        {
+            "pipefy_id": 1307141835,
+            "nome": "Center Fonoaudiologico Neurofunciona (Mayanna Magalhães)",
+            "fields": [
+                "moeda"
+            ]
+        },
+        {
+            "pipefy_id": 1299014925,
+            "nome": "Rocha Soluções Contábeis Ltda",
+            "fields": [
+                "moeda"
+            ]
+        }
+    ],
+    "missing_in_target": [
+        {
+            "pipefy_id": 9999999,
+            "nome": "EPIC RENTAL",
+            "source": "projetos_ativos"
+        },
+        {
+            "pipefy_id": 999999999,
+            "nome": "Projeto Teste USD",
+            "source": "projetos_ativos"
+        }
+    ],
+    "conflicts": [],
+    "inconsistencies": [],
+    "summary": {
+        "total_legacy_records": 147,
+        "total_target_records": 616,
+        "total_updates": 141,
+        "fields_filled": 651
+    }
+}
