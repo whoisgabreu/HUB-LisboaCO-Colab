@@ -1,5 +1,5 @@
 import random
-from datetime import datetime
+from datetime import datetime, date
 from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
 from sqlalchemy import select, update, insert
@@ -12,6 +12,14 @@ class PhaseTransitionError(Exception):
 class KanbanService:
     def __init__(self, db: Session):
         self.db = db
+        # Whitelist de colunas que podem ser mapeadas
+        self.mappable_columns = [
+            "nome", "documento", "fee", "moeda", "squad_atribuida", 
+            "produto_contratado", "data_de_inicio", "cohort", 
+            "meta_account_id", "google_account_id", "url_webhook_gchat",
+            "step", "informacoes_gerais", "orcamento_midia_meta", 
+            "orcamento_midia_google", "data_fim", "ekyte_workspace"
+        ]
 
     def get_board_config(self, slug: str = "fluxo-projetos") -> Optional[Dict[str, Any]]:
         """Retorna a configuração de um board Kanban pelo slug."""
@@ -81,19 +89,47 @@ class KanbanService:
 
     def list_cards(self, slug: str = "fluxo-projetos") -> List[Dict[str, Any]]:
         """Lista todos os projetos formatados como cards de Kanban."""
+        config = self.get_board_config(slug)
         projetos = self.db.query(Projeto).all()
-        cards = []
-        for p in projetos:
-            cards.append({
-                "card_id": p.pipefy_id,
-                "titulo": p.nome,
-                "fase_atual": p.fase_do_pipefy,
-                "status": p.status,
-                "dados": p.kanban_dados or {},
-                "fee": float(p.fee) if p.fee else 0,
-                "moeda": p.moeda
-            })
-        return cards
+        return [self._format_card(p, config) for p in projetos]
+
+    def get_card(self, card_id: int) -> Optional[Dict[str, Any]]:
+        """Retorna os detalhes de um único card com mapeamentos aplicados."""
+        projeto = self.db.query(Projeto).filter_by(pipefy_id=card_id).first()
+        if not projeto:
+            return None
+        config = self.get_board_config()
+        return self._format_card(projeto, config)
+
+    def _format_card(self, p: Projeto, config: Dict[str, Any]) -> Dict[str, Any]:
+        """Formata um objeto Projeto para o formato de card do Kanban, aplicando mapeamentos inversos."""
+        mappings = {}
+        for fase in config.get('fases', []):
+            for campo in fase.get('campos', []):
+                if campo.get('mapeamento_coluna'):
+                    mappings[campo['id']] = campo['mapeamento_coluna']
+
+        dados = p.kanban_dados or {}
+        # Sincronização Inversa: O valor da coluna real do banco prevalece
+        for campo_id, coluna in mappings.items():
+            val = getattr(p, coluna, None)
+            if val is not None:
+                if isinstance(val, (datetime, date)):
+                    dados[campo_id] = val.isoformat()
+                elif hasattr(val, '__float__'):
+                    dados[campo_id] = float(val)
+                else:
+                    dados[campo_id] = val
+
+        return {
+            "card_id": p.pipefy_id,
+            "titulo": p.nome,
+            "fase_atual": p.fase_do_pipefy,
+            "status": p.status,
+            "dados": dados,
+            "fee": float(p.fee) if p.fee else 0,
+            "moeda": p.moeda
+        }
 
     def create_card(self, slug: str, nome: str, dados_iniciais: Dict[str, Any], usuario_email: str) -> Projeto:
         """Cria um novo projeto/card no Kanban."""
@@ -118,6 +154,9 @@ class KanbanService:
             kanban_dados=dados_iniciais,
             data_de_inicio=now.date()
         )
+        
+        # Aplicar mapeamentos iniciais
+        self._apply_column_mappings(projeto, config, dados_iniciais)
         
         self.db.add(projeto)
         self.db.flush()
@@ -177,6 +216,9 @@ class KanbanService:
         current_dados.update(dados_fase)
         projeto.kanban_dados = current_dados
         
+        # Aplicar mapeamentos de colunas (Sincronização Direta)
+        self._apply_column_mappings(projeto, config, current_dados)
+        
         # Atualiza Fase e Status
         projeto.fase_do_pipefy = target_fase['nome']
         
@@ -205,6 +247,25 @@ class KanbanService:
         self.db.commit()
         return projeto
 
+    def update_card(self, projeto_id: int, nome: Optional[str], novos_dados: Dict[str, Any]) -> Projeto:
+        """Atualiza dados de um card e aplica mapeamentos de colunas."""
+        projeto = self.db.query(Projeto).filter_by(pipefy_id=projeto_id).first()
+        if not projeto:
+            raise ValueError("Projeto não encontrado.")
+
+        if nome:
+            projeto.nome = nome
+
+        current_dados = projeto.kanban_dados or {}
+        current_dados.update(novos_dados)
+        projeto.kanban_dados = current_dados
+
+        config = self.get_board_config()
+        self._apply_column_mappings(projeto, config, current_dados)
+        
+        self.db.commit()
+        return projeto
+
     def update_config(self, slug: str, nova_config: Dict[str, Any]) -> Dict[str, Any]:
         """Atualiza a configuração do board (fases, campos, etc)."""
         stmt = select(KanbanConfig).where(KanbanConfig.slug == slug)
@@ -217,3 +278,39 @@ class KanbanService:
         result.configuracao = nova_config
         self.db.commit()
         return nova_config
+
+    def _apply_column_mappings(self, projeto: Projeto, config: Dict[str, Any], dados: Dict[str, Any]):
+        """Aplica os valores do Kanban às colunas reais da tabela projetos baseado no config."""
+        for fase in config.get('fases', []):
+            for campo in fase.get('campos', []):
+                coluna = campo.get('mapeamento_coluna')
+                if coluna and coluna in self.mappable_columns:
+                    val = dados.get(campo['id'])
+                    if val is not None:
+                        try:
+                            # Conversão de tipos básica
+                            if 'data' in coluna or 'date' in coluna:
+                                if isinstance(val, str) and val:
+                                    # Handle ISO strings for dates
+                                    try:
+                                        setattr(projeto, coluna, datetime.fromisoformat(val).date())
+                                    except:
+                                        setattr(projeto, coluna, datetime.strptime(val.split('T')[0], '%Y-%m-%d').date())
+                            elif coluna == 'fee' or 'orcamento' in coluna:
+                                if val == "":
+                                    setattr(projeto, coluna, 0)
+                                else:
+                                    # Limpa possíveis formatações brasileiras se vier como string
+                                    if isinstance(val, str):
+                                        val = val.replace('.', '').replace(',', '.')
+                                    setattr(projeto, coluna, float(val))
+                            else:
+                                setattr(projeto, coluna, val)
+                            
+                            # Mantém o JSONB sincronizado com o valor real para evitar divergência
+                            projeto.kanban_dados[campo['id']] = val
+                        except Exception as e:
+                            print(f"Erro ao mapear coluna {coluna}: {e}")
+        # Importante: Marcar como modificado para o SQLAlchemy detectar mudança profunda no dict JSONB
+        from sqlalchemy.orm.attributes import flag_modified
+        flag_modified(projeto, "kanban_dados")

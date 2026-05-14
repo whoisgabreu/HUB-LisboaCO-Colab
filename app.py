@@ -3734,30 +3734,23 @@ def api_kanban_cards():
 def api_kanban_get_card(card_id):
     """Retorna detalhes e histórico de um card."""
     with Session() as db:
-        projeto = db.query(Projeto).filter_by(pipefy_id=card_id).first()
-        if not projeto:
+        service = KanbanService(db)
+        card_details = service.get_card(card_id)
+        if not card_details:
             return jsonify({"error": "Projeto não encontrado."}), 404
         
         historico = db.query(KanbanHistorico).filter_by(projeto_id=card_id).order_by(KanbanHistorico.data_evento.desc()).all()
         
-        return jsonify({
-            "card_id": projeto.pipefy_id,
-            "titulo": projeto.nome,
-            "fase_atual": projeto.fase_do_pipefy,
-            "status": projeto.status,
-            "dados": projeto.kanban_dados or {},
-            "fee": float(projeto.fee) if projeto.fee else 0,
-            "moeda": projeto.moeda,
-            "historico": [
-                {
-                    "fase_entrada": h.snapshot.get("fase_entrada") or h.snapshot.get("fase"),
-                    "dados": h.snapshot.get("dados") or h.snapshot.get("snapshot_completo"),
-                    "evento": h.snapshot.get("evento"),
-                    "usuario": h.usuario_email,
-                    "timestamp": h.data_evento.isoformat()
-                } for h in historico
-            ]
-        })
+        card_details["historico"] = [
+            {
+                "fase_entrada": h.snapshot.get("fase_entrada") or h.snapshot.get("fase"),
+                "dados": h.snapshot.get("dados") or h.snapshot.get("snapshot_completo"),
+                "evento": h.snapshot.get("evento"),
+                "usuario": h.usuario_email,
+                "timestamp": h.data_evento.isoformat()
+            } for h in historico
+        ]
+        return jsonify(card_details)
 
 @app.route("/api/kanban/cards/<int:card_id>/update", methods=["POST"])
 @check_session
@@ -3766,19 +3759,13 @@ def api_kanban_update_card(card_id):
     data = request.json or {}
     dados = data.get("dados", {})
     with Session() as db:
-        projeto = db.query(Projeto).filter_by(pipefy_id=card_id).first()
-        if not projeto:
-            return jsonify({"error": "Projeto não encontrado."}), 404
-        
-        nome = data.get("nome")
-        if nome:
-            projeto.nome = nome
-
-        current_dados = projeto.kanban_dados or {}
-        current_dados.update(dados)
-        projeto.kanban_dados = current_dados
-        db.commit()
-        return jsonify({"status": "success"})
+        service = KanbanService(db)
+        try:
+            nome = data.get("nome")
+            service.update_card(card_id, nome, dados)
+            return jsonify({"status": "success"})
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
 
 @app.route("/api/kanban/move", methods=["POST"])
 @check_session

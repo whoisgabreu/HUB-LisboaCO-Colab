@@ -112,6 +112,15 @@ const kanbanConfig = {
                                     </label>
                                     <button class="btn-remove-field-circle" data-findex="${fIndex}" data-cindex="${cIndex}" style="color:var(--kanban-accent); border:none; background:transparent; font-size:1.2rem;">×</button>
                                 </div>
+                                <div class="field-mapping-row" style="margin-top:10px; display:flex; align-items:center; gap:10px;">
+                                    <label style="font-size:0.7rem; color:var(--text-muted); min-width:100px;">Sincronizar com Banco:</label>
+                                    <select class="modern-select field-mapping-select" data-findex="${fIndex}" data-cindex="${cIndex}" style="font-size:0.75rem; height:30px; padding:2px 8px;">
+                                        <option value="">-- Sem Mapeamento --</option>
+                                        ${["nome", "documento", "fee", "moeda", "squad_atribuida", "produto_contratado", "data_de_inicio", "cohort", "meta_account_id", "google_account_id", "url_webhook_gchat", "step", "informacoes_gerais", "orcamento_midia_meta", "orcamento_midia_google", "data_fim", "ekyte_workspace"].map(col => `
+                                            <option value="${col}" ${col === campo.mapeamento_coluna ? 'selected' : ''}>${col}</option>
+                                        `).join('')}
+                                    </select>
+                                </div>
                                 ${['select', 'checkbox', 'radio'].includes(campo.tipo) ? `
                                     <div class="field-options-area" style="margin-top:10px;">
                                         <label style="font-size:0.7rem; color:var(--text-muted);">Opções (vírgula)</label>
@@ -237,6 +246,13 @@ const kanbanConfig = {
             chk.onchange = (e) => {
                 const { findex, cindex } = e.target.dataset;
                 this.currentConfig.fases[findex].campos[cindex].obrigatorio = e.target.checked;
+            };
+        });
+
+        this.body.querySelectorAll('.field-mapping-select').forEach(sel => {
+            sel.onchange = (e) => {
+                const { findex, cindex } = e.target.dataset;
+                this.currentConfig.fases[findex].campos[cindex].mapeamento_coluna = e.target.value;
             };
         });
     },
