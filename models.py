@@ -34,16 +34,23 @@ class Auth(Base):
     token = Column(String(30))
 
 
-class ProjetoAtivo(Base):
-    """Tabela: plataforma_geral.projetos_ativos"""
-    __tablename__ = "projetos_ativos"
+
+
+
+
+
+
+
+class Projeto(Base):
+    """Tabela unificada: plataforma_geral.projetos"""
+    __tablename__ = "projetos"
     __table_args__ = {"schema": "plataforma_geral"}
 
     pipefy_id = Column(Integer, primary_key=True)
     id = Column(Integer)
     nome = Column(String(250))
     documento = Column(String(250))
-    fee = Column(Integer)
+    fee = Column(DECIMAL(15, 2))
     moeda = Column(String(6))
     squad_atribuida = Column(String(20))
     produto_contratado = Column(String(250))
@@ -61,65 +68,7 @@ class ProjetoAtivo(Base):
     extra = Column(JSONB)
     notas = Column(JSONB)
     ekyte_workspace = Column(String(2500))
-
-
-class ProjetoOnetime(Base):
-    """Tabela: plataforma_geral.projetos_onetime"""
-    __tablename__ = "projetos_onetime"
-    __table_args__ = {"schema": "plataforma_geral"}
-
-    pipefy_id = Column(Integer, primary_key=True)
-    id = Column(Integer)
-    nome = Column(String(250))
-    documento = Column(String(250))
-    fee = Column(Integer)
-    moeda = Column(String(6))
-    squad_atribuida = Column(String(20))
-    produto_contratado = Column(String(250))
-    data_de_inicio = Column(Date)
-    cohort = Column(String(100))
-    meta_account_id = Column(String(100))
-    google_account_id = Column(String(100))
-    fase_do_pipefy = Column(String(100))
-    url_webhook_gchat = Column(String(250))
-    step = Column(String(15))
-    informacoes_gerais = Column(String(1500))
-    orcamento_midia_meta = Column(Integer)
-    orcamento_midia_google = Column(Integer)
-    data_fim = Column(Date)
-    extra = Column(JSONB)
-    notas = Column(JSONB)
-    ekyte_workspace = Column(String(2500))
-
-
-class ProjetoInativo(Base):
-    """Tabela: plataforma_geral.projetos_inativos"""
-    __tablename__ = "projetos_inativos"
-    __table_args__ = {"schema": "plataforma_geral"}
-
-    pipefy_id = Column(Integer, primary_key=True)
-    id = Column(Integer)
-    nome = Column(String(250))
-    documento = Column(String(250))
-    fee = Column(Integer)
-    moeda = Column(String(6))
-    squad_atribuida = Column(String(20))
-    produto_contratado = Column(String(250))
-    data_de_inicio = Column(Date)
-    cohort = Column(String(100))
-    meta_account_id = Column(String(100))
-    google_account_id = Column(String(100))
-    fase_do_pipefy = Column(String(100))
-    url_webhook_gchat = Column(String(250))
-    step = Column(String(15))
-    informacoes_gerais = Column(String(1500))
-    orcamento_midia_meta = Column(Integer)
-    orcamento_midia_google = Column(Integer)
-    data_fim = Column(Date)
-    extra = Column(JSONB)
-    notas = Column(JSONB)
-    ekyte_workspace = Column(String(2500))
-
+    status = Column(String(50))
 
 class RemuneracaoCargo(Base):
     """Tabela: plataforma_geral.remuneracao_cargos"""

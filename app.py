@@ -12,8 +12,9 @@ import json
 
 from database import Session, engine, Base
 from models import (
-    Investidor, Auth, ProjetoAtivo, ProjetoOnetime, ProjetoInativo,
-    MetricaMensal, InvestidorProjeto,
+    Investidor, Auth, Projeto,
+    InvestidorProjeto, MetricaMensal, RemuneracaoCargo,
+
     OperacaoTarefa, OperacaoEntregaMensal, OperacaoPlanoMidia,
     OperacaoOtimizacao, OperacaoCheckin,
     MonthlyDelivery, OperacaoLinkUtil, EntregaCriativa,
@@ -350,12 +351,8 @@ def _recalcular_mrr_por_entregas(record):
         for v in todos_vinculos:
             pid = str(v.pipefy_id_projeto)
 
-            from models import ProjetoAtivo, ProjetoOnetime, ProjetoInativo
-            proj = db_aux.query(ProjetoAtivo).filter_by(pipefy_id=v.pipefy_id_projeto).first()
-            if not proj:
-                proj = db_aux.query(ProjetoOnetime).filter_by(pipefy_id=v.pipefy_id_projeto).first()
-            if not proj:
-                proj = db_aux.query(ProjetoInativo).filter_by(pipefy_id=v.pipefy_id_projeto).first()
+            from models import Projeto
+            proj = db_aux.query(Projeto).filter_by(pipefy_id=v.pipefy_id_projeto).first()
                 
             moeda_proj = str(proj.moeda).strip().upper() if proj and proj.moeda else "BRL"
 
@@ -507,8 +504,7 @@ def _operacao_save_section(pipefy_id, mes, ano, section_key, data, append=False,
         # Buscar nome do projeto
         if nome is None:
             with Session() as ndb:
-                proj = (ndb.query(ProjetoAtivo).filter_by(pipefy_id=pipefy_id).first()
-                        or ndb.query(ProjetoOnetime).filter_by(pipefy_id=pipefy_id).first())
+                proj = ndb.query(Projeto).filter_by(pipefy_id=pipefy_id).first()
                 nome = proj.nome if proj else ""
 
         id_str = str(pipefy_id)
@@ -630,7 +626,7 @@ def _sync_metrica_entregas_operacao(email, pipefy_id, mes, ano):
                 # Buscar nome do projeto
                 proj_name = vinculo.nome_projeto or ""
                 if not proj_name:
-                    p_ativo = db.query(ProjetoAtivo).filter_by(pipefy_id=pipefy_id).first()
+                    p_ativo = db.query(Projeto).filter_by(pipefy_id=pipefy_id, status='Ativo').first()
                     proj_name = p_ativo.nome if p_ativo else f"Projeto {pipefy_id}"
 
                 entry = _build_entrega_op_entry(pipefy_id, proj_name, hint)
@@ -772,20 +768,26 @@ def _agrupar_por_cliente(projetos_lista):
     return dict(clientes)
 
 
-def _buscar_projetos_db(model_class, email_investidor, squad_usuario):
+def _buscar_projetos_db(model_class, email_investidor, squad_usuario, status=None):
     """Busca projetos no banco com a lógica do n8n: Gerência vê tudo, outros veem só o seu squad."""
     try:
         with Session() as db:
             u_posicao = session.get("posicao")
+            
+            # Se model_class for Projeto (unificado), adicionamos o filtro de status
+            query = db.query(model_class)
+            if model_class == Projeto and status:
+                query = query.filter_by(status=status)
+                
             if squad_usuario == "Gerência" or u_posicao in ["Gerência", "Sócio"]:
-                projetos = db.query(model_class).all()
+                projetos = query.all()
             elif u_posicao == "Coordenador":
                 # Coordenador só vê dados da sua Squad; sem Squad, não vê nada
                 if not squad_usuario:
                     return []
-                projetos = db.query(model_class).filter_by(squad_atribuida=squad_usuario).all()
+                projetos = query.filter_by(squad_atribuida=squad_usuario).all()
             else:
-                projetos = db.query(model_class).filter_by(squad_atribuida=squad_usuario).all()
+                projetos = query.filter_by(squad_atribuida=squad_usuario).all()
             return [_projeto_to_dict(p) for p in projetos]
     except SQLAlchemyError as e:
         print(f"Erro ao buscar projetos ({model_class.__tablename__}): {e}")
@@ -929,15 +931,16 @@ def home():
     try:
         from services.currency import CurrencyService
         with Session() as db:
-            clients_count = db.query(ProjetoAtivo).count()
+            clients_count = db.query(Projeto).filter_by(status='Ativo').count()
             investors_count = db.query(Investidor).count()
-            squads_count = db.query(ProjetoAtivo.squad_atribuida).filter(
-                ProjetoAtivo.squad_atribuida != None, 
-                ProjetoAtivo.squad_atribuida != ""
+            squads_count = db.query(Projeto.squad_atribuida).filter(
+                Projeto.status == 'Ativo',
+                Projeto.squad_atribuida != None, 
+                Projeto.squad_atribuida != ""
             ).distinct().count()
 
             # MRR Global: Apenas Ativos (recorrentes)
-            projetos_ativos = db.query(ProjetoAtivo).all()
+            projetos_ativos = db.query(Projeto).filter_by(status='Ativo').all()
             projetos = projetos_ativos
             
             mrr_total = 0
@@ -1007,11 +1010,11 @@ def home():
 
                 # Buscar metadata dos projetos (moeda) para conversão
                 projeto_metadata = {}
-                for table in [ProjetoAtivo, ProjetoOnetime, ProjetoInativo]:
-                    rows = db.query(table.pipefy_id, table.moeda).all()
-                    for r in rows:
-                        if r.pipefy_id:
-                            projeto_metadata[str(r.pipefy_id)] = str(r.moeda).strip().upper() if r.moeda else "BRL"
+                # Buscar metadata dos projetos (moeda) para conversão na tabela unificada
+                rows = db.query(Projeto.pipefy_id, Projeto.moeda).all()
+                for r in rows:
+                    if r.pipefy_id:
+                        projeto_metadata[str(r.pipefy_id)] = str(r.moeda).strip().upper() if r.moeda else "BRL"
 
                 usd_rate = None
                 projetos_vinculados = []
@@ -1127,27 +1130,27 @@ def hub_projetos():
         with Session() as db:
             u_posicao = session.get("posicao")
             if squad == "Gerência" or u_posicao in ["Gerência", "Sócio"]:
-                projetos_squad = db.query(ProjetoAtivo).all()
+                projetos_squad = db.query(Projeto).filter_by(status='Ativo').all()
             elif u_posicao == "Coordenador":
                 # Coordenador só vê sua própria squad; se não tiver squad, não vê nada
                 if not squad:
                     projetos_squad = []
                 else:
-                    projetos_squad = db.query(ProjetoAtivo).filter_by(squad_atribuida=squad).all()
+                    projetos_squad = db.query(Projeto).filter_by(status='Ativo', squad_atribuida=squad).all()
             else:
-                projetos_squad = db.query(ProjetoAtivo).filter_by(squad_atribuida=squad).all()
+                projetos_squad = db.query(Projeto).filter_by(status='Ativo', squad_atribuida=squad).all()
             squads = list(set(p.squad_atribuida for p in projetos_squad if p.squad_atribuida))
     except SQLAlchemyError as e:
         print(f"Erro ao buscar squads: {e}")
         squads = []
 
-    ativos_data = _buscar_projetos_db(ProjetoAtivo, email, squad)
+    ativos_data = _buscar_projetos_db(Projeto, email, squad, status='Ativo')
     ativos = _agrupar_por_cliente(ativos_data)
 
-    onetime_data = _buscar_projetos_db(ProjetoOnetime, email, squad)
+    onetime_data = _buscar_projetos_db(Projeto, email, squad, status='Onetime')
     onetime = _agrupar_por_cliente(onetime_data)
 
-    inativos_data = _buscar_projetos_db(ProjetoInativo, email, squad)
+    inativos_data = _buscar_projetos_db(Projeto, email, squad, status='Inativo')
     inativos = _agrupar_por_cliente(inativos_data)
 
     return render_template(
@@ -1191,13 +1194,12 @@ def hub_remuneracao():
             ).all()
 
             # Buscar de todas as tabelas para garantir cobertura de onetimes e inativos
-            from models import ProjetoAtivo, ProjetoOnetime, ProjetoInativo
+            # Buscar da tabela unificada para garantir cobertura de onetimes e inativos
             projeto_metadata = {}
-            for table in [ProjetoAtivo, ProjetoOnetime, ProjetoInativo]:
-                rows = db.query(table.pipefy_id, table.moeda).all()
-                for r in rows:
-                    if r.pipefy_id:
-                        projeto_metadata[str(r.pipefy_id)] = str(r.moeda).strip().upper() if r.moeda else "BRL"
+            rows = db.query(Projeto.pipefy_id, Projeto.moeda).all()
+            for r in rows:
+                if r.pipefy_id:
+                    projeto_metadata[str(r.pipefy_id)] = str(r.moeda).strip().upper() if r.moeda else "BRL"
 
             projetos_map = {}
             for v in all_vinculos:
@@ -1577,12 +1579,7 @@ def criativa():
             projeto_fees = {}
             
             # Buscar de todas as tabelas para garantir cobertura de onetimes e inativos
-            from models import ProjetoOnetime, ProjetoInativo
-            fee_rows_ativos = db.query(ProjetoAtivo.pipefy_id, ProjetoAtivo.fee, ProjetoAtivo.moeda).all()
-            fee_rows_onetime = db.query(ProjetoOnetime.pipefy_id, ProjetoOnetime.fee, ProjetoOnetime.moeda).all()
-            fee_rows_inativo = db.query(ProjetoInativo.pipefy_id, ProjetoInativo.fee, ProjetoInativo.moeda).all()
-            
-            all_fee_rows = fee_rows_ativos + fee_rows_onetime + fee_rows_inativo
+            all_fee_rows = db.query(Projeto.pipefy_id, Projeto.fee, Projeto.moeda).all()
             
             for row in all_fee_rows:
                 if row.pipefy_id:
@@ -2566,7 +2563,7 @@ def atualizar_entregas_automaticas(db, pipefy_id, mes, ano, investidor_email):
     ).first()
 
     if not entrega:
-        projeto = db.get(ProjetoAtivo, pipefy_id)
+        projeto = db.get(Projeto, pipefy_id)
         fee = float(projeto.fee or 0) if projeto else 0
         entrega = OperacaoEntregaMensal(
             investidor_email=investidor_email, projeto_pipefy_id=pipefy_id, mes=mes, ano=ano,
@@ -3107,11 +3104,7 @@ def get_projeto_vinculos(pipefy_id):
     try:
         with Session() as db:
             # Busca o projeto para pegar o metadata no campo extra
-            projeto = db.query(ProjetoAtivo).filter_by(pipefy_id=pipefy_id).first()
-            if not projeto:
-                projeto = db.query(ProjetoOnetime).filter_by(pipefy_id=pipefy_id).first()
-            if not projeto:
-                projeto = db.query(ProjetoInativo).filter_by(pipefy_id=pipefy_id).first()
+            projeto = db.query(Projeto).filter_by(pipefy_id=pipefy_id).first()
             
             investidores_metadata = {}
             if projeto and projeto.extra and isinstance(projeto.extra, dict):
@@ -3215,9 +3208,7 @@ def vincular_investidor():
         # Valida se o projeto pertence à squad do coordenador
         try:
             with Session() as db:
-                projeto = db.query(ProjetoAtivo).filter_by(pipefy_id=str(pipefy_id)).first()
-                if not projeto:
-                    projeto = db.query(ProjetoOnetime).filter_by(pipefy_id=str(pipefy_id)).first()
+                projeto = db.query(Projeto).filter_by(pipefy_id=str(pipefy_id)).first()
                 
                 if not projeto or projeto.squad_atribuida != user_squad:
                     return jsonify({"error": "Acesso restrito à sua Squad."}), 403
@@ -3229,10 +3220,8 @@ def vincular_investidor():
 
     try:
         with Session() as db:
-            # Busca dados do projeto para denormalização
-            projeto = db.query(ProjetoAtivo).filter_by(pipefy_id=pipefy_id).first()
-            if not projeto:
-                projeto = db.query(ProjetoOnetime).filter_by(pipefy_id=pipefy_id).first()
+            # Busca dados do projeto para denormalização na tabela unificada
+            projeto = db.query(Projeto).filter_by(pipefy_id=pipefy_id).first()
             
             if not projeto:
                 return jsonify({"error": "Projeto não encontrado."}), 404
@@ -3282,16 +3271,9 @@ def update_projeto_local(pipefy_id):
     try:
         from decimal import Decimal
         with Session() as db:
-            projeto = db.query(ProjetoAtivo).filter_by(pipefy_id=pipefy_id).first()
-            is_onetime = False
-            is_inativo = False
-            if not projeto:
-                projeto = db.query(ProjetoOnetime).filter_by(pipefy_id=pipefy_id).first()
-                is_onetime = True
-            
-            if not projeto:
-                projeto = db.query(ProjetoInativo).filter_by(pipefy_id=pipefy_id).first()
-                is_inativo = True
+            projeto = db.query(Projeto).filter_by(pipefy_id=pipefy_id).first()
+            is_onetime = (projeto.status == 'Onetime') if projeto else False
+            is_inativo = (projeto.status == 'Inativo') if projeto else False
             
             if not projeto:
                 return jsonify({"error": "Projeto não encontrado."}), 404
@@ -3555,9 +3537,9 @@ def api_listar_projetos():
     email = session.get("email", "")
     
     # Busca dados locais
-    ativos = _buscar_projetos_db(ProjetoAtivo, email, squad)
-    onetime = _buscar_projetos_db(ProjetoOnetime, email, squad)
-    inativos = _buscar_projetos_db(ProjetoInativo, email, squad)
+    ativos = _buscar_projetos_db(Projeto, email, squad, status='Ativo')
+    onetime = _buscar_projetos_db(Projeto, email, squad, status='Onetime')
+    inativos = _buscar_projetos_db(Projeto, email, squad, status='Inativo')
     
     # Formata para ser compatível com o que atualizarCards espera (baseado no formato n8n legado se necessário, 
     # mas aqui adaptamos para simplificar)
@@ -3805,9 +3787,7 @@ def hub_cs_cx():
             usd_rate = float(CurrencyService.get_usd_to_brl_rate())
             
             # 1. KPIs Gerais (Dashboard)
-            p_ativos = db.query(ProjetoAtivo).all()
-            p_onetime = db.query(ProjetoOnetime).all()
-            projetos_todos = p_ativos + p_onetime
+            projetos_todos = db.query(Projeto).filter(Projeto.status.in_(['Ativo', 'Onetime'])).all()
             
             mrr_total = 0
             usd_rate = float(CurrencyService.get_usd_to_brl_rate())
@@ -3819,11 +3799,11 @@ def hub_cs_cx():
                 else:
                     mrr_total += fee_p
             
-            active_clients = db.query(ProjetoAtivo).count()
+            active_clients = db.query(Projeto).filter_by(status='Ativo').count()
             nps_avg = db.query(func.avg(OperacaoCheckin.csat_pontuacao)).filter(OperacaoCheckin.csat_pontuacao != None).scalar() or 0
             
-            # 2. Ranking: Para LTV completo, precisamos de Ativos + Onetime + Inativos
-            ranking = db.query(ProjetoAtivo).all() + db.query(ProjetoOnetime).all() + db.query(ProjetoInativo).all()
+            # 2. Ranking: Usando a tabela unificada
+            ranking = db.query(Projeto).all()
             today = date.today()
             
             def calculate_meses_to(start_date, end_date):
@@ -3853,22 +3833,14 @@ def hub_cs_cx():
                 try: cid = int(client_id)
                 except: cid = 0
 
-                projetos_cliente = (
-                    db.query(ProjetoAtivo).filter(ProjetoAtivo.pipefy_id == cid).all() +
-                    db.query(ProjetoOnetime).filter(ProjetoOnetime.pipefy_id == cid).all() +
-                    db.query(ProjetoInativo).filter(ProjetoInativo.pipefy_id == cid).all()
-                )
+                projetos_cliente = db.query(Projeto).filter(Projeto.pipefy_id == cid).all()
                 cliente = projetos_cliente[0] if projetos_cliente else None
                 
                 if not cliente:
                     return redirect(url_for("hub_cs_cx"))
                 
-                # Senioridade Real (desde o primeiro projeto histórico com o mesmo nome)
-                data_primeiro = db.query(func.min(ProjetoAtivo.data_de_inicio)).filter(ProjetoAtivo.nome == cliente.nome).scalar()
-                # Verifica também nos inativos se houver
-                data_primeiro_inativo = db.query(func.min(ProjetoInativo.data_de_inicio)).filter(ProjetoInativo.nome == cliente.nome).scalar()
-                if data_primeiro_inativo and (not data_primeiro or data_primeiro_inativo < data_primeiro):
-                    data_primeiro = data_primeiro_inativo
+                # Senioridade Real (desde o primeiro projeto histórico com o mesmo nome na tabela unificada)
+                data_primeiro = db.query(func.min(Projeto.data_de_inicio)).filter(Projeto.nome == cliente.nome).scalar()
                 
                 cliente.tempo_de_casa_meses = calculate_meses_to(data_primeiro or cliente.data_de_inicio, today)
                 
@@ -3881,9 +3853,8 @@ def hub_cs_cx():
                     else:
                         cliente.mrr_total += fee_p
 
-                # Cálculo Real de LTV Histórico por Semestre (Ativos + Inativos)
-                projetos_inativos = db.query(ProjetoInativo).filter(ProjetoInativo.nome == cliente.nome).all()
-                todos_historico = projetos_cliente + projetos_inativos
+                # Cálculo Real de LTV Histórico por Semestre (Todos da tabela unificada para o mesmo cliente)
+                todos_historico = db.query(Projeto).filter(Projeto.nome == cliente.nome).all()
                 
                 labels_ltv = ["2024-S1", "2024-S2", "2025-S1"]
                 marcos = [date(2024, 6, 30), date(2024, 12, 31), today]
