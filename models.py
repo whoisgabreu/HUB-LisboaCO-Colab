@@ -17,6 +17,7 @@ class Investidor(Base):
     senha = Column(String(250))
     nivel_acesso = Column(String(10))
     ativo = Column(Boolean)
+    pode_editar_kanban = Column(Boolean, default=False)
     cpf = Column(String(11))
     telefone = Column(String(15))
     nivel = Column(Text)

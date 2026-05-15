@@ -874,6 +874,7 @@ def login():
                     session["senioridade"] = user.senioridade
                     session["squad"] = user.squad
                     session["nivel_acesso"] = user.nivel_acesso
+                    session["pode_editar_kanban"] = user.pode_editar_kanban
                     session["profile_picture"] = user.profile_picture
 
                     print(session)
@@ -1375,6 +1376,7 @@ def api_get_usuarios():
                 "posicao": u.posicao,
                 "nivel_acesso": u.nivel_acesso,
                 "ativo": u.ativo,
+                "pode_editar_kanban": u.pode_editar_kanban,
                 "profile_picture": u.profile_picture or ""
             } for u in usuarios])
     except Exception as e:
@@ -1413,6 +1415,7 @@ def api_create_usuario():
                 posicao=data.get("posicao"),
                 nivel_acesso=data.get("nivel_acesso", "Usuário"),
                 ativo=data.get("ativo", True),
+                pode_editar_kanban=data.get("pode_editar_kanban", False),
                 senha=generate_password_hash(data.get("senha", "v4company")) # Senha padrão se não enviada
             )
             db.add(novo_user)
@@ -1443,6 +1446,7 @@ def api_update_usuario(email):
             user.posicao = data.get("posicao", user.posicao)
             user.nivel_acesso = data.get("nivel_acesso", user.nivel_acesso)
             user.ativo = data.get("ativo", user.ativo)
+            user.pode_editar_kanban = data.get("pode_editar_kanban", user.pode_editar_kanban)
             
             # Se vier senha nova, atualiza
             if data.get("senha"):
@@ -3743,8 +3747,12 @@ def api_kanban_get_card(card_id):
         
         card_details["historico"] = [
             {
-                "fase_entrada": h.snapshot.get("fase_entrada") or h.snapshot.get("fase"),
-                "dados": h.snapshot.get("dados") or h.snapshot.get("snapshot_completo"),
+                "fase_entrada": h.snapshot.get("fase_concluida") or h.snapshot.get("fase") or h.snapshot.get("fase_entrada"),
+                "fase_anterior": h.snapshot.get("fase_anterior") or h.snapshot.get("fase_concluida") if h.snapshot.get("evento") == "movimentacao" else None,
+                "fase_nova": h.snapshot.get("fase_nova") or h.snapshot.get("fase") or h.snapshot.get("fase_entrada"),
+                "dados": h.snapshot.get("dados") or h.snapshot.get("dados_transicao") or h.snapshot.get("snapshot_completo"),
+                "labels": h.snapshot.get("_labels") or {},
+                "snapshot": h.snapshot,
                 "evento": h.snapshot.get("evento"),
                 "usuario": h.usuario_email,
                 "timestamp": h.data_evento.isoformat()
@@ -3756,13 +3764,16 @@ def api_kanban_get_card(card_id):
 @check_session
 def api_kanban_update_card(card_id):
     """Atualiza dados de um card sem mover de fase."""
+    if not session.get("pode_editar_kanban"):
+        return jsonify({"error": "Você não tem permissão para editar o Kanban."}), 403
+        
     data = request.json or {}
     dados = data.get("dados", {})
     with Session() as db:
         service = KanbanService(db)
         try:
             nome = data.get("nome")
-            service.update_card(card_id, nome, dados)
+            service.update_card(card_id, nome, dados, session.get('email', 'Sistema'))
             return jsonify({"status": "success"})
         except Exception as e:
             return jsonify({"error": str(e)}), 500
@@ -3771,6 +3782,9 @@ def api_kanban_update_card(card_id):
 @check_session
 def api_kanban_move():
     """Processa a movimentação de um card."""
+    if not session.get("pode_editar_kanban"):
+        return jsonify({"error": "Você não tem permissão para editar o Kanban."}), 403
+
     data = request.json or {}
     card_id = data.get("card_id")
     nova_fase_id = data.get("nova_fase_id")
@@ -3796,6 +3810,9 @@ def api_kanban_move():
 @check_session
 def api_kanban_create_card():
     """Cria um novo card (projeto)."""
+    if not session.get("pode_editar_kanban"):
+        return jsonify({"error": "Você não tem permissão para editar o Kanban."}), 403
+
     data = request.json or {}
     dados_iniciais = data.get("dados", {})
     usuario_email = session.get("email")

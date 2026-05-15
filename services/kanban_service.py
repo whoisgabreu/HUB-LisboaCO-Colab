@@ -1,5 +1,5 @@
 import random
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
 from sqlalchemy import select, update, insert
@@ -161,14 +161,20 @@ class KanbanService:
         self.db.add(projeto)
         self.db.flush()
 
-        # Auditoria Imutável
+        # Auditoria Imutável (com Labels para o Histórico)
+        labels = {c['id']: c['label'] for c in primeira_fase.get('campos', [])}
+        labels['titulo'] = 'Nome do Projeto'
+        now = datetime.utcnow() - timedelta(hours=3)
+
         historico = KanbanHistorico(
             projeto_id=projeto.pipefy_id,
             usuario_email=usuario_email,
+            data_evento=now,
             snapshot={
                 "evento": "criacao",
-                "fase": primeira_fase['nome'],
+                "fase_concluida": primeira_fase['nome'],
                 "dados": dados_iniciais,
+                "_labels": {c['id']: c['label'] for c in primeira_fase.get('campos', [])},
                 "timestamp": now.isoformat()
             }
         )
@@ -198,9 +204,14 @@ class KanbanService:
             is_next = target_fase['ordem'] == current_fase['ordem'] + 1
             
             # Verificar se já visitou a fase anteriormente (retorno ao histórico)
+            from sqlalchemy import or_
             already_visited = self.db.query(KanbanHistorico).filter(
                 KanbanHistorico.projeto_id == projeto_id,
-                KanbanHistorico.snapshot['fase'].astext == target_fase['nome']
+                or_(
+                    KanbanHistorico.snapshot['fase'].astext == target_fase['nome'],
+                    KanbanHistorico.snapshot['fase_concluida'].astext == target_fase['nome'],
+                    KanbanHistorico.snapshot['fase_nova'].astext == target_fase['nome']
+                )
             ).first() is not None
 
             if not is_direct and not is_next and not already_visited:
@@ -209,7 +220,7 @@ class KanbanService:
                     "viola a sequência definida."
                 )
 
-        now = datetime.now()
+        now = datetime.utcnow() - timedelta(hours=3)
         
         # Atualiza dados dinâmicos (Merge NoSQL)
         current_dados = projeto.kanban_dados or {}
@@ -230,15 +241,17 @@ class KanbanService:
         else:
             projeto.status = 'Ativo'
 
-        # Snapshot Imutável
+        # Snapshot Imutável da fase que está sendo deixada
         historico = KanbanHistorico(
             projeto_id=projeto_id,
             usuario_email=usuario_email,
+            data_evento=now,
             snapshot={
                 "evento": "movimentacao",
-                "fase_anterior": fase_atual_nome,
+                "fase_concluida": fase_atual_nome,
                 "fase_nova": target_fase['nome'],
-                "dados_transicao": dados_fase,
+                "dados": dados_fase,
+                "_labels": {c['id']: c['label'] for c in current_fase.get('campos', [])} if current_fase else {},
                 "snapshot_completo": current_dados,
                 "timestamp": now.isoformat()
             }
@@ -247,12 +260,14 @@ class KanbanService:
         self.db.commit()
         return projeto
 
-    def update_card(self, projeto_id: int, nome: Optional[str], novos_dados: Dict[str, Any]) -> Projeto:
+    def update_card(self, projeto_id: int, nome: Optional[str], novos_dados: Dict[str, Any], usuario_email: str) -> Projeto:
         """Atualiza dados de um card e aplica mapeamentos de colunas."""
         projeto = self.db.query(Projeto).filter_by(pipefy_id=projeto_id).first()
         if not projeto:
             raise ValueError("Projeto não encontrado.")
 
+        old_dados = {**projeto.kanban_dados} if projeto.kanban_dados else {}
+        
         if nome:
             projeto.nome = nome
 
@@ -263,6 +278,35 @@ class KanbanService:
         config = self.get_board_config()
         self._apply_column_mappings(projeto, config, current_dados)
         
+        # Identificar o que mudou para o log técnico
+        changes = {}
+        labels = {}
+        for fase in config.get('fases', []):
+            for campo in fase.get('campos', []):
+                labels[campo['id']] = campo['label']
+
+        for k, v in novos_dados.items():
+            if old_dados.get(k) != v:
+                changes[labels.get(k, k)] = {
+                    "de": old_dados.get(k, "-"),
+                    "para": v
+                }
+
+        if changes:
+            now = datetime.utcnow() - timedelta(hours=3)
+            historico = KanbanHistorico(
+                projeto_id=projeto_id,
+                usuario_email=usuario_email,
+                data_evento=now,
+                snapshot={
+                    "evento": "atualizacao",
+                    "fase_atual": projeto.fase_do_pipefy,
+                    "alteracoes": changes,
+                    "timestamp": now.isoformat()
+                }
+            )
+            self.db.add(historico)
+
         self.db.commit()
         return projeto
 

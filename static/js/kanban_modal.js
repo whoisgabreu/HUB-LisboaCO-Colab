@@ -6,7 +6,11 @@ function canTransition(currentFase, targetFase, card = null) {
     if (targetFase.ordem === currentFase.ordem + 1) return { allowed: true, reason: 'next' };
     
     // Retorno se o card já tiver histórico dessa fase
-    if (card && card.historico && card.historico.some(h => (h.fase_entrada === targetFase.nome || h.fase === targetFase.nome))) {
+    if (card && card.historico && card.historico.some(h => 
+        h.fase_entrada === targetFase.nome || 
+        h.fase_anterior === targetFase.nome || 
+        h.fase_nova === targetFase.nome
+    )) {
         return { allowed: true, reason: 'return' };
     }
 
@@ -54,31 +58,91 @@ const modal = {
         const formCol = document.getElementById('modalColForm');
         const transCol = document.getElementById('modalColTransitions');
 
-        // 1. History
-        historyCol.innerHTML = '<div class="col-title"><i class="fas fa-history"></i> Histórico</div>';
-        if (!card.historico || card.historico.length === 0) {
-            historyCol.innerHTML += '<p style="color:var(--text-muted); font-size:0.8rem;">Sem histórico registrado.</p>';
+        // 1. History (Snapshots of Data) - ORDEM CRONOLÓGICA (Cima para Baixo)
+        historyCol.innerHTML = '<div class="col-title"><i class="fas fa-file-invoice"></i> Histórico de Dados</div>';
+        
+        const sortedHistory = (card.historico || [])
+            .filter(h => h.fase_entrada && h.fase_entrada !== card.fase_atual)
+            .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)); // Temporário: mais recentes primeiro para o filtro
+
+        const seenPhases = new Set();
+        const snapshots = sortedHistory.filter(h => {
+            if (!seenPhases.has(h.fase_entrada)) {
+                seenPhases.add(h.fase_entrada);
+                return true;
+            }
+            return false;
+        }).sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp)); // Volta para cronológico (Antigo -> Novo)
+
+        if (snapshots.length === 0) {
+            historyCol.innerHTML += '<p style="color:var(--text-muted); font-size:0.8rem; font-style:italic; padding: 10px;">Nenhum snapshot de dados anterior disponível.</p>';
         } else {
-            card.historico.forEach(h => {
+            const fallbackLabels = {};
+            config.fases.forEach(f => f.campos.forEach(c => fallbackLabels[c.id] = c.label));
+
+            snapshots.forEach(h => {
                 const item = document.createElement('div');
                 item.className = 'history-item';
+                
+                let fieldsHtml = '';
+                const labels = h.labels || {};
+                const dados = h.dados || {};
+                
+                // Encontrar a configuração da fase para filtrar apenas os campos que pertencem a ela
+                const phaseConfig = config.fases.find(f => f.nome === h.fase_entrada);
+                const allowedFields = phaseConfig ? phaseConfig.campos.map(c => c.id) : [];
+
+                Object.entries(dados).forEach(([key, val]) => {
+                    if (key === '_labels' || key === 'titulo' || key === 'fase') return;
+                    
+                    // SE a fase for conhecida, filtramos para mostrar apenas os campos dela
+                    if (allowedFields.length > 0 && !allowedFields.includes(key)) return;
+
+                    const label = labels[key] || fallbackLabels[key] || key;
+                    
+                    let displayVal = val;
+                    if (Array.isArray(val)) displayVal = val.join(', ');
+                    else if (val === true) displayVal = 'Sim';
+                    else if (val === false) displayVal = 'Não';
+                    else if (!val && val !== 0) displayVal = '-';
+                    else if (typeof val === 'string' && val.includes('T') && val.length > 10) {
+                         try { displayVal = new Date(val).toLocaleString(); } catch(e) {}
+                    }
+
+                    fieldsHtml += `
+                        <div class="history-field" style="margin-bottom: 6px; border-bottom: 1px solid rgba(255,255,255,0.03); padding-bottom: 4px;">
+                            <span style="font-weight: 600; font-size: 0.7rem; color: var(--text-muted); display: block; text-transform: uppercase;">${label}</span>
+                            <span style="font-size: 0.85rem; color: #eee;">${displayVal}</span>
+                        </div>
+                    `;
+                });
+
                 item.innerHTML = `
-                    <div class="history-phase-name">${h.fase_entrada || h.fase || 'Movimentação'}</div>
-                    <div style="font-size:0.7rem; color:var(--text-muted); margin-bottom:8px;">
-                        ${new Date(h.timestamp).toLocaleString()} - ${h.usuario || 'Sistema'}
+                    <div class="history-phase-header" style="background: rgba(255,255,255,0.05); padding: 8px 12px; border-radius: 6px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-weight: 700; color: var(--kanban-accent); font-size: 0.75rem; text-transform: uppercase;">${h.fase_entrada}</span>
+                        <span style="font-size: 0.65rem; color: var(--text-muted);">${new Date(h.timestamp).toLocaleDateString()}</span>
+                    </div>
+                    <div class="history-snapshot-content" style="padding: 0 4px;">
+                        ${fieldsHtml || '<div style="color:var(--text-muted); font-size:0.75rem;">Sem dados registrados nesta fase.</div>'}
                     </div>
                 `;
                 historyCol.appendChild(item);
             });
         }
 
+        const techLogBtn = document.createElement('button');
+        techLogBtn.className = 'btn-link';
+        techLogBtn.style = 'font-size: 0.7rem; color: var(--text-muted); margin-top: 20px; background: none; border: none; cursor: pointer; text-decoration: underline;';
+        techLogBtn.innerHTML = '<i class="fas fa-list-ul"></i> Ver log de movimentações técnico';
+        techLogBtn.onclick = () => this.showTechnicalLog(card);
+        historyCol.appendChild(techLogBtn);
+
         // 2. Form
-        formCol.innerHTML = `<div class="col-title"><i class="fas fa-edit"></i> Dados do Projeto</div>`;
+        formCol.innerHTML = `<div class="col-title"><i class="fas fa-edit"></i> Dados da Fase: ${currentPhase.nome}</div>`;
         const formContainer = document.createElement('div');
         formContainer.className = 'modal-form-standard';
         formCol.appendChild(formContainer);
 
-        // NOME DO PROJETO (FIXO)
         const nameGroup = document.createElement('div');
         nameGroup.className = 'form-group full-width';
         nameGroup.innerHTML = `<label>Nome do Projeto / Cliente *</label>`;
@@ -89,12 +153,10 @@ const modal = {
         nameGroup.appendChild(nameInput);
         formContainer.appendChild(nameGroup);
 
-        // Campos da fase
         currentPhase.campos.forEach(campo => {
             const group = document.createElement('div');
             group.className = 'form-group';
             if (campo.tipo === 'text') group.classList.add('full-width');
-            
             group.innerHTML = `<label>${campo.label}${campo.obrigatorio ? ' *' : ''}</label>`;
             const val = card.dados[campo.id];
             group.appendChild(this.createFieldInput(campo, val));
@@ -123,7 +185,131 @@ const modal = {
         });
 
         this.saveBtn.onclick = () => this.handleSave(card.card_id);
+
+        // Controle de Permissão (Read-Only)
+        if (!window.APP_CONFIG.podeEditarKanban) {
+            document.getElementById('modalFooter').style.display = 'none';
+            // Desabilitar botões de transição
+            transCol.querySelectorAll('.transition-btn').forEach(btn => btn.classList.add('blocked'));
+            // Desabilitar inputs
+            modalBody.querySelectorAll('input, select, textarea').forEach(el => el.disabled = true);
+        } else {
+            document.getElementById('modalFooter').style.display = 'flex';
+        }
+
         this.overlay.style.display = 'flex';
+    },
+
+    showTechnicalLog(card, page = 1) {
+        const pageSize = 10;
+        const allLogs = [...(card.historico || [])].sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
+        const totalPages = Math.ceil(allLogs.length / pageSize);
+        const start = (page - 1) * pageSize;
+        const end = start + pageSize;
+        const logsToShow = allLogs.slice(start, end);
+
+        const logHtml = logsToShow.map(h => `
+            <div style="border-bottom: 1px solid var(--border-color); padding: 10px 0;">
+                <div style="display: flex; justify-content: space-between; font-size: 0.8rem;">
+                    <span style="font-weight: 700; color: ${h.evento === 'atualizacao' ? '#3b82f6' : 'var(--kanban-accent)'};">
+                        ${h.evento === 'criacao' ? 'CRIAÇÃO' : (h.evento === 'atualizacao' ? 'ALTERAÇÃO' : 'MOVIMENTAÇÃO')}
+                    </span>
+                    <span style="color: var(--text-muted);">${new Date(h.timestamp).toLocaleString()}</span>
+                </div>
+                <div style="font-size: 0.85rem; margin-top: 4px;">
+                    ${h.evento === 'criacao' ? `Projeto criado na fase <b>${h.fase_entrada}</b>` : 
+                      (h.evento === 'atualizacao' ? this._renderAlteracoes(h.snapshot?.alteracoes) : 
+                      `Movido de <b>${h.fase_anterior || '-'}</b> para <b>${h.fase_nova || h.fase_entrada}</b>`)}
+                </div>
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">
+                    <i class="fas fa-user"></i> ${h.usuario || 'Sistema'}
+                </div>
+            </div>
+        `).join('');
+
+        // Pagination controls
+        let paginationHtml = '';
+        if (totalPages > 1) {
+            paginationHtml = `
+                <div style="display: flex; justify-content: center; align-items: center; gap: 20px; width: 100%;">
+                    <button class="btn-prev" ${page === 1 ? 'disabled style="opacity:0.3; cursor:default;"' : 'style="cursor:pointer;"'} 
+                        style="background:rgba(255,255,255,0.05); border:1px solid var(--border-color); color:white; padding: 8px 16px; border-radius:6px; transition: all 0.2s; display: flex; align-items: center; gap: 8px;">
+                        <i class="fas fa-chevron-left"></i> Anterior
+                    </button>
+                    <span style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">${page} / ${totalPages}</span>
+                    <button class="btn-next" ${page === totalPages ? 'disabled style="opacity:0.3; cursor:default;"' : 'style="cursor:pointer;"'} 
+                        style="background:rgba(255,255,255,0.05); border:1px solid var(--border-color); color:white; padding: 8px 16px; border-radius:6px; transition: all 0.2s; display: flex; align-items: center; gap: 8px;">
+                        Próxima <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+            `;
+        }
+
+        let logModal = document.getElementById('techLogModal');
+        if (!logModal) {
+            logModal = document.createElement('div');
+            logModal.id = 'techLogModal';
+            logModal.className = 'modal-overlay';
+            logModal.style.zIndex = '2000';
+            logModal.style.display = 'flex';
+            document.body.appendChild(logModal);
+        }
+
+        logModal.innerHTML = `
+            <div class="modal-container" style="max-width: 800px; width: 90%; max-height: 80vh; background: #121212; border-radius: 12px; border: 1px solid var(--border-color); display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
+                <div class="modal-header" style="padding: 20px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.02);">
+                    <h3 class="modal-title" style="margin:0; font-size: 1.1rem; font-weight: 700;">Log Técnico de Movimentações</h3>
+                    <button class="btn-close-log" style="background:none; border:none; color:white; font-size:1.5rem; cursor:pointer; padding: 0 10px; opacity: 0.7; transition: opacity 0.2s;">&times;</button>
+                </div>
+                <div class="modal-body" style="overflow-y: auto; padding: 0 24px; flex: 1;">
+                    ${logHtml}
+                </div>
+                ${paginationHtml ? `
+                <div class="modal-footer-tech" style="padding: 16px 24px; border-top: 1px solid var(--border-color); background: rgba(255,255,255,0.02); display: flex; align-items: center; justify-content: center;">
+                    ${paginationHtml}
+                </div>
+                ` : ''}
+            </div>
+        `;
+
+        logModal.querySelector('.btn-close-log').onclick = () => {
+            logModal.remove();
+        };
+        
+        if (totalPages > 1) {
+            const prev = logModal.querySelector('.btn-prev');
+            const next = logModal.querySelector('.btn-next');
+            if (page > 1) prev.onclick = () => this.showTechnicalLog(card, page - 1);
+            if (page < totalPages) next.onclick = () => this.showTechnicalLog(card, page + 1);
+        }
+
+        logModal.onclick = (e) => { if(e.target === logModal) logModal.remove(); };
+    },
+
+    _renderAlteracoes(alteracoes) {
+        if (!alteracoes || Object.keys(alteracoes).length === 0) return "Campos atualizados.";
+        let html = '<div style="margin-top: 6px; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05);">';
+        Object.entries(alteracoes).forEach(([campo, diff]) => {
+            const formatVal = (val) => {
+                if (val === true) return '<span class="badge-success">Sim</span>';
+                if (val === false) return '<span class="badge-danger">Não</span>';
+                if (!val && val !== 0) return '<span style="opacity:0.5;">-</span>';
+                return val;
+            };
+
+            html += `
+                <div style="font-size: 0.8rem; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                    <b style="color: var(--text-muted); min-width: 100px;">${campo}:</b> 
+                    <div style="display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.03); padding: 2px 8px; border-radius: 4px;">
+                        <span style="text-decoration: line-through; color: #ef4444; opacity: 0.8; font-size: 0.75rem;">${formatVal(diff.de)}</span> 
+                        <i class="fas fa-long-arrow-alt-right" style="color: var(--text-muted); font-size: 0.7rem;"></i> 
+                        <span style="color: #10b981; font-weight: 600;">${formatVal(diff.para)}</span>
+                    </div>
+                </div>
+            `;
+        });
+        html += '</div>';
+        return html;
     },
 
     createFieldInput(campo, val) {
@@ -287,7 +473,6 @@ const modal = {
     },
 
     async handleTransition(card, targetFase) {
-        // Coleta dados atuais antes de mover
         const dados_fase = {};
         this.currentPhaseConfig.campos.forEach(campo => {
             const el = document.getElementById(`field_${campo.id}`);
@@ -327,7 +512,6 @@ const modal = {
 
         const formContainer = document.getElementById('modalNewCardForm');
 
-        // NOME DO PROJETO (OBRIGATÓRIO NO CADASTRO)
         const nameGroup = document.createElement('div');
         nameGroup.className = 'form-group full-width';
         nameGroup.innerHTML = `<label>Nome do Projeto / Cliente *</label>`;

@@ -1,6 +1,6 @@
 :root {
     --kanban-bg: #0a0a0a;
-    --column-bg: rgba(20, 20, 20, 0.6);
+    --column-bg: rgba(20, 20, 20, 0.0);
     --card-bg: #1a1a1a;
     --card-border: #2a2a2a;
     --kanban-accent: #D61616;
@@ -33,6 +33,43 @@
     font-size: 0.9rem;
 }
 
+.header-search {
+    flex: 1;
+    max-width: 500px;
+    margin: 0 40px;
+}
+
+.search-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.search-wrapper i {
+    position: absolute;
+    left: 14px;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+.search-wrapper input {
+    width: 100%;
+    padding: 10px 14px 10px 40px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--card-border);
+    border-radius: 10px;
+    color: white;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+}
+
+.search-wrapper input:focus {
+    outline: none;
+    border-color: var(--kanban-accent);
+    background: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 0 0 3px rgba(214, 22, 22, 0.1);
+}
+
 .header-actions {
     display: flex;
     gap: 12px;
@@ -50,6 +87,7 @@
 .kanban-column {
     background: var(--column-bg);
     border: 1px solid var(--border-color);
+
     border-radius: 12px;
     min-width: 320px;
     width: 320px;
@@ -104,7 +142,7 @@
     margin-bottom: 12px;
     cursor: grab;
     transition: all 0.2s ease;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .kanban-card:hover {
@@ -160,7 +198,7 @@
 .modal-content {
     background: #121212;
     width: 90%;
-    max-width: 1100px;
+    max-width: 1500px;
     max-height: 90vh;
     border-radius: 16px;
     border: 1px solid var(--border-color);
@@ -220,7 +258,8 @@
     color: var(--text-muted);
 }
 
-.modern-input, .modern-select {
+.modern-input,
+.modern-select {
     width: 100%;
     background: #1a1a1a;
     border: 1px solid var(--border-color);
@@ -292,17 +331,32 @@
     border-radius: 8px;
     color: white;
     font-size: 0.9rem;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     animation: toast-in 0.3s ease forwards;
 }
 
-.toast-success { background: #10b981; }
-.toast-error { background: #ef4444; }
-.toast-info { background: #3b82f6; }
+.toast-success {
+    background: #10b981;
+}
+
+.toast-error {
+    background: #ef4444;
+}
+
+.toast-info {
+    background: #3b82f6;
+}
 
 @keyframes toast-in {
-    from { transform: translateX(100%); opacity: 0; }
-    to { transform: translateX(0); opacity: 1; }
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
 }
 
 /* Config Modal Scroll */
@@ -500,7 +554,7 @@
 .field-options-area {
     margin-top: 12px;
     padding-top: 12px;
-    border-top: 1px solid rgba(255,255,255,0.03);
+    border-top: 1px solid rgba(255, 255, 255, 0.03);
 }
 
 .field-options-area label {
@@ -545,7 +599,7 @@
     border-color: var(--text-muted);
 }
 
-.chip-item input:checked + .chip-content {
+.chip-item input:checked+.chip-content {
     background: rgba(214, 22, 22, 0.1);
     border-color: var(--kanban-accent);
     color: var(--kanban-accent);
@@ -585,11 +639,11 @@
     transition: all 0.3s;
 }
 
-.toggle-switch input:checked + .toggle-slider {
+.toggle-switch input:checked+.toggle-slider {
     background: rgba(214, 22, 22, 0.4);
 }
 
-.toggle-switch input:checked + .toggle-slider::before {
+.toggle-switch input:checked+.toggle-slider::before {
     background: var(--kanban-accent);
     left: 23px;
 }

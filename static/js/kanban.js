@@ -8,6 +8,11 @@ const board = {
         
         document.getElementById('btnRefresh').onclick = () => this.refresh();
         document.getElementById('btnNewCard').onclick = () => this.handleNewCard();
+
+        const searchInput = document.getElementById('kanbanSearch');
+        if (searchInput) {
+            searchInput.oninput = (e) => this.handleSearch(e.target.value);
+        }
     },
 
     async refresh() {
@@ -15,6 +20,10 @@ const board = {
             this.config = await api.getBoardConfig();
             this.cards = await api.getCards();
             this.render();
+
+            // Re-apply filter if search is active
+            const searchVal = document.getElementById('kanbanSearch')?.value;
+            if (searchVal) this.handleSearch(searchVal);
         } catch (err) {
             toast.error("Erro ao carregar Kanban: " + err.message);
         }
@@ -108,6 +117,37 @@ const board = {
                 this.refresh();
             } catch (err) {
                 toast.error(err.message);
+            }
+        });
+    },
+
+    handleSearch(query) {
+        const term = query.toLowerCase().trim();
+        const columns = document.querySelectorAll('.kanban-column');
+
+        columns.forEach(col => {
+            const cards = col.querySelectorAll('.kanban-card');
+            let visibleInColumn = 0;
+
+            cards.forEach(card => {
+                const title = card.querySelector('h4').innerText.toLowerCase();
+                const matches = title.includes(term);
+                card.style.display = matches ? 'block' : 'none';
+                if (matches) visibleInColumn++;
+            });
+
+            // Update column count UI
+            const countEl = col.querySelector('.column-count');
+            
+            if (term === '') {
+                col.style.display = 'flex';
+                // Restore original count
+                const phaseNome = col.dataset.phaseNome;
+                const totalInPhase = this.cards.filter(c => c.fase_atual === phaseNome).length;
+                if (countEl) countEl.innerText = totalInPhase;
+            } else {
+                col.style.display = visibleInColumn > 0 ? 'flex' : 'none';
+                if (countEl) countEl.innerText = visibleInColumn;
             }
         });
     }
