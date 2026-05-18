@@ -727,3 +727,308 @@ body.tema-claro .vinculos-header label i {
 body.tema-claro .checkbox-label {
     color: #4b5563 !important;
 }
+
+/* ==========================================================================
+   KANBAN DASHBOARD - MODO CLARO
+   ========================================================================== */
+
+body.tema-claro {
+    --kanban-bg: #f8fafc;
+    --column-bg: rgba(241, 245, 249, 0.4);
+    --card-bg: #ffffff;
+    --card-border: #e2e8f0;
+    --text-muted: #64748b;
+    --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+}
+
+body.tema-claro .kanban-dashboard {
+    background-color: #f8fafc !important;
+}
+
+body.tema-claro .search-wrapper input {
+    background: #ffffff !important;
+    border-color: #cbd5e1 !important;
+    color: #1e293b !important;
+}
+
+body.tema-claro .search-wrapper input:focus {
+    background: #ffffff !important;
+    border-color: #d61616 !important;
+}
+
+body.tema-claro .kanban-column {
+    background: rgba(241, 245, 249, 0.6) !important;
+    border-color: #e2e8f0 !important;
+}
+
+body.tema-claro .column-header {
+    border-bottom-color: #e2e8f0 !important;
+}
+
+body.tema-claro .column-header h3 {
+    color: #475569 !important;
+}
+
+body.tema-claro .kanban-card {
+    background: #ffffff !important;
+    border-color: #e2e8f0 !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important;
+}
+
+body.tema-claro .kanban-card:hover {
+    border-color: #d61616 !important;
+    box-shadow: 0 4px 12px rgba(214, 22, 22, 0.08) !important;
+}
+
+body.tema-claro .kanban-card h4 {
+    color: #1e293b !important;
+}
+
+body.tema-claro .card-meta {
+    border-top-color: #f1f5f9 !important;
+    color: #64748b !important;
+}
+
+body.tema-claro .modal-overlay {
+    background: rgba(15, 23, 42, 0.6) !important;
+}
+
+body.tema-claro .modal-content.config-modal {
+    background: #ffffff !important;
+    border-color: #cbd5e1 !important;
+}
+
+body.tema-claro .modal-content.config-modal .modal-header {
+    border-bottom-color: #e2e8f0 !important;
+}
+
+body.tema-claro .modal-content.config-modal .modal-header h2 {
+    color: #1e293b !important;
+}
+
+body.tema-claro .modal-content.config-modal .modal-header button {
+    color: #64748b !important;
+}
+
+body.tema-claro .modern-input,
+body.tema-claro .modern-select {
+    background: #f8fafc !important;
+    border-color: #cbd5e1 !important;
+    color: #1e293b !important;
+}
+
+body.tema-claro .modern-input:focus,
+body.tema-claro .modern-select:focus {
+    border-color: #d61616 !important;
+    background: #ffffff !important;
+}
+
+body.tema-claro .phase-accordion-item {
+    background: #f8fafc !important;
+    border-color: #e2e8f0 !important;
+}
+
+body.tema-claro .phase-accordion-item.active {
+    border-color: rgba(214, 22, 22, 0.4) !important;
+}
+
+body.tema-claro .phase-accordion-header {
+    background: rgba(0, 0, 0, 0.02) !important;
+}
+
+body.tema-claro .phase-accordion-header:hover {
+    background: rgba(0, 0, 0, 0.04) !important;
+}
+
+body.tema-claro .phase-order-badge {
+    background: #e2e8f0 !important;
+    color: #64748b !important;
+}
+
+body.tema-claro .phase-accordion-item.active .phase-order-badge {
+    background: #d61616 !important;
+    color: #ffffff !important;
+}
+
+body.tema-claro .phase-title-text {
+    color: #1e293b !important;
+}
+
+body.tema-claro .phase-accordion-body {
+    background: #ffffff !important;
+    border-top-color: #e2e8f0 !important;
+}
+
+body.tema-claro .phase-settings-row {
+    border-bottom-color: #e2e8f0 !important;
+}
+
+body.tema-claro .field-item-card {
+    background: #f8fafc !important;
+    border-color: #e2e8f0 !important;
+}
+
+body.tema-claro .chip-content {
+    background: #f1f5f9 !important;
+    border-color: #cbd5e1 !important;
+    color: #64748b !important;
+}
+
+body.tema-claro .chip-item:hover .chip-content {
+    background: #e2e8f0 !important;
+}
+
+body.tema-claro .chip-item input:checked + .chip-content {
+    background: rgba(214, 22, 22, 0.1) !important;
+    border-color: #d61616 !important;
+    color: #d61616 !important;
+}
+
+body.tema-claro .transition-btn {
+    background: #f8fafc !important;
+    border-color: #cbd5e1 !important;
+    color: #1e293b !important;
+}
+
+body.tema-claro .transition-btn:hover:not(.blocked) {
+    background: #f1f5f9 !important;
+    border-color: #d61616 !important;
+}
+
+body.tema-claro .history-item {
+    border-bottom-color: #e2e8f0 !important;
+}
+
+body.tema-claro .history-phase-name {
+    color: #d61616 !important;
+}
+
+/* ==========================================================================
+   RANKING PANEL - MODO CLARO
+   ========================================================================== */
+
+body.tema-claro {
+    --ranking-card-bg: #ffffff;
+    --ranking-card-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
+    --ranking-text-main: #1e293b;
+    --ranking-text-sub: #64748b;
+}
+
+body.tema-claro .ranking-list-grid {
+    background: rgba(248, 250, 252, 0.8) !important;
+    border-color: #e2e8f0 !important;
+}
+
+body.tema-claro .ranking-card {
+    background: #ffffff !important;
+    border-color: #e2e8f0 !important;
+}
+
+body.tema-claro .ranking-card:hover {
+    background: #f8fafc !important;
+    border-color: #d61616 !important;
+}
+
+body.tema-claro .rank-number {
+    color: #475569 !important;
+}
+
+body.tema-claro .card-name {
+    color: #1e293b !important;
+}
+
+body.tema-claro .card-tenure {
+    color: #64748b !important;
+}
+
+body.tema-claro .list-metric-value {
+    color: #16a34a !important;
+}
+
+body.tema-claro .card-price-container {
+    background: #f1f5f9 !important;
+    color: #1e293b !important;
+    border-color: #cbd5e1 !important;
+}
+
+body.tema-claro .ranking-modal-content {
+    background: #ffffff !important;
+    border-color: #cbd5e1 !important;
+}
+
+body.tema-claro .modal-close {
+    color: #64748b !important;
+}
+
+body.tema-claro .modal-profile-overlay {
+    background: linear-gradient(to top, rgba(255, 255, 255, 0.98) 0%, rgba(255, 255, 255, 0.8) 40%, transparent 100%) !important;
+}
+
+body.tema-claro .modal-name-title {
+    color: #1e293b !important;
+}
+
+body.tema-claro .highlights-title {
+    color: #d61616 !important;
+}
+
+body.tema-claro .highlights-list li {
+    color: #334155 !important;
+}
+
+body.tema-claro .modal-performance {
+    background: #f8fafc !important;
+}
+
+body.tema-claro .perf-box {
+    background: #ffffff !important;
+    border-color: #e2e8f0 !important;
+}
+
+body.tema-claro .perf-box-val {
+    color: #1e293b !important;
+}
+
+body.tema-claro .price-sim-container {
+    border-top-color: #cbd5e1 !important;
+}
+
+body.tema-claro .sim-row {
+    color: #64748b !important;
+}
+
+body.tema-claro .sim-row.total {
+    color: #1e293b !important;
+    border-top-color: #cbd5e1 !important;
+}
+
+body.tema-claro .filter-pill-box {
+    background: #ffffff !important;
+    border-color: #e2e8f0 !important;
+}
+
+body.tema-claro .filter-pill-box select {
+    color: #64748b !important;
+}
+
+body.tema-claro .filter-pill-box select:hover {
+    color: #1e293b !important;
+}
+
+body.tema-claro .search-mini {
+    border-left-color: #e2e8f0 !important;
+}
+
+body.tema-claro .search-mini input {
+    color: #1e293b !important;
+}
+
+body.tema-claro .sort-wrapper select {
+    background: #ffffff !important;
+    border-color: #e2e8f0 !important;
+    color: #1e293b !important;
+}
+
+body.tema-claro .modal-tenure-tag {
+    color: #64748b !important;
+}

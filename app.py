@@ -815,19 +815,25 @@ def upload_profile_picture():
     if arquivo.filename == "":
         return jsonify({"erro": "Nome de arquivo vazio"}), 400
 
-    caminho = os.path.join(app.config["UPLOAD_FOLDER"], session["email"] + ".png")
+    nome_arquivo = session["email"] + ".png"
+    caminho = os.path.join(app.config["UPLOAD_FOLDER"], nome_arquivo)
     arquivo.save(caminho)
 
     with Session() as db:
         investidor = db.query(Investidor).filter_by(email=session["email"]).first()
         if investidor:
-            investidor.profile_picture = session["email"] + ".png"
+            investidor.profile_picture = nome_arquivo
             db.commit()
+
+    # Atualiza a sessão para que o avatar reflita imediatamente sem necessidade de re-login
+    session["profile_picture"] = nome_arquivo
+
+    url_publica = f"/static/images/profile_pictures/{nome_arquivo}"
 
     return jsonify({
         "mensagem": "Foto salva com sucesso",
-        "arquivo": session["email"] + ".png",
-        "caminho": caminho
+        "arquivo": nome_arquivo,
+        "url": url_publica
     })
 
 # ─── AUTENTICAÇÃO ────────────────────────────────────────────────────────────

@@ -85,60 +85,95 @@
     // =============================================
     function configurarUploadFoto() {
         const input = document.getElementById('uploadFoto');
-        const preview = document.getElementById('previewAvatar');
+        let preview = document.getElementById('previewAvatar');
 
-        if (input && preview) {
-            input.addEventListener('change', function () {
-                const file = this.files[0];
-                if (file) {
-                    // Validação de tamanho (2MB)
-                    if (file.size > 2 * 1024 * 1024) {
-                        alert('Erro: A imagem deve ter no máximo 2MB.');
-                        this.value = '';
-                        return;
-                    }
+        if (!input || !preview) return;
 
-                    const reader = new FileReader();
-                    reader.onload = function (e) {
-                        preview.src = e.target.result;
-                    };
-                    reader.readAsDataURL(file);
+        input.addEventListener('change', function () {
+            const file = this.files[0];
+            if (!file) return;
+
+            // Validação de tamanho (2MB)
+            if (file.size > 2 * 1024 * 1024) {
+                showToast('A imagem deve ter no máximo 2MB.', 'erro');
+                this.value = '';
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                // Se o elemento de preview for um ícone <i>, substituir por <img>
+                if (preview.tagName !== 'IMG') {
+                    const img = document.createElement('img');
+                    img.id = 'previewAvatar';
+                    img.alt = 'Avatar';
+                    img.style.cssText = preview.style.cssText;
+                    preview.parentNode.replaceChild(img, preview);
+                    preview = img;
                 }
-            });
-        }
+                preview.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
     }
 
 
-    // Alterar função para que envie a imagem para o backend /upload-profile-picture
+    // Envia a foto de perfil para o backend /upload-profile-picture
     window.salvarFotoPerfil = function () {
-        const preview = document.getElementById('previewAvatar');
-        const file = document.getElementById('uploadFoto').files[0];
-        if (preview && preview.src.startsWith('data:image')) {
-            try {
-                const formData = new FormData();
-                formData.append('foto', file);
-                fetch('/upload-profile-picture', {
-                    method: 'POST',
-                    body: formData
-                })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.mensagem === 'Foto salva com sucesso') {
-                            // localStorage.setItem('fotoPerfil', data.caminho);
-                            const headerAvatar = document.getElementById('headerUserAvatar');
-                            if (headerAvatar) headerAvatar.src = data.caminho;
-                            showToast('Foto de perfil salva com sucesso!', 'sucesso');
-                        } else {
-                            showToast(data.mensagem, 'erro');
-                        }
-                    })
-                    .catch(error => {
-                        showToast('Erro ao salvar foto: ' + error.message, 'erro');
-                    });
-            } catch (e) {
-                showToast('Erro ao salvar foto: a imagem pode ser muito grande para o armazenamento local.', 'erro');
-            }
+        // Verifica se um arquivo foi selecionado no input (fonte de verdade mais confiável)
+        const inputFoto = document.getElementById('uploadFoto');
+        const file = inputFoto && inputFoto.files[0];
+
+        if (!file) {
+            showToast('Selecione uma foto antes de salvar.', 'erro');
+            return;
         }
+
+        // Validação extra de tamanho (2MB)
+        if (file.size > 2 * 1024 * 1024) {
+            showToast('A imagem deve ter no máximo 2MB.', 'erro');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('foto', file);
+
+        fetch('/upload-profile-picture', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => {
+            if (!response.ok) return response.json().then(e => Promise.reject(e.erro || 'Erro no servidor'));
+            return response.json();
+        })
+        .then(data => {
+            if (data.mensagem === 'Foto salva com sucesso') {
+                // Atualiza avatar no header com a URL pública correta
+                const headerAvatar = document.getElementById('headerUserAvatar');
+                if (headerAvatar) {
+                    // Se o header ainda usa ícone <i>, substituir por <img>
+                    if (headerAvatar.tagName !== 'IMG') {
+                        const img = document.createElement('img');
+                        img.id = 'headerUserAvatar';
+                        img.alt = 'Avatar';
+                        img.className = 'user-avatar-header';
+                        headerAvatar.parentNode.replaceChild(img, headerAvatar);
+                        img.src = data.url;
+                    } else {
+                        headerAvatar.src = data.url;
+                    }
+                }
+                // Limpa o input para evitar re-envio acidental
+                inputFoto.value = '';
+                showToast('Foto de perfil salva com sucesso!', 'sucesso');
+            } else {
+                showToast(data.erro || data.mensagem || 'Erro desconhecido.', 'erro');
+            }
+        })
+        .catch(error => {
+            const msg = typeof error === 'string' ? error : (error.message || 'Erro ao salvar foto.');
+            showToast(msg, 'erro');
+        });
     };
 
     window.salvarFoto = function () {
