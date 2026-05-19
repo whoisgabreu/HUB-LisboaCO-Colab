@@ -57,20 +57,36 @@ body {
   left: 4vw;
 }
 
+@keyframes float {
+  0% {
+    transform: translateY(-5px);
+  }
+
+  50% {
+    transform: translateY(10px);
+  }
+
+  100% {
+    transform: translateY(-5px);
+  }
+
+}
+
 #logo1 {
   width: 150px;
   height: 200px;
   object-fit: contain;
   flex-shrink: 0;
   user-select: none;
-  filter: drop-shadow(0 0 10px rgba(0,0,0,0.3));
+  filter: drop-shadow(0 0 10px rgba(0, 0, 0, 0.3));
+  animation: float 2s ease-in-out infinite;
 }
 
 .brand-text {
   user-select: none;
   display: flex;
   flex-direction: column;
-  filter: drop-shadow(0 0 5px rgba(0,0,0,0.2));
+  filter: drop-shadow(0 0 5px rgba(0, 0, 0, 0.2));
   gap: 1px;
 }
 
@@ -88,9 +104,9 @@ body {
 }
 
 .brand-sub {
-  font-size: 12px;
-  font-weight: 500;
-  color: #94a3b8;
+  font-size: 0px;
+  font-weight: 1000;
+  color: white;
   text-transform: uppercase;
   letter-spacing: 1.2px;
 }
