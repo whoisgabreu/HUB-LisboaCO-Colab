@@ -1032,3 +1032,54 @@ body.tema-claro .sort-wrapper select {
 body.tema-claro .modal-tenure-tag {
     color: #64748b !important;
 }
+
+/* Kanban Technical Log Modal - Light Mode Overrides */
+body.tema-claro #techLogModal .tech-log-content {
+    background: #ffffff !important;
+    border-color: #cbd5e1 !important;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1) !important;
+    color: var(--text-main) !important;
+}
+
+body.tema-claro #techLogModal .modal-header {
+    border-bottom-color: #e2e8f0 !important;
+    background: rgba(0, 0, 0, 0.01) !important;
+}
+
+body.tema-claro #techLogModal .modal-title {
+    color: var(--text-main) !important;
+}
+
+body.tema-claro #techLogModal .btn-close-log {
+    color: var(--text-muted) !important;
+}
+
+body.tema-claro #techLogModal .log-item {
+    border-bottom-color: #e2e8f0 !important;
+}
+
+body.tema-claro #techLogModal .modal-footer-tech {
+    border-top-color: #e2e8f0 !important;
+    background: rgba(0, 0, 0, 0.01) !important;
+}
+
+body.tema-claro #techLogModal .btn-prev,
+body.tema-claro #techLogModal .btn-next {
+    background: #f1f5f9 !important;
+    border-color: #cbd5e1 !important;
+    color: var(--text-main) !important;
+}
+
+body.tema-claro #techLogModal .btn-prev:hover:not(:disabled),
+body.tema-claro #techLogModal .btn-next:hover:not(:disabled) {
+    background: #e2e8f0 !important;
+}
+
+body.tema-claro #techLogModal .diff-container {
+    background: rgba(0, 0, 0, 0.03) !important;
+    border-color: #cbd5e1 !important;
+}
+
+body.tema-claro #techLogModal .diff-values-wrapper {
+    background: rgba(0, 0, 0, 0.02) !important;
+}

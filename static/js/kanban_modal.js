@@ -209,19 +209,19 @@ const modal = {
         const logsToShow = allLogs.slice(start, end);
 
         const logHtml = logsToShow.map(h => `
-            <div style="border-bottom: 1px solid var(--border-color); padding: 10px 0;">
-                <div style="display: flex; justify-content: space-between; font-size: 0.8rem;">
+            <div class="log-item">
+                <div class="log-item-header">
                     <span style="font-weight: 700; color: ${h.evento === 'atualizacao' ? '#3b82f6' : 'var(--kanban-accent)'};">
                         ${h.evento === 'criacao' ? 'CRIAÇÃO' : (h.evento === 'atualizacao' ? 'ALTERAÇÃO' : 'MOVIMENTAÇÃO')}
                     </span>
                     <span style="color: var(--text-muted);">${new Date(h.timestamp).toLocaleString()}</span>
                 </div>
-                <div style="font-size: 0.85rem; margin-top: 4px;">
+                <div class="log-item-content">
                     ${h.evento === 'criacao' ? `Projeto criado na fase <b>${h.fase_entrada}</b>` : 
                       (h.evento === 'atualizacao' ? this._renderAlteracoes(h.snapshot?.alteracoes) : 
                       `Movido de <b>${h.fase_anterior || '-'}</b> para <b>${h.fase_nova || h.fase_entrada}</b>`)}
                 </div>
-                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">
+                <div class="log-item-user">
                     <i class="fas fa-user"></i> ${h.usuario || 'Sistema'}
                 </div>
             </div>
@@ -231,14 +231,12 @@ const modal = {
         let paginationHtml = '';
         if (totalPages > 1) {
             paginationHtml = `
-                <div style="display: flex; justify-content: center; align-items: center; gap: 20px; width: 100%;">
-                    <button class="btn-prev" ${page === 1 ? 'disabled style="opacity:0.3; cursor:default;"' : 'style="cursor:pointer;"'} 
-                        style="background:rgba(255,255,255,0.05); border:1px solid var(--border-color); color:white; padding: 8px 16px; border-radius:6px; transition: all 0.2s; display: flex; align-items: center; gap: 8px;">
+                <div class="pagination-container">
+                    <button class="btn-prev" ${page === 1 ? 'disabled' : ''}>
                         <i class="fas fa-chevron-left"></i> Anterior
                     </button>
                     <span style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">${page} / ${totalPages}</span>
-                    <button class="btn-next" ${page === totalPages ? 'disabled style="opacity:0.3; cursor:default;"' : 'style="cursor:pointer;"'} 
-                        style="background:rgba(255,255,255,0.05); border:1px solid var(--border-color); color:white; padding: 8px 16px; border-radius:6px; transition: all 0.2s; display: flex; align-items: center; gap: 8px;">
+                    <button class="btn-next" ${page === totalPages ? 'disabled' : ''}>
                         Próxima <i class="fas fa-chevron-right"></i>
                     </button>
                 </div>
@@ -256,16 +254,16 @@ const modal = {
         }
 
         logModal.innerHTML = `
-            <div class="modal-container" style="max-width: 800px; width: 90%; max-height: 80vh; background: #121212; border-radius: 12px; border: 1px solid var(--border-color); display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
-                <div class="modal-header" style="padding: 20px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.02);">
-                    <h3 class="modal-title" style="margin:0; font-size: 1.1rem; font-weight: 700;">Log Técnico de Movimentações</h3>
-                    <button class="btn-close-log" style="background:none; border:none; color:white; font-size:1.5rem; cursor:pointer; padding: 0 10px; opacity: 0.7; transition: opacity 0.2s;">&times;</button>
+            <div class="tech-log-content">
+                <div class="modal-header">
+                    <h3 class="modal-title">Log Técnico de Movimentações</h3>
+                    <button class="btn-close-log">&times;</button>
                 </div>
-                <div class="modal-body" style="overflow-y: auto; padding: 0 24px; flex: 1;">
+                <div class="modal-body">
                     ${logHtml}
                 </div>
                 ${paginationHtml ? `
-                <div class="modal-footer-tech" style="padding: 16px 24px; border-top: 1px solid var(--border-color); background: rgba(255,255,255,0.02); display: flex; align-items: center; justify-content: center;">
+                <div class="modal-footer-tech">
                     ${paginationHtml}
                 </div>
                 ` : ''}
@@ -288,7 +286,7 @@ const modal = {
 
     _renderAlteracoes(alteracoes) {
         if (!alteracoes || Object.keys(alteracoes).length === 0) return "Campos atualizados.";
-        let html = '<div style="margin-top: 6px; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05);">';
+        let html = '<div class="diff-container">';
         Object.entries(alteracoes).forEach(([campo, diff]) => {
             const formatVal = (val) => {
                 if (val === true) return '<span class="badge-success">Sim</span>';
@@ -298,12 +296,12 @@ const modal = {
             };
 
             html += `
-                <div style="font-size: 0.8rem; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                    <b style="color: var(--text-muted); min-width: 100px;">${campo}:</b> 
-                    <div style="display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.03); padding: 2px 8px; border-radius: 4px;">
-                        <span style="text-decoration: line-through; color: #ef4444; opacity: 0.8; font-size: 0.75rem;">${formatVal(diff.de)}</span> 
-                        <i class="fas fa-long-arrow-alt-right" style="color: var(--text-muted); font-size: 0.7rem;"></i> 
-                        <span style="color: #10b981; font-weight: 600;">${formatVal(diff.para)}</span>
+                <div class="diff-item">
+                    <b class="diff-field-name">${campo}:</b> 
+                    <div class="diff-values-wrapper">
+                        <span class="diff-val-old">${formatVal(diff.de)}</span> 
+                        <i class="fas fa-long-arrow-alt-right diff-arrow"></i> 
+                        <span class="diff-val-new">${formatVal(diff.para)}</span>
                     </div>
                 </div>
             `;

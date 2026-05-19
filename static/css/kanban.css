@@ -668,3 +668,167 @@
 .full-width {
     grid-column: 1 / -1;
 }
+
+/* Technical Log Modal styles */
+#techLogModal .tech-log-content {
+    max-width: 800px;
+    width: 90%;
+    max-height: 80vh;
+    background: #121212;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+    color: var(--text-main);
+}
+
+#techLogModal .modal-header {
+    padding: 20px;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(255,255,255,0.02);
+}
+
+#techLogModal .modal-title {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-main);
+}
+
+#techLogModal .btn-close-log {
+    background: none;
+    border: none;
+    color: var(--text-main);
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0 10px;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+}
+
+#techLogModal .btn-close-log:hover {
+    opacity: 1;
+}
+
+#techLogModal .modal-body {
+    overflow-y: auto;
+    padding: 0 24px;
+    flex: 1;
+}
+
+#techLogModal .log-item {
+    border-bottom: 1px solid var(--border-color);
+    padding: 10px 0;
+}
+
+#techLogModal .log-item-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8rem;
+}
+
+#techLogModal .log-item-content {
+    font-size: 0.85rem;
+    margin-top: 4px;
+}
+
+#techLogModal .log-item-user {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 4px;
+}
+
+#techLogModal .modal-footer-tech {
+    padding: 16px 24px;
+    border-top: 1px solid var(--border-color);
+    background: rgba(255,255,255,0.02);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#techLogModal .pagination-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+    width: 100%;
+}
+
+#techLogModal .btn-prev,
+#techLogModal .btn-next {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border-color);
+    color: var(--text-main);
+    padding: 8px 16px;
+    border-radius: 6px;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
+
+#techLogModal .btn-prev:hover:not(:disabled),
+#techLogModal .btn-next:hover:not(:disabled) {
+    background: rgba(255,255,255,0.1);
+}
+
+#techLogModal .btn-prev:disabled,
+#techLogModal .btn-next:disabled {
+    opacity: 0.3;
+    cursor: default;
+}
+
+#techLogModal .diff-container {
+    margin-top: 6px;
+    background: rgba(0,0,0,0.2);
+    padding: 10px;
+    border-radius: 6px;
+    border: 1px solid rgba(255,255,255,0.05);
+}
+
+#techLogModal .diff-item {
+    font-size: 0.8rem;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+#techLogModal .diff-field-name {
+    color: var(--text-muted);
+    min-width: 100px;
+}
+
+#techLogModal .diff-values-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255,255,255,0.03);
+    padding: 2px 8px;
+    border-radius: 4px;
+}
+
+#techLogModal .diff-val-old {
+    text-decoration: line-through;
+    color: #ef4444;
+    opacity: 0.8;
+    font-size: 0.75rem;
+}
+
+#techLogModal .diff-arrow {
+    color: var(--text-muted);
+    font-size: 0.7rem;
+}
+
+#techLogModal .diff-val-new {
+    color: #10b981;
+    font-weight: 600;
+}

@@ -889,6 +889,26 @@ def login():
     return render_template("login.html")
 
 
+@app.route("/dev-login")
+def dev_login():
+    with Session() as db:
+        user = db.query(Investidor).filter_by(email="ronaldo.teixeira@v4company.com").first()
+        if user:
+            session.clear()
+            session["nome"] = user.nome
+            session["email"] = user.email
+            session["token"] = "dev-token"
+            session["funcao"] = user.funcao
+            session["posicao"] = user.posicao
+            session["senioridade"] = user.senioridade
+            session["squad"] = user.squad
+            session["nivel_acesso"] = user.nivel_acesso
+            session["pode_editar_kanban"] = True
+            session["profile_picture"] = user.profile_picture
+            return redirect(url_for("view_kanban"))
+        return "Dev user not found", 404
+
+
 # Rota para alterar senha sem render_template
 @app.route("/alterar-senha", methods=["POST"])
 @check_session

@@ -83,9 +83,18 @@ const kanbanConfig = {
                 
                 <div class="phase-accordion-body" style="display: ${isExpanded ? 'block' : 'none'}">
                     <div class="phase-settings-row">
-                        <div class="form-group-inline" style="flex:1;">
+                        <div class="form-group-inline" style="flex:1.5;">
                             <label>Nome da Fase</label>
                             <input type="text" value="${fase.nome}" class="modern-input phase-name-input" data-findex="${fIndex}">
+                        </div>
+                        <div class="form-group-inline" style="flex:1.2;">
+                            <label>Status do Projeto *</label>
+                            <select class="modern-select phase-status-select" data-findex="${fIndex}">
+                                <option value="">-- Selecione --</option>
+                                <option value="Ativo" ${fase.status_do_projeto === 'Ativo' ? 'selected' : ''}>Ativo</option>
+                                <option value="Onetime" ${fase.status_do_projeto === 'Onetime' ? 'selected' : ''}>Onetime</option>
+                                <option value="Inativo" ${fase.status_do_projeto === 'Inativo' ? 'selected' : ''}>Inativo</option>
+                            </select>
                         </div>
                         <div style="display:flex; align-items:center; gap:20px; padding-top:20px;">
                             <label class="checkbox-label" style="cursor:pointer;">
@@ -155,6 +164,10 @@ const kanbanConfig = {
             input.onchange = (e) => { this.currentConfig.fases[e.target.dataset.findex].nome = e.target.value; };
         });
 
+        this.body.querySelectorAll('.phase-status-select').forEach(sel => {
+            sel.onchange = (e) => { this.currentConfig.fases[e.target.dataset.findex].status_do_projeto = e.target.value; };
+        });
+
         document.getElementById('btn_add_phase').onclick = () => {
             const newIndex = this.currentConfig.fases.length;
             this.currentConfig.fases.push({
@@ -162,6 +175,7 @@ const kanbanConfig = {
                 nome: 'Nova Fase',
                 ordem: newIndex + 1,
                 permite_acesso_direto: false,
+                status_do_projeto: '',
                 campos: [{ id: 'f_' + Date.now(), label: 'Título', tipo: 'string', obrigatorio: true }]
             });
             this.expandedPhaseIndex = newIndex;
@@ -260,6 +274,18 @@ const kanbanConfig = {
     async save() {
         const nome = document.getElementById('config_kanban_nome').value;
         this.currentConfig.nome = nome;
+        
+        // Validação obrigatória de status do projeto por fase
+        const fases = this.currentConfig.fases || [];
+        for (let i = 0; i < fases.length; i++) {
+            const fase = fases[i];
+            if (!fase.status_do_projeto) {
+                toast.error(`A fase "${fase.nome || ('Fase ' + (i + 1))}" precisa ter um Status do Projeto definido.`);
+                this.expandedPhaseIndex = i;
+                this.render();
+                return;
+            }
+        }
         
         try {
             await api.post("/api/kanban/config", this.currentConfig);

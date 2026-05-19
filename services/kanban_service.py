@@ -42,6 +42,7 @@ class KanbanService:
                     "nome": "Onboarding",
                     "ordem": 1,
                     "cor": "#3498db",
+                    "status_do_projeto": "Ativo",
                     "campos": [
                         {"id": "responsavel", "label": "Responsável", "tipo": "string", "obrigatorio": True},
                         {"id": "data_kickoff", "label": "Data Kickoff", "tipo": "date"}
@@ -52,6 +53,7 @@ class KanbanService:
                     "nome": "Execução",
                     "ordem": 2,
                     "cor": "#f1c40f",
+                    "status_do_projeto": "Ativo",
                     "campos": [
                         {"id": "prioridade", "label": "Prioridade", "tipo": "select", "opcoes": ["Baixa", "Média", "Alta"]}
                     ]
@@ -61,6 +63,7 @@ class KanbanService:
                     "nome": "Concluído",
                     "ordem": 3,
                     "cor": "#2ecc71",
+                    "status_do_projeto": "Ativo",
                     "campos": [
                         {"id": "data_entrega", "label": "Data de Entrega", "tipo": "date"}
                     ],
@@ -71,6 +74,7 @@ class KanbanService:
                     "nome": "Churn",
                     "ordem": 99,
                     "cor": "#e74c3c",
+                    "status_do_projeto": "Inativo",
                     "campos": [
                         {"id": "motivo", "label": "Motivo do Churn", "tipo": "text", "obrigatorio": True}
                     ],
@@ -150,7 +154,7 @@ class KanbanService:
             pipefy_id=new_id,
             nome=nome,
             fase_do_pipefy=primeira_fase['nome'],
-            status='Ativo',
+            status=primeira_fase.get('status_do_projeto', 'Ativo'),
             kanban_dados=dados_iniciais,
             data_de_inicio=now.date()
         )
@@ -233,13 +237,18 @@ class KanbanService:
         # Atualiza Fase e Status
         projeto.fase_do_pipefy = target_fase['nome']
         
-        # Lógica de Status Base
-        if target_fase['nome'].lower() in ['churn', 'cancelado', 'perdido']:
-            projeto.status = 'Churn'
-        elif target_fase['nome'].lower() in ['inativo', 'pausado']:
-            projeto.status = 'Inativo'
+        # Sincroniza o status do projeto a partir da fase
+        status_fase = target_fase.get('status_do_projeto')
+        if status_fase:
+            projeto.status = status_fase
         else:
-            projeto.status = 'Ativo'
+            # Lógica de Status Base (Fallback)
+            if target_fase['nome'].lower() in ['churn', 'cancelado', 'perdido']:
+                projeto.status = 'Inativo'
+            elif target_fase['nome'].lower() in ['inativo', 'pausado']:
+                projeto.status = 'Inativo'
+            else:
+                projeto.status = 'Ativo'
 
         # Snapshot Imutável da fase que está sendo deixada
         historico = KanbanHistorico(
@@ -312,6 +321,14 @@ class KanbanService:
 
     def update_config(self, slug: str, nova_config: Dict[str, Any]) -> Dict[str, Any]:
         """Atualiza a configuração do board (fases, campos, etc)."""
+        fases = nova_config.get('fases', [])
+        for i, fase in enumerate(fases):
+            status = fase.get('status_do_projeto')
+            if not status:
+                raise ValueError(f"A fase '{fase.get('nome', f'Fase {i+1}')}' não possui um status de projeto definido.")
+            if status not in ['Ativo', 'Onetime', 'Inativo']:
+                raise ValueError(f"A fase '{fase.get('nome')}' possui um status de projeto inválido: '{status}'. Os valores permitidos são: Ativo, Onetime, Inativo.")
+
         stmt = select(KanbanConfig).where(KanbanConfig.slug == slug)
         result = self.db.execute(stmt).scalar_one_or_none()
         
