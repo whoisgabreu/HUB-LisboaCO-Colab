@@ -832,3 +832,17 @@
     color: #10b981;
     font-weight: 600;
 }
+
+.btn-danger {
+    background-color: #ef4444 !important;
+    color: #ffffff !important;
+}
+.btn-danger:hover {
+    background-color: #dc2626 !important;
+}
+
+#btnToggleArchived.active-filter {
+    background-color: var(--kanban-accent, #d61616) !important;
+    color: #ffffff !important;
+    border-color: var(--kanban-accent, #d61616) !important;
+}

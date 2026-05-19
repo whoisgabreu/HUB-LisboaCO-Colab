@@ -184,11 +184,43 @@ const modal = {
             transCol.appendChild(btn);
         });
 
+        const btnArchive = document.getElementById('btnArchive');
+        if (btnArchive) {
+            if (window.APP_CONFIG.podeEditarKanban) {
+                btnArchive.style.display = 'inline-flex';
+                const isArchived = !!(card.dados && card.dados.arquivado);
+                if (isArchived) {
+                    btnArchive.innerHTML = '<i class="fas fa-folder-open"></i> Desarquivar';
+                    btnArchive.className = 'btn-secondary';
+                } else {
+                    btnArchive.innerHTML = '<i class="fas fa-archive"></i> Arquivar';
+                    btnArchive.className = 'btn-danger';
+                }
+                btnArchive.onclick = async () => {
+                    try {
+                        const targetState = !isArchived;
+                        await api.post(`/api/kanban/cards/${card.card_id}/update`, {
+                            nome: card.titulo,
+                            dados: { arquivado: targetState }
+                        });
+                        toast.success(targetState ? "Card arquivado!" : "Card desarquivado!");
+                        this.hide();
+                        board.refresh();
+                    } catch (err) {
+                        toast.error(err.message);
+                    }
+                };
+            } else {
+                btnArchive.style.display = 'none';
+            }
+        }
+
         this.saveBtn.onclick = () => this.handleSave(card.card_id);
 
         // Controle de Permissão (Read-Only)
         if (!window.APP_CONFIG.podeEditarKanban) {
             document.getElementById('modalFooter').style.display = 'none';
+            if (btnArchive) btnArchive.style.display = 'none';
             // Desabilitar botões de transição
             transCol.querySelectorAll('.transition-btn').forEach(btn => btn.classList.add('blocked'));
             // Desabilitar inputs
@@ -496,6 +528,9 @@ const modal = {
     },
 
     show(title, phase, cardData, onSave) {
+        const btnArchive = document.getElementById('btnArchive');
+        if (btnArchive) btnArchive.style.display = 'none';
+
         this.title.innerText = title;
         this.currentPhaseConfig = phase;
         this.footer.style.display = 'flex';

@@ -168,6 +168,7 @@ body.tema-claro .insight-pill {
 }
 
 /* COMPONENTES COM FUNDO VERMELHO (Sempre Texto/Ícone Branco) */
+body.tema-claro .btn-danger,
 body.tema-claro .btn-primary,
 body.tema-claro .btn-gt-confirm,
 body.tema-claro .btn-wizard-save,
@@ -878,7 +879,7 @@ body.tema-claro .chip-item:hover .chip-content {
     background: #e2e8f0 !important;
 }
 
-body.tema-claro .chip-item input:checked + .chip-content {
+body.tema-claro .chip-item input:checked+.chip-content {
     background: rgba(214, 22, 22, 0.1) !important;
     border-color: #d61616 !important;
     color: #d61616 !important;

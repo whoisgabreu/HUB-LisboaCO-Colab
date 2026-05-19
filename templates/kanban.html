@@ -40,6 +40,7 @@
                         </div>
                     </div>
                     <div class="header-actions">
+                        <button id="btnToggleArchived" class="btn-secondary"><i class="fas fa-archive"></i> Ver Arquivados</button>
                         <button id="btnRefresh" class="btn-secondary"><i class="fas fa-sync-alt"></i> Atualizar</button>
                         {% if session.pode_editar_kanban %}
                         <button id="btnNewCard" class="btn-primary"><i class="fas fa-plus"></i> Novo Projeto</button>
@@ -70,6 +71,7 @@
                 <!-- Conteúdo dinâmico -->
             </div>
             <div class="modal-footer" id="modalFooter">
+                <button id="btnArchive" class="btn-danger" style="margin-right: auto; display: none;">Arquivar</button>
                 <button id="btnCancel" class="btn-secondary">Cancelar</button>
                 <button id="btnSave" class="btn-primary">Salvar Alterações</button>
             </div>
