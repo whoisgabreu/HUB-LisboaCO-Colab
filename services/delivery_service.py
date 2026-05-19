@@ -12,7 +12,7 @@ from database import Session
 from models import (
     MonthlyDelivery, Investidor, InvestidorProjeto,
     OperacaoCheckin, OperacaoPlanoMidia, OperacaoOtimizacao,
-    OperacaoTarefa, MetricaMensal
+    OperacaoTarefa, MetricaMensal, Projeto
 )
 
 class DeliveryService:
@@ -71,13 +71,9 @@ class DeliveryService:
             # Use fee_contribuicao se existir e > 0, senão cai para fee_projeto
             fee_base = Decimal("0")
             if vinculo:
-                # Achar a moeda do projeto
-                from models import ProjetoAtivo, ProjetoOnetime
-                proj_ativo = db.query(ProjetoAtivo).filter_by(pipefy_id=client_id).first()
-                if not proj_ativo:
-                    proj_ativo = db.query(ProjetoOnetime).filter_by(pipefy_id=client_id).first()
-                
-                moeda = proj_ativo.moeda if proj_ativo else "BRL"
+                # Achar a moeda do projeto na tabela unificada
+                proj = db.query(Projeto).filter_by(pipefy_id=client_id).first()
+                moeda = proj.moeda if proj else "BRL"
 
                 fee_contri = Decimal(str(vinculo.fee_contribuicao or 0))
                 fee_proj = Decimal(str(vinculo.fee_projeto or 0))

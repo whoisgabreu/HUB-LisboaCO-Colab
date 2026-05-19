@@ -18,7 +18,7 @@
     // 1. APLICAR TEMA AO CARREGAR (evitar flash)
     // =============================================
     var temaArmazenado = localStorage.getItem('tema');
-    if (temaArmazenado === 'claro') {
+    if (temaArmazenado === null || temaArmazenado === 'claro') {
         document.body.classList.add('tema-claro');
     }
 

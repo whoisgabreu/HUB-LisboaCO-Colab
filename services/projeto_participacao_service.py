@@ -4,7 +4,7 @@ from datetime import datetime, date, timedelta
 from sqlalchemy import extract, and_, or_
 from database import Session
 from sqlalchemy.orm.attributes import flag_modified
-from models import MetricaMensal, InvestidorProjeto, ProjetoAtivo, ProjetoOnetime, ProjetoInativo
+from models import MetricaMensal, InvestidorProjeto, Projeto
 
 from collections import defaultdict
 from .currency import CurrencyService
@@ -83,16 +83,14 @@ class ProjetoParticipacaoService:
             moedas_map = {}
             metadata_map = {} # pipefy_id -> extra_dict
             
-            # Busca em todas as tabelas de projetos para garantir que pegamos a moeda e o metadata
-            tabelas_projetos = [ProjetoAtivo, ProjetoOnetime, ProjetoInativo]
-            for Model in tabelas_projetos:
-                projs = db.query(Model.pipefy_id, Model.moeda, Model.extra).filter(Model.pipefy_id.in_(proj_ids)).all()
-                for pid, moeda, extra in projs:
-                    if pid not in moedas_map:
-                        m_str = str(moeda).strip().upper() if moeda else "BRL"
-                        moedas_map[pid] = "USD" if m_str == "USD" else "BRL"
-                    if pid not in metadata_map:
-                        metadata_map[pid] = extra if extra and isinstance(extra, dict) else {}
+            # Busca na tabela unificada de projetos para garantir que pegamos a moeda e o metadata
+            projs = db.query(Projeto.pipefy_id, Projeto.moeda, Projeto.extra).filter(Projeto.pipefy_id.in_(proj_ids)).all()
+            for pid, moeda, extra in projs:
+                if pid not in moedas_map:
+                    m_str = str(moeda).strip().upper() if moeda else "BRL"
+                    moedas_map[pid] = "USD" if m_str == "USD" else "BRL"
+                if pid not in metadata_map:
+                    metadata_map[pid] = extra if extra and isinstance(extra, dict) else {}
 
 
             # 4. Agrupar vínculos por e-mail

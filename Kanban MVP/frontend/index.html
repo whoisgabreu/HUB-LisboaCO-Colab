@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic Kanban MVP</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header>
+        <h1>Dynamic Kanban</h1>
+        <div class="kanban-controls">
+            <select id="kanbanSelector">
+                <option>Carregando...</option>
+            </select>
+            <button id="btnConfig" class="btn-icon" title="Configurar Fluxo">⚙️</button>
+        </div>
+    </header>
+
+    <main id="kanbanBoard" class="kanban-board">
+        <!-- Columns will be injected here -->
+    </main>
+
+    <div id="modalOverlay" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Detalhes do Card</h2>
+                <button id="btnCloseModal" class="btn-icon" style="border:none; background:transparent;">✕</button>
+            </div>
+            <div id="modalBody" class="modal-body-scroll">
+                <!-- Dynamic content injected here -->
+            </div>
+            <div class="modal-footer" id="modalFooter">
+                <button id="btnCancel" class="btn-secondary">Cancelar</button>
+                <button id="btnSave">Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- New Config Modal -->
+    <div id="configModalOverlay" class="modal-overlay">
+        <div class="modal-content config-modal">
+            <div class="modal-header">
+                <h2>Configurar Fluxo</h2>
+            </div>
+            <div id="configModalBody" class="config-scroll">
+                <!-- Dynamic config editor injected here -->
+            </div>
+            <div class="modal-footer">
+                <button id="btnConfigCancel" class="btn-secondary">Cancelar</button>
+                <button id="btnConfigSave">Salvar Alterações</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toastContainer" aria-live="polite" aria-atomic="true"></div>
+
+    <script src="js/api.js"></script>
+    <script src="js/modal.js"></script>
+    <script src="js/config.js"></script>
+    <script src="js/kanban.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

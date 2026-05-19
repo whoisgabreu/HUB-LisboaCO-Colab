@@ -3,7 +3,7 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
 from models import (
-    InvestidorProjeto, ProjetoAtivo, ProjetoOnetime,
+    InvestidorProjeto, Projeto,
     MetricaMensal, Investidor, OperacaoTarefa,
 )
 
@@ -14,25 +14,22 @@ class OperacaoService:
         Retorna todos os projetos vinculados e ativos ao usuário para a tela de operação.
         Considera Projetos Ativos, Onetime e Inativos.
         """
-        todas_tabelas = [ProjetoAtivo, ProjetoOnetime]
+        query = db.query(Projeto)
         meus_projetos_dict = {}
-
         if squad == "Gerência" or posicao in ["Gerência", "Sócio"]:
-            # Para gerência/sócio, buscar de todas as tabelas (acesso global)
-            for model in todas_tabelas:
-                projetos = db.query(model).all()
-                for p in projetos:
-                    if p.pipefy_id not in meus_projetos_dict:
-                        meus_projetos_dict[p.pipefy_id] = p
+            # Para gerência/sócio, buscar de todos (acesso global)
+            projetos = query.all()
+            for p in projetos:
+                if p.pipefy_id not in meus_projetos_dict:
+                    meus_projetos_dict[p.pipefy_id] = p
         elif posicao == "Coordenador":
             # Coordenador vê todos os projetos da sua squad
             if not squad:
                 return []
-            for model in todas_tabelas:
-                projetos = db.query(model).filter(model.squad_atribuida == squad).all()
-                for p in projetos:
-                    if p.pipefy_id not in meus_projetos_dict:
-                        meus_projetos_dict[p.pipefy_id] = p
+            projetos = query.filter(Projeto.squad_atribuida == squad).all()
+            for p in projetos:
+                if p.pipefy_id not in meus_projetos_dict:
+                    meus_projetos_dict[p.pipefy_id] = p
         else:
             # Busca vínculos ativos do investidor
             vinculos = db.query(InvestidorProjeto).filter(
@@ -44,11 +41,10 @@ class OperacaoService:
             ids_vinculados = [v.pipefy_id_projeto for v in vinculos]
             
             if ids_vinculados:
-                for model in todas_tabelas:
-                    projetos = db.query(model).filter(model.pipefy_id.in_(ids_vinculados)).all()
-                    for p in projetos:
-                        if p.pipefy_id not in meus_projetos_dict:
-                            meus_projetos_dict[p.pipefy_id] = p
+                projetos = query.filter(Projeto.pipefy_id.in_(ids_vinculados)).all()
+                for p in projetos:
+                    if p.pipefy_id not in meus_projetos_dict:
+                        meus_projetos_dict[p.pipefy_id] = p
 
         # Prepara a lista a ser retornada
         # Mapeamos os vínculos para saber quem é cientista
@@ -116,19 +112,16 @@ class OperacaoSnapshotService:
 
     @staticmethod
     def _resolve_nome(db, id_projeto):
-        """Busca o nome do projeto em projetos_ativos → projetos_onetime → projetos."""
+        """Busca o nome do projeto na tabela unificada projetos."""
         from sqlalchemy import text
-        for tname in ("projetos_ativos", "projetos_onetime", "projetos"):
-            try:
-                nome = db.execute(text(
-                    f"SELECT TRIM(nome) FROM {OperacaoSnapshotService.SCHEMA}.{tname} "
-                    "WHERE pipefy_id::text = :pid LIMIT 1"
-                ), {"pid": str(id_projeto)}).scalar()
-                if nome:
-                    return nome
-            except Exception:
-                continue
-        return None
+        try:
+            nome = db.execute(text(
+                f"SELECT TRIM(nome) FROM {OperacaoSnapshotService.SCHEMA}.projetos "
+                "WHERE pipefy_id::text = :pid LIMIT 1"
+            ), {"pid": str(id_projeto)}).scalar()
+            return nome
+        except Exception:
+            return None
 
     @staticmethod
     def _insert_row(db, id_projeto, mes, ano, nome, entregas_json):

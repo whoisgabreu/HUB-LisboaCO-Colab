@@ -21,7 +21,7 @@ from decimal import Decimal
 from datetime import datetime
 from sqlalchemy import text
 from database import Session, engine
-from models import MetricaMensal, InvestidorProjeto, ProjetoAtivo
+from models import MetricaMensal, InvestidorProjeto, Projeto
 
 
 def _get_faturamentos_variavel_projeto(conn, pipefy_id, mes, ano):
@@ -76,11 +76,11 @@ def aplicar_faturamento_variavel(mes, ano):
 
     try:
         with Session() as db:
-            # 1. Buscar todos os projetos ativos com contrato_variavel = True
-            projetos_ativos = db.query(ProjetoAtivo).all()
+            # 1. Buscar todos os projetos com contrato_variavel = True na tabela unificada
+            projetos_all = db.query(Projeto).all()
             projetos_variaveis = {
                 p.pipefy_id: p
-                for p in projetos_ativos
+                for p in projetos_all
                 if (p.extra or {}).get("contrato_variavel") is True
             }
 
@@ -248,13 +248,9 @@ def salvar_registro(pipefy_id, mes, ano, faturamento_cliente, percentual, usuari
                     "ano": int(ano)
                 })
             else:
-                # Se a linha não existe, cria snapshot com o primeiro registro
-                from models import ProjetoAtivo, ProjetoOnetime
+                # Se a linha não existe, cria snapshot com o primeiro registro buscando na tabela unificada
                 with Session() as ndb:
-                    proj = (
-                        ndb.query(ProjetoAtivo).filter_by(pipefy_id=pipefy_id).first()
-                        or ndb.query(ProjetoOnetime).filter_by(pipefy_id=pipefy_id).first()
-                    )
+                    proj = ndb.query(Projeto).filter_by(pipefy_id=pipefy_id).first()
                     nome_proj = proj.nome if proj else ""
 
                 novo_registro = {

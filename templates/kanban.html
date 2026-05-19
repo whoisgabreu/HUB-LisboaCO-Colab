@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kanban Operacional | Hub Lisboa</title>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Global CSS -->
+    <link rel="stylesheet" href="static/style/styles.css">
+    <link rel="stylesheet" href="static/style/tema-claro.css">
+    
+    <!-- Kanban CSS -->
+    <link rel="stylesheet" href="static/css/kanban.css">
+    
+    <script src="static/js/app.js" defer></script>
+</head>
+
+<body>
+
+    {% include "components/header.html" %}
+    {% include "components/sidebar.html" %}
+
+    <div class="app-shell">
+        <div class="sidebar-overlay"></div>
+
+        <div class="main-content">
+            <main class="kanban-dashboard">
+                <header class="kanban-header">
+                    <div class="header-search">
+                        <div class="search-wrapper">
+                            <i class="fas fa-search"></i>
+                            <input type="text" id="kanbanSearch" placeholder="Pesquisar projeto ou cliente...">
+                        </div>
+                    </div>
+                    <div class="header-actions">
+                        <button id="btnToggleArchived" class="btn-secondary"><i class="fas fa-archive"></i> Ver Arquivados</button>
+                        <button id="btnRefresh" class="btn-secondary"><i class="fas fa-sync-alt"></i> Atualizar</button>
+                        {% if session.pode_editar_kanban %}
+                        <button id="btnNewCard" class="btn-primary"><i class="fas fa-plus"></i> Novo Projeto</button>
+                        <button id="btnConfig" class="btn-icon" title="Configurações"><i class="fas fa-cog"></i></button>
+                        {% endif %}
+                    </div>
+                </header>
+
+                <div id="kanbanBoard" class="kanban-board">
+                    <!-- Colunas injetadas via JS -->
+                    <div style="padding: 40px; text-align: center; width: 100%; color: var(--text-muted);">
+                        <i class="fas fa-spinner fa-spin fa-2x"></i>
+                        <p style="margin-top: 10px;">Carregando board...</p>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Modal Detalhes/Transição -->
+    <div id="modalOverlay" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Detalhes do Projeto</h2>
+                <button id="btnCloseModal" class="btn-icon" style="background:transparent; border:none; color:white; font-size:1.2rem; cursor:pointer;">✕</button>
+            </div>
+            <div id="modalBody" class="modal-body-scroll">
+                <!-- Conteúdo dinâmico -->
+            </div>
+            <div class="modal-footer" id="modalFooter">
+                <button id="btnArchive" class="btn-danger" style="margin-right: auto; display: none;">Arquivar</button>
+                <button id="btnCancel" class="btn-secondary">Cancelar</button>
+                <button id="btnSave" class="btn-primary">Salvar Alterações</button>
+            </div>
+        </div>
+    </div>
+
+    </div>
+    
+    <!-- Modal Configuração -->
+    <div id="configModalOverlay" class="modal-overlay">
+        <div class="modal-content config-modal">
+            <div class="modal-header">
+                <h2>Configurar Fluxo Kanban</h2>
+                <button id="btnCloseConfigModal" class="btn-icon" style="background:transparent; border:none; color:white; font-size:1.2rem; cursor:pointer;">✕</button>
+            </div>
+            <div id="configModalBody" class="config-scroll" style="flex:1; overflow-y:auto; padding:24px;">
+                <!-- Editor de fases injetado aqui -->
+            </div>
+            <div class="modal-footer">
+                <button id="btnConfigCancel" class="btn-secondary">Cancelar</button>
+                <button id="btnConfigSave" class="btn-primary">Salvar Configuração</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Configurações do Usuário (Perfil / Aparência) -->
+    {% include "components/modal-configuracoes.html" %}
+
+    <!-- Toast Notifications -->
+    <div id="toastContainer"></div>
+
+
+    <script>
+        window.APP_CONFIG = {
+            userEmail: "{{ session.email }}",
+            userAccessLevel: "{{ session.nivel_acesso }}",
+            podeEditarKanban: {{ 'true' if session.pode_editar_kanban else 'false' }},
+            userToken: "{{session.token}}"
+        };
+    </script>
+    
+    <script src="static/js/kanban_api.js"></script>
+    <script src="static/js/kanban_modal.js"></script>
+    <script src="static/js/kanban_config.js"></script>
+    <script src="static/js/kanban.js"></script>
+    <script src="static/js/tema.js"></script>
+</body>
+
+</html>

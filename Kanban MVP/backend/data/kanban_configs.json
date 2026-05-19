@@ -1,0 +1,57 @@
+﻿[
+  {
+    "kanban_id": "5dd26246-0524-4949-b405-6ab5abb39869",
+    "nome": "Clientes",
+    "versao": 41,
+    "fases": [
+      {
+        "id": "fase_1778509436114",
+        "nome": "1",
+        "ordem": 2,
+        "campos": [
+          {
+            "id": "titulo",
+            "label": "Título",
+            "tipo": "string",
+            "obrigatorio": true,
+            "readonly": false,
+            "opcoes": null
+          }
+        ],
+        "permite_acesso_direto": false
+      },
+      {
+        "id": "fase_1778509512109",
+        "nome": "2",
+        "ordem": 3,
+        "campos": [
+          {
+            "id": "titulo",
+            "label": "Título",
+            "tipo": "string",
+            "obrigatorio": true,
+            "readonly": false,
+            "opcoes": null
+          }
+        ],
+        "permite_acesso_direto": false
+      },
+      {
+        "id": "fase_1778509438905",
+        "nome": "CHURN",
+        "ordem": 4,
+        "campos": [
+          {
+            "id": "titulo",
+            "label": "Título",
+            "tipo": "string",
+            "obrigatorio": true,
+            "readonly": false,
+            "opcoes": null
+          }
+        ],
+        "permite_acesso_direto": true
+      }
+    ]
+  }
+]

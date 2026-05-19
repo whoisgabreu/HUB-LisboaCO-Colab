@@ -2,7 +2,7 @@ from sqlalchemy import extract, and_, desc, text
 from database import Session
 from models import (
     Investidor, InvestidorProjeto,
-    MetricaMensal, RemuneracaoCargo
+    MetricaMensal, RemuneracaoCargo, Projeto
 )
 from decimal import Decimal
 from datetime import datetime, date
@@ -70,12 +70,7 @@ def calcular_metricas_mensais(mes, ano):
             for v in vinculos:
                 pid = str(v.pipefy_id_projeto)
                 # Achar a moeda do projeto
-                from models import ProjetoAtivo, ProjetoOnetime, ProjetoInativo
-                proj = db.query(ProjetoAtivo).filter_by(pipefy_id=v.pipefy_id_projeto).first()
-                if not proj:
-                    proj = db.query(ProjetoOnetime).filter_by(pipefy_id=v.pipefy_id_projeto).first()
-                if not proj:
-                    proj = db.query(ProjetoInativo).filter_by(pipefy_id=v.pipefy_id_projeto).first()
+                proj = db.query(Projeto).filter_by(pipefy_id=v.pipefy_id_projeto).first()
 
                 moeda = proj.moeda if proj else "BRL"
 

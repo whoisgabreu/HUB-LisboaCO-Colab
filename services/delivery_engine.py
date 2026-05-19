@@ -21,7 +21,7 @@ from database import Session
 from models import (
     MonthlyDelivery, Investidor, InvestidorProjeto,
     OperacaoCheckin, OperacaoPlanoMidia, OperacaoOtimizacao,
-    OperacaoTarefa, MetricaMensal, ProjetoAtivo
+    OperacaoTarefa, MetricaMensal, Projeto
 )
 
 # ──────────────────────────────────────────────────────────────────────────────

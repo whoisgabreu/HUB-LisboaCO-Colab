@@ -114,6 +114,7 @@ function openNewUserModal() {
     document.getElementById('userModalTitle').textContent = 'Novo Usuário';
     document.getElementById('originalEmail').value = '';
     document.getElementById('passwordGroup').style.display = 'block';
+    document.getElementById('userPodeEditarKanban').checked = false;
     form.reset();
     modal.classList.add('active');
 }
@@ -135,6 +136,7 @@ function openEditUserModal(email) {
     document.getElementById('userPosicao').value = u.posicao || '';
     document.getElementById('userNivelAcesso').value = u.nivel_acesso;
     document.getElementById('userAtivo').value = u.ativo.toString();
+    document.getElementById('userPodeEditarKanban').checked = !!u.pode_editar_kanban;
 
     modal.classList.add('active');
 }
@@ -157,7 +159,8 @@ form.onsubmit = async (e) => {
         squad: document.getElementById('userSquad').value,
         posicao: document.getElementById('userPosicao').value,
         nivel_acesso: document.getElementById('userNivelAcesso').value,
-        ativo: document.getElementById('userAtivo').value === 'true'
+        ativo: document.getElementById('userAtivo').value === 'true',
+        pode_editar_kanban: document.getElementById('userPodeEditarKanban').checked
     };
 
     if (!isEdit) {
