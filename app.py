@@ -1533,6 +1533,16 @@ def operacao():
     try:
         with Session() as db:
             meus_projetos = OperacaoService.get_projetos_operacao(db, email, squad, posicao)
+            if meus_projetos:
+                project_ids = [p["pipefy_id"] for p in meus_projetos if p.get("pipefy_id")]
+                if project_ids:
+                    inativos_ids = {
+                        row.pipefy_id
+                        for row in db.query(Projeto.pipefy_id)
+                        .filter(Projeto.pipefy_id.in_(project_ids), Projeto.status == 'Inativo')
+                        .all()
+                    }
+                    meus_projetos = [p for p in meus_projetos if p.get("pipefy_id") not in inativos_ids]
             
     except SQLAlchemyError as e:
         print(f"Erro ao carregar operação: {e}")
