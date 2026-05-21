@@ -1340,6 +1340,26 @@ def hub_remuneracao():
     )
 
 
+# ─── FOTO DE USUÁRIO (LEITURA P/ USUÁRIOS LOGADOS) ───────────────────────────
+
+@app.route("/api/usuarios/<email>/foto", methods=["GET"])
+@check_session
+def api_get_foto_usuario(email):
+    """Retorna apenas a URL da foto de perfil de um usuário pelo email.
+    Endpoint isolado, somente leitura — não modifica dados nem regras existentes."""
+    try:
+        with Session() as db:
+            user = db.query(Investidor).filter(Investidor.email == email).first()
+            if not user or not user.profile_picture:
+                return jsonify({"foto": None, "nome": email.split("@")[0] if email and "@" in email else email})
+            return jsonify({
+                "foto": f"/static/images/profile_pictures/{user.profile_picture}",
+                "nome": user.nome or email.split("@")[0]
+            })
+    except Exception as e:
+        return jsonify({"foto": None, "error": str(e)}), 500
+
+
 # ─── GERENCIAMENTO DE USUÁRIOS (ADMIN) ───────────────────────────────────────
 
 @app.route("/gerenciar-usuarios")

@@ -11,7 +11,20 @@ const board = {
         modal.init();
         await this.refresh();
         
-        document.getElementById('btnRefresh').onclick = () => this.refresh();
+        document.getElementById('btnRefresh').onclick = async (e) => {
+            const btn = e.currentTarget;
+            const icon = btn.querySelector('i');
+            btn.classList.add('is-refreshing');
+            if (icon) icon.classList.add('fa-spin');
+            try {
+                await this.refresh();
+            } finally {
+                setTimeout(() => {
+                    btn.classList.remove('is-refreshing');
+                    if (icon) icon.classList.remove('fa-spin');
+                }, 400);
+            }
+        };
         document.getElementById('btnNewCard').onclick = () => this.handleNewCard();
 
         const searchInput = document.getElementById('kanbanSearch');

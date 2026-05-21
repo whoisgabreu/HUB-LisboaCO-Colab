@@ -234,15 +234,18 @@ body::-webkit-scrollbar-thumb:hover {
 /* SLIDES */
 .slides-wrapper {
     position: relative;
+    min-height: 300px;
 }
 
 .slide-content {
     display: none;
     animation: slideUp 0.2s ease-out;
+    min-height: 300px;
 }
 
 .slide-content.active {
     display: block;
+    animation: slideUp 0.2s ease-out;
 }
 
 @keyframes slideIn {
@@ -904,6 +907,20 @@ body.tema-claro .entrega-kpi-value {
     color: var(--text-main);
     font-size: 1.5rem;
     flex: 1;
+}
+
+.modal-header .btn-icon {
+    flex-shrink: 0;
+    padding: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    transition: all 0.2s;
+}
+
+.modal-header .btn-icon:hover {
+    background: rgba(255, 255, 255, 0.1) !important;
 }
 
 .back-btn {
@@ -2793,11 +2810,15 @@ option {
 }
 
 .modal-config-sidebar {
-    width: 250px;
+    width: 280px;
     flex-shrink: 0;
     background-color: rgba(255, 255, 255, 0.03);
     border-right: 1px solid rgba(255, 255, 255, 0.05);
     padding: 1.5rem 0.8rem;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
@@ -2806,6 +2827,7 @@ option {
 .config-tab-btn {
     background: transparent;
     border: none;
+    border-left: 3px solid transparent;
     color: #a0a0a0;
     padding: 0.8rem 1rem;
     border-radius: 8px;
@@ -2814,7 +2836,7 @@ option {
     display: flex;
     align-items: center;
     gap: 12px;
-    transition: 0.2s;
+    transition: all 0.2s;
     font-size: 0.9rem;
     font-weight: 500;
 }
@@ -2822,12 +2844,14 @@ option {
 .config-tab-btn:hover {
     background-color: rgba(255, 255, 255, 0.08);
     color: var(--text-main);
+    border-left-color: var(--accent-red);
 }
 
 .config-tab-btn.active {
     background-color: rgba(214, 22, 22, 0.2);
     color: var(--text-main);
     font-weight: 600;
+    border-left-color: var(--accent-red);
 }
 
 .modal-config-content {
@@ -4841,16 +4865,22 @@ body.tema-claro .wizard-total-row {
 
 /* OVERRIDES TEMA CLARO PARA TOGGLE */
 body.tema-claro .toggle-slider {
-    background-color: #e5e7eb;
-    border-color: #d1d5db;
+    background-color: #d1d5db !important;
+    border-color: #cbd5e1 !important;
 }
 
 body.tema-claro .toggle-slider:before {
-    background-color: #9ca3af;
+    background-color: #9ca3af !important;
 }
 
 body.tema-claro .toggle-switch input:checked+.toggle-slider {
-    background-color: #fee2e2;
+    background-color: #fee2e2 !important;
+}
+
+body.tema-claro .toggle-switch input:checked+.toggle-slider:before {
+    transform: translateX(22px) !important;
+    background-color: #d61616 !important;
+    box-shadow: 0 0 10px rgba(214, 22, 22, 0.3) !important;
 }
 
 /* Container e Mini-tabela de Projetos Vinculados */

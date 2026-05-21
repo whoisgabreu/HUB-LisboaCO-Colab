@@ -1084,3 +1084,762 @@ body.tema-claro #techLogModal .diff-container {
 body.tema-claro #techLogModal .diff-values-wrapper {
     background: rgba(0, 0, 0, 0.02) !important;
 }
+
+/* ═══ MODAL LOG TÉCNICO — TIMELINE TEMA CLARO ═══ */
+
+body.tema-claro #techLogModal .tech-log-content {
+    background: #ffffff !important;
+    border: 1px solid #e5e7eb !important;
+    box-shadow: none !important;
+}
+
+body.tema-claro #techLogModal .modal-header {
+    background: #f9fafb !important;
+    border-bottom: 1px solid #e5e7eb !important;
+}
+
+body.tema-claro #techLogModal .modal-title {
+    color: #0f172a !important;
+}
+
+body.tema-claro #techLogModal .modal-title::before {
+    color: #ffffff !important;
+    background: #d61616 !important;
+    box-shadow: 0 2px 8px rgba(214, 22, 22, 0.3) !important;
+}
+
+body.tema-claro #techLogModal .btn-close-log {
+    background: #ffffff !important;
+    border: 1px solid #e5e7eb !important;
+    color: #64748b !important;
+}
+
+body.tema-claro #techLogModal .btn-close-log:hover {
+    background: rgba(214, 22, 22, 0.08) !important;
+    color: #d61616 !important;
+    border-color: rgba(214, 22, 22, 0.3) !important;
+}
+
+body.tema-claro #techLogModal .modal-body::before {
+    background: linear-gradient(to bottom, rgba(214, 22, 22, 0.4), #e5e7eb) !important;
+}
+
+body.tema-claro #techLogModal .log-item {
+    background: transparent !important;
+    border: none !important;
+    border-left: none !important;
+}
+
+body.tema-claro #techLogModal .log-item:hover {
+    background: transparent !important;
+    border: none !important;
+}
+
+body.tema-claro #techLogModal .log-item::before {
+    background: #d61616 !important;
+    border: 3px solid #ffffff !important;
+    box-shadow: 0 0 0 2px #d61616, 0 0 12px rgba(214, 22, 22, 0.3) !important;
+}
+
+body.tema-claro #techLogModal .log-item-header > span:first-child {
+    background: rgba(214, 22, 22, 0.1) !important;
+    border: none !important;
+    color: #d61616 !important;
+}
+
+body.tema-claro #techLogModal .log-item-header > span:last-child {
+    color: #94a3b8 !important;
+}
+
+body.tema-claro #techLogModal .log-item-content {
+    color: #1e293b !important;
+}
+
+body.tema-claro #techLogModal .log-item-content b {
+    color: #0f172a !important;
+    background: rgba(214, 22, 22, 0.1) !important;
+}
+
+body.tema-claro #techLogModal .log-item-user {
+    color: #64748b !important;
+    background: #f3f4f6 !important;
+    border-top: none !important;
+}
+
+body.tema-claro #techLogModal .log-user-avatar {
+    background: linear-gradient(135deg, #d61616, #911414) !important;
+    color: #ffffff !important;
+    box-shadow: 0 2px 6px rgba(214, 22, 22, 0.25) !important;
+}
+
+body.tema-claro #techLogModal .log-user-avatar--sistema {
+    background: linear-gradient(135deg, #94a3b8, #475569) !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15) !important;
+}
+
+body.tema-claro #techLogModal .log-user-avatar--has-photo {
+    background: transparent !important;
+}
+
+body.tema-claro #techLogModal .modal-footer-tech {
+    background: #f9fafb !important;
+    border-top: 1px solid #e5e7eb !important;
+}
+
+/* ═══ MODAL CONFIGURAR FLUXO KANBAN — TEMA CLARO ═══ */
+
+body.tema-claro .config-section-header {
+    border-bottom: 1px solid #e5e7eb !important;
+}
+
+body.tema-claro .config-section-title {
+    color: #64748b !important;
+}
+
+body.tema-claro .config-section-title i {
+    color: #d61616 !important;
+}
+
+body.tema-claro .config-section-header .form-group label {
+    color: #475569 !important;
+}
+
+body.tema-claro .config-section-header .form-group label i {
+    color: #d61616 !important;
+}
+
+body.tema-claro .config-phases-title {
+    color: #0f172a !important;
+}
+
+body.tema-claro .config-phases-title i {
+    color: #d61616 !important;
+}
+
+body.tema-claro .phases-count-badge {
+    background: #d61616 !important;
+    color: #ffffff !important;
+}
+
+body.tema-claro .config-phases-hint {
+    color: #94a3b8 !important;
+}
+
+body.tema-claro .btn-add-phase-main {
+    border: 2px dashed #cbd5e1 !important;
+    background: transparent !important;
+    color: #64748b !important;
+}
+
+body.tema-claro .btn-add-phase-main:hover {
+    border-color: #d61616 !important;
+    color: #d61616 !important;
+    background: rgba(214, 22, 22, 0.04) !important;
+}
+
+body.tema-claro .phase-accordion-item {
+    background: #ffffff !important;
+    border: 1px solid #e5e7eb !important;
+}
+
+body.tema-claro .phase-accordion-item.active {
+    border-color: rgba(214, 22, 22, 0.4) !important;
+    box-shadow: 0 4px 18px rgba(214, 22, 22, 0.08) !important;
+}
+
+body.tema-claro .phase-accordion-header {
+    background: #f9fafb !important;
+}
+
+body.tema-claro .phase-accordion-header:hover {
+    background: #f3f4f6 !important;
+}
+
+body.tema-claro .phase-accordion-item.active .phase-accordion-header {
+    background: rgba(214, 22, 22, 0.04) !important;
+}
+
+body.tema-claro .phase-order-badge {
+    background: #e2e8f0 !important;
+    color: #475569 !important;
+    font-weight: 700 !important;
+}
+
+body.tema-claro .phase-accordion-item.active .phase-order-badge {
+    background: #d61616 !important;
+    color: #ffffff !important;
+}
+
+body.tema-claro .phase-title-text {
+    color: #0f172a !important;
+}
+
+body.tema-claro .btn-icon-small {
+    background: #ffffff !important;
+    border: 1px solid #e5e7eb !important;
+    color: #64748b !important;
+}
+
+body.tema-claro .btn-icon-small:hover {
+    border-color: #d61616 !important;
+    color: #d61616 !important;
+    background: rgba(214, 22, 22, 0.04) !important;
+}
+
+body.tema-claro .accordion-arrow {
+    color: #94a3b8 !important;
+}
+
+body.tema-claro .phase-accordion-body {
+    background: #ffffff !important;
+    border-top: 1px solid #e5e7eb !important;
+}
+
+body.tema-claro .fields-config-header {
+    color: #64748b !important;
+}
+
+body.tema-claro .field-item-card {
+    background: #f9fafb !important;
+    border: 1px solid #e5e7eb !important;
+}
+
+body.tema-claro .modal-content .btn-close-modal {
+    background: #ffffff !important;
+    border: 1px solid #e5e7eb !important;
+    color: #64748b !important;
+}
+
+body.tema-claro .modal-content .btn-close-modal:hover {
+    background: rgba(214, 22, 22, 0.08) !important;
+    color: #d61616 !important;
+    border-color: rgba(214, 22, 22, 0.3) !important;
+}
+
+body.tema-claro .modal-content .modal-header h2 {
+    color: #0f172a !important;
+}
+
+/* ═══ CAMPOS DA FASE V2 — TEMA CLARO ═══ */
+
+body.tema-claro .fields-config-header-row {
+    border-bottom: 1px solid #e5e7eb !important;
+}
+
+body.tema-claro .fields-config-header-title {
+    color: #475569 !important;
+}
+
+body.tema-claro .fields-config-header-title i {
+    color: #d61616 !important;
+}
+
+body.tema-claro .fields-count-badge {
+    background: rgba(214, 22, 22, 0.1) !important;
+    color: #d61616 !important;
+}
+
+body.tema-claro .fields-config-hint {
+    color: #94a3b8 !important;
+}
+
+body.tema-claro .field-card-v2 {
+    background: #ffffff !important;
+    border: 1px solid #e5e7eb !important;
+}
+
+body.tema-claro .field-card-v2:hover {
+    border-color: rgba(214, 22, 22, 0.3) !important;
+    background: #fafafa !important;
+}
+
+body.tema-claro .field-type-icon {
+    background: rgba(214, 22, 22, 0.08) !important;
+    color: #d61616 !important;
+}
+
+body.tema-claro .field-req-pill {
+    background: #f3f4f6 !important;
+    border: 1px solid #e5e7eb !important;
+    color: #64748b !important;
+}
+
+body.tema-claro .field-req-toggle input:checked + .field-req-pill {
+    background: rgba(214, 22, 22, 0.1) !important;
+    border-color: rgba(214, 22, 22, 0.3) !important;
+    color: #d61616 !important;
+}
+
+body.tema-claro .field-remove-btn {
+    background: #ffffff !important;
+    border: 1px solid #e5e7eb !important;
+    color: #64748b !important;
+}
+
+body.tema-claro .field-remove-btn:hover {
+    background: rgba(239, 68, 68, 0.08) !important;
+    border-color: rgba(239, 68, 68, 0.4) !important;
+    color: #ef4444 !important;
+}
+
+body.tema-claro .field-sub-row {
+    border-top: 1px dashed #e5e7eb !important;
+}
+
+body.tema-claro .field-sub-label {
+    color: #64748b !important;
+}
+
+body.tema-claro .field-sync-row {
+    border-top: 1px dashed #e5e7eb !important;
+}
+
+body.tema-claro .field-sync-toggle {
+    background: #e2e8f0 !important;
+    border-color: #cbd5e1 !important;
+}
+
+body.tema-claro .field-sync-toggle::before {
+    background: #94a3b8 !important;
+}
+
+body.tema-claro .field-sync-toggle:checked {
+    background: rgba(214, 22, 22, 0.2) !important;
+    border-color: rgba(214, 22, 22, 0.4) !important;
+}
+
+body.tema-claro .field-sync-toggle:checked::before {
+    background: #d61616 !important;
+}
+
+body.tema-claro .field-sync-toggle-label {
+    color: #64748b !important;
+}
+
+body.tema-claro .field-sync-toggle-label i {
+    color: #94a3b8 !important;
+}
+
+body.tema-claro .field-sync-toggle-wrap:has(.field-sync-toggle:checked) .field-sync-toggle-label {
+    color: #1e293b !important;
+}
+
+body.tema-claro .field-sync-toggle-wrap:has(.field-sync-toggle:checked) .field-sync-toggle-label i {
+    color: #d61616 !important;
+}
+
+body.tema-claro .field-sync-arrow {
+    color: #cbd5e1 !important;
+}
+
+body.tema-claro .field-options-area {
+    border-top: 1px dashed #e5e7eb !important;
+}
+
+body.tema-claro .field-options-area label {
+    color: #475569 !important;
+}
+
+body.tema-claro .field-options-area label i {
+    color: #d61616 !important;
+}
+
+body.tema-claro .field-options-hint {
+    color: #94a3b8 !important;
+}
+
+body.tema-claro .fields-empty-state {
+    background: #f9fafb !important;
+    border: 1px dashed #cbd5e1 !important;
+}
+
+body.tema-claro .fields-empty-state i {
+    color: #94a3b8 !important;
+}
+
+body.tema-claro .fields-empty-state p {
+    color: #1e293b !important;
+}
+
+body.tema-claro .fields-empty-state small {
+    color: #64748b !important;
+}
+
+body.tema-claro .btn-add-field-sec-v2 {
+    border: 1px dashed #cbd5e1 !important;
+    background: transparent !important;
+    color: #64748b !important;
+}
+
+body.tema-claro .btn-add-field-sec-v2:hover {
+    border-color: #d61616 !important;
+    color: #d61616 !important;
+    background: rgba(214, 22, 22, 0.04) !important;
+}
+
+/* ═══ STATUS PILLS — TEMA CLARO ═══ */
+body.tema-claro .status-pill {
+    background: #f3f4f6 !important;
+    border: 1px solid #e5e7eb !important;
+    color: #64748b !important;
+}
+
+body.tema-claro .status-pill:hover {
+    background: #e5e7eb !important;
+    border-color: #cbd5e1 !important;
+}
+
+body.tema-claro .status-pill-ativo.active {
+    background: rgba(34, 197, 94, 0.12) !important;
+    border-color: rgba(34, 197, 94, 0.45) !important;
+    color: #16a34a !important;
+}
+body.tema-claro .status-pill-onetime.active {
+    background: rgba(59, 130, 246, 0.12) !important;
+    border-color: rgba(59, 130, 246, 0.45) !important;
+    color: #2563eb !important;
+}
+body.tema-claro .status-pill-inativo.active {
+    background: rgba(148, 163, 184, 0.18) !important;
+    border-color: rgba(148, 163, 184, 0.5) !important;
+    color: #475569 !important;
+}
+
+/* Badge da fase no modal do card — tema claro */
+body.tema-claro .modal-title-text {
+    color: #64748b !important;
+}
+
+body.tema-claro .modal-title-text strong {
+    color: #0f172a !important;
+}
+
+body.tema-claro .phase-badge {
+    background: rgba(214, 22, 22, 0.1) !important;
+    border-color: rgba(214, 22, 22, 0.3) !important;
+    color: #d61616 !important;
+}
+
+body.tema-claro .phase-badge-ativo {
+    background: rgba(34, 197, 94, 0.1) !important;
+    border-color: rgba(34, 197, 94, 0.4) !important;
+    color: #16a34a !important;
+}
+body.tema-claro .phase-badge-onetime {
+    background: rgba(59, 130, 246, 0.1) !important;
+    border-color: rgba(59, 130, 246, 0.4) !important;
+    color: #2563eb !important;
+}
+body.tema-claro .phase-badge-inativo {
+    background: rgba(148, 163, 184, 0.15) !important;
+    border-color: rgba(148, 163, 184, 0.4) !important;
+    color: #475569 !important;
+}
+
+body.tema-claro .modal-meta-time {
+    color: #94a3b8 !important;
+}
+
+body.tema-claro .modal-meta-sep {
+    color: #cbd5e1 !important;
+}
+
+/* Footer pegajoso — tema claro */
+body.tema-claro .modal-footer {
+    background: rgba(255, 255, 255, 0.92) !important;
+    border-top: 1px solid #e5e7eb !important;
+}
+
+/* ═══ MELHORIAS VISUAIS DO MODAL — TEMA CLARO ═══ */
+
+body.tema-claro .modal-footer {
+    background: #f9fafb !important;
+    border-top: 1px solid #e5e7eb !important;
+}
+
+body.tema-claro .modal-content {
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08) !important;
+    border: 1px solid #cbd5e1 !important;
+}
+
+/* ═══ MELHORIAS KANBAN — ESPAÇAMENTO E SOMBRAS ═══ */
+
+body.tema-claro .kanban-card {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06) !important;
+    transition: all 0.2s ease !important;
+}
+
+body.tema-claro .kanban-card:hover {
+    box-shadow: 0 8px 16px rgba(214, 22, 22, 0.1) !important;
+}
+
+body.tema-claro .kanban-column {
+    background: #f1f5f9 !important;
+    border: 1px solid #e2e8f0 !important;
+}
+
+/* Melhorar visibilidade do header das colunas */
+body.tema-claro .column-header {
+    background: #ffffff !important;
+    border-bottom: 2px solid #e2e8f0 !important;
+    padding: 16px 20px !important;
+}
+
+body.tema-claro .column-header h3 {
+    color: #334155 !important;
+    font-weight: 700 !important;
+}
+
+/* ═══ MODAL FECHAR BOTÃO — TEMA CLARO ═══ */
+
+body.tema-claro .modal-header button[style*="color:white"] {
+    color: #64748b !important;
+}
+
+body.tema-claro .modal-header button[style*="color:white"]:hover {
+    color: #d61616 !important;
+}
+
+body.tema-claro .btn-icon[style*="color:white"] {
+    color: #64748b !important;
+}
+
+body.tema-claro .btn-icon[style*="color:white"]:hover {
+    color: #d61616 !important;
+}
+
+/* ═══ MELHORIAS SLIDES/ABAS — PREVENT COLLAPSE ═══ */
+
+body.tema-claro .slide-content {
+    min-height: 400px;
+}
+
+body.tema-claro .modal-body-scroll {
+    min-height: 300px;
+}
+
+/* ═══ ÍCONES — TEMA CLARO ═══ */
+
+body.tema-claro .btn-icon {
+    color: #64748b !important;
+    transition: all 0.2s ease !important;
+}
+
+body.tema-claro .btn-icon:hover {
+    color: #d61616 !important;
+    background: rgba(214, 22, 22, 0.08) !important;
+    border-color: #d61616 !important;
+}
+
+body.tema-claro .fa-cog,
+body.tema-claro .fa-palette,
+body.tema-claro .fa-user,
+body.tema-claro .fa-shield-alt {
+    color: #475569 !important;
+    font-size: 1.1rem !important;
+}
+
+body.tema-claro .config-tab-btn .fa-cog,
+body.tema-claro .config-tab-btn .fa-palette,
+body.tema-claro .config-tab-btn .fa-user,
+body.tema-claro .config-tab-btn .fa-shield-alt {
+    color: #64748b !important;
+}
+
+body.tema-claro .config-tab-btn.active .fa-cog,
+body.tema-claro .config-tab-btn.active .fa-palette,
+body.tema-claro .config-tab-btn.active .fa-user,
+body.tema-claro .config-tab-btn.active .fa-shield-alt {
+    color: #d61616 !important;
+}
+
+/* ═══ HISTÓRICO — TEMA CLARO ═══ */
+
+body.tema-claro .col-history {
+    background: #ffffff !important;
+    border-left: 1px solid #e2e8f0 !important;
+}
+
+body.tema-claro .col-history .col-title {
+    background: #f8fafc !important;
+    border-bottom: 2px solid #e2e8f0 !important;
+    color: #111827 !important;
+}
+
+body.tema-claro .col-history .col-title i {
+    color: #d61616 !important;
+}
+
+body.tema-claro .history-item {
+    background: #f9fafb !important;
+    border: 1px solid #e5e7eb !important;
+}
+
+body.tema-claro .history-item:hover {
+    background: #f3f4f6 !important;
+    border-color: #d61616 !important;
+}
+
+body.tema-claro .history-phase-header {
+    background: rgba(214, 22, 22, 0.06) !important;
+    border-left: 3px solid #d61616 !important;
+}
+
+body.tema-claro .history-phase-header span:first-child {
+    color: #b91c1c !important;
+    width: 100% !important;
+    word-break: break-word !important;
+    overflow-wrap: anywhere !important;
+    line-height: 1.3 !important;
+}
+
+body.tema-claro .history-phase-header span:last-child {
+    color: #64748b !important;
+}
+
+body.tema-claro .history-field {
+    border-bottom: 1px solid #e5e7eb !important;
+}
+
+body.tema-claro .history-field span:first-child {
+    color: #64748b !important;
+}
+
+body.tema-claro .history-field span:last-child {
+    color: #0f172a !important;
+}
+
+body.tema-claro .btn-link {
+    background: #f3f4f6 !important;
+    border: 1px solid #d1d5db !important;
+    color: #374151 !important;
+}
+
+body.tema-claro .btn-link:hover {
+    background: rgba(214, 22, 22, 0.08) !important;
+    border-color: #d61616 !important;
+    color: #d61616 !important;
+}
+
+/* ═══ BOTÃO CONFIGURAÇÕES KANBAN — TEMA CLARO ═══ */
+
+body.tema-claro #btnConfig {
+    border: 1px solid #cbd5e1 !important;
+    background: #f3f4f6 !important;
+    color: #64748b !important;
+}
+
+body.tema-claro #btnConfig:hover {
+    background: rgba(214, 22, 22, 0.1) !important;
+    border-color: #d61616 !important;
+    color: #d61616 !important;
+    box-shadow: 0 4px 15px rgba(214, 22, 22, 0.15) !important;
+}
+
+/* ═══ MODAL CONFIGURAÇÕES — TEMA CLARO ═══ */
+
+body.tema-claro .modal-configuracoes {
+    background-color: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15) !important;
+}
+
+body.tema-claro .modal-configuracoes-header {
+    background: #f8fafc !important;
+    border-bottom: 2px solid #e2e8f0 !important;
+}
+
+body.tema-claro .modal-configuracoes-header h2 {
+    color: #111827 !important;
+}
+
+body.tema-claro .modal-configuracoes-header h2 i {
+    color: #d61616 !important;
+}
+
+body.tema-claro .modal-configuracoes-fechar {
+    color: #64748b !important;
+}
+
+body.tema-claro .modal-configuracoes-fechar:hover {
+    background: rgba(214, 22, 22, 0.1) !important;
+    color: #d61616 !important;
+}
+
+body.tema-claro .modal-config-sidebar {
+    background: #f9fafb !important;
+    border-right: 1px solid #e5e7eb !important;
+}
+
+body.tema-claro .config-tab-btn {
+    color: #64748b !important;
+    border-left: 3px solid transparent !important;
+    transition: all 0.2s !important;
+}
+
+body.tema-claro .config-tab-btn:hover {
+    background-color: rgba(214, 22, 22, 0.05) !important;
+    color: #d61616 !important;
+    border-left: 3px solid #d61616 !important;
+}
+
+body.tema-claro .config-tab-btn.active {
+    background-color: rgba(214, 22, 22, 0.1) !important;
+    color: #d61616 !important;
+    border-left: 3px solid #d61616 !important;
+    font-weight: 600 !important;
+}
+
+body.tema-claro .modal-config-content {
+    background: #ffffff !important;
+    color: #111827 !important;
+}
+
+body.tema-claro .config-group h4 {
+    color: #111827 !important;
+}
+
+body.tema-claro .config-item-label {
+    color: #111827 !important;
+    font-weight: 700 !important;
+}
+
+body.tema-claro .config-item-descricao {
+    color: #64748b !important;
+    font-size: 0.85rem !important;
+}
+
+body.tema-claro .profile-upload-container {
+    background: #f8fafc !important;
+    border: 1px solid #e5e7eb !important;
+}
+
+body.tema-claro .security-card {
+    background: #f9fafb !important;
+    border: 1px solid #e5e7eb !important;
+}
+
+body.tema-claro .security-info h4 {
+    color: #111827 !important;
+}
+
+body.tema-claro .security-info p {
+    color: #64748b !important;
+}
+
+body.tema-claro .session-info {
+    background: #f8fafc !important;
+    border: 1px solid #e5e7eb !important;
+}
+
+body.tema-claro .session-info h4 {
+    color: #111827 !important;
+}
+
+body.tema-claro .session-item span {
+    color: #64748b !important;
+}
+
+body.tema-claro .session-item strong {
+    color: #0f172a !important;
+}
