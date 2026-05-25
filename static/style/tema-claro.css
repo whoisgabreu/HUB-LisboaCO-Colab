@@ -790,6 +790,54 @@ body.tema-claro .card-meta {
     color: #64748b !important;
 }
 
+/* Badges de tempo no card — tema claro */
+body.tema-claro .card-time-badges {
+    border-top: 1px dashed #e5e7eb !important;
+}
+
+body.tema-claro .time-badge {
+    background: #f9fafb !important;
+    border-color: #e5e7eb !important;
+}
+
+body.tema-claro .time-badge--age {
+    color: #ea580c !important;
+}
+body.tema-claro .time-badge--age i { color: #ea580c !important; }
+
+body.tema-claro .time-badge--phase {
+    color: #0d9488 !important;
+}
+body.tema-claro .time-badge--phase i { color: #0d9488 !important; }
+
+body.tema-claro .time-badge--update {
+    color: #6366f1 !important;
+}
+body.tema-claro .time-badge--update i { color: #6366f1 !important; }
+
+body.tema-claro .time-badge--warning {
+    background: rgba(234, 179, 8, 0.1) !important;
+    color: #ca8a04 !important;
+    border-color: rgba(234, 179, 8, 0.35) !important;
+}
+body.tema-claro .time-badge--warning i { color: #ca8a04 !important; }
+
+body.tema-claro .time-badge--danger {
+    background: rgba(239, 68, 68, 0.08) !important;
+    color: #dc2626 !important;
+    border-color: rgba(239, 68, 68, 0.35) !important;
+}
+body.tema-claro .time-badge--danger i { color: #dc2626 !important; }
+
+/* Ícone acesso direto — tema claro */
+body.tema-claro .direct-access-icon {
+    color: rgba(214, 22, 22, 0.5) !important;
+}
+
+body.tema-claro .transition-btn:hover:not(.blocked) .direct-access-icon {
+    color: #d61616 !important;
+}
+
 body.tema-claro .modal-overlay {
     background: rgba(15, 23, 42, 0.6) !important;
 }

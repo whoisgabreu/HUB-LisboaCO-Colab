@@ -188,7 +188,7 @@ const modal = {
             if (!allowed) btn.classList.add('blocked');
             
             let statusIcon = allowed ? '<i class="fas fa-arrow-right"></i>' : '<i class="fas fa-lock"></i>';
-            if (reason === 'direct') statusIcon = '<i class="fas fa-bolt" style="color:#fbbf24;"></i>';
+            if (reason === 'direct') statusIcon = '<i class="fas fa-bolt direct-access-icon" title="Acesso direto"></i>';
             if (reason === 'return') statusIcon = '<i class="fas fa-undo"></i>';
 
             btn.innerHTML = `<span>${fase.nome}</span><span>${statusIcon}</span>`;

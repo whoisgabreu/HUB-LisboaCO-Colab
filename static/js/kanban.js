@@ -158,11 +158,31 @@ const board = {
             const cardEl = document.createElement('div');
             cardEl.className = 'kanban-card';
             cardEl.draggable = true;
+
+            const ageMs = this.getCardAge(card);
+            const phaseMs = this.getTimeInPhase(card);
+            const updateMs = this.getTimeSinceUpdate(card);
+            const ageText = this.formatDuration(ageMs);
+            const phaseText = this.formatDuration(phaseMs);
+            const updateText = this.formatDuration(updateMs);
+            const phaseClass = this.phaseSeverityClass(phaseMs);
+
             cardEl.innerHTML = `
                 <h4>${card.titulo}</h4>
                 <div class="card-meta">
                     <span><i class="fas fa-hashtag"></i> ${card.card_id}</span>
                     <span><i class="fas fa-money-bill-wave"></i> ${card.fee.toLocaleString('pt-BR', {style:'currency', currency: card.moeda || 'BRL'})}</span>
+                </div>
+                <div class="card-time-badges">
+                    <span class="time-badge time-badge--age" title="Card criado há ${ageText}">
+                        <i class="far fa-calendar-plus"></i> ${ageText}
+                    </span>
+                    <span class="time-badge time-badge--phase ${phaseClass}" title="${phaseText} nesta fase (${card.fase_atual || '-'})">
+                        <i class="fas fa-hourglass-half"></i> ${phaseText}
+                    </span>
+                    <span class="time-badge time-badge--update" title="Última edição há ${updateText}">
+                        <i class="fas fa-pen"></i> ${updateText}
+                    </span>
                 </div>
             `;
             
@@ -203,6 +223,59 @@ const board = {
             this.searchQuery = query;
             this.render();
         }, 150);
+    },
+
+    formatDuration(ms) {
+        if (!ms || ms < 0) return 'agora';
+        const seconds = Math.floor(ms / 1000);
+        const minutes = Math.floor(seconds / 60);
+        const hours = Math.floor(minutes / 60);
+        const days = Math.floor(hours / 24);
+        if (days >= 30) {
+            const months = Math.floor(days / 30);
+            return `${months}m`;
+        }
+        if (days > 0) return `${days}d`;
+        if (hours > 0) return `${hours}h`;
+        if (minutes > 0) return `${minutes}min`;
+        return 'agora';
+    },
+
+    _historicoTimestamps(card) {
+        const hist = card && Array.isArray(card.historico) ? card.historico : [];
+        return hist
+            .map(h => h && h.timestamp ? new Date(h.timestamp).getTime() : NaN)
+            .filter(n => !isNaN(n));
+    },
+
+    getCardAge(card) {
+        const ts = this._historicoTimestamps(card);
+        if (ts.length === 0) return 0;
+        return Date.now() - Math.min(...ts);
+    },
+
+    getTimeSinceUpdate(card) {
+        const ts = this._historicoTimestamps(card);
+        if (ts.length === 0) return 0;
+        return Date.now() - Math.max(...ts);
+    },
+
+    getTimeInPhase(card) {
+        const hist = card && Array.isArray(card.historico) ? card.historico : [];
+        if (hist.length === 0 || !card.fase_atual) return 0;
+        const entries = hist
+            .filter(h => h && h.timestamp && (h.fase_entrada === card.fase_atual || h.fase_nova === card.fase_atual))
+            .map(h => new Date(h.timestamp).getTime())
+            .filter(n => !isNaN(n));
+        if (entries.length === 0) return 0;
+        return Date.now() - Math.max(...entries);
+    },
+
+    phaseSeverityClass(ms) {
+        const days = ms / (1000 * 60 * 60 * 24);
+        if (days >= 30) return 'time-badge--danger';
+        if (days >= 14) return 'time-badge--warning';
+        return '';
     }
 };
 

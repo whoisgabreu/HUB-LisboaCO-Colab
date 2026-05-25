@@ -210,6 +210,67 @@
     gap: 4px;
 }
 
+/* ═══ BADGES DE TEMPO NO CARD ═══ */
+.card-time-badges {
+    display: flex;
+    gap: 6px;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed rgba(255, 255, 255, 0.06);
+    flex-wrap: wrap;
+}
+
+.time-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 10px;
+    font-size: 0.68rem;
+    font-weight: 600;
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-muted);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    cursor: help;
+    line-height: 1.4;
+    transition: background 0.15s;
+}
+
+.time-badge i {
+    font-size: 0.62rem;
+    opacity: 0.85;
+}
+
+.time-badge--age {
+    color: #f97316;
+}
+.time-badge--age i { color: #f97316; }
+
+.time-badge--phase {
+    color: #14b8a6;
+}
+.time-badge--phase i { color: #14b8a6; }
+
+.time-badge--update {
+    color: #818cf8;
+}
+.time-badge--update i { color: #818cf8; }
+
+/* Severidade — destaca quando o card tá parado há muito tempo na fase */
+.time-badge--warning {
+    background: rgba(234, 179, 8, 0.12);
+    color: #facc15 !important;
+    border-color: rgba(234, 179, 8, 0.3);
+}
+.time-badge--warning i { color: #facc15 !important; }
+
+.time-badge--danger {
+    background: rgba(239, 68, 68, 0.12);
+    color: #f87171 !important;
+    border-color: rgba(239, 68, 68, 0.3);
+}
+.time-badge--danger i { color: #f87171 !important; }
+
 /* Modais */
 .modal-overlay {
     position: fixed;
@@ -359,6 +420,18 @@
 .transition-btn.blocked {
     opacity: 0.4;
     cursor: not-allowed;
+}
+
+/* Ícone de "acesso direto" — sutil, sem cara de emoji */
+.direct-access-icon {
+    color: rgba(214, 22, 22, 0.55);
+    font-size: 0.8rem;
+    opacity: 0.9;
+}
+
+.transition-btn:hover:not(.blocked) .direct-access-icon {
+    color: var(--kanban-accent);
+    opacity: 1;
 }
 
 /* History */

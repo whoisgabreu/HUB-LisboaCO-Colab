@@ -99,6 +99,16 @@ const kanbanConfig = {
                             <label>Nome da Fase</label>
                             <input type="text" value="${fase.nome}" class="modern-input phase-name-input" data-findex="${fIndex}">
                         </div>
+                        <div class="form-group-inline" style="flex:1.2;">
+                            <label>Status do Projeto *</label>
+                            <div class="status-pills" data-findex="${fIndex}">
+                                ${['Ativo', 'Onetime', 'Inativo'].map(s => `
+                                    <button type="button" class="status-pill status-pill-${s.toLowerCase()} ${fase.status_do_projeto === s ? 'active' : ''}" data-findex="${fIndex}" data-status="${s}">
+                                        <span class="status-pill-dot"></span>${s}
+                                    </button>
+                                `).join('')}
+                            </div>
+                        </div>
                         <div style="display:flex; align-items:center; gap:20px; padding-top:20px;">
                             <label class="checkbox-label" style="cursor:pointer;">
                                 <input type="checkbox" class="phase-direct-access-check" data-findex="${fIndex}" ${fase.permite_acesso_direto ? 'checked' : ''}>
@@ -197,6 +207,17 @@ const kanbanConfig = {
             input.onchange = (e) => { this.currentConfig.fases[e.target.dataset.findex].nome = e.target.value; };
         });
 
+        this.body.querySelectorAll('.status-pill').forEach(pill => {
+            pill.onclick = (e) => {
+                const btn = e.currentTarget;
+                const { findex, status } = btn.dataset;
+                this.currentConfig.fases[findex].status_do_projeto = status;
+                const group = btn.closest('.status-pills');
+                group.querySelectorAll('.status-pill').forEach(p => p.classList.remove('active'));
+                btn.classList.add('active');
+            };
+        });
+
         document.getElementById('btn_add_phase').onclick = () => {
             const newIndex = this.currentConfig.fases.length;
             this.currentConfig.fases.push({
@@ -204,7 +225,7 @@ const kanbanConfig = {
                 nome: 'Nova Fase',
                 ordem: newIndex + 1,
                 permite_acesso_direto: false,
-                status_do_projeto: 'Ativo',
+                status_do_projeto: '',
                 campos: [{ id: 'f_' + Date.now(), label: 'Título', tipo: 'string', obrigatorio: true }]
             });
             this.expandedPhaseIndex = newIndex;
