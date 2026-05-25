@@ -22,7 +22,7 @@
     <script src="static/js/app.js" defer></script>
 </head>
 
-<body>
+<body class="kanban-page">
 
     {% include "components/header.html" %}
     {% include "components/sidebar.html" %}
@@ -65,7 +65,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2 id="modalTitle">Detalhes do Projeto</h2>
-                <button id="btnCloseModal" class="btn-icon" style="background:transparent; border:none; color:white; font-size:1.2rem; cursor:pointer;">✕</button>
+                <button id="btnCloseModal" class="btn-close-modal" title="Fechar"><i class="fas fa-xmark"></i></button>
             </div>
             <div id="modalBody" class="modal-body-scroll">
                 <!-- Conteúdo dinâmico -->
@@ -84,15 +84,15 @@
     <div id="configModalOverlay" class="modal-overlay">
         <div class="modal-content config-modal">
             <div class="modal-header">
-                <h2>Configurar Fluxo Kanban</h2>
-                <button id="btnCloseConfigModal" class="btn-icon" style="background:transparent; border:none; color:white; font-size:1.2rem; cursor:pointer;">✕</button>
+                <h2><i class="fas fa-cog" style="color:#d61616; margin-right:10px;"></i>Configurar Fluxo Kanban</h2>
+                <button id="btnCloseConfigModal" class="btn-close-modal" title="Fechar"><i class="fas fa-xmark"></i></button>
             </div>
-            <div id="configModalBody" class="config-scroll" style="flex:1; overflow-y:auto; padding:24px;">
+            <div id="configModalBody" class="config-scroll" style="flex:1; overflow-y:auto; padding:28px 32px;">
                 <!-- Editor de fases injetado aqui -->
             </div>
             <div class="modal-footer">
                 <button id="btnConfigCancel" class="btn-secondary">Cancelar</button>
-                <button id="btnConfigSave" class="btn-primary">Salvar Configuração</button>
+                <button id="btnConfigSave" class="btn-primary"><i class="fas fa-check" style="margin-right:6px;"></i>Salvar Configuração</button>
             </div>
         </div>
     </div>

@@ -1340,6 +1340,26 @@ def hub_remuneracao():
     )
 
 
+# ─── FOTO DE USUÁRIO (LEITURA P/ USUÁRIOS LOGADOS) ───────────────────────────
+
+@app.route("/api/usuarios/<email>/foto", methods=["GET"])
+@check_session
+def api_get_foto_usuario(email):
+    """Retorna apenas a URL da foto de perfil de um usuário pelo email.
+    Endpoint isolado, somente leitura — não modifica dados nem regras existentes."""
+    try:
+        with Session() as db:
+            user = db.query(Investidor).filter(Investidor.email == email).first()
+            if not user or not user.profile_picture:
+                return jsonify({"foto": None, "nome": email.split("@")[0] if email and "@" in email else email})
+            return jsonify({
+                "foto": f"/static/images/profile_pictures/{user.profile_picture}",
+                "nome": user.nome or email.split("@")[0]
+            })
+    except Exception as e:
+        return jsonify({"foto": None, "error": str(e)}), 500
+
+
 # ─── GERENCIAMENTO DE USUÁRIOS (ADMIN) ───────────────────────────────────────
 
 @app.route("/gerenciar-usuarios")
@@ -3762,6 +3782,31 @@ def api_kanban_cards():
     with Session() as db:
         service = KanbanService(db)
         cards = service.list_cards()
+        
+        # Otimização: buscar todo o histórico de uma vez para popular os badges no front
+        from collections import defaultdict
+        hist_map = defaultdict(list)
+        historicos = db.query(KanbanHistorico).order_by(KanbanHistorico.data_evento.desc()).all()
+        for h in historicos:
+            hist_map[h.projeto_id].append({
+                "fase_entrada": h.snapshot.get("fase_concluida") or h.snapshot.get("fase") or h.snapshot.get("fase_entrada"),
+                "fase_anterior": h.snapshot.get("fase_anterior") or h.snapshot.get("fase_concluida") if h.snapshot.get("evento") == "movimentacao" else None,
+                "fase_nova": h.snapshot.get("fase_nova") or h.snapshot.get("fase") or h.snapshot.get("fase_entrada"),
+                "dados": h.snapshot.get("dados") or h.snapshot.get("dados_transicao") or h.snapshot.get("snapshot_completo"),
+                "labels": h.snapshot.get("_labels") or {},
+                "snapshot": h.snapshot,
+                "evento": h.snapshot.get("evento"),
+                "usuario": h.usuario_email,
+                "timestamp": h.data_evento.isoformat()
+            })
+            
+        for card in cards:
+            card_id = card.get("card_id")
+            if card_id in hist_map:
+                card["historico"] = hist_map[card_id]
+            else:
+                card["historico"] = []
+                
         return jsonify(cards)
 
 @app.route("/api/kanban/cards/<int:card_id>", methods=["GET"])

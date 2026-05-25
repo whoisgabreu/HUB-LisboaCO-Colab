@@ -39,12 +39,26 @@ const modal = {
 
     showView(card, config) {
         this.currentCard = card;
-        this.title.innerText = `Projeto: ${card.titulo}`;
         this.footer.style.display = 'flex';
         this.saveBtn.style.display = 'block';
-        
+
         const currentPhase = config.fases.find(f => f.nome === card.fase_atual) || config.fases[0];
         this.currentPhaseConfig = currentPhase;
+
+        const status = (currentPhase.status_do_projeto || '').toLowerCase() || 'ativo';
+        const lastTs = this._lastUpdateTimestamp(card);
+        const updatedLabel = lastTs ? `atualizado ${this._timeAgo(lastTs)}` : '';
+        this.title.innerHTML = `
+            <div class="modal-title-wrap">
+                <span class="modal-title-text">Projeto: <strong>${card.titulo || ''}</strong></span>
+                <div class="modal-title-meta">
+                    <span class="phase-badge phase-badge-${status}">
+                        <span class="phase-badge-dot"></span>${currentPhase.nome || 'Sem fase'}
+                    </span>
+                    ${updatedLabel ? `<span class="modal-meta-sep">·</span><span class="modal-meta-time"><i class="far fa-clock"></i> ${updatedLabel}</span>` : ''}
+                </div>
+            </div>
+        `;
 
         this.content.innerHTML = `
             <div class="modal-grid">
@@ -174,7 +188,7 @@ const modal = {
             if (!allowed) btn.classList.add('blocked');
             
             let statusIcon = allowed ? '<i class="fas fa-arrow-right"></i>' : '<i class="fas fa-lock"></i>';
-            if (reason === 'direct') statusIcon = '<i class="fas fa-bolt" style="color:#fbbf24;"></i>';
+            if (reason === 'direct') statusIcon = '<i class="fas fa-bolt direct-access-icon" title="Acesso direto"></i>';
             if (reason === 'return') statusIcon = '<i class="fas fa-undo"></i>';
 
             btn.innerHTML = `<span>${fase.nome}</span><span>${statusIcon}</span>`;
@@ -240,7 +254,20 @@ const modal = {
         const end = start + pageSize;
         const logsToShow = allLogs.slice(start, end);
 
-        const logHtml = logsToShow.map(h => `
+        const _getInitial = (str) => {
+            if (!str) return '?';
+            const s = String(str).trim();
+            return (s[0] || '?').toUpperCase();
+        };
+
+        const logHtml = logsToShow.map(h => {
+            const usuario = h.usuario || 'Sistema';
+            const isSistema = !h.usuario || /sistema/i.test(usuario);
+            const initial = _getInitial(usuario);
+            const avatarHtml = isSistema
+                ? `<span class="log-user-avatar log-user-avatar--sistema"><i class="fas fa-cog"></i></span>`
+                : `<span class="log-user-avatar" data-email="${usuario}"><span class="log-user-initial">${initial}</span></span>`;
+            return `
             <div class="log-item">
                 <div class="log-item-header">
                     <span style="font-weight: 700; color: ${h.evento === 'atualizacao' ? '#3b82f6' : 'var(--kanban-accent)'};">
@@ -249,15 +276,16 @@ const modal = {
                     <span style="color: var(--text-muted);">${new Date(h.timestamp).toLocaleString()}</span>
                 </div>
                 <div class="log-item-content">
-                    ${h.evento === 'criacao' ? `Projeto criado na fase <b>${h.fase_entrada}</b>` : 
-                      (h.evento === 'atualizacao' ? this._renderAlteracoes(h.snapshot?.alteracoes) : 
+                    ${h.evento === 'criacao' ? `Projeto criado na fase <b>${h.fase_entrada}</b>` :
+                      (h.evento === 'atualizacao' ? this._renderAlteracoes(h.snapshot?.alteracoes) :
                       `Movido de <b>${h.fase_anterior || '-'}</b> para <b>${h.fase_nova || h.fase_entrada}</b>`)}
                 </div>
                 <div class="log-item-user">
-                    <i class="fas fa-user"></i> ${h.usuario || 'Sistema'}
+                    ${avatarHtml}<span class="log-user-name">${usuario}</span>
                 </div>
             </div>
-        `).join('');
+        `;
+        }).join('');
 
         // Pagination controls
         let paginationHtml = '';
@@ -305,7 +333,7 @@ const modal = {
         logModal.querySelector('.btn-close-log').onclick = () => {
             logModal.remove();
         };
-        
+
         if (totalPages > 1) {
             const prev = logModal.querySelector('.btn-prev');
             const next = logModal.querySelector('.btn-next');
@@ -314,6 +342,62 @@ const modal = {
         }
 
         logModal.onclick = (e) => { if(e.target === logModal) logModal.remove(); };
+
+        this._carregarFotosLog(logModal);
+    },
+
+    _fotoCache: {},
+
+    _lastUpdateTimestamp(card) {
+        const hist = card.historico || [];
+        if (hist.length === 0) return null;
+        const ts = hist
+            .map(h => h.timestamp)
+            .filter(Boolean)
+            .map(t => new Date(t).getTime())
+            .filter(n => !isNaN(n));
+        if (ts.length === 0) return null;
+        return new Date(Math.max(...ts));
+    },
+
+    _timeAgo(date) {
+        const now = new Date();
+        const diffMs = now - date;
+        const diffSec = Math.floor(diffMs / 1000);
+        const diffMin = Math.floor(diffSec / 60);
+        const diffHour = Math.floor(diffMin / 60);
+        const diffDay = Math.floor(diffHour / 24);
+        if (diffSec < 60) return 'agora há pouco';
+        if (diffMin < 60) return `há ${diffMin} min`;
+        if (diffHour < 24) return `há ${diffHour}h`;
+        if (diffDay < 30) return `há ${diffDay}d`;
+        const diffMonth = Math.floor(diffDay / 30);
+        if (diffMonth < 12) return `há ${diffMonth} mês${diffMonth > 1 ? 'es' : ''}`;
+        const diffYear = Math.floor(diffDay / 365);
+        return `há ${diffYear} ano${diffYear > 1 ? 's' : ''}`;
+    },
+
+    async _carregarFotosLog(scopeEl) {
+        const avatars = scopeEl.querySelectorAll('.log-user-avatar[data-email]');
+        const emails = Array.from(new Set(Array.from(avatars).map(a => a.dataset.email).filter(Boolean)));
+        for (const email of emails) {
+            try {
+                let info = this._fotoCache[email];
+                if (info === undefined) {
+                    const resp = await fetch(`/api/usuarios/${encodeURIComponent(email)}/foto`, { credentials: 'same-origin' });
+                    info = resp.ok ? await resp.json() : { foto: null };
+                    this._fotoCache[email] = info;
+                }
+                if (info && info.foto) {
+                    scopeEl.querySelectorAll(`.log-user-avatar[data-email="${email}"]`).forEach(el => {
+                        el.innerHTML = `<img src="${info.foto}" alt="${email}" class="log-user-photo">`;
+                        el.classList.add('log-user-avatar--has-photo');
+                    });
+                }
+            } catch (e) {
+                this._fotoCache[email] = { foto: null };
+            }
+        }
     },
 
     _renderAlteracoes(alteracoes) {

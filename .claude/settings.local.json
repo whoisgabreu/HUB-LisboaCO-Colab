@@ -14,7 +14,11 @@
       "Bash(.venv/Scripts/python.exe scratch/test_operacao_save.py)",
       "Bash(.venv/Scripts/python.exe scratch/check_universal_v2.py)",
       "Bash(.venv/Scripts/python.exe scratch/analise_junio_abril.py)",
-      "Bash(.venv/Scripts/python.exe scratch/check_universal_moeda.py)"
+      "Bash(.venv/Scripts/python.exe scratch/check_universal_moeda.py)",
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\Gabriel\\\\Documents\\\\Projetos\\\\HUB-LisboaCO-Colab\" -MaxDepth 1 -File)",
+      "Bash(Select-Object Name)",
+      "PowerShell(Get-ChildItem -Path \"c:\\\\Users\\\\Gabriel\\\\Documents\\\\Projetos\\\\HUB-LisboaCO-Colab\" -MaxDepth 1 | Where-Object { $_.PSIsContainer -eq $false } | Select-Object Name)",
+      "PowerShell(Get-ChildItem -Path \"c:\\\\Users\\\\Gabriel\\\\Documents\\\\Projetos\\\\HUB-LisboaCO-Colab\" -Depth 1 | Where-Object { $_.PSIsContainer -eq $false } | Select-Object Name)"
     ]
   }
 }
