@@ -3782,6 +3782,31 @@ def api_kanban_cards():
     with Session() as db:
         service = KanbanService(db)
         cards = service.list_cards()
+        
+        # Otimização: buscar todo o histórico de uma vez para popular os badges no front
+        from collections import defaultdict
+        hist_map = defaultdict(list)
+        historicos = db.query(KanbanHistorico).order_by(KanbanHistorico.data_evento.desc()).all()
+        for h in historicos:
+            hist_map[h.projeto_id].append({
+                "fase_entrada": h.snapshot.get("fase_concluida") or h.snapshot.get("fase") or h.snapshot.get("fase_entrada"),
+                "fase_anterior": h.snapshot.get("fase_anterior") or h.snapshot.get("fase_concluida") if h.snapshot.get("evento") == "movimentacao" else None,
+                "fase_nova": h.snapshot.get("fase_nova") or h.snapshot.get("fase") or h.snapshot.get("fase_entrada"),
+                "dados": h.snapshot.get("dados") or h.snapshot.get("dados_transicao") or h.snapshot.get("snapshot_completo"),
+                "labels": h.snapshot.get("_labels") or {},
+                "snapshot": h.snapshot,
+                "evento": h.snapshot.get("evento"),
+                "usuario": h.usuario_email,
+                "timestamp": h.data_evento.isoformat()
+            })
+            
+        for card in cards:
+            card_id = card.get("card_id")
+            if card_id in hist_map:
+                card["historico"] = hist_map[card_id]
+            else:
+                card["historico"] = []
+                
         return jsonify(cards)
 
 @app.route("/api/kanban/cards/<int:card_id>", methods=["GET"])

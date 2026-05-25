@@ -8,11 +8,30 @@
     --shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
 }
 
-.kanban-dashboard {
-    padding: 24px;
+body.kanban-page {
+    overflow: hidden;
     height: 100vh;
+}
+
+body.kanban-page .app-shell {
+    min-height: calc(100vh - var(--header-height));
+    height: calc(100vh - var(--header-height));
+    overflow: hidden;
+}
+
+body.kanban-page .main-content {
+    min-height: calc(100vh - var(--header-height));
+    height: calc(100vh - var(--header-height));
+    overflow: hidden;
+}
+
+.kanban-dashboard {
+    padding: 20px 24px;
+    height: 100%;
     display: flex;
     flex-direction: column;
+    box-sizing: border-box;
+    overflow: hidden;
 }
 
 .kanban-header {
@@ -92,7 +111,7 @@
     border-radius: 12px;
     min-width: 320px;
     width: 320px;
-    max-height: 93%;
+    max-height: 100%;
     display: flex;
     flex-direction: column;
     backdrop-filter: blur(10px);
