@@ -97,6 +97,10 @@ const modal = {
             snapshots.forEach(h => {
                 const item = document.createElement('div');
                 item.className = 'history-item';
+                if (window.APP_CONFIG.podeEditarKanban) {
+                    item.classList.add('clickable');
+                    item.onclick = () => this.showHistoryEditModal(h, config, card);
+                }
                 
                 let fieldsHtml = '';
                 const labels = h.labels || {};
@@ -131,13 +135,28 @@ const modal = {
                     `;
                 });
 
+                let edicaoHtml = '';
+                if (h.snapshot && h.snapshot.edicoes && h.snapshot.edicoes.length > 0) {
+                    const ultimaEdicao = h.snapshot.edicoes[h.snapshot.edicoes.length - 1];
+                    const dataEdicao = new Date(ultimaEdicao.data).toLocaleDateString();
+                    edicaoHtml = `
+                        <div style="font-size: 0.65rem; color: var(--text-muted); margin-top: 8px; border-top: 1px dotted rgba(255,255,255,0.1); padding-top: 4px; font-style: italic; display: flex; align-items: center; gap: 4px;">
+                            <i class="fas fa-edit"></i> Editado em ${dataEdicao} por ${ultimaEdicao.usuario}
+                        </div>
+                    `;
+                }
+
                 item.innerHTML = `
                     <div class="history-phase-header" style="background: rgba(255,255,255,0.05); padding: 8px 12px; border-radius: 6px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
                         <span style="font-weight: 700; color: var(--kanban-accent); font-size: 0.75rem; text-transform: uppercase;">${h.fase_entrada}</span>
-                        <span style="font-size: 0.65rem; color: var(--text-muted);">${new Date(h.timestamp).toLocaleDateString()}</span>
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <span style="font-size: 0.65rem; color: var(--text-muted);">${new Date(h.timestamp).toLocaleDateString()}</span>
+                            ${window.APP_CONFIG.podeEditarKanban ? '<i class="fas fa-pen" style="font-size: 0.65rem; color: var(--text-muted); opacity: 0.6;"></i>' : ''}
+                        </div>
                     </div>
                     <div class="history-snapshot-content" style="padding: 0 4px;">
                         ${fieldsHtml || '<div style="color:var(--text-muted); font-size:0.75rem;">Sem dados registrados nesta fase.</div>'}
+                        ${edicaoHtml}
                     </div>
                 `;
                 historyCol.appendChild(item);
@@ -681,6 +700,146 @@ const modal = {
         };
 
         this.overlay.style.display = 'flex';
+    },
+
+    showHistoryEditModal(historyItem, config, card) {
+        const phaseConfig = config.fases.find(f => f.nome === historyItem.fase_entrada);
+        if (!phaseConfig) {
+            return toast.error("Configuração da fase não encontrada para edição.");
+        }
+
+        let editModal = document.getElementById('historyEditModal');
+        if (!editModal) {
+            editModal = document.createElement('div');
+            editModal.id = 'historyEditModal';
+            editModal.className = 'modal-overlay';
+            editModal.style.zIndex = '2100';
+            editModal.style.display = 'flex';
+            document.body.appendChild(editModal);
+        }
+
+        // Render structure
+        editModal.innerHTML = `
+            <div class="modal-content" style="max-width: 600px; width: 90%;">
+                <div class="modal-header">
+                    <h2><i class="fas fa-edit" style="color: var(--kanban-accent); margin-right: 10px;"></i>Editar dados: ${phaseConfig.nome}</h2>
+                    <button class="btn-close-modal btn-close-edit-history" title="Fechar"><i class="fas fa-xmark"></i></button>
+                </div>
+                <div class="modal-body-scroll" style="padding: 24px;">
+                    <div id="historyEditForm" class="modal-form-standard"></div>
+                    
+                    ${historyItem.snapshot && historyItem.snapshot.edicoes && historyItem.snapshot.edicoes.length > 0 ? `
+                        <div class="history-edits-log" style="margin-top: 24px; padding-top: 16px; border-top: 1px dashed rgba(255,255,255,0.1);">
+                            <div style="font-weight: 700; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.05em;">
+                                <i class="fas fa-history" style="margin-right: 4px;"></i> Histórico de alterações deste registro:
+                            </div>
+                            <div style="max-height: 120px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
+                                ${historyItem.snapshot.edicoes.map(ed => {
+                                    const dataEd = new Date(ed.data).toLocaleString();
+                                    const alteracoesHtml = Object.entries(ed.alteracoes).map(([c, d]) => {
+                                        return `<span style="display: block; font-size: 0.7rem; color: var(--text-muted); margin-left: 8px;">• <b>${c}</b>: de "${d.antes || '-'}" para "${d.depois || '-'}"</span>`;
+                                    }).join('');
+                                    return `
+                                        <div style="background: rgba(255,255,255,0.02); padding: 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.03);">
+                                            <span style="font-size: 0.72rem; color: #eee; font-weight: 600;">${ed.usuario}</span>
+                                            <span style="font-size: 0.65rem; color: var(--text-muted); margin-left: 6px;">(${dataEd})</span>
+                                            ${alteracoesHtml}
+                                        </div>
+                                    `;
+                                }).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+                </div>
+                <div class="modal-footer">
+                    <button class="btn-secondary btn-cancel-edit-history">Cancelar</button>
+                    <button class="btn-primary btn-save-edit-history"><i class="fas fa-check" style="margin-right: 6px;"></i>Salvar Alterações</button>
+                </div>
+            </div>
+        `;
+
+        const formContainer = editModal.querySelector('#historyEditForm');
+        const dados = historyItem.dados || {};
+
+        phaseConfig.campos.forEach(campo => {
+            const group = document.createElement('div');
+            group.className = 'form-group';
+            if (campo.tipo === 'text') group.classList.add('full-width');
+            group.innerHTML = `<label>${campo.label}${campo.obrigatorio ? ' *' : ''}</label>${campo.descricao ? `<p class="field-description">${campo.descricao}</p>` : ''}`;
+            
+            const input = this.createFieldInput(campo, dados[campo.id]);
+            input.id = `hist_field_${campo.id}`;
+            group.appendChild(input);
+            formContainer.appendChild(group);
+        });
+
+        const closeBtn = editModal.querySelector('.btn-close-edit-history');
+        const cancelBtn = editModal.querySelector('.btn-cancel-edit-history');
+        const saveBtn = editModal.querySelector('.btn-save-edit-history');
+
+        const closeFn = () => editModal.remove();
+        closeBtn.onclick = closeFn;
+        cancelBtn.onclick = closeFn;
+        editModal.onclick = (e) => { if (e.target === editModal) closeFn(); };
+
+        saveBtn.onclick = async () => {
+            const novosDados = {};
+            let valid = true;
+
+            phaseConfig.campos.forEach(campo => {
+                const el = editModal.querySelector(`#hist_field_${campo.id}`);
+                let val;
+                if (campo.tipo === 'radio') {
+                    val = (el.querySelector('input:checked') || {}).value || '';
+                } else if (campo.tipo === 'checkbox') {
+                    val = Array.from(el.querySelectorAll('input:checked')).map(i => i.value);
+                } else if (campo.tipo === 'boolean') {
+                    val = el.querySelector('input').checked;
+                } else if (campo.tipo === 'link') {
+                    val = el.querySelector('input').value;
+                } else {
+                    val = el.value;
+                }
+                
+                if (campo.obrigatorio && (!val || (Array.isArray(val) && val.length === 0)) && val !== 0 && val !== false) {
+                    el.style.borderColor = 'red';
+                    valid = false;
+                } else {
+                    if (el) el.style.borderColor = '';
+                }
+                novosDados[campo.id] = val;
+            });
+
+            if (!valid) return toast.error("Preencha todos os campos obrigatórios.");
+
+            try {
+                if (!confirm("Tem certeza de que deseja atualizar as informações históricas desta fase?")) {
+                    return;
+                }
+
+                saveBtn.disabled = true;
+                saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
+                
+                const result = await api.post(`/api/kanban/history/${historyItem.id}/update`, { dados: novosDados });
+                if (result && result.status === 'success') {
+                    toast.success("Dados históricos atualizados!");
+                    closeFn();
+                    
+                    const updatedCard = await api.getCard(card.card_id);
+                    this.showView(updatedCard, config);
+                    
+                    if (window.board && typeof window.board.refresh === 'function') {
+                        window.board.refresh();
+                    }
+                } else {
+                    throw new Error(result.error || "Erro ao salvar alterações no histórico.");
+                }
+            } catch (err) {
+                toast.error(err.message);
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = '<i class="fas fa-check" style="margin-right: 6px;"></i>Salvar Alterações';
+            }
+        };
     },
 
     hide() {

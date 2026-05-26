@@ -3789,10 +3789,15 @@ def api_kanban_cards():
         historicos = db.query(KanbanHistorico).order_by(KanbanHistorico.data_evento.desc()).all()
         for h in historicos:
             hist_map[h.projeto_id].append({
+                "id": h.id,
                 "fase_entrada": h.snapshot.get("fase_concluida") or h.snapshot.get("fase") or h.snapshot.get("fase_entrada"),
                 "fase_anterior": h.snapshot.get("fase_anterior") or h.snapshot.get("fase_concluida") if h.snapshot.get("evento") == "movimentacao" else None,
                 "fase_nova": h.snapshot.get("fase_nova") or h.snapshot.get("fase") or h.snapshot.get("fase_entrada"),
-                "dados": h.snapshot.get("dados") or h.snapshot.get("dados_transicao") or h.snapshot.get("snapshot_completo"),
+                "dados": {
+                    **(h.snapshot.get("snapshot_completo") or {}),
+                    **(h.snapshot.get("dados_transicao") or {}),
+                    **(h.snapshot.get("dados") or {})
+                },
                 "labels": h.snapshot.get("_labels") or {},
                 "snapshot": h.snapshot,
                 "evento": h.snapshot.get("evento"),
@@ -3823,10 +3828,15 @@ def api_kanban_get_card(card_id):
         
         card_details["historico"] = [
             {
+                "id": h.id,
                 "fase_entrada": h.snapshot.get("fase_concluida") or h.snapshot.get("fase") or h.snapshot.get("fase_entrada"),
                 "fase_anterior": h.snapshot.get("fase_anterior") or h.snapshot.get("fase_concluida") if h.snapshot.get("evento") == "movimentacao" else None,
                 "fase_nova": h.snapshot.get("fase_nova") or h.snapshot.get("fase") or h.snapshot.get("fase_entrada"),
-                "dados": h.snapshot.get("dados") or h.snapshot.get("dados_transicao") or h.snapshot.get("snapshot_completo"),
+                "dados": {
+                    **(h.snapshot.get("snapshot_completo") or {}),
+                    **(h.snapshot.get("dados_transicao") or {}),
+                    **(h.snapshot.get("dados") or {})
+                },
                 "labels": h.snapshot.get("_labels") or {},
                 "snapshot": h.snapshot,
                 "evento": h.snapshot.get("evento"),
@@ -3852,6 +3862,99 @@ def api_kanban_update_card(card_id):
             service.update_card(card_id, nome, dados, session.get('email', 'Sistema'))
             return jsonify({"status": "success"})
         except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+@app.route("/api/kanban/history/<int:history_id>/update", methods=["POST"])
+@check_session
+def api_kanban_update_history(history_id):
+    """Atualiza dados registrados em um histórico de fase anterior."""
+    if not session.get("pode_editar_kanban"):
+        return jsonify({"error": "Você não tem permissão para editar o Kanban."}), 403
+
+    data = request.json or {}
+    novos_dados = data.get("dados", {})
+    
+    with Session() as db:
+        try:
+            h = db.query(KanbanHistorico).filter_by(id=history_id).first()
+            if not h:
+                return jsonify({"error": "Registro de histórico não encontrado."}), 404
+            
+            projeto = db.query(Projeto).filter_by(pipefy_id=h.projeto_id).first()
+            if not projeto:
+                return jsonify({"error": "Projeto associado ao histórico não encontrado."}), 404
+
+            service = KanbanService(db)
+            config = service.get_board_config()
+            
+            snapshot = dict(h.snapshot)
+            
+            # Identificar dados antigos do snapshot
+            old_dados = snapshot.get("dados") or snapshot.get("dados_transicao") or snapshot.get("snapshot_completo") or {}
+            
+            # Chaves de campo para obter os labels amigáveis
+            labels = {}
+            for fase in config.get('fases', []):
+                for campo in fase.get('campos', []):
+                    labels[campo['id']] = campo['label']
+
+            changes = {}
+            
+            # Atualizar os dados do snapshot
+            snapshot_dados = snapshot.get("dados")
+            if snapshot_dados is None:
+                snapshot["dados"] = {}
+                snapshot_dados = snapshot["dados"]
+            else:
+                snapshot["dados"] = dict(snapshot_dados)
+                snapshot_dados = snapshot["dados"]
+            
+            # Também atualizar snapshot_completo se existir
+            snapshot_completo = snapshot.get("snapshot_completo")
+            if snapshot_completo is not None:
+                snapshot["snapshot_completo"] = dict(snapshot_completo)
+                snapshot_completo = snapshot["snapshot_completo"]
+
+            for k, v in novos_dados.items():
+                val_antigo = old_dados.get(k)
+                if val_antigo != v:
+                    label_campo = labels.get(k, k)
+                    changes[label_campo] = {
+                        "antes": val_antigo if val_antigo is not None else "",
+                        "depois": v
+                    }
+                    snapshot_dados[k] = v
+                    if snapshot_completo is not None:
+                        snapshot_completo[k] = v
+            
+            if not changes:
+                return jsonify({"status": "success", "message": "Nenhuma alteração detectada."})
+            
+            # Guardar histórico de edições neste snapshot para rastreabilidade
+            edicoes = snapshot.get("edicoes", [])
+            edicoes.append({
+                "usuario": session.get("email", "Sistema"),
+                "data": dt.now().isoformat(),
+                "alteracoes": changes
+            })
+            snapshot["edicoes"] = edicoes
+            h.snapshot = snapshot
+            flag_modified(h, "snapshot")
+            
+            # Propagar alterações para o card do projeto e suas colunas
+            projeto_dados = dict(projeto.kanban_dados) if projeto.kanban_dados else {}
+            for k, v in novos_dados.items():
+                projeto_dados[k] = v
+            
+            projeto.kanban_dados = projeto_dados
+            flag_modified(projeto, "kanban_dados")
+            
+            service._apply_column_mappings(projeto, config, projeto_dados)
+            
+            db.commit()
+            return jsonify({"status": "success", "message": "Histórico e projeto atualizados com sucesso."})
+        except Exception as e:
+            db.rollback()
             return jsonify({"error": str(e)}), 500
 
 @app.route("/api/kanban/move", methods=["POST"])
