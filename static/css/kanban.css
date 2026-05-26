@@ -62,32 +62,88 @@ body.kanban-page .main-content {
 .search-wrapper {
     position: relative;
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
+    gap: 6px;
+    padding: 8px 14px 8px 40px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--card-border);
+    border-radius: 10px;
+    min-height: 42px;
+    box-sizing: border-box;
+    cursor: text;
+    transition: all 0.2s ease;
+    width: 100%;
+}
+
+.search-wrapper:focus-within {
+    outline: none;
+    border-color: var(--kanban-accent);
+    background: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 0 0 3px rgba(214, 22, 22, 0.1);
 }
 
 .search-wrapper i {
     position: absolute;
     left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
     color: var(--text-muted);
     font-size: 0.9rem;
+    pointer-events: none;
 }
 
 .search-wrapper input {
-    width: 100%;
-    padding: 10px 14px 10px 40px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid var(--card-border);
-    border-radius: 10px;
-    color: white;
+    border: none;
+    outline: none;
+    background: transparent;
+    flex: 1;
+    min-width: 80px;
     font-size: 0.9rem;
-    transition: all 0.2s ease;
+    padding: 2px 0;
+    color: white;
+    width: auto;
 }
 
 .search-wrapper input:focus {
     outline: none;
+    box-shadow: none;
+    background: transparent;
+    border: none;
+}
+
+.search-tag {
+    background-color: rgba(214, 22, 22, 0.15);
+    color: #ff9b9b;
+    border: 1px solid rgba(214, 22, 22, 0.3);
+    padding: 2px 8px;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    line-height: 1.4;
+    transition: all 0.15s ease;
+}
+
+.search-tag:hover {
+    background-color: rgba(214, 22, 22, 0.25);
     border-color: var(--kanban-accent);
-    background: rgba(255, 255, 255, 0.08);
-    box-shadow: 0 0 0 3px rgba(214, 22, 22, 0.1);
+}
+
+.search-tag .btn-remover {
+    cursor: pointer;
+    font-weight: bold;
+    color: var(--text-muted);
+    font-size: 1rem;
+    line-height: 1;
+    display: inline-block;
+    transition: color 0.15s ease;
+}
+
+.search-tag .btn-remover:hover {
+    color: #ff4d4d;
 }
 
 .header-actions {

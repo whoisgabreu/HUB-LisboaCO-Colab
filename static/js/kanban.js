@@ -6,6 +6,8 @@ const board = {
     columnsPagination: {},
     searchTimeout: null,
     viewArchived: false,
+    tagsAtivas: [],
+    _fieldLabels: null,
     
     async init() {
         modal.init();
@@ -27,9 +29,40 @@ const board = {
         };
         document.getElementById('btnNewCard').onclick = () => this.handleNewCard();
 
+        const searchWrapper = document.getElementById('searchWrapper');
         const searchInput = document.getElementById('kanbanSearch');
+        if (searchWrapper && searchInput) {
+            searchWrapper.onclick = (e) => {
+                if (e.target !== searchInput) {
+                    searchInput.focus();
+                }
+            };
+        }
+
         if (searchInput) {
             searchInput.oninput = (e) => this.handleSearch(e.target.value);
+            
+            searchInput.addEventListener('keydown', (event) => {
+                const valor = searchInput.value.trim();
+
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    if (valor !== '') {
+                        if (!this.tagsAtivas.includes(valor)) {
+                            this.tagsAtivas.push(valor);
+                            this.renderTags();
+                            this.handleSearch(""); // Clear current search text query
+                        }
+                        searchInput.value = '';
+                    }
+                }
+
+                if (event.key === 'Backspace' && valor === '' && this.tagsAtivas.length > 0) {
+                    this.tagsAtivas.pop();
+                    this.renderTags();
+                    this.handleSearch("");
+                }
+            });
         }
 
         const btnToggleArchived = document.getElementById('btnToggleArchived');
@@ -52,11 +85,13 @@ const board = {
         try {
             this.config = await api.getBoardConfig();
             this.cards = await api.getCards();
+            this._fieldLabels = null; // Clear cached labels
             
             const searchVal = document.getElementById('kanbanSearch')?.value || "";
             this.searchQuery = searchVal;
             
             this.render();
+            this.renderTags();
         } catch (err) {
             toast.error("Erro ao carregar Kanban: " + err.message);
         }
@@ -82,8 +117,17 @@ const board = {
                 const isArchived = !!(c.dados && c.dados.arquivado);
                 if (this.viewArchived !== isArchived) return false;
 
-                if (!query) return true;
-                return c.titulo.toLowerCase().includes(query) || String(c.card_id).includes(query);
+                const cardText = this.getCardSearchableText(c);
+
+                // Matches all active tags
+                const matchesTags = !this.tagsAtivas || this.tagsAtivas.every(tag => 
+                    cardText.includes(tag.toLowerCase().trim())
+                );
+
+                // Matches current text query (unsubmitted)
+                const matchesQuery = !query || cardText.includes(query);
+
+                return matchesTags && matchesQuery;
             });
 
             col.innerHTML = `
@@ -276,6 +320,127 @@ const board = {
         if (days >= 30) return 'time-badge--danger';
         if (days >= 14) return 'time-badge--warning';
         return '';
+    },
+
+    getCardSearchableText(card) {
+        // Collect labels map
+        if (!this._fieldLabels) {
+            this._fieldLabels = {};
+            if (this.config && this.config.fases) {
+                this.config.fases.forEach(f => {
+                    if (f.campos) {
+                        f.campos.forEach(c => {
+                            this._fieldLabels[c.id] = c.label;
+                        });
+                    }
+                });
+            }
+        }
+
+        const labelsMap = { ...this._fieldLabels };
+        if (card.historico) {
+            card.historico.forEach(h => {
+                if (h.labels) {
+                    Object.entries(h.labels).forEach(([key, label]) => {
+                        labelsMap[key] = label;
+                    });
+                }
+            });
+        }
+
+        const searchable = [
+            String(card.card_id),
+            card.titulo || '',
+            card.fase_atual || '',
+            card.status || '',
+            String(card.fee || ''),
+            card.fee ? card.fee.toLocaleString('pt-BR', {style:'currency', currency: card.moeda || 'BRL'}) : '',
+            card.moeda || ''
+        ];
+
+        const addVal = (key, val) => {
+            const label = labelsMap[key] || key;
+            searchable.push(label);
+            
+            if (Array.isArray(val)) {
+                searchable.push(...val.map(String));
+            } else if (val === true) {
+                searchable.push('Sim');
+            } else if (val === false) {
+                searchable.push('Não');
+            } else if (val !== null && val !== undefined) {
+                const strVal = String(val);
+                searchable.push(strVal);
+                if (/^\d{4}-\d{2}-\d{2}/.test(strVal)) {
+                    const parts = strVal.split('T')[0].split('-');
+                    if (parts.length === 3) {
+                        searchable.push(`${parts[2]}/${parts[1]}/${parts[0]}`);
+                    }
+                }
+            }
+        };
+
+        if (card.dados) {
+            Object.entries(card.dados).forEach(([key, val]) => {
+                addVal(key, val);
+            });
+        }
+
+        if (card.historico) {
+            card.historico.forEach(h => {
+                if (h.dados) {
+                    Object.entries(h.dados).forEach(([key, val]) => {
+                        addVal(key, val);
+                    });
+                }
+                if (h.snapshot) {
+                    const snapCompleto = h.snapshot.snapshot_completo || h.snapshot.dados;
+                    if (snapCompleto && typeof snapCompleto === 'object') {
+                        Object.entries(snapCompleto).forEach(([key, val]) => {
+                            addVal(key, val);
+                        });
+                    }
+                    if (h.snapshot.alteracoes && typeof h.snapshot.alteracoes === 'object') {
+                        Object.entries(h.snapshot.alteracoes).forEach(([fieldName, diff]) => {
+                            searchable.push(fieldName);
+                            if (diff) {
+                                addVal(fieldName, diff.de);
+                                addVal(fieldName, diff.para);
+                            }
+                        });
+                    }
+                }
+            });
+        }
+
+        const uniqueValues = Array.from(new Set(searchable.filter(Boolean)));
+        return uniqueValues.map(v => v.toLowerCase().trim()).join(' ');
+    },
+
+    renderTags() {
+        const wrapper = document.getElementById('tags-wrapper');
+        const searchInput = document.getElementById('kanbanSearch');
+        if (!wrapper || !searchInput) return;
+
+        wrapper.innerHTML = '';
+        this.tagsAtivas.forEach((tag, index) => {
+            const divTag = document.createElement('div');
+            divTag.className = 'search-tag';
+            divTag.innerHTML = `<span>${tag}</span> <span class="btn-remover" onclick="board.removerTag(${index})">&times;</span>`;
+            wrapper.appendChild(divTag);
+        });
+
+        if (searchInput) {
+            searchInput.placeholder = this.tagsAtivas.length > 0 ? '' : 'Pesquisar projeto ou cliente...';
+        }
+    },
+
+    removerTag(index) {
+        this.tagsAtivas.splice(index, 1);
+        this.renderTags();
+        this.handleSearch(""); // Re-render filter list
+        const searchInput = document.getElementById('kanbanSearch');
+        if (searchInput) searchInput.focus();
     }
 };
 

@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Input com Tags de Busca</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background-color: #f9f9f9; }
+        
+        /* Container que simula o campo de input real */
+        .input-tags-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            padding: 6px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            background-color: white;
+            min-height: 38px;
+            box-sizing: border-box;
+            cursor: text;
+        }
+        .input-tags-container:focus-within {
+            border-color: #007bff;
+            box-shadow: 0 0 0 2px rgba(0,123,255,0.25);
+        }
+
+        /* Estilização das tags geradas */
+        .tag {
+            background-color: #e2e8f0;
+            color: #334155;
+            padding: 4px 10px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 14px;
+        }
+        .tag .btn-remover {
+            cursor: pointer;
+            font-weight: bold;
+            color: #94a3b8;
+        }
+        .tag .btn-remover:hover { color: #ef4444; }
+
+        /* Input real escondido/sem bordas dentro do container */
+        .input-tags-container input {
+            border: none;
+            outline: none;
+            flex: 1;
+            min-width: 60px;
+            font-size: 14px;
+            padding: 4px 0;
+        }
+
+        /* Lista de itens para testar o filtro */
+        .lista-itens { margin-top: 20px; }
+        .item { 
+            padding: 10px; 
+            background: white; 
+            border: 1px solid #e2e8f0; 
+            margin-bottom: 6px; 
+            border-radius: 4px; 
+        }
+        .item.oculto { display: none; }
+    </style>
+</head>
+<body>
+
+    <h3>Busca por Tags (Pressione Enter para adicionar)</h3>
+    
+    <!-- O container abaixo age visualmente como o campo de input -->
+    <div class="input-tags-container" onclick="focarInput()">
+        <div id="tags-wrapper" style="display: flex; flex-wrap: wrap; gap: 6px;"></div>
+        <input type="text" id="meu-input" placeholder="Digite e aperte Enter...">
+    </div>
+
+    <!-- Lista de exemplo para aplicar o filtro -->
+    <div class="lista-itens">
+        <div class="item">Notebook Dell Inspiron Core i5</div>
+        <div class="item">Smartphone Samsung Galaxy Azul</div>
+        <div class="item">Monitor Gamer LG 24 polegadas</div>
+        <div class="item">Teclado Mecânico RGB Sem Fio</div>
+    </div>
+
+    <script>
+        const input = document.getElementById('meu-input');
+        const wrapper = document.getElementById('tags-wrapper');
+        let tagsAtivas = [];
+
+        // Foca no input real se o usuário clicar em qualquer parte do container
+        function focarInput() { input.focus(); }
+
+        // Escuta o evento de teclado no input
+        input.addEventListener('keydown', function(event) {
+            const valor = input.value.trim();
+
+            // Ao pressionar ENTER
+            if (event.key === 'Enter' && valor !== '') {
+                event.preventDefault(); // Evita recarregar a página
+                
+                if (!tagsAtivas.includes(valor)) {
+                    tagsAtivas.push(valor);
+                    renderizarTags();
+                    filtrarItens();
+                }
+                
+                input.value = ''; // Limpa o campo de texto
+            }
+
+            // Ao pressionar BACKSPACE com o input vazio, remove a última tag
+            if (event.key === 'Backspace' && valor === '' && tagsAtivas.length > 0) {
+                tagsAtivas.pop();
+                renderizarTags();
+                filtrarItens();
+            }
+        });
+
+        // Desenha as tags na tela
+        function renderizarTags() {
+            wrapper.innerHTML = '';
+            
+            tagsAtivas.forEach((tag, index) => {
+                const divTag = document.createElement('div');
+                divTag.className = 'tag';
+                divTag.innerHTML = `${tag} <span class="btn-remover" onclick="removerTag(${index})">&times;</span>`;
+                wrapper.appendChild(divTag);
+            });
+
+            // Ajusta o placeholder se já houver tags inseridas
+            input.placeholder = tagsAtivas.length > 0 ? '' : 'Digite e aperte Enter...';
+        }
+
+        // Remove a tag quando o usuário clica no 'X'
+        function removerTag(index) {
+            tagsAtivas.splice(index, 1);
+            renderizarTags();
+            filtrarItens();
+            focarInput();
+        }
+
+        // Faz a busca textual (case-insensitive) comparando as tags com os itens da página
+        function filtrarItens() {
+            const itens = document.querySelectorAll('.item');
+            
+            itens.forEach(item => {
+                const textoItem = item.textContent.toLowerCase();
+                
+                // O item precisa conter TODAS as tags digitadas para continuar visível
+                const correspondeAtodas = tagsAtivas.every(tag => 
+                    textoItem.includes(tag.toLowerCase())
+                );
+
+                if (correspondeAtodas) {
+                    item.classList.remove('oculto');
+                } else {
+                    item.classList.add('oculto');
+                }
+            });
+        }
+    </script>
+</body>
+</html>
