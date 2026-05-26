@@ -147,6 +147,11 @@ const kanbanConfig = {
                                             <i class="fas fa-trash"></i>
                                         </button>
                                     </div>
+                                    <div class="field-desc-row">
+                                        <input type="text" class="modern-input field-desc-input" data-findex="${fIndex}" data-cindex="${cIndex}"
+                                               placeholder="Descrição opcional (ex: Informe o valor mensal do contrato)"
+                                               value="${campo.descricao || ''}">
+                                    </div>
                                     <div class="field-sync-row">
                                         <label class="field-sync-toggle-wrap" title="Sincronizar este campo com uma coluna do banco">
                                             <input type="checkbox" class="field-sync-toggle" data-findex="${fIndex}" data-cindex="${cIndex}" ${campo.mapeamento_coluna ? 'checked' : ''}>
@@ -270,7 +275,8 @@ const kanbanConfig = {
                     id: 'f_' + Date.now(),
                     label: 'Novo Campo',
                     tipo: 'string',
-                    obrigatorio: false
+                    obrigatorio: false,
+                    descricao: ''
                 });
                 this.render();
             };
@@ -304,6 +310,13 @@ const kanbanConfig = {
             input.onchange = (e) => {
                 const { findex, cindex } = e.target.dataset;
                 this.currentConfig.fases[findex].campos[cindex].opcoes = e.target.value.split(',').map(s => s.trim()).filter(s => s !== '');
+            };
+        });
+
+        this.body.querySelectorAll('.field-desc-input').forEach(input => {
+            input.onchange = (e) => {
+                const { findex, cindex } = e.target.dataset;
+                this.currentConfig.fases[findex].campos[cindex].descricao = e.target.value;
             };
         });
 

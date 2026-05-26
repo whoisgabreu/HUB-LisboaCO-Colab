@@ -171,7 +171,7 @@ const modal = {
             const group = document.createElement('div');
             group.className = 'form-group';
             if (campo.tipo === 'text') group.classList.add('full-width');
-            group.innerHTML = `<label>${campo.label}${campo.obrigatorio ? ' *' : ''}</label>`;
+            group.innerHTML = `<label>${campo.label}${campo.obrigatorio ? ' *' : ''}</label>${campo.descricao ? `<p class="field-description">${campo.descricao}</p>` : ''}`;
             const val = card.dados[campo.id];
             group.appendChild(this.createFieldInput(campo, val));
             formContainer.appendChild(group);
@@ -643,7 +643,7 @@ const modal = {
             const group = document.createElement('div');
             group.className = 'form-group';
             if (campo.tipo === 'text') group.classList.add('full-width');
-            group.innerHTML = `<label>${campo.label}${campo.obrigatorio ? ' *' : ''}</label>`;
+            group.innerHTML = `<label>${campo.label}${campo.obrigatorio ? ' *' : ''}</label>${campo.descricao ? `<p class="field-description">${campo.descricao}</p>` : ''}`;
             group.appendChild(this.createFieldInput(campo, cardData[campo.id]));
             formContainer.appendChild(group);
         });

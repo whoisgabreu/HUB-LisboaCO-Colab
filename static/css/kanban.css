@@ -861,6 +861,37 @@ body.kanban-page .main-content {
     color: #ef4444;
 }
 
+/* ═══ CAMPO — LINHA DE DESCRIÇÃO (config editor) ═══ */
+.field-desc-row {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px dashed rgba(255, 255, 255, 0.05);
+}
+
+.field-desc-row .modern-input {
+    font-size: 0.8rem;
+    padding: 7px 12px;
+    color: var(--text-muted);
+    background: rgba(255, 255, 255, 0.02);
+    border-color: rgba(255, 255, 255, 0.06);
+}
+
+.field-desc-row .modern-input:focus {
+    border-color: rgba(214, 22, 22, 0.35);
+    background: rgba(255, 255, 255, 0.04);
+    color: #ccc;
+}
+
+/* ═══ CAMPO — TEXTO DE DESCRIÇÃO (card modal) ═══ */
+.field-description {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    font-style: italic;
+    margin: 4px 0 8px;
+    line-height: 1.5;
+    opacity: 0.85;
+}
+
 .field-sync-row {
     margin-top: 10px;
     padding-top: 10px;
