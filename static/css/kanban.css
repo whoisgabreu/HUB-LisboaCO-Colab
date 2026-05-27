@@ -233,6 +233,12 @@ body.kanban-page .main-content {
     color: var(--text-muted);
 }
 
+.column-header-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
 .column-count {
     background: var(--kanban-accent);
     color: white;
@@ -240,6 +246,19 @@ body.kanban-page .main-content {
     padding: 2px 8px;
     border-radius: 10px;
     font-weight: 700;
+}
+
+.column-form-link {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    opacity: 0.4;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.column-form-link:hover {
+    opacity: 1;
+    color: var(--kanban-accent);
 }
 
 .card-list {
@@ -873,6 +892,85 @@ body.kanban-page .main-content {
 .transition-badge-direct {
     background: rgba(214, 22, 22, 0.12);
     color: var(--kanban-accent);
+}
+
+/* ═══ LINK PÚBLICO DO FORMULÁRIO — CONFIG ═══ */
+
+.public-link-config-section {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-color);
+}
+
+.public-link-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.public-link-header-title {
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.public-link-header-title i {
+    color: var(--kanban-accent);
+    font-size: 0.85rem;
+}
+
+.public-link-hint {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    font-style: italic;
+    opacity: 0.7;
+}
+
+.public-link-body {
+    padding: 4px 0;
+}
+
+.public-link-display {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.public-link-input {
+    flex: 1;
+    font-size: 0.78rem !important;
+    padding: 8px 10px !important;
+    background: rgba(255, 255, 255, 0.03) !important;
+    color: var(--text-muted) !important;
+}
+
+.btn-copy-link {
+    background: transparent;
+    border: 1px solid var(--card-border);
+    color: var(--text-muted);
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.btn-copy-link:hover {
+    border-color: var(--kanban-accent);
+    color: var(--kanban-accent);
+    background: rgba(214, 22, 22, 0.06);
 }
 
 /* ═══ CAMPOS DA FASE — REFORMULADO ═══ */

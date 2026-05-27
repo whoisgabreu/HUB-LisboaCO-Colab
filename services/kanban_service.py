@@ -555,3 +555,54 @@ class KanbanService:
         self.db.add(historico)
         self.db.commit()
         return projeto
+
+    def find_phase_by_token(self, token: str):
+        """Busca a fase e o slug do board associados a um token de formulário público."""
+        configs = self.db.query(KanbanConfig).all()
+        for c in configs:
+            config_data = c.configuracao
+            for fase in config_data.get('fases', []):
+                if fase.get('form_token') == token:
+                    return c.slug, fase
+        return None, None
+
+    def create_card_in_phase(self, slug: str, fase: Dict[str, Any], nome: str, dados: Dict[str, Any], usuario_email: str) -> Projeto:
+        """Cria um novo card diretamente em uma fase específica."""
+        config = self.get_board_config(slug)
+
+        new_id = random.randint(100000000, 999999999)
+        while self.db.query(Projeto).filter_by(pipefy_id=new_id).first():
+            new_id = random.randint(100000000, 999999999)
+
+        now_date = datetime.now()
+        dados['_board_slug'] = slug
+
+        projeto = Projeto(
+            pipefy_id=new_id,
+            nome=nome,
+            fase_do_pipefy=fase['nome'],
+            status=fase.get('status_do_projeto', 'Ativo'),
+            kanban_dados=dados,
+            data_de_inicio=now_date.date()
+        )
+
+        self._apply_column_mappings(projeto, config, dados)
+        self.db.add(projeto)
+        self.db.flush()
+
+        now_ts = datetime.utcnow() - timedelta(hours=3)
+        historico = KanbanHistorico(
+            projeto_id=projeto.pipefy_id,
+            usuario_email=usuario_email,
+            data_evento=now_ts,
+            snapshot={
+                "evento": "criacao",
+                "fase_concluida": fase['nome'],
+                "dados": dados,
+                "_labels": {c['id']: c['label'] for c in fase.get('campos', [])},
+                "timestamp": now_ts.isoformat()
+            }
+        )
+        self.db.add(historico)
+        self.db.commit()
+        return projeto

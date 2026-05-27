@@ -6,9 +6,10 @@ from collections import defaultdict
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm.attributes import flag_modified
-from datetime import datetime as dt
+from datetime import datetime as dt, timedelta
 import os
 import json
+import uuid
 
 from database import Session, engine, Base
 from models import (
@@ -4336,6 +4337,102 @@ def hub_cs_cx():
 @check_session
 def cockpit():
     return render_template("cockpit.html")
+
+
+# ─── Formulário Público por Fase (sem login) ────────────────────────────────────
+
+from collections import defaultdict as dd
+_form_submission_log = dd(list)
+_FORM_LIMIT = 10
+_FORM_WINDOW = 3600
+
+
+def _check_rate_limit(ip: str) -> bool:
+    """Verifica se o IP excedeu o limite de submissões."""
+    now = dt.utcnow()
+    cutoff = now - timedelta(seconds=_FORM_WINDOW)
+    _form_submission_log[ip] = [t for t in _form_submission_log[ip] if t > cutoff]
+    if len(_form_submission_log[ip]) >= _FORM_LIMIT:
+        return False
+    _form_submission_log[ip].append(now)
+    return True
+
+
+@app.route("/form-card/<token>", methods=["GET"])
+def public_form(token):
+    """Página pública do formulário dinâmico de uma fase."""
+    from services.kanban_service import KanbanService
+    with Session() as db:
+        service = KanbanService(db)
+        slug, fase = service.find_phase_by_token(token)
+        if not fase:
+            return render_template("form_card.html", erro="Link inválido ou expirado.", fase=None, board_nome=None)
+
+        config = service.get_board_config(slug)
+        board_nome = config.get("nome", slug)
+        return render_template("form_card.html", fase=fase, board_nome=board_nome, token=token, erro=None)
+
+
+@app.route("/form-card/<token>", methods=["POST"])
+def public_form_submit(token):
+    """Processa o envio do formulário público."""
+    from services.kanban_service import KanbanService
+
+    ip = request.remote_addr or "desconhecido"
+    if not _check_rate_limit(ip):
+        return render_template("form_card.html", erro="Limite de envios atingido. Tente novamente mais tarde.", fase=None, board_nome=None)
+
+    honeypot = request.form.get("_hp", "")
+    if honeypot:
+        return render_template("form_card.html", erro="Envio suspeito.", fase=None, board_nome=None)
+
+    with Session() as db:
+        service = KanbanService(db)
+        slug, fase = service.find_phase_by_token(token)
+        if not fase:
+            return render_template("form_card.html", erro="Link inválido.", fase=None, board_nome=None)
+
+        nome = (request.form.get("nome_projeto") or "").strip()
+        if not nome:
+            config = service.get_board_config(slug)
+            board_nome = config.get("nome", slug)
+            return render_template("form_card.html", erro="O nome do projeto é obrigatório.", fase=fase, board_nome=board_nome, token=token)
+
+        dados = {}
+        fase_nome = fase['nome']
+        for campo in fase.get('campos', []):
+            raw = request.form.get(f"campo_{campo['id']}", "")
+            if campo['tipo'] == 'checkbox':
+                # multiple values
+                vals = request.form.getlist(f"campo_{campo['id']}")
+                dados[campo['id']] = vals
+            elif campo['tipo'] == 'boolean':
+                dados[campo['id']] = raw == "true"
+            elif campo['tipo'] == 'number':
+                try:
+                    dados[campo['id']] = float(raw) if raw else None
+                except ValueError:
+                    dados[campo['id']] = raw
+            else:
+                dados[campo['id']] = raw
+
+            if campo.get('obrigatorio'):
+                val = dados.get(campo['id'])
+                if val is None or (isinstance(val, str) and not val.strip()) or (isinstance(val, list) and len(val) == 0):
+                    config = service.get_board_config(slug)
+                    board_nome = config.get("nome", slug)
+                    return render_template("form_card.html", erro=f"O campo '{campo['label']}' é obrigatório.", fase=fase, board_nome=board_nome, token=token)
+
+        dados['_origem_formulario'] = fase_nome
+        usuario_email = f"formulario@{slug}.externo"
+
+        try:
+            projeto = service.create_card_in_phase(slug, fase, nome, dados, usuario_email)
+            return render_template("form_card.html", sucesso=True, fase=fase, board_nome=service.get_board_config(slug).get("nome", slug))
+        except Exception as e:
+            config = service.get_board_config(slug)
+            board_nome = config.get("nome", slug)
+            return render_template("form_card.html", erro=f"Erro ao criar card: {str(e)}", fase=fase, board_nome=board_nome, token=token)
 
 
 if __name__ == "__main__":

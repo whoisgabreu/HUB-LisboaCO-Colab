@@ -16,6 +16,15 @@ const board = {
         await this.loadBoardList();
         await this.refresh();
         
+        document.getElementById('kanbanBoard').addEventListener('click', (e) => {
+            const linkIcon = e.target.closest('.column-form-link');
+            if (!linkIcon) return;
+            e.stopPropagation();
+            const url = linkIcon.dataset.link;
+            if (!url) return;
+            copyToClipboard(url, "Link do formulário copiado!");
+        });
+
         document.getElementById('btnRefresh').onclick = async (e) => {
             const btn = e.currentTarget;
             const icon = btn.querySelector('i');
@@ -188,7 +197,10 @@ const board = {
             col.innerHTML = `
                 <div class="column-header">
                     <h3>${phase.nome}</h3>
-                    <span class="column-count">${phaseCards.length}</span>
+                    <div class="column-header-right">
+                        <span class="column-count">${phaseCards.length}</span>
+                        ${phase.form_token ? `<i class="fas fa-link column-form-link" data-link="${window.location.origin}/form-card/${phase.form_token}" title="Copiar link do formulário público"></i>` : ''}
+                    </div>
                 </div>
                 <div class="card-list" id="list-${phase.id}"></div>
             `;

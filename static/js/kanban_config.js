@@ -1,3 +1,38 @@
+/* Global clipboard helper (used by kanban_config.js and kanban.js) */
+function copyToClipboard(text, successMsg) {
+    successMsg = successMsg || "Link copiado!";
+    const fallback = () => {
+        const input = document.createElement('textarea');
+        input.value = text;
+        input.style.position = 'fixed';
+        input.style.opacity = '0';
+        document.body.appendChild(input);
+        input.select();
+        try {
+            document.execCommand('copy');
+            toast.success(successMsg);
+        } catch (e) {
+            toast.error("Não foi possível copiar. Selecione o link manualmente.");
+        }
+        document.body.removeChild(input);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(() => {
+            toast.success(successMsg);
+        }).catch(() => fallback());
+    } else {
+        fallback();
+    }
+}
+
+function generateUUID() {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+        const r = Math.random() * 16 | 0;
+        return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+    });
+}
+
 const kanbanConfig = {
     overlay: null,
     body: null,
@@ -157,6 +192,32 @@ const kanbanConfig = {
                         </div>
                     </div>
 
+                    <div class="public-link-config-section">
+                        <div class="public-link-header-row">
+                            <div class="public-link-header-title">
+                                <i class="fas fa-share-alt"></i> Link Público do Formulário
+                            </div>
+                            <span class="public-link-hint">Compartilhe para criação de cards sem login</span>
+                        </div>
+                        <div class="public-link-body">
+                            ${fase.form_token ? `
+                                <div class="public-link-display">
+                                    <input type="text" class="modern-input public-link-input" value="${window.location.origin}/form-card/${fase.form_token}" readonly>
+                                    <button class="btn-icon btn-copy-link" title="Copiar link" data-link="${window.location.origin}/form-card/${fase.form_token}"><i class="fas fa-copy"></i></button>
+                                </div>
+                                <div style="display:flex; gap:8px; margin-top:8px;">
+                                    <button class="btn-secondary btn-regenerate-token" data-findex="${fIndex}" style="font-size:0.75rem; padding:6px 12px;">
+                                        <i class="fas fa-sync"></i> Regenerar Link
+                                    </button>
+                                </div>
+                            ` : `
+                                <button class="btn-secondary btn-generate-token" data-findex="${fIndex}" style="font-size:0.8rem;">
+                                    <i class="fas fa-link"></i> Gerar Link Público
+                                </button>
+                            `}
+                        </div>
+                    </div>
+
                     <div class="fields-config-section">
                         <div class="fields-config-header-row">
                             <div class="fields-config-header-title">
@@ -291,6 +352,32 @@ const kanbanConfig = {
                 } else {
                     fase.fases_permitidas = fase.fases_permitidas.filter(id => id !== faseid);
                 }
+            };
+        });
+
+        this.body.querySelectorAll('.btn-generate-token').forEach(btn => {
+            btn.onclick = (e) => {
+                const { findex } = e.target.dataset;
+                const fase = this.currentConfig.fases[findex];
+                fase.form_token = generateUUID();
+                this.render();
+            };
+        });
+
+        this.body.querySelectorAll('.btn-regenerate-token').forEach(btn => {
+            btn.onclick = (e) => {
+                const { findex } = e.target.dataset;
+                if (!confirm("Regenerar o link invalidará o link anterior. Continuar?")) return;
+                const fase = this.currentConfig.fases[findex];
+                fase.form_token = generateUUID();
+                this.render();
+            };
+        });
+
+        this.body.querySelectorAll('.btn-copy-link').forEach(btn => {
+            btn.onclick = (e) => {
+                const link = e.currentTarget.dataset.link;
+                copyToClipboard(link);
             };
         });
 

@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if sucesso %}Card Criado{% elif fase %}Novo Card - {{ fase.nome }}{% else %}Formulário{% endif %} | Hub Lisboa</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: #0d0d0d;
+            color: #e0e0e0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+        .form-container {
+            background: #1a1a1a;
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 16px;
+            padding: 40px;
+            max-width: 560px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        }
+        .form-header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+        .form-header .board-name {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #888;
+            margin-bottom: 4px;
+        }
+        .form-header h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #fff;
+        }
+        .form-header p {
+            color: #888;
+            font-size: 0.85rem;
+            margin-top: 6px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: #ccc;
+            margin-bottom: 6px;
+        }
+        .form-group label .required {
+            color: #d61616;
+            margin-left: 2px;
+        }
+        .field-desc {
+            font-size: 0.72rem;
+            color: #777;
+            margin-bottom: 6px;
+        }
+        .form-input {
+            width: 100%;
+            padding: 10px 14px;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 8px;
+            color: #e0e0e0;
+            font-size: 0.9rem;
+            transition: border-color 0.2s;
+        }
+        .form-input:focus {
+            outline: none;
+            border-color: #d61616;
+            background: rgba(255,255,255,0.06);
+        }
+        textarea.form-input { resize: vertical; min-height: 80px; }
+        select.form-input { cursor: pointer; }
+        .checkbox-group, .radio-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .checkbox-group label, .radio-group label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 400;
+            font-size: 0.85rem;
+            cursor: pointer;
+        }
+        .checkbox-group input[type="checkbox"],
+        .radio-group input[type="radio"] {
+            accent-color: #d61616;
+            width: 16px;
+            height: 16px;
+        }
+        .toggle-wrap {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .toggle-wrap input { accent-color: #d61616; width: 18px; height: 18px; }
+        .toggle-wrap span { font-size: 0.85rem; color: #ccc; }
+        .btn-submit {
+            width: 100%;
+            padding: 14px;
+            background: #d61616;
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin-top: 8px;
+        }
+        .btn-submit:hover { background: #b01010; }
+        .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+        .error-msg {
+            background: rgba(214,22,22,0.12);
+            border: 1px solid rgba(214,22,22,0.3);
+            color: #ff6b6b;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .success-msg {
+            text-align: center;
+            padding: 20px 0;
+        }
+        .success-msg i {
+            font-size: 3rem;
+            color: #2ecc71;
+            margin-bottom: 16px;
+        }
+        .success-msg h2 { font-size: 1.3rem; margin-bottom: 8px; color: #fff; }
+        .success-msg p { color: #888; font-size: 0.9rem; }
+        .hp-field { position: absolute; left: -9999px; opacity: 0; height: 0; overflow: hidden; }
+        .footer-text {
+            text-align: center;
+            margin-top: 24px;
+            font-size: 0.72rem;
+            color: #555;
+        }
+    </style>
+</head>
+<body>
+    <div class="form-container">
+        {% if erro %}
+            <div class="error-msg"><i class="fas fa-exclamation-triangle"></i> {{ erro }}</div>
+            {% if fase %}
+                <a href="/form-card/{{ token }}" style="color:#d61616;font-size:0.85rem;">← Tentar novamente</a>
+            {% endif %}
+        {% elif sucesso %}
+            <div class="success-msg">
+                <i class="fas fa-check-circle"></i>
+                <h2>Card criado com sucesso!</h2>
+                <p>O projeto foi registrado na fase "{{ fase.nome }}" do board "{{ board_nome }}".</p>
+            </div>
+        {% elif fase %}
+            <div class="form-header">
+                <div class="board-name"><i class="fas fa-columns"></i> {{ board_nome }}</div>
+                <h1><i class="fas fa-plus-circle" style="color:#d61616;"></i> Novo Card</h1>
+                <p>Preencha os dados para criar um card na fase <strong>{{ fase.nome }}</strong></p>
+            </div>
+            <form method="POST" action="/form-card/{{ token }}">
+                <div class="hp-field">
+                    <input type="text" name="_hp" tabindex="-1" autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label>Nome do Projeto <span class="required">*</span></label>
+                    <input type="text" name="nome_projeto" class="form-input" required placeholder="Ex: Cliente XYZ">
+                </div>
+                {% for campo in fase.get('campos', []) %}
+                    <div class="form-group">
+                        <label>{{ campo.label }}{% if campo.obrigatorio %}<span class="required">*</span>{% endif %}</label>
+                        {% if campo.descricao %}<div class="field-desc">{{ campo.descricao }}</div>{% endif %}
+                        {% set field_id = 'campo_' ~ campo.id %}
+                        {% if campo.tipo == 'text' %}
+                            <textarea name="{{ field_id }}" class="form-input" {% if campo.obrigatorio %}required{% endif %}></textarea>
+                        {% elif campo.tipo == 'select' %}
+                            <select name="{{ field_id }}" class="form-input" {% if campo.obrigatorio %}required{% endif %}>
+                                <option value="">-- Selecione --</option>
+                                {% for opt in campo.get('opcoes', []) %}
+                                    <option value="{{ opt }}">{{ opt }}</option>
+                                {% endfor %}
+                            </select>
+                        {% elif campo.tipo == 'checkbox' %}
+                            <div class="checkbox-group">
+                                {% for opt in campo.get('opcoes', []) %}
+                                    <label><input type="checkbox" name="{{ field_id }}" value="{{ opt }}"> {{ opt }}</label>
+                                {% endfor %}
+                            </div>
+                        {% elif campo.tipo == 'radio' %}
+                            <div class="radio-group">
+                                {% for opt in campo.get('opcoes', []) %}
+                                    <label><input type="radio" name="{{ field_id }}" value="{{ opt }}" {% if campo.obrigatorio %}required{% endif %}> {{ opt }}</label>
+                                {% endfor %}
+                            </div>
+                        {% elif campo.tipo == 'boolean' %}
+                            <div class="toggle-wrap">
+                                <input type="checkbox" name="{{ field_id }}" value="true">
+                                <span>Sim</span>
+                            </div>
+                        {% elif campo.tipo == 'number' %}
+                            <input type="number" step="any" name="{{ field_id }}" class="form-input" {% if campo.obrigatorio %}required{% endif %}>
+                        {% elif campo.tipo == 'datetime' %}
+                            <input type="datetime-local" name="{{ field_id }}" class="form-input" {% if campo.obrigatorio %}required{% endif %}>
+                        {% elif campo.tipo == 'link' %}
+                            <input type="url" name="{{ field_id }}" class="form-input" placeholder="https://..." {% if campo.obrigatorio %}required{% endif %}>
+                        {% else %}
+                            <input type="text" name="{{ field_id }}" class="form-input" {% if campo.obrigatorio %}required{% endif %}>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+                <button type="submit" class="btn-submit"><i class="fas fa-paper-plane"></i> Criar Card</button>
+            </form>
+            <div class="footer-text">Hub Lisboa — Formulário Externo</div>
+        {% else %}
+            <div class="error-msg"><i class="fas fa-exclamation-triangle"></i> Link inválido ou expirado.</div>
+        {% endif %}
+    </div>
+</body>
+</html>
