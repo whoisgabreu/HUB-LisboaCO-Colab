@@ -169,23 +169,11 @@ const modal = {
                 const cloneBtn = item.querySelector('.btn-clone-snapshot');
                 if (cloneBtn) {
                     const faseNome = h.fase_entrada;
-                    cloneBtn.onclick = async (e) => {
+                    cloneBtn.onclick = (e) => {
                         e.stopPropagation();
                         const historyId = parseInt(cloneBtn.dataset.historyId);
                         const nomeClone = `${card.titulo || 'Card'} (cópia de ${faseNome})`;
-                        if (!confirm(`Criar um novo card clonado a partir do snapshot "${faseNome}"?\n\nNovo card: "${nomeClone}"`)) return;
-                        try {
-                            cloneBtn.disabled = true;
-                            cloneBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-                            await api.cloneFromHistory(historyId, nomeClone);
-                            toast.success(`Card clonado de "${faseNome}" criado com sucesso!`);
-                            this.hide();
-                            board.refresh();
-                        } catch (err) {
-                            toast.error("Erro ao clonar: " + err.message);
-                            cloneBtn.disabled = false;
-                            cloneBtn.innerHTML = '<i class="fas fa-copy"></i>';
-                        }
+                        this._showCloneDialog(historyId, faseNome, nomeClone);
                     };
                 }
             });
@@ -919,6 +907,74 @@ const modal = {
                 saveBtn.innerHTML = '<i class="fas fa-check" style="margin-right: 6px;"></i>Salvar Alterações';
             }
         };
+    },
+
+    _showCloneDialog(historyId, faseNome, nomeClone) {
+        const boardList = board.boardList || [];
+        const currentSlug = board.currentSlug || 'fluxo-projetos';
+
+        // Build overlay
+        const dimmer = document.createElement('div');
+        dimmer.className = 'clone-dialog-dimmer';
+        dimmer.innerHTML = `
+            <div class="clone-dialog">
+                <div class="clone-dialog-header">
+                    <i class="fas fa-copy"></i> Clonar Snapshot
+                </div>
+                <div class="clone-dialog-body">
+                    <div class="clone-dialog-info">
+                        <div class="clone-dialog-row">
+                            <span class="clone-dialog-label">Snapshot:</span>
+                            <span class="clone-dialog-value">${faseNome}</span>
+                        </div>
+                        <div class="clone-dialog-row">
+                            <span class="clone-dialog-label">Novo card:</span>
+                            <span class="clone-dialog-value">${nomeClone}</span>
+                        </div>
+                    </div>
+                    <div class="clone-dialog-field">
+                        <label for="cloneBoardSelect"><i class="fas fa-columns"></i> Board de destino</label>
+                        <select id="cloneBoardSelect" class="modern-select">
+                            ${boardList.map(b =>
+                                `<option value="${b.slug}" ${b.slug === currentSlug ? 'selected' : ''}>${b.nome}</option>`
+                            ).join('')}
+                        </select>
+                    </div>
+                </div>
+                <div class="clone-dialog-actions">
+                    <button id="btnCloneCancel" class="btn-secondary">Cancelar</button>
+                    <button id="btnCloneConfirm" class="btn-primary" style="background:var(--kanban-accent);color:#fff;">
+                        <i class="fas fa-copy"></i> Clonar
+                    </button>
+                </div>
+            </div>
+        `;
+
+        const cleanup = () => { if (dimmer.parentNode) dimmer.remove(); };
+
+        dimmer.querySelector('#btnCloneCancel').onclick = cleanup;
+        dimmer.querySelector('#btnCloneConfirm').onclick = async () => {
+            const targetSlug = dimmer.querySelector('#cloneBoardSelect').value;
+            const confirmBtn = dimmer.querySelector('#btnCloneConfirm');
+            confirmBtn.disabled = true;
+            confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Clonando...';
+            try {
+                await api.cloneFromHistory(historyId, nomeClone, targetSlug);
+                toast.success(`Card clonado de "${faseNome}" em "${targetSlug}"!`);
+                cleanup();
+                this.hide();
+                board.refresh();
+            } catch (err) {
+                toast.error("Erro ao clonar: " + err.message);
+                confirmBtn.disabled = false;
+                confirmBtn.innerHTML = '<i class="fas fa-copy"></i> Clonar';
+            }
+        };
+
+        // Close on dimmer click
+        dimmer.onclick = (e) => { if (e.target === dimmer) cleanup(); };
+
+        this.overlay.appendChild(dimmer);
     },
 
     hide() {

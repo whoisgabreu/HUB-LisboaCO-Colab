@@ -278,8 +278,11 @@ const board = {
             const updateText = this.formatDuration(updateMs);
             const phaseClass = this.phaseSeverityClass(phaseMs);
 
+            const isClone = card.dados && card.dados._origem_clonagem === 'snapshot';
+
             cardEl.innerHTML = `
                 <h4>${card.titulo}</h4>
+                ${isClone ? '<div class="card-clone-badge"><i class="fas fa-copy"></i> Clonado de Snapshot</div>' : ''}
                 <div class="card-meta">
                     <span><i class="fas fa-hashtag"></i> ${card.card_id}</span>
                     <span><i class="fas fa-money-bill-wave"></i> ${card.fee.toLocaleString('pt-BR', {style:'currency', currency: card.moeda || 'BRL'})}</span>

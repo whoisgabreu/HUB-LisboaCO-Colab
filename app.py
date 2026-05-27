@@ -4020,6 +4020,7 @@ def api_kanban_clone_from_history():
     data = request.json or {}
     history_id = data.get("history_id")
     nome = data.get("nome", "Card Clonado")
+    board_slug = data.get("board_slug", "fluxo-projetos")
     usuario_email = session.get("email")
 
     if not history_id:
@@ -4028,7 +4029,7 @@ def api_kanban_clone_from_history():
     with Session() as db:
         service = KanbanService(db)
         try:
-            projeto = service.clone_card_from_history(history_id, nome, usuario_email)
+            projeto = service.clone_card_from_history(history_id, nome, usuario_email, slug=board_slug)
             return jsonify({"status": "success", "card_id": projeto.pipefy_id})
         except Exception as e:
             import traceback; traceback.print_exc()

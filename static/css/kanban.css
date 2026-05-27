@@ -348,6 +348,22 @@ body.kanban-page .main-content {
     gap: 4px;
 }
 
+/* ═══ BADGE DE CLONAGEM ═══ */
+.card-clone-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: var(--kanban-accent);
+    background: rgba(214, 22, 22, 0.08);
+    padding: 2px 8px;
+    border-radius: 6px;
+    margin-top: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
 /* ═══ BADGES DE TEMPO NO CARD ═══ */
 .card-time-badges {
     display: flex;
@@ -2298,4 +2314,137 @@ body.kanban-page .main-content {
 .btn-clone-snapshot:hover {
     color: var(--kanban-accent) !important;
     background: rgba(214, 22, 22, 0.1) !important;
+}
+
+/* ═══ CLONE DIALOG ═══ */
+
+.clone-dialog-dimmer {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    border-radius: 12px;
+}
+
+.clone-dialog {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+    width: 420px;
+    max-width: 90vw;
+    box-shadow: 0 16px 48px rgba(0,0,0,0.4);
+    overflow: hidden;
+}
+
+.clone-dialog-header {
+    padding: 16px 20px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.clone-dialog-header i {
+    color: var(--kanban-accent);
+}
+
+.clone-dialog-body {
+    padding: 20px;
+}
+
+.clone-dialog-info {
+    margin-bottom: 16px;
+    padding: 12px;
+    background: rgba(255,255,255,0.03);
+    border-radius: 8px;
+}
+
+.clone-dialog-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 0;
+    font-size: 0.8rem;
+}
+
+.clone-dialog-label {
+    color: var(--text-muted);
+    opacity: 0.7;
+}
+
+.clone-dialog-value {
+    color: var(--text-primary);
+    font-weight: 600;
+    text-align: right;
+    max-width: 60%;
+    word-break: break-word;
+}
+
+.clone-dialog-field {
+    margin-top: 4px;
+}
+
+.clone-dialog-field label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+}
+
+.clone-dialog-field label i {
+    color: var(--kanban-accent);
+    font-size: 0.8rem;
+}
+
+.clone-dialog-field .modern-select {
+    width: 100%;
+}
+
+.clone-dialog-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 16px 20px;
+    border-top: 1px solid var(--border-color);
+}
+
+.clone-dialog-actions .btn-primary {
+    padding: 8px 20px;
+    border-radius: 8px;
+    border: none;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: opacity 0.2s;
+}
+
+.clone-dialog-actions .btn-primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.clone-dialog-actions .btn-secondary {
+    padding: 8px 20px;
+    border-radius: 8px;
+    border: 1px solid var(--card-border);
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.clone-dialog-actions .btn-secondary:hover {
+    background: rgba(255,255,255,0.05);
 }
