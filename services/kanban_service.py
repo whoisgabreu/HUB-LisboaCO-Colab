@@ -379,3 +379,63 @@ class KanbanService:
         # Importante: Marcar como modificado para o SQLAlchemy detectar mudança profunda no dict JSONB
         from sqlalchemy.orm.attributes import flag_modified
         flag_modified(projeto, "kanban_dados")
+
+    def clone_card_from_history(self, history_id: int, nome: str, usuario_email: str) -> Projeto:
+        """Clona um card a partir de um snapshot do histórico, criando um novo card independente."""
+        historico = self.db.query(KanbanHistorico).filter_by(id=history_id).first()
+        if not historico:
+            raise ValueError("Snapshot de histórico não encontrado.")
+
+        snapshot = historico.snapshot
+        fase_nome = snapshot.get("fase_concluida") or snapshot.get("fase_entrada")
+
+        config = self.get_board_config()
+        target_fase = next((f for f in config.get('fases', []) if f['nome'] == fase_nome), None)
+        if not target_fase:
+            raise ValueError(f"Fase '{fase_nome}' do snapshot não encontrada na configuração atual.")
+
+        dados_iniciais = {
+            **(snapshot.get("snapshot_completo") or {}),
+            **(snapshot.get("dados_transicao") or {}),
+            **(snapshot.get("dados") or {})
+        }
+
+        new_id = random.randint(100000000, 999999999)
+        while self.db.query(Projeto).filter_by(pipefy_id=new_id).first():
+            new_id = random.randint(100000000, 999999999)
+
+        now_date = datetime.now()
+        projeto = Projeto(
+            pipefy_id=new_id,
+            nome=nome,
+            fase_do_pipefy=target_fase['nome'],
+            status=target_fase.get('status_do_projeto', 'Ativo'),
+            kanban_dados=dados_iniciais,
+            data_de_inicio=now_date.date()
+        )
+
+        self._apply_column_mappings(projeto, config, dados_iniciais)
+        self.db.add(projeto)
+        self.db.flush()
+
+        now_ts = datetime.utcnow() - timedelta(hours=3)
+        clone_historico = KanbanHistorico(
+            projeto_id=projeto.pipefy_id,
+            usuario_email=usuario_email,
+            data_evento=now_ts,
+            snapshot={
+                "evento": "criacao",
+                "fase_concluida": target_fase['nome'],
+                "dados": dados_iniciais,
+                "_labels": snapshot.get("_labels", {}),
+                "timestamp": now_ts.isoformat(),
+                "clonado_de": {
+                    "historico_id": history_id,
+                    "projeto_original": historico.projeto_id,
+                    "fase_original": fase_nome
+                }
+            }
+        )
+        self.db.add(clone_historico)
+        self.db.commit()
+        return projeto

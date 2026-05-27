@@ -2151,3 +2151,9 @@ body.kanban-page .main-content {
     transform: scale(1.1);
     transition: all 0.2s ease;
 }
+
+/* Botão clonar snapshot */
+.btn-clone-snapshot:hover {
+    color: var(--kanban-accent) !important;
+    background: rgba(214, 22, 22, 0.1) !important;
+}

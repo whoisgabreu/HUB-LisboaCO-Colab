@@ -50,6 +50,7 @@ const api = {
     getCards:       () => api.get("/api/kanban/cards"),
     getCard:        (cardId) => api.get(`/api/kanban/cards/${cardId}`),
     moveCard:       (cardId, novaFaseId, dados) => api.post("/api/kanban/move", { card_id: cardId, nova_fase_id: novaFaseId, dados }),
-    createCard:     (payload) => api.post("/api/kanban/cards", payload),
-    saveConfig:     (config) => api.post("/api/kanban/config", config) // Not implemented in backend yet, but for future
+    createCard:         (payload) => api.post("/api/kanban/cards", payload),
+    cloneFromHistory:   (historyId, nome) => api.post("/api/kanban/cards/clone-from-history", { history_id: historyId, nome }),
+    saveConfig:         (config) => api.post("/api/kanban/config", config) // Not implemented in backend yet, but for future
 };

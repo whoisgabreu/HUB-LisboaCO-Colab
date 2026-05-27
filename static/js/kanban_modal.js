@@ -156,6 +156,7 @@ const modal = {
                         <div style="display: flex; align-items: center; gap: 6px;">
                             <span style="font-size: 0.65rem; color: var(--text-muted);">${new Date(h.timestamp).toLocaleDateString()}</span>
                             ${window.APP_CONFIG.podeEditarKanban ? '<i class="fas fa-pen" style="font-size: 0.65rem; color: var(--text-muted); opacity: 0.6;"></i>' : ''}
+                            ${window.APP_CONFIG.podeEditarKanban ? `<button class="btn-clone-snapshot" data-history-id="${h.id}" title="Clonar card a partir deste snapshot" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:0.7rem;padding:2px 6px;border-radius:4px;transition:all 0.2s;"><i class="fas fa-copy"></i></button>` : ''}
                         </div>
                     </div>
                     <div class="history-snapshot-content" style="padding: 0 4px;">
@@ -164,6 +165,29 @@ const modal = {
                     </div>
                 `;
                 historyCol.appendChild(item);
+
+                const cloneBtn = item.querySelector('.btn-clone-snapshot');
+                if (cloneBtn) {
+                    const faseNome = h.fase_entrada;
+                    cloneBtn.onclick = async (e) => {
+                        e.stopPropagation();
+                        const historyId = parseInt(cloneBtn.dataset.historyId);
+                        const nomeClone = `${card.titulo || 'Card'} (cópia de ${faseNome})`;
+                        if (!confirm(`Criar um novo card clonado a partir do snapshot "${faseNome}"?\n\nNovo card: "${nomeClone}"`)) return;
+                        try {
+                            cloneBtn.disabled = true;
+                            cloneBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+                            await api.cloneFromHistory(historyId, nomeClone);
+                            toast.success(`Card clonado de "${faseNome}" criado com sucesso!`);
+                            this.hide();
+                            board.refresh();
+                        } catch (err) {
+                            toast.error("Erro ao clonar: " + err.message);
+                            cloneBtn.disabled = false;
+                            cloneBtn.innerHTML = '<i class="fas fa-copy"></i>';
+                        }
+                    };
+                }
             });
         }
 

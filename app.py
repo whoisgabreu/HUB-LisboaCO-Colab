@@ -4007,6 +4007,31 @@ def api_kanban_create_card():
             return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/kanban/cards/clone-from-history", methods=["POST"])
+@check_session
+def api_kanban_clone_from_history():
+    """Clona um card a partir de um snapshot do histórico."""
+    if not session.get("pode_editar_kanban"):
+        return jsonify({"error": "Você não tem permissão para editar o Kanban."}), 403
+
+    data = request.json or {}
+    history_id = data.get("history_id")
+    nome = data.get("nome", "Card Clonado")
+    usuario_email = session.get("email")
+
+    if not history_id:
+        return jsonify({"error": "history_id é obrigatório."}), 400
+
+    with Session() as db:
+        service = KanbanService(db)
+        try:
+            projeto = service.clone_card_from_history(history_id, nome, usuario_email)
+            return jsonify({"status": "success", "card_id": projeto.pipefy_id})
+        except Exception as e:
+            import traceback; traceback.print_exc()
+            return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/ranking", methods=["GET"])
 @check_session
 def api_ranking():
