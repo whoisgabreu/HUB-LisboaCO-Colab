@@ -5,6 +5,10 @@ function canTransition(currentFase, targetFase, card = null) {
     if (targetFase.permite_acesso_direto) return { allowed: true, reason: 'direct' };
     if (targetFase.ordem === currentFase.ordem + 1) return { allowed: true, reason: 'next' };
     
+    // Verificar se a fase destino está na lista de fases permitidas configurada
+    const fasesPermitidas = currentFase.fases_permitidas || [];
+    if (fasesPermitidas.includes(targetFase.id)) return { allowed: true, reason: 'config' };
+    
     // Retorno se o card já tiver histórico dessa fase
     if (card && card.historico && card.historico.some(h => 
         h.fase_entrada === targetFase.nome || 
@@ -196,26 +200,30 @@ const modal = {
             formContainer.appendChild(group);
         });
 
-        // 3. Transitions
+        // 3. Transitions — apenas fases permitidas são exibidas
         transCol.innerHTML = '<div class="col-title"><i class="fas fa-exchange-alt"></i> Mover para...</div>';
+        let hasAnyTransition = false;
         config.fases.forEach(fase => {
             if (fase.nome === card.fase_atual) return;
             const { allowed, reason } = canTransition(currentPhase, fase, card);
+            if (!allowed) return;
 
+            hasAnyTransition = true;
             const btn = document.createElement('button');
             btn.className = 'transition-btn';
-            if (!allowed) btn.classList.add('blocked');
-            
-            let statusIcon = allowed ? '<i class="fas fa-arrow-right"></i>' : '<i class="fas fa-lock"></i>';
+
+            let statusIcon = '<i class="fas fa-arrow-right"></i>';
             if (reason === 'direct') statusIcon = '<i class="fas fa-bolt direct-access-icon" title="Acesso direto"></i>';
             if (reason === 'return') statusIcon = '<i class="fas fa-undo"></i>';
 
             btn.innerHTML = `<span>${fase.nome}</span><span>${statusIcon}</span>`;
-            if (allowed) {
-                btn.onclick = () => this.handleTransition(card, fase);
-            }
+            btn.onclick = () => this.handleTransition(card, fase);
             transCol.appendChild(btn);
         });
+
+        if (!hasAnyTransition) {
+            transCol.innerHTML += '<p style="color:var(--text-muted); font-size:0.8rem; font-style:italic; padding: 10px;">Nenhuma transição disponível para esta fase.</p>';
+        }
 
         const btnArchive = document.getElementById('btnArchive');
         if (btnArchive) {
@@ -255,7 +263,10 @@ const modal = {
             document.getElementById('modalFooter').style.display = 'none';
             if (btnArchive) btnArchive.style.display = 'none';
             // Desabilitar botões de transição
-            transCol.querySelectorAll('.transition-btn').forEach(btn => btn.classList.add('blocked'));
+            transCol.querySelectorAll('.transition-btn').forEach(btn => {
+                btn.classList.add('blocked');
+                btn.onclick = null;
+            });
             // Desabilitar inputs
             modalBody.querySelectorAll('input, select, textarea').forEach(el => el.disabled = true);
         } else {

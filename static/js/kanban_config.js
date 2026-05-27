@@ -120,6 +120,37 @@ const kanbanConfig = {
                         </div>
                     </div>
 
+                    <div class="transitions-config-section">
+                        <div class="transitions-config-header-row">
+                            <div class="transitions-config-header-title">
+                                <i class="fas fa-route"></i> Transições Permitidas
+                            </div>
+                            <span class="transitions-config-hint">Selecione fases adicionais para onde este card pode ser movido</span>
+                        </div>
+                        <div class="transitions-list" data-findex="${fIndex}">
+                            ${(this.currentConfig.fases || []).filter(f => f.id !== fase.id).map(otherFase => {
+                                const isNext = otherFase.ordem === fase.ordem + 1;
+                                const isDirect = otherFase.permite_acesso_direto;
+                                const isAlwaysAllowed = isNext || isDirect;
+                                const isChecked = isAlwaysAllowed || (fase.fases_permitidas || []).includes(otherFase.id);
+                                return `
+                                    <label class="transition-checkbox-item ${isAlwaysAllowed ? 'always-allowed' : ''}">
+                                        <input type="checkbox" 
+                                            class="transition-fase-check" 
+                                            data-findex="${fIndex}" 
+                                            data-faseid="${otherFase.id}"
+                                            ${isChecked ? 'checked' : ''}
+                                            ${isAlwaysAllowed ? 'disabled' : ''}>
+                                        <span class="transition-fase-color" style="background:${otherFase.cor || '#666'}"></span>
+                                        <span class="transition-fase-name">${otherFase.nome}</span>
+                                        ${isNext ? '<span class="transition-badge-next">Próxima (sequência)</span>' : ''}
+                                        ${isDirect ? '<span class="transition-badge-direct">Acesso Direto</span>' : ''}
+                                    </label>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+
                     <div class="fields-config-section">
                         <div class="fields-config-header-row">
                             <div class="fields-config-header-title">
@@ -231,6 +262,7 @@ const kanbanConfig = {
                 ordem: newIndex + 1,
                 permite_acesso_direto: false,
                 status_do_projeto: '',
+                fases_permitidas: [],
                 campos: [{ id: 'f_' + Date.now(), label: 'Título', tipo: 'string', obrigatorio: true }]
             });
             this.expandedPhaseIndex = newIndex;
@@ -239,6 +271,21 @@ const kanbanConfig = {
 
         this.body.querySelectorAll('.phase-direct-access-check').forEach(chk => {
             chk.onchange = (e) => { this.currentConfig.fases[e.target.dataset.findex].permite_acesso_direto = e.target.checked; };
+        });
+
+        this.body.querySelectorAll('.transition-fase-check').forEach(chk => {
+            chk.onchange = (e) => {
+                const { findex, faseid } = e.target.dataset;
+                const fase = this.currentConfig.fases[findex];
+                if (!fase.fases_permitidas) fase.fases_permitidas = [];
+                if (e.target.checked) {
+                    if (!fase.fases_permitidas.includes(faseid)) {
+                        fase.fases_permitidas.push(faseid);
+                    }
+                } else {
+                    fase.fases_permitidas = fase.fases_permitidas.filter(id => id !== faseid);
+                }
+            };
         });
 
         this.body.querySelectorAll('.btn-remove-phase').forEach(btn => {

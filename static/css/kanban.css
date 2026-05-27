@@ -712,6 +712,125 @@ body.kanban-page .main-content {
     font-weight: 700;
 }
 
+/* ═══ TRANSIÇÕES PERMITIDAS — CONFIG ═══ */
+
+.transitions-config-section {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-color);
+}
+
+.transitions-config-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.transitions-config-header-title {
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.transitions-config-header-title i {
+    color: var(--kanban-accent);
+    font-size: 0.85rem;
+}
+
+.transitions-config-hint {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    font-style: italic;
+    opacity: 0.7;
+}
+
+.transitions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.transition-checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.025);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s;
+    user-select: none;
+}
+
+.transition-checkbox-item:hover {
+    background: rgba(255, 255, 255, 0.045);
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+.transition-checkbox-item.always-allowed {
+    background: rgba(46, 204, 113, 0.06);
+    border-color: rgba(46, 204, 113, 0.15);
+    opacity: 0.85;
+    cursor: default;
+}
+
+.transition-checkbox-item input[type="checkbox"] {
+    accent-color: var(--kanban-accent);
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.transition-checkbox-item.always-allowed input[type="checkbox"] {
+    cursor: default;
+    opacity: 0.6;
+}
+
+.transition-fase-color {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.transition-fase-name {
+    font-size: 0.82rem;
+    color: var(--text-main);
+    font-weight: 500;
+    flex: 1;
+}
+
+.transition-badge-next,
+.transition-badge-direct {
+    font-size: 0.62rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 2px 8px;
+    border-radius: 4px;
+    flex-shrink: 0;
+}
+
+.transition-badge-next {
+    background: rgba(52, 152, 219, 0.15);
+    color: #3498db;
+}
+
+.transition-badge-direct {
+    background: rgba(214, 22, 22, 0.12);
+    color: var(--kanban-accent);
+}
+
 /* ═══ CAMPOS DA FASE — REFORMULADO ═══ */
 
 .fields-config-section {

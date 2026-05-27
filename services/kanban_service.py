@@ -218,7 +218,11 @@ class KanbanService:
                 )
             ).first() is not None
 
-            if not is_direct and not is_next and not already_visited:
+            # Verificar se a fase destino está na lista de fases permitidas configurada
+            fases_permitidas = current_fase.get('fases_permitidas', [])
+            is_in_permitidas = target_fase['id'] in fases_permitidas
+
+            if not is_direct and not is_next and not already_visited and not is_in_permitidas:
                 raise PhaseTransitionError(
                     f"Transição bloqueada: '{fase_atual_nome}' -> '{target_fase['nome']}' "
                     "viola a sequência definida."
