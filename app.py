@@ -3748,20 +3748,21 @@ def view_kanban():
 @app.route("/api/kanban/config", methods=["GET"])
 @check_session
 def api_kanban_config():
-    """Retorna a configuração do Kanban."""
+    """Retorna a configuração de um board Kanban."""
+    slug = request.args.get("slug", "fluxo-projetos")
     with Session() as db:
         service = KanbanService(db)
-        config = service.get_board_config()
+        config = service.get_board_config(slug)
         return jsonify(config)
 
 @app.route("/api/kanban/config", methods=["POST"])
 @check_session
 def api_kanban_save_config():
-    """Salva a configuração do board."""
+    """Salva a configuração de um board."""
     data = request.json or {}
-    # No integrado usamos 'fluxo-projetos' como slug principal
-    slug = "fluxo-projetos"
+    slug = data.get("_slug", "fluxo-projetos")
     configuracao = data
+    configuracao.pop("_slug", None)
     
     if not configuracao:
         return jsonify({"error": "Configuração é obrigatória."}), 400
@@ -3779,9 +3780,10 @@ def api_kanban_save_config():
 @check_session
 def api_kanban_cards():
     """Lista os cards (projetos) para o Kanban."""
+    slug = request.args.get("slug", "fluxo-projetos")
     with Session() as db:
         service = KanbanService(db)
-        cards = service.list_cards()
+        cards = service.list_cards(slug)
         
         # Otimização: buscar todo o histórico de uma vez para popular os badges no front
         from collections import defaultdict
@@ -4027,6 +4029,67 @@ def api_kanban_clone_from_history():
         try:
             projeto = service.clone_card_from_history(history_id, nome, usuario_email)
             return jsonify({"status": "success", "card_id": projeto.pipefy_id})
+        except Exception as e:
+            import traceback; traceback.print_exc()
+            return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/kanban/boards", methods=["GET"])
+@check_session
+def api_kanban_boards():
+    """Lista todos os boards Kanban."""
+    with Session() as db:
+        service = KanbanService(db)
+        boards = service.list_boards()
+        return jsonify(boards)
+
+
+@app.route("/api/kanban/boards", methods=["POST"])
+@check_session
+def api_kanban_create_board():
+    """Cria um novo board Kanban."""
+    if not session.get("pode_editar_kanban"):
+        return jsonify({"error": "Você não tem permissão para editar o Kanban."}), 403
+
+    data = request.json or {}
+    slug = data.get("slug", "").strip().lower().replace(" ", "-")
+    nome = data.get("nome", slug)
+
+    if not slug:
+        return jsonify({"error": "Slug é obrigatório."}), 400
+
+    with Session() as db:
+        service = KanbanService(db)
+        try:
+            config = service.create_board(slug, nome)
+            return jsonify({"status": "success", "slug": slug, "config": config})
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 409
+        except Exception as e:
+            import traceback; traceback.print_exc()
+            return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/kanban/cards/migrate-board", methods=["POST"])
+@check_session
+def api_kanban_migrate_card_board():
+    """Transfere um card para outro board."""
+    if not session.get("pode_editar_kanban"):
+        return jsonify({"error": "Você não tem permissão para editar o Kanban."}), 403
+
+    data = request.json or {}
+    card_id = data.get("card_id")
+    target_slug = data.get("target_slug")
+    usuario_email = session.get("email")
+
+    if not card_id or not target_slug:
+        return jsonify({"error": "card_id e target_slug são obrigatórios."}), 400
+
+    with Session() as db:
+        service = KanbanService(db)
+        try:
+            projeto = service.migrate_card_to_board(card_id, target_slug, usuario_email)
+            return jsonify({"status": "success", "card_id": projeto.pipefy_id, "nova_fase": projeto.fase_do_pipefy})
         except Exception as e:
             import traceback; traceback.print_exc()
             return jsonify({"error": str(e)}), 500

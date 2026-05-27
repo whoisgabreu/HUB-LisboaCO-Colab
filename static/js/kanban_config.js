@@ -29,8 +29,14 @@ const kanbanConfig = {
 
     show() {
         if (!board.config) return toast.error("Configuração não carregada.");
-        this.currentConfig = JSON.parse(JSON.stringify(board.config)); // Deep copy
-        this.expandedPhaseIndex = 0; 
+        this.currentConfig = JSON.parse(JSON.stringify(board.config));
+        this.currentConfig._slug = board.currentSlug;
+        this.expandedPhaseIndex = 0;
+        const boardLabel = board.boardList.find(b => b.slug === board.currentSlug);
+        const modalTitle = this.overlay.querySelector('.modal-header h2');
+        if (modalTitle) {
+            modalTitle.innerHTML = `<i class="fas fa-cog" style="color:#d61616; margin-right:10px;"></i>Configurar: ${boardLabel ? boardLabel.nome : board.currentSlug}`;
+        }
         this.render();
         this.overlay.style.display = 'flex';
     },

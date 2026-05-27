@@ -46,11 +46,14 @@ const api = {
     },
 
     // Specific methods
-    getBoardConfig: () => api.get("/api/kanban/config"),
-    getCards:       () => api.get("/api/kanban/cards"),
-    getCard:        (cardId) => api.get(`/api/kanban/cards/${cardId}`),
-    moveCard:       (cardId, novaFaseId, dados) => api.post("/api/kanban/move", { card_id: cardId, nova_fase_id: novaFaseId, dados }),
+    getBoardConfig:     (slug) => api.get(`/api/kanban/config?slug=${slug || 'fluxo-projetos'}`),
+    getCards:           (slug) => api.get(`/api/kanban/cards?slug=${slug || 'fluxo-projetos'}`),
+    getCard:            (cardId) => api.get(`/api/kanban/cards/${cardId}`),
+    moveCard:           (cardId, novaFaseId, dados) => api.post("/api/kanban/move", { card_id: cardId, nova_fase_id: novaFaseId, dados }),
     createCard:         (payload) => api.post("/api/kanban/cards", payload),
     cloneFromHistory:   (historyId, nome) => api.post("/api/kanban/cards/clone-from-history", { history_id: historyId, nome }),
-    saveConfig:         (config) => api.post("/api/kanban/config", config) // Not implemented in backend yet, but for future
+    saveConfig:         (config) => api.post("/api/kanban/config", Object.assign({ _slug: board.currentSlug }, config)),
+    getBoardList:       () => api.get("/api/kanban/boards"),
+    createBoard:        (slug, nome) => api.post("/api/kanban/boards", { slug, nome }),
+    migrateCardBoard:   (cardId, targetSlug) => api.post("/api/kanban/cards/migrate-board", { card_id: cardId, target_slug: targetSlug })
 };

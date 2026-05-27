@@ -249,6 +249,50 @@ const modal = {
             transCol.innerHTML += '<p style="color:var(--text-muted); font-size:0.8rem; font-style:italic; padding: 10px;">Nenhuma transição disponível para esta fase.</p>';
         }
 
+        // Migração entre boards
+        if (window.APP_CONFIG.podeEditarKanban && board.boardList && board.boardList.length > 1) {
+            const outrosBoards = board.boardList.filter(b => b.slug !== board.currentSlug);
+            if (outrosBoards.length > 0) {
+                const migSection = document.createElement('div');
+                migSection.style = 'margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border-color);';
+                migSection.innerHTML = `
+                    <div style="font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-muted); margin-bottom:10px;">
+                        <i class="fas fa-arrow-right-arrow-left"></i> Migrar para outro Board
+                    </div>
+                    <select id="boardMigrateSelect" class="modern-select" style="width:100%; margin-bottom:8px;">
+                        <option value="">Selecione o board...</option>
+                        ${outrosBoards.map(b => `<option value="${b.slug}">${b.nome}</option>`).join('')}
+                    </select>
+                    <button id="btnMigrateBoard" class="btn-secondary" style="width:100%; font-size:0.75rem;" disabled>
+                        <i class="fas fa-share"></i> Migrar Card
+                    </button>
+                `;
+                transCol.appendChild(migSection);
+
+                const selectEl = migSection.querySelector('#boardMigrateSelect');
+                const btnMigrate = migSection.querySelector('#btnMigrateBoard');
+                selectEl.onchange = () => { btnMigrate.disabled = !selectEl.value; };
+                btnMigrate.onclick = async () => {
+                    const targetSlug = selectEl.value;
+                    if (!targetSlug) return;
+                    const boardName = outrosBoards.find(b => b.slug === targetSlug)?.nome || targetSlug;
+                    if (!confirm(`Migrar "${card.titulo}" para o board "${boardName}"?`)) return;
+                    try {
+                        btnMigrate.disabled = true;
+                        btnMigrate.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Migrando...';
+                        await api.migrateCardBoard(card.card_id, targetSlug);
+                        toast.success(`Card migrado para "${boardName}"!`);
+                        this.hide();
+                        board.refresh();
+                    } catch (err) {
+                        toast.error("Erro ao migrar: " + err.message);
+                        btnMigrate.disabled = false;
+                        btnMigrate.innerHTML = '<i class="fas fa-share"></i> Migrar Card';
+                    }
+                };
+            }
+        }
+
         const btnArchive = document.getElementById('btnArchive');
         if (btnArchive) {
             if (window.APP_CONFIG.podeEditarKanban) {

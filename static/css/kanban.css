@@ -146,6 +146,50 @@ body.kanban-page .main-content {
     color: #ff4d4d;
 }
 
+.header-board-selector {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.header-board-selector .modern-select {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--card-border);
+    color: var(--text-main);
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    cursor: pointer;
+    min-width: 140px;
+}
+
+.header-board-selector .modern-select:focus {
+    border-color: var(--kanban-accent);
+    outline: none;
+}
+
+.header-board-selector .btn-icon {
+    background: transparent;
+    border: 1px solid var(--card-border);
+    color: var(--text-muted);
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.header-board-selector .btn-icon:hover {
+    border-color: var(--kanban-accent);
+    color: var(--kanban-accent);
+    background: rgba(214, 22, 22, 0.06);
+}
+
 .header-actions {
     display: flex;
     gap: 12px;

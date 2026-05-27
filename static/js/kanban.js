@@ -1,6 +1,8 @@
 const board = {
     config: null,
     cards: [],
+    currentSlug: "fluxo-projetos",
+    boardList: [],
     pageSize: 30,
     searchQuery: "",
     columnsPagination: {},
@@ -11,6 +13,7 @@ const board = {
     
     async init() {
         modal.init();
+        await this.loadBoardList();
         await this.refresh();
         
         document.getElementById('btnRefresh').onclick = async (e) => {
@@ -79,17 +82,69 @@ const board = {
                 this.render();
             };
         }
+
+        const boardSelector = document.getElementById('boardSelector');
+        if (boardSelector) {
+            boardSelector.onchange = () => {
+                this.switchBoard(boardSelector.value);
+            };
+        }
+
+        const btnCreateBoard = document.getElementById('btnCreateBoard');
+        if (btnCreateBoard) {
+            btnCreateBoard.onclick = () => this.handleCreateBoard();
+        }
+    },
+
+    async loadBoardList() {
+        try {
+            this.boardList = await api.getBoardList();
+            const selector = document.getElementById('boardSelector');
+            if (!selector) return;
+            const currentVal = selector.value;
+            selector.innerHTML = this.boardList.map(b =>
+                `<option value="${b.slug}" ${b.slug === this.currentSlug ? 'selected' : ''}>${b.nome}</option>`
+            ).join('');
+            if (currentVal && currentVal !== this.currentSlug) {
+                selector.value = currentVal;
+            }
+        } catch (err) {
+            console.warn("Erro ao carregar lista de boards:", err);
+        }
+    },
+
+    async switchBoard(slug) {
+        if (slug === this.currentSlug) return;
+        this.currentSlug = slug;
+        await this.refresh();
+    },
+
+    async handleCreateBoard() {
+        const nome = prompt("Nome do novo board:");
+        if (!nome || !nome.trim()) return;
+        const slug = nome.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+        if (!slug) return toast.error("Nome inválido para criar board.");
+        try {
+            await api.createBoard(slug, nome.trim());
+            toast.success(`Board "${nome.trim()}" criado!`);
+            await this.loadBoardList();
+            document.getElementById('boardSelector').value = slug;
+            await this.switchBoard(slug);
+        } catch (err) {
+            toast.error("Erro ao criar board: " + err.message);
+        }
     },
 
     async refresh() {
         try {
-            this.config = await api.getBoardConfig();
-            this.cards = await api.getCards();
-            this._fieldLabels = null; // Clear cached labels
+            this.config = await api.getBoardConfig(this.currentSlug);
+            this.cards = await api.getCards(this.currentSlug);
+            this._fieldLabels = null;
             
             const searchVal = document.getElementById('kanbanSearch')?.value || "";
             this.searchQuery = searchVal;
             
+            document.querySelector('.kanban-header .header-board-selector select#boardSelector');
             this.render();
             this.renderTags();
         } catch (err) {

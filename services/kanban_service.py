@@ -92,10 +92,13 @@ class KanbanService:
         return default_config
 
     def list_cards(self, slug: str = "fluxo-projetos") -> List[Dict[str, Any]]:
-        """Lista todos os projetos formatados como cards de Kanban."""
+        """Lista todos os projetos formatados como cards de Kanban, filtrados pelo board slug."""
         config = self.get_board_config(slug)
         projetos = self.db.query(Projeto).all()
-        return [self._format_card(p, config) for p in projetos]
+        return [
+            self._format_card(p, config) for p in projetos
+            if (p.kanban_dados or {}).get('_board_slug', 'fluxo-projetos') == slug
+        ]
 
     def get_card(self, card_id: int) -> Optional[Dict[str, Any]]:
         """Retorna os detalhes de um único card com mapeamentos aplicados."""
@@ -149,6 +152,8 @@ class KanbanService:
                 break
 
         now = datetime.now()
+
+        dados_iniciais['_board_slug'] = slug
 
         projeto = Projeto(
             pipefy_id=new_id,
@@ -437,5 +442,116 @@ class KanbanService:
             }
         )
         self.db.add(clone_historico)
+        self.db.commit()
+        return projeto
+
+    def list_boards(self) -> List[Dict[str, Any]]:
+        """Lista todos os boards Kanban disponíveis."""
+        configs = self.db.query(KanbanConfig).all()
+        return [
+            {
+                "slug": c.slug,
+                "nome": c.configuracao.get("nome", c.slug),
+                "total_fases": len(c.configuracao.get("fases", []))
+            }
+            for c in configs
+        ]
+
+    def create_board(self, slug: str, nome: str) -> Dict[str, Any]:
+        """Cria um novo board Kanban com configuração padrão."""
+        existing = self.db.query(KanbanConfig).filter_by(slug=slug).first()
+        if existing:
+            raise ValueError(f"Já existe um board com o slug '{slug}'.")
+
+        config = {
+            "nome": nome,
+            "fases": [
+                {
+                    "id": "fase_1",
+                    "nome": "Pendente",
+                    "ordem": 1,
+                    "cor": "#95a5a6",
+                    "status_do_projeto": "Ativo",
+                    "fases_permitidas": [],
+                    "campos": [
+                        {"id": "responsavel", "label": "Responsável", "tipo": "string", "obrigatorio": False}
+                    ]
+                },
+                {
+                    "id": "fase_2",
+                    "nome": "Em Andamento",
+                    "ordem": 2,
+                    "cor": "#3498db",
+                    "status_do_projeto": "Ativo",
+                    "fases_permitidas": [],
+                    "campos": []
+                },
+                {
+                    "id": "fase_3",
+                    "nome": "Concluído",
+                    "ordem": 3,
+                    "cor": "#2ecc71",
+                    "status_do_projeto": "Ativo",
+                    "fases_permitidas": [],
+                    "permite_acesso_direto": True,
+                    "campos": [
+                        {"id": "data_entrega", "label": "Data de Entrega", "tipo": "date", "obrigatorio": False}
+                    ]
+                }
+            ]
+        }
+
+        new_config = KanbanConfig(slug=slug, configuracao=config)
+        self.db.add(new_config)
+        self.db.commit()
+        return config
+
+    def migrate_card_to_board(self, card_id: int, target_slug: str, usuario_email: str) -> Projeto:
+        """Transfere um card para outro board."""
+        projeto = self.db.query(Projeto).filter_by(pipefy_id=card_id).first()
+        if not projeto:
+            raise ValueError("Projeto não encontrado.")
+
+        target_config = self.get_board_config(target_slug)
+        if not target_config:
+            raise ValueError(f"Board de destino '{target_slug}' não encontrado.")
+
+        dados = projeto.kanban_dados or {}
+        current_phase_name = projeto.fase_do_pipefy
+        target_phase = next(
+            (f for f in target_config.get('fases', []) if f['nome'] == current_phase_name),
+            None
+        )
+        if not target_phase:
+            fases = sorted(target_config.get('fases', []), key=lambda x: x['ordem'])
+            target_phase = fases[0] if fases else None
+            if not target_phase:
+                raise ValueError("Board de destino não possui fases configuradas.")
+
+        old_slug = dados.get('_board_slug', 'fluxo-projetos')
+        dados['_board_slug'] = target_slug
+        projeto.kanban_dados = dados
+        projeto.fase_do_pipefy = target_phase['nome']
+        projeto.status = target_phase.get('status_do_projeto', 'Ativo')
+
+        from sqlalchemy.orm.attributes import flag_modified
+        flag_modified(projeto, "kanban_dados")
+
+        now_ts = datetime.utcnow() - timedelta(hours=3)
+        historico = KanbanHistorico(
+            projeto_id=card_id,
+            usuario_email=usuario_email,
+            data_evento=now_ts,
+            snapshot={
+                "evento": "migracao_board",
+                "fase_concluida": current_phase_name,
+                "fase_nova": target_phase['nome'],
+                "board_origem": old_slug,
+                "board_destino": target_slug,
+                "dados": dados,
+                "timestamp": now_ts.isoformat()
+            }
+        )
+        self.db.add(historico)
         self.db.commit()
         return projeto
