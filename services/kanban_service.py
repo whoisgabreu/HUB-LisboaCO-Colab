@@ -3,7 +3,7 @@ from datetime import datetime, date, timedelta
 from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
 from sqlalchemy import select, update, insert
-from models import Projeto, KanbanConfig, KanbanHistorico
+from models import Projeto, KanbanConfig, KanbanHistorico, InvestidorProjeto
 
 class PhaseTransitionError(Exception):
     """Erro lançado quando uma transição de fase viola as regras de negócio."""
@@ -259,6 +259,9 @@ class KanbanService:
             else:
                 projeto.status = 'Ativo'
 
+        # Sincroniza automaticamente o estado na tabela investidores_projetos
+        self._sync_investidor_projeto_status(projeto)
+
         # Snapshot Imutável da fase que está sendo deixada
         historico = KanbanHistorico(
             projeto_id=projeto_id,
@@ -384,6 +387,41 @@ class KanbanService:
         # Importante: Marcar como modificado para o SQLAlchemy detectar mudança profunda no dict JSONB
         from sqlalchemy.orm.attributes import flag_modified
         flag_modified(projeto, "kanban_dados")
+
+    def _sync_investidor_projeto_status(self, projeto: Projeto):
+        """Sincroniza o status do projeto com a tabela investidores_projetos.
+
+        Quando o status muda para 'Inativo':
+          - Define active=False e preenche inactivated_at com a data atual
+        Quando o status sai de 'Inativo' para outro status ativo:
+          - Define active=True e limpa inactivated_at
+        Regras:
+          - Não sobrescreve inactivated_at se já estiver inativo
+          - Não executa atualizações desnecessárias
+        """
+        from datetime import date
+
+        vinculos = self.db.query(InvestidorProjeto).filter(
+            InvestidorProjeto.pipefy_id_projeto == projeto.pipefy_id
+        ).all()
+
+        if not vinculos:
+            return
+
+        is_inactive = projeto.status == 'Inativo'
+        today = date.today()
+
+        for v in vinculos:
+            if is_inactive:
+                # Só atualiza se ainda não estiver marcado como inativo
+                if v.active is not False:
+                    v.active = False
+                    v.inactivated_at = today
+            else:
+                # Reativando: saiu de 'Inativo' para outro status
+                if v.active is not True or v.inactivated_at is not None:
+                    v.active = True
+                    v.inactivated_at = None
 
     def clone_card_from_history(self, history_id: int, nome: str, usuario_email: str,
                                   slug: str = "fluxo-projetos") -> Projeto:
@@ -541,6 +579,8 @@ class KanbanService:
         projeto.kanban_dados = dados
         projeto.fase_do_pipefy = target_phase['nome']
         projeto.status = target_phase.get('status_do_projeto', 'Ativo')
+
+        self._sync_investidor_projeto_status(projeto)
 
         from sqlalchemy.orm.attributes import flag_modified
         flag_modified(projeto, "kanban_dados")
