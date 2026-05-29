@@ -87,7 +87,7 @@ function filterClients() {
 
         const matchSquad = !squadValue || squadName === squadValue;
 
-        card.style.display = (matchSearch && matchSquad) ? 'block' : 'none';
+        card.style.display = (matchSearch && matchSquad) ? '' : 'none';
     });
 }
 
