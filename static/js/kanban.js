@@ -103,6 +103,34 @@ const board = {
         if (btnCreateBoard) {
             btnCreateBoard.onclick = () => this.handleCreateBoard();
         }
+
+        this.initCreateBoardModal();
+    },
+
+    initCreateBoardModal() {
+        const overlay = document.getElementById('createBoardOverlay');
+        const nameInput = document.getElementById('createBoardName');
+        const slugPreview = document.getElementById('createBoardSlugPreview');
+        const confirmBtn = document.getElementById('btnCreateBoardConfirm');
+        const cancelBtn = document.getElementById('btnCreateBoardCancel');
+        const closeBtn = document.getElementById('btnCloseCreateBoard');
+        if (!overlay) return;
+
+        if (nameInput && slugPreview) {
+            nameInput.oninput = () => {
+                const slug = this._slugify(nameInput.value);
+                slugPreview.textContent = slug || '—';
+                const errorBox = document.getElementById('createBoardError');
+                if (errorBox) errorBox.style.display = 'none';
+            };
+            nameInput.onkeydown = (e) => {
+                if (e.key === 'Enter') { e.preventDefault(); this.submitCreateBoard(); }
+            };
+        }
+        if (confirmBtn) confirmBtn.onclick = () => this.submitCreateBoard();
+        if (cancelBtn) cancelBtn.onclick = () => this.closeCreateBoardModal();
+        if (closeBtn) closeBtn.onclick = () => this.closeCreateBoardModal();
+        overlay.onclick = (e) => { if (e.target === overlay) this.closeCreateBoardModal(); };
     },
 
     async loadBoardList() {
@@ -128,19 +156,68 @@ const board = {
         await this.refresh();
     },
 
-    async handleCreateBoard() {
-        const nome = prompt("Nome do novo board:");
-        if (!nome || !nome.trim()) return;
-        const slug = nome.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-        if (!slug) return toast.error("Nome inválido para criar board.");
+    _slugify(text) {
+        return (text || '').trim().toLowerCase()
+            .normalize('NFD').replace(/[̀-ͯ]/g, '') // remove acentos
+            .replace(/\s+/g, '-')
+            .replace(/[^a-z0-9-]/g, '')
+            .replace(/-+/g, '-')
+            .replace(/^-|-$/g, '');
+    },
+
+    handleCreateBoard() {
+        const overlay = document.getElementById('createBoardOverlay');
+        if (!overlay) return;
+        const nameInput = document.getElementById('createBoardName');
+        const slugPreview = document.getElementById('createBoardSlugPreview');
+        const errorBox = document.getElementById('createBoardError');
+        if (nameInput) nameInput.value = '';
+        if (slugPreview) slugPreview.textContent = '—';
+        if (errorBox) errorBox.style.display = 'none';
+        overlay.style.display = 'flex';
+        setTimeout(() => nameInput && nameInput.focus(), 50);
+    },
+
+    closeCreateBoardModal() {
+        const overlay = document.getElementById('createBoardOverlay');
+        if (overlay) overlay.style.display = 'none';
+    },
+
+    async submitCreateBoard() {
+        const nameInput = document.getElementById('createBoardName');
+        const errorBox = document.getElementById('createBoardError');
+        const confirmBtn = document.getElementById('btnCreateBoardConfirm');
+        const nome = (nameInput.value || '').trim();
+        const slug = this._slugify(nome);
+
+        const showError = (msg) => {
+            if (!errorBox) return toast.error(msg);
+            errorBox.textContent = msg;
+            errorBox.style.display = 'block';
+        };
+
+        if (!nome) return showError('Informe um nome para o board.');
+        if (!slug) return showError('O nome precisa conter ao menos uma letra ou número.');
+        if (this.boardList.some(b => b.slug === slug)) {
+            return showError(`Já existe um board com o identificador "${slug}".`);
+        }
+
+        const original = confirmBtn.innerHTML;
+        confirmBtn.disabled = true;
+        confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Criando...';
         try {
-            await api.createBoard(slug, nome.trim());
-            toast.success(`Board "${nome.trim()}" criado!`);
+            await api.createBoard(slug, nome);
+            toast.success(`Board "${nome}" criado!`);
+            this.closeCreateBoardModal();
             await this.loadBoardList();
-            document.getElementById('boardSelector').value = slug;
+            const selector = document.getElementById('boardSelector');
+            if (selector) selector.value = slug;
             await this.switchBoard(slug);
         } catch (err) {
-            toast.error("Erro ao criar board: " + err.message);
+            showError(err.message || 'Erro ao criar board.');
+        } finally {
+            confirmBtn.disabled = false;
+            confirmBtn.innerHTML = original;
         }
     },
 

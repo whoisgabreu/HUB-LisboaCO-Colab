@@ -36,7 +36,7 @@ body.kanban-page .main-content {
 
 .kanban-header {
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-start;
     align-items: center;
     gap: 16px;
     margin-bottom: 24px;
@@ -193,6 +193,7 @@ body.kanban-page .main-content {
 .header-actions {
     display: flex;
     gap: 12px;
+    margin-left: auto;
 }
 
 .kanban-board {
@@ -834,80 +835,202 @@ body.kanban-page .main-content {
 .transitions-list {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 5px;
+    max-height: 320px;
+    overflow-y: auto;
+    padding-right: 4px;
 }
 
 .transition-checkbox-item {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 8px 10px;
+    gap: 11px;
+    padding: 10px 14px;
     border-radius: 8px;
     background: rgba(255, 255, 255, 0.025);
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.08);
     cursor: pointer;
-    transition: background 0.2s, border-color 0.2s;
+    transition: background 0.15s, border-color 0.15s;
     user-select: none;
 }
 
 .transition-checkbox-item:hover {
-    background: rgba(255, 255, 255, 0.045);
-    border-color: rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.16);
 }
 
 .transition-checkbox-item.always-allowed {
-    background: rgba(46, 204, 113, 0.06);
-    border-color: rgba(46, 204, 113, 0.15);
-    opacity: 0.85;
+    background: rgba(214, 22, 22, 0.045);
+    border-color: rgba(214, 22, 22, 0.16);
     cursor: default;
 }
 
+/* Native checkbox hidden — replaced by .transition-check-box */
 .transition-checkbox-item input[type="checkbox"] {
-    accent-color: var(--kanban-accent);
-    width: 16px;
-    height: 16px;
-    cursor: pointer;
-    flex-shrink: 0;
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+    margin: 0;
+    pointer-events: none;
 }
 
-.transition-checkbox-item.always-allowed input[type="checkbox"] {
+.transition-check-box {
+    width: 18px;
+    height: 18px;
+    border-radius: 5px;
+    border: 2px solid var(--card-border, rgba(255,255,255,0.18));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.15s ease;
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.transition-check-box i {
+    font-size: 0.62rem;
+    color: #fff;
+    opacity: 0;
+    transform: scale(0.5);
+    transition: all 0.15s ease;
+}
+
+.transition-checkbox-item.is-checked .transition-check-box {
+    background: var(--kanban-accent);
+    border-color: var(--kanban-accent);
+}
+
+.transition-checkbox-item.is-checked .transition-check-box i {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.transition-checkbox-item.is-checked {
+    background: rgba(214, 22, 22, 0.05);
+    border-color: rgba(214, 22, 22, 0.18);
+}
+
+.transition-checkbox-item.always-allowed.is-checked .transition-check-box {
+    background: var(--kanban-accent);
+    border-color: var(--kanban-accent);
+}
+
+.transition-checkbox-item.always-allowed .transition-check-box {
     cursor: default;
-    opacity: 0.6;
 }
 
-.transition-fase-color {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    flex-shrink: 0;
+/* ── Toolbar de transições (filtro + ações rápidas) ── */
+.transitions-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+}
+
+.transitions-search-wrap {
+    flex: 1;
+    min-width: 160px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--card-border, rgba(255,255,255,0.1));
+}
+
+.transitions-search-wrap i {
+    color: var(--text-muted);
+    font-size: 0.78rem;
+}
+
+.transitions-search-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text-main);
+    font-size: 0.8rem;
+}
+
+.transitions-search-input::placeholder {
+    color: var(--text-muted);
+    opacity: 0.7;
+}
+
+.transitions-quick-actions {
+    display: flex;
+    gap: 6px;
+}
+
+.transitions-quick-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 11px;
+    border-radius: 8px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    cursor: pointer;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--card-border, rgba(255,255,255,0.1));
+    color: var(--text-muted);
+    transition: all 0.18s ease;
+}
+
+.transitions-quick-btn:hover {
+    border-color: var(--kanban-accent);
+    color: var(--kanban-accent);
+    background: rgba(214, 22, 22, 0.06);
+}
+
+.transitions-count-badge {
+    background: rgba(214, 22, 22, 0.15);
+    color: var(--kanban-accent);
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 8px;
+    margin-left: 4px;
+}
+
+.transitions-empty-filter {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    padding: 14px;
+    font-style: italic;
+    opacity: 0.8;
 }
 
 .transition-fase-name {
-    font-size: 0.82rem;
+    font-size: 0.84rem;
     color: var(--text-main);
-    font-weight: 500;
+    font-weight: 600;
     flex: 1;
 }
 
 .transition-badge-next,
 .transition-badge-direct {
-    font-size: 0.62rem;
-    font-weight: 600;
+    font-size: 0.6rem;
+    font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    padding: 2px 8px;
-    border-radius: 4px;
+    padding: 3px 9px;
+    border-radius: 20px;
     flex-shrink: 0;
 }
 
 .transition-badge-next {
-    background: rgba(52, 152, 219, 0.15);
-    color: #3498db;
+    background: rgba(214, 22, 22, 0.1);
+    color: var(--kanban-accent);
 }
 
 .transition-badge-direct {
-    background: rgba(214, 22, 22, 0.12);
-    color: var(--kanban-accent);
+    background: rgba(148, 163, 184, 0.18);
+    color: #94a3b8;
 }
 
 /* ═══ LINK PÚBLICO DO FORMULÁRIO — CONFIG ═══ */
@@ -987,6 +1110,272 @@ body.kanban-page .main-content {
     border-color: var(--kanban-accent);
     color: var(--kanban-accent);
     background: rgba(214, 22, 22, 0.06);
+}
+
+/* ── Link público — versão "bonita" ── */
+.public-link-status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.6rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 2px 8px 2px 6px;
+    border-radius: 20px;
+    margin-left: 8px;
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-muted);
+}
+
+.public-link-status-badge .public-link-status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--text-muted);
+}
+
+.public-link-status-badge.active {
+    background: rgba(46, 204, 113, 0.14);
+    color: #2ecc71;
+}
+
+.public-link-status-badge.active .public-link-status-dot {
+    background: #2ecc71;
+    box-shadow: 0 0 0 3px rgba(46, 204, 113, 0.18);
+}
+
+.public-link-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(214, 22, 22, 0.06), rgba(255, 255, 255, 0.02));
+    border: 1px solid rgba(214, 22, 22, 0.16);
+}
+
+.public-link-card-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    background: var(--kanban-accent);
+    color: #fff;
+    font-size: 1rem;
+    box-shadow: 0 4px 12px rgba(214, 22, 22, 0.25);
+}
+
+.public-link-card-main {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    flex: 1;
+}
+
+.public-link-card-label {
+    font-size: 0.66rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.public-link-card-url {
+    font-size: 0.85rem;
+    color: var(--text-main);
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.public-link-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+}
+
+.btn-link-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    border: 1px solid var(--card-border, rgba(255,255,255,0.12));
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-main);
+    transition: all 0.18s ease;
+}
+
+.btn-link-action:hover {
+    transform: translateY(-1px);
+}
+
+.btn-link-copy {
+    background: var(--kanban-accent);
+    border-color: var(--kanban-accent);
+    color: #fff;
+}
+
+.btn-link-copy:hover {
+    box-shadow: 0 4px 12px rgba(214, 22, 22, 0.3);
+}
+
+.btn-link-open:hover {
+    border-color: #3498db;
+    color: #3498db;
+    background: rgba(52, 152, 219, 0.08);
+}
+
+.btn-link-regen:hover {
+    border-color: var(--kanban-accent);
+    color: var(--kanban-accent);
+    background: rgba(214, 22, 22, 0.06);
+}
+
+.public-link-empty {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px dashed var(--card-border, rgba(255,255,255,0.15));
+    flex-wrap: wrap;
+}
+
+.public-link-empty-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-muted);
+    font-size: 1rem;
+}
+
+.public-link-empty-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    min-width: 180px;
+}
+
+.public-link-empty-text strong {
+    font-size: 0.85rem;
+    color: var(--text-main);
+}
+
+.public-link-empty-text span {
+    font-size: 0.74rem;
+    color: var(--text-muted);
+}
+
+.public-link-empty .btn-primary {
+    font-size: 0.8rem;
+    white-space: nowrap;
+}
+
+/* ── Modal Criar Board ── */
+.create-board-modal {
+    max-width: 460px;
+    width: 92%;
+}
+
+.create-board-body {
+    padding: 24px 28px 8px;
+}
+
+.create-board-field {
+    margin-bottom: 16px;
+}
+
+.create-board-field label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-bottom: 7px;
+}
+
+.create-board-field label i {
+    color: var(--kanban-accent);
+    font-size: 0.8rem;
+}
+
+.create-board-intro {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 14px;
+    border-radius: 10px;
+    background: rgba(52, 152, 219, 0.08);
+    border: 1px solid rgba(52, 152, 219, 0.18);
+    margin-bottom: 20px;
+    font-size: 0.8rem;
+    line-height: 1.45;
+    color: var(--text-main);
+}
+
+.create-board-intro i {
+    color: #3498db;
+    font-size: 0.95rem;
+    margin-top: 2px;
+    flex-shrink: 0;
+}
+
+.create-board-slug-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 4px;
+    flex-wrap: wrap;
+}
+
+.create-board-slug-label {
+    font-size: 0.74rem;
+    color: var(--text-muted);
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-weight: 600;
+}
+
+.create-board-slug-preview {
+    font-family: 'Courier New', monospace;
+    font-size: 0.8rem;
+    padding: 4px 10px;
+    border-radius: 6px;
+    background: rgba(214, 22, 22, 0.1);
+    color: var(--kanban-accent);
+    font-weight: 700;
+}
+
+.create-board-error {
+    margin-top: 14px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: rgba(214, 22, 22, 0.1);
+    border: 1px solid rgba(214, 22, 22, 0.25);
+    color: #ff6b6b;
+    font-size: 0.78rem;
+    font-weight: 500;
 }
 
 /* ═══ CAMPOS DA FASE — REFORMULADO ═══ */

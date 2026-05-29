@@ -165,9 +165,26 @@ const kanbanConfig = {
                         <div class="transitions-config-header-row">
                             <div class="transitions-config-header-title">
                                 <i class="fas fa-route"></i> Transições Permitidas
+                                <span class="transitions-count-badge" data-findex="${fIndex}">${this._countTransitions(fase)}</span>
                             </div>
-                            <span class="transitions-config-hint">Selecione fases adicionais para onde este card pode ser movido</span>
+                            <span class="transitions-config-hint">Para onde este card pode ser movido</span>
                         </div>
+                        ${(() => {
+                            const others = (this.currentConfig.fases || []).filter(f => f.id !== fase.id);
+                            const optionalCount = others.filter(o => !(o.ordem === fase.ordem + 1 || o.permite_acesso_direto)).length;
+                            return others.length > 5 ? `
+                            <div class="transitions-toolbar">
+                                <div class="transitions-search-wrap">
+                                    <i class="fas fa-magnifying-glass"></i>
+                                    <input type="text" class="transitions-search-input" data-findex="${fIndex}" placeholder="Filtrar fases...">
+                                </div>
+                                ${optionalCount > 0 ? `
+                                <div class="transitions-quick-actions">
+                                    <button type="button" class="transitions-quick-btn btn-transitions-all" data-findex="${fIndex}"><i class="fas fa-check-double"></i> Todas</button>
+                                    <button type="button" class="transitions-quick-btn btn-transitions-none" data-findex="${fIndex}"><i class="fas fa-eraser"></i> Limpar</button>
+                                </div>` : ''}
+                            </div>` : '';
+                        })()}
                         <div class="transitions-list" data-findex="${fIndex}">
                             ${(this.currentConfig.fases || []).filter(f => f.id !== fase.id).map(otherFase => {
                                 const isNext = otherFase.ordem === fase.ordem + 1;
@@ -175,14 +192,14 @@ const kanbanConfig = {
                                 const isAlwaysAllowed = isNext || isDirect;
                                 const isChecked = isAlwaysAllowed || (fase.fases_permitidas || []).includes(otherFase.id);
                                 return `
-                                    <label class="transition-checkbox-item ${isAlwaysAllowed ? 'always-allowed' : ''}">
-                                        <input type="checkbox" 
-                                            class="transition-fase-check" 
-                                            data-findex="${fIndex}" 
+                                    <label class="transition-checkbox-item ${isAlwaysAllowed ? 'always-allowed' : ''} ${isChecked ? 'is-checked' : ''}" data-fase-name="${(otherFase.nome || '').toLowerCase()}">
+                                        <input type="checkbox"
+                                            class="transition-fase-check"
+                                            data-findex="${fIndex}"
                                             data-faseid="${otherFase.id}"
                                             ${isChecked ? 'checked' : ''}
                                             ${isAlwaysAllowed ? 'disabled' : ''}>
-                                        <span class="transition-fase-color" style="background:${otherFase.cor || '#666'}"></span>
+                                        <span class="transition-check-box"><i class="fas fa-check"></i></span>
                                         <span class="transition-fase-name">${otherFase.nome}</span>
                                         ${isNext ? '<span class="transition-badge-next">Próxima (sequência)</span>' : ''}
                                         ${isDirect ? '<span class="transition-badge-direct">Acesso Direto</span>' : ''}
@@ -190,30 +207,52 @@ const kanbanConfig = {
                                 `;
                             }).join('')}
                         </div>
+                        <div class="transitions-empty-filter" data-findex="${fIndex}" style="display:none;">
+                            <i class="fas fa-filter-circle-xmark"></i> Nenhuma fase corresponde ao filtro.
+                        </div>
                     </div>
 
                     <div class="public-link-config-section">
                         <div class="public-link-header-row">
                             <div class="public-link-header-title">
                                 <i class="fas fa-share-alt"></i> Link Público do Formulário
+                                ${fase.form_token
+                                    ? '<span class="public-link-status-badge active"><span class="public-link-status-dot"></span> Ativo</span>'
+                                    : '<span class="public-link-status-badge"><span class="public-link-status-dot"></span> Desativado</span>'}
                             </div>
-                            <span class="public-link-hint">Compartilhe para criação de cards sem login</span>
+                            <span class="public-link-hint">Criação de cards sem login</span>
                         </div>
                         <div class="public-link-body">
                             ${fase.form_token ? `
-                                <div class="public-link-display">
-                                    <input type="text" class="modern-input public-link-input" value="${window.location.origin}/form-card/${fase.form_token}" readonly>
-                                    <button class="btn-icon btn-copy-link" title="Copiar link" data-link="${window.location.origin}/form-card/${fase.form_token}"><i class="fas fa-copy"></i></button>
+                                <div class="public-link-card">
+                                    <div class="public-link-card-icon"><i class="fas fa-link"></i></div>
+                                    <div class="public-link-card-main">
+                                        <span class="public-link-card-label">Endereço do formulário</span>
+                                        <span class="public-link-card-url" title="${window.location.origin}/form-card/${fase.form_token}">${window.location.origin}/form-card/${fase.form_token}</span>
+                                    </div>
                                 </div>
-                                <div style="display:flex; gap:8px; margin-top:8px;">
-                                    <button class="btn-secondary btn-regenerate-token" data-findex="${fIndex}" style="font-size:0.75rem; padding:6px 12px;">
-                                        <i class="fas fa-sync"></i> Regenerar Link
+                                <div class="public-link-actions">
+                                    <button class="btn-link-action btn-link-copy" data-link="${window.location.origin}/form-card/${fase.form_token}">
+                                        <i class="fas fa-copy"></i> Copiar
+                                    </button>
+                                    <a class="btn-link-action btn-link-open" href="${window.location.origin}/form-card/${fase.form_token}" target="_blank" rel="noopener">
+                                        <i class="fas fa-arrow-up-right-from-square"></i> Abrir
+                                    </a>
+                                    <button class="btn-link-action btn-link-regen btn-regenerate-token" data-findex="${fIndex}">
+                                        <i class="fas fa-sync"></i> Regenerar
                                     </button>
                                 </div>
                             ` : `
-                                <button class="btn-secondary btn-generate-token" data-findex="${fIndex}" style="font-size:0.8rem;">
-                                    <i class="fas fa-link"></i> Gerar Link Público
-                                </button>
+                                <div class="public-link-empty">
+                                    <div class="public-link-empty-icon"><i class="fas fa-link-slash"></i></div>
+                                    <div class="public-link-empty-text">
+                                        <strong>Nenhum link público ativo</strong>
+                                        <span>Gere um link para receber cards de qualquer pessoa, sem necessidade de login.</span>
+                                    </div>
+                                    <button class="btn-primary btn-generate-token" data-findex="${fIndex}">
+                                        <i class="fas fa-link"></i> Gerar Link Público
+                                    </button>
+                                </div>
                             `}
                         </div>
                     </div>
@@ -352,6 +391,45 @@ const kanbanConfig = {
                 } else {
                     fase.fases_permitidas = fase.fases_permitidas.filter(id => id !== faseid);
                 }
+                const item = e.target.closest('.transition-checkbox-item');
+                if (item) item.classList.toggle('is-checked', e.target.checked);
+                this._refreshTransitionCount(findex);
+            };
+        });
+
+        // Filtro de transições
+        this.body.querySelectorAll('.transitions-search-input').forEach(input => {
+            input.oninput = (e) => {
+                const { findex } = e.target.dataset;
+                const term = e.target.value.toLowerCase().trim();
+                const list = this.body.querySelector(`.transitions-list[data-findex="${findex}"]`);
+                const empty = this.body.querySelector(`.transitions-empty-filter[data-findex="${findex}"]`);
+                let visible = 0;
+                list.querySelectorAll('.transition-checkbox-item').forEach(item => {
+                    const match = !term || (item.dataset.faseName || '').includes(term);
+                    item.style.display = match ? 'flex' : 'none';
+                    if (match) visible++;
+                });
+                if (empty) empty.style.display = visible === 0 ? 'block' : 'none';
+            };
+        });
+
+        // Ações rápidas: Todas / Limpar
+        this.body.querySelectorAll('.btn-transitions-all').forEach(btn => {
+            btn.onclick = (e) => {
+                const { findex } = e.currentTarget.dataset;
+                const fase = this.currentConfig.fases[findex];
+                fase.fases_permitidas = (this.currentConfig.fases || [])
+                    .filter(f => f.id !== fase.id && !(f.ordem === fase.ordem + 1 || f.permite_acesso_direto))
+                    .map(f => f.id);
+                this.render();
+            };
+        });
+        this.body.querySelectorAll('.btn-transitions-none').forEach(btn => {
+            btn.onclick = (e) => {
+                const { findex } = e.currentTarget.dataset;
+                this.currentConfig.fases[findex].fases_permitidas = [];
+                this.render();
             };
         });
 
@@ -374,10 +452,10 @@ const kanbanConfig = {
             };
         });
 
-        this.body.querySelectorAll('.btn-copy-link').forEach(btn => {
+        this.body.querySelectorAll('.btn-copy-link, .btn-link-copy').forEach(btn => {
             btn.onclick = (e) => {
                 const link = e.currentTarget.dataset.link;
-                copyToClipboard(link);
+                copyToClipboard(link, "Link do formulário copiado!");
             };
         });
 
@@ -528,6 +606,22 @@ const kanbanConfig = {
             { v: 'radio',    l: 'Escolha única',        i: 'fa-circle-dot'    },
             { v: 'link',     l: 'Link / URL',           i: 'fa-link'          }
         ];
+    },
+
+    _countTransitions(fase) {
+        return (this.currentConfig.fases || [])
+            .filter(f => f.id !== fase.id)
+            .filter(other => {
+                const isNext = other.ordem === fase.ordem + 1;
+                const isDirect = other.permite_acesso_direto;
+                return isNext || isDirect || (fase.fases_permitidas || []).includes(other.id);
+            }).length;
+    },
+
+    _refreshTransitionCount(findex) {
+        const fase = this.currentConfig.fases[findex];
+        const badge = this.body.querySelector(`.transitions-count-badge[data-findex="${findex}"]`);
+        if (badge) badge.textContent = this._countTransitions(fase);
     },
 
     _fieldLabel(type) {

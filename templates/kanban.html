@@ -106,6 +106,35 @@
         </div>
     </div>
 
+    <!-- Modal Criar Board -->
+    <div id="createBoardOverlay" class="modal-overlay">
+        <div class="modal-content create-board-modal">
+            <div class="modal-header">
+                <h2><i class="fas fa-table-columns" style="color:#d61616; margin-right:10px;"></i>Criar Novo Board</h2>
+                <button id="btnCloseCreateBoard" class="btn-close-modal" title="Fechar"><i class="fas fa-xmark"></i></button>
+            </div>
+            <div class="create-board-body">
+                <div class="create-board-intro">
+                    <i class="fas fa-circle-info"></i>
+                    <span>O board nasce com fases padrão (<strong>Pendente</strong>, <strong>Em Andamento</strong>, <strong>Concluído</strong>). Você personaliza tudo depois em Configurações.</span>
+                </div>
+                <div class="form-group create-board-field">
+                    <label><i class="fas fa-clipboard-list"></i> Nome do Board</label>
+                    <input type="text" id="createBoardName" class="modern-input" placeholder="Ex: Projetos V4 Lisboa" maxlength="60" autocomplete="off">
+                </div>
+                <div class="create-board-slug-row">
+                    <span class="create-board-slug-label"><i class="fas fa-link"></i> Identificador</span>
+                    <code id="createBoardSlugPreview" class="create-board-slug-preview">—</code>
+                </div>
+                <div id="createBoardError" class="create-board-error" style="display:none;"></div>
+            </div>
+            <div class="modal-footer">
+                <button id="btnCreateBoardCancel" class="btn-secondary">Cancelar</button>
+                <button id="btnCreateBoardConfirm" class="btn-primary"><i class="fas fa-plus" style="margin-right:6px;"></i>Criar Board</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal de Configurações do Usuário (Perfil / Aparência) -->
     {% include "components/modal-configuracoes.html" %}
 

@@ -1891,3 +1891,177 @@ body.tema-claro .session-item span {
 body.tema-claro .session-item strong {
     color: #0f172a !important;
 }
+
+/* ═══════════════════════════════════════════════════════════
+   KANBAN — Transições, Link Público e Modal Criar Board (claro)
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Transições permitidas ── */
+body.tema-claro .transition-checkbox-item {
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04) !important;
+}
+
+body.tema-claro .transition-checkbox-item:hover {
+    background: #ffffff !important;
+    border-color: #cbd5e1 !important;
+    box-shadow: 0 3px 8px rgba(15, 23, 42, 0.08) !important;
+}
+
+body.tema-claro .transition-checkbox-item.is-checked {
+    background: #fff5f5 !important;
+    border-color: rgba(214, 22, 22, 0.3) !important;
+}
+
+body.tema-claro .transition-checkbox-item.always-allowed {
+    background: #fff5f5 !important;
+    border-color: rgba(214, 22, 22, 0.28) !important;
+}
+
+body.tema-claro .transition-check-box {
+    border-color: #cbd5e1 !important;
+    background: #ffffff !important;
+}
+
+body.tema-claro .transition-checkbox-item.is-checked .transition-check-box,
+body.tema-claro .transition-checkbox-item.always-allowed.is-checked .transition-check-box {
+    background: #d61616 !important;
+    border-color: #d61616 !important;
+}
+
+body.tema-claro .transition-badge-next {
+    background: rgba(214, 22, 22, 0.1) !important;
+    color: #d61616 !important;
+}
+
+body.tema-claro .transition-badge-direct {
+    background: #f1f5f9 !important;
+    color: #64748b !important;
+}
+
+body.tema-claro .transition-fase-name {
+    color: #1e293b !important;
+}
+
+body.tema-claro .transitions-search-wrap {
+    background: #f8fafc !important;
+    border-color: #cbd5e1 !important;
+}
+
+body.tema-claro .transitions-search-input {
+    color: #1e293b !important;
+}
+
+body.tema-claro .transitions-quick-btn {
+    background: #ffffff !important;
+    border-color: #cbd5e1 !important;
+    color: #475569 !important;
+}
+
+body.tema-claro .transitions-quick-btn:hover {
+    border-color: #d61616 !important;
+    color: #d61616 !important;
+    background: #fef2f2 !important;
+}
+
+body.tema-claro .transitions-count-badge {
+    background: rgba(214, 22, 22, 0.1) !important;
+    color: #d61616 !important;
+}
+
+/* ── Link público bonito ── */
+body.tema-claro .public-link-card {
+    background: linear-gradient(135deg, #fef2f2, #ffffff) !important;
+    border: 1px solid rgba(214, 22, 22, 0.2) !important;
+}
+
+body.tema-claro .public-link-card-url {
+    color: #0f172a !important;
+}
+
+body.tema-claro .public-link-card-label {
+    color: #64748b !important;
+}
+
+body.tema-claro .btn-link-action {
+    background: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    color: #1e293b !important;
+}
+
+body.tema-claro .btn-link-copy {
+    background: #d61616 !important;
+    border-color: #d61616 !important;
+    color: #ffffff !important;
+}
+
+body.tema-claro .btn-link-open:hover {
+    border-color: #3498db !important;
+    color: #3498db !important;
+    background: #eff6ff !important;
+}
+
+body.tema-claro .btn-link-regen:hover {
+    border-color: #d61616 !important;
+    color: #d61616 !important;
+    background: #fef2f2 !important;
+}
+
+body.tema-claro .public-link-empty {
+    background: #f8fafc !important;
+    border: 1px dashed #cbd5e1 !important;
+}
+
+body.tema-claro .public-link-empty-icon {
+    background: #e2e8f0 !important;
+    color: #64748b !important;
+}
+
+body.tema-claro .public-link-empty-text strong {
+    color: #1e293b !important;
+}
+
+body.tema-claro .public-link-status-badge {
+    background: #f1f5f9 !important;
+    color: #64748b !important;
+}
+
+body.tema-claro .public-link-status-badge .public-link-status-dot {
+    background: #94a3b8 !important;
+}
+
+body.tema-claro .public-link-status-badge.active {
+    background: #f0fdf4 !important;
+    color: #16a34a !important;
+}
+
+body.tema-claro .public-link-status-badge.active .public-link-status-dot {
+    background: #22c55e !important;
+}
+
+/* ── Modal Criar Board ── */
+body.tema-claro .create-board-intro {
+    background: #eff6ff !important;
+    border: 1px solid #bfdbfe !important;
+    color: #1e293b !important;
+}
+
+body.tema-claro .create-board-field label {
+    color: #475569 !important;
+}
+
+body.tema-claro .create-board-slug-label {
+    color: #64748b !important;
+}
+
+body.tema-claro .create-board-slug-preview {
+    background: rgba(214, 22, 22, 0.08) !important;
+    color: #d61616 !important;
+}
+
+body.tema-claro .create-board-error {
+    background: #fef2f2 !important;
+    border: 1px solid rgba(214, 22, 22, 0.25) !important;
+    color: #dc2626 !important;
+}
