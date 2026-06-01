@@ -51,6 +51,23 @@
         transform: rotate(45deg) translateY(2px) translateX(2px);
     }
 
+    /* ── Modo claro ── */
+    body.tema-claro #upBtn {
+        background-color: #ffffff;
+        border-color: rgba(214, 22, 22, 0.35);
+        box-shadow: 0 4px 16px rgba(15, 23, 42, 0.12);
+    }
+
+    body.tema-claro #upBtn:hover {
+        border-color: rgb(214, 22, 22);
+        filter: drop-shadow(0 0 10px rgba(214, 22, 22, 0.6));
+    }
+
+    body.tema-claro #up-arrow {
+        border-left-color: #d61616;
+        border-top-color: #d61616;
+    }
+
 </style>
 
 <button id="upBtn" title="Voltar para o topo">

@@ -55,11 +55,16 @@
 }
 
 .modal-tenure-tag {
-    font-size: 0.8rem;
-    color: rgba(255,255,255,0.6);
+    font-size: 0.72rem;
+    color: rgba(255,255,255,0.92);
     font-weight: 700;
     margin-left: 8px;
     display: inline-block;
+    background: rgba(255,255,255,0.16);
+    border: 1px solid rgba(255,255,255,0.22);
+    padding: 3px 11px;
+    border-radius: 20px;
+    backdrop-filter: blur(6px);
 }
 
 .modal-meta-line {
@@ -69,11 +74,13 @@
 }
 
 .modal-name-title {
-    font-size: 3rem;
+    font-size: 2.4rem;
     font-weight: 900;
-    margin: 10px 0;
+    margin: 8px 0 6px;
     text-transform: uppercase;
-    line-height: 1;
+    line-height: 1.05;
+    color: #ffffff;
+    text-shadow: 0 2px 16px rgba(0,0,0,0.45);
 }
 
 .modal-sub-title {
@@ -279,40 +286,52 @@
 /* Ranking Layout Grid - Side by Side */
 .ranking-grid {
     display: flex;
-    align-items: flex-start;
-    gap: 50px;
+    flex-direction: column;
+    gap: 32px;
     padding: 20px 0;
-    min-height: 80vh;
+}
+
+/* Estrutura empilhada: pódio (top 3) em cima, lista 4-10 em grade embaixo */
+.ranking-main {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 30px;
+    width: 100%;
 }
 
 .ranking-list-grid {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
+    width: 100%;
+    max-width: 1200px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+    gap: 16px;
     background: rgba(255,255,255,0.02);
-    padding: 30px;
-    border-radius: 30px;
+    padding: 26px 30px 30px;
+    border-radius: 26px;
     border: 1px solid rgba(255,255,255,0.05);
     backdrop-filter: blur(10px);
-    max-height: 85vh;
-    overflow-y: auto;
+}
+
+/* Título "TOP RETENÇÃO" ocupa a linha inteira da grade */
+.ranking-list-title {
+    grid-column: 1 / -1;
+    margin-bottom: 8px !important;
 }
 
 .ranking-list-grid::-webkit-scrollbar { width: 5px; }
 .ranking-list-grid::-webkit-scrollbar-thumb { background: var(--ranking-accent); border-radius: 10px; }
 
-/* podium style - Lado Esquerdo */
+/* podium style - centralizado no topo */
 .ranking-podium {
     display: flex;
     justify-content: center;
     align-items: flex-end;
-    gap: 20px;
-    margin: 40px 0;
-    flex: 1.4; 
-    min-height: 500px;
-    position: sticky;
-    top: 20px;
+    gap: 24px;
+    margin: 20px 0 10px;
+    width: 100%;
+    min-height: 480px;
+    position: relative;
 }
 
 .podium-column {
@@ -422,18 +441,17 @@
 .bar-name { font-size: 1.3rem; font-weight: 900; text-transform: uppercase; margin: 0 0 8px 0; text-shadow: 0 2px 4px rgba(0,0,0,0.3); }
 .bar-metric { font-size: 1.5rem; font-weight: 900; background: rgba(0,0,0,0.2); padding: 5px 15px; border-radius: 20px; }
 
-/* Ranking List - Elegant Side Column */
+/* Ranking List - grade full-width (4º ao 10º) abaixo do pódio */
 .ranking-list-grid {
-    flex: 0 0 450px; 
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-    padding: 20px;
+    width: 100%;
+    max-width: 1200px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+    gap: 16px;
+    padding: 26px 30px 30px;
     background: rgba(255,255,255,0.03);
-    border-radius: 30px;
+    border-radius: 26px;
     border: 1px solid rgba(255,255,255,0.05);
-    max-height: 85vh;
-    overflow-y: auto;
     backdrop-filter: blur(10px);
 }
 
@@ -453,7 +471,7 @@
 
 .ranking-card:hover {
     background: rgba(255,255,255,0.1);
-    transform: translateX(-10px);
+    transform: translateY(-5px);
     border-color: var(--ranking-accent);
 }
 
@@ -553,25 +571,35 @@
     color: rgba(255,255,255,0.6);
 }
 
-/* Left Side - Profile */
+/* Left Side - Profile: foto protagonista + degradê na base (estilo palestrante) */
 .modal-profile {
-    flex: 1.2;
+    flex: 1.15;
     position: relative;
-    min-height: 550px;
+    min-height: 580px;
+    overflow: hidden;
 }
 
 .modal-profile-img {
+    position: absolute;
+    inset: 0;
     width: 100%;
     height: 100%;
     object-fit: cover;
-    object-position: top; /* Garante foco no rosto */
+    object-position: center top; /* preserva rosto/cabeça/ombros */
 }
 
 .modal-profile-overlay {
     position: absolute;
-    bottom: 0; left: 0; right: 0;
-    padding: 20px 40px; /* Reduzido */
-    background: linear-gradient(to top, rgba(13, 13, 13, 0.95) 0%, rgba(13, 13, 13, 0.8) 40%, transparent 100%);
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 120px 40px 38px;
+    background: linear-gradient(to top,
+        rgba(10, 12, 20, 0.97) 0%,
+        rgba(10, 12, 20, 0.88) 26%,
+        rgba(10, 12, 20, 0.55) 52%,
+        rgba(10, 12, 20, 0.18) 78%,
+        transparent 100%);
     display: flex;
     flex-direction: column;
 }
@@ -650,8 +678,54 @@
 
 /* Responsive */
 @media (max-width: 1300px) {
-    .ranking-grid { flex-direction: column; align-items: center; }
+    .ranking-main { flex-direction: column; align-items: center; }
     .ranking-list-grid { flex: none; width: 100%; max-width: 800px; }
+}
+
+/* ── Efeitos / animações ── */
+@keyframes rkFadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: none; }
+}
+@keyframes rkRise {
+    from { opacity: 0; transform: translateY(48px) scale(0.97); }
+    to   { opacity: 1; transform: none; }
+}
+
+.podium-column {
+    animation: rkRise 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.podium-column.pos-2 { animation-delay: 0.05s; }
+.podium-column.pos-3 { animation-delay: 0.12s; }
+.podium-column.pos-1 { animation-delay: 0.22s; }
+
+.ranking-card {
+    animation: rkFadeUp 0.45s ease both;
+}
+
+/* Glow/spotlight atrás do pódio — preenche o espaço vazio */
+.ranking-podium::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    bottom: 8%;
+    width: 78%;
+    height: 70%;
+    transform: translateX(-50%);
+    background: radial-gradient(ellipse at center, rgba(255, 193, 7, 0.16) 0%, rgba(214, 22, 22, 0.06) 40%, transparent 72%);
+    filter: blur(18px);
+    pointer-events: none;
+    z-index: 0;
+}
+.ranking-podium > * { position: relative; z-index: 1; }
+
+/* Brilho pulsante sutil na coluna do 1º lugar */
+.podium-column.pos-1 .podium-bar {
+    box-shadow: 0 18px 50px rgba(255, 160, 0, 0.28);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .podium-column, .ranking-card { animation: none !important; }
 }
 
 @media (max-width: 900px) {

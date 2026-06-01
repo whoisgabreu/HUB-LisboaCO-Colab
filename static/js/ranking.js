@@ -146,6 +146,7 @@ function renderRanking(data, sortBy = 'daysWithoutChurn') {
     if (podium[2]) podiumOrder.push(podium[2]); // Bronze
 
     let html = `
+        <div class="ranking-main">
         <div class="ranking-podium">
             ${podiumOrder.map((investor, index) => {
         if (!investor) return '';
@@ -177,14 +178,14 @@ function renderRanking(data, sortBy = 'daysWithoutChurn') {
         </div>
         
         <div class="ranking-list-grid">
-            <h2 style="color: white; font-weight: 900; font-size: 1.5rem; margin-bottom: 20px; border-left: 4px solid var(--ranking-accent); padding-left: 15px;">TOP RETENÇÃO</h2>
+            <h2 class="ranking-list-title" style="color: var(--ranking-text-main); font-weight: 900; font-size: 1.5rem; margin-bottom: 20px; border-left: 4px solid var(--ranking-accent); padding-left: 15px;">TOP RETENÇÃO</h2>
             ${rest.map((investor, index) => {
                 const isMRR = sortBy === 'mrr';
                 const metricLabel = isMRR ? "MRR GESTÃO" : "DIAS SEM CHURN";
                 const metricValue = isMRR ? investor.mrr_formatted : `${investor.daysWithoutChurn} DIAS`;
 
                 return `
-                    <div class="ranking-card" onclick="openInvestorDetails(${investor.id})">
+                    <div class="ranking-card" style="animation-delay:${index * 0.05}s" onclick="openInvestorDetails(${investor.id})">
                         <div class="rank-number">#${index + 4}</div>
                         <div class="card-header">
                             ${['green','yellow','red'].includes(investor.flag) ? `<div class="flag-badge ${investor.flag}"></div>` : ''}
@@ -203,6 +204,7 @@ function renderRanking(data, sortBy = 'daysWithoutChurn') {
                     </div>
                 `;
             }).join('')}
+        </div>
         </div>
     `;
 
@@ -223,8 +225,10 @@ function openInvestorDetails(id) {
     };
 
     const flagTag = modal.querySelector('.modal-tag');
-    flagTag.className = `modal-tag flag-${investor.flag}`;
-    flagTag.innerText = investor.flag.toUpperCase();
+    const flag = (investor.flag || '').toLowerCase();
+    flagTag.className = `modal-tag flag-${flag || 'none'}`;
+    flagTag.innerText = flag ? flag.toUpperCase() : '';
+    flagTag.style.display = flag ? '' : 'none';
 
     modal.querySelector('.modal-tenure-tag').innerText = investor.level || 'Investidor';
     modal.querySelector('.modal-name-title').innerText = investor.name;
