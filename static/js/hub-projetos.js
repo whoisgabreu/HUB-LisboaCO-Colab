@@ -65,17 +65,17 @@ function switchTab(ev, tab) {
 //     });
 // }
 
-function filterClients() {
-    const searchValue = document
-        .getElementById('searchInput')
-        .value
-        .toLowerCase();
+function filterClients(inputEl) {
+    // Lê o valor do próprio campo que disparou o evento (evita pegar input errado/vazio)
+    const searchEl = inputEl || document.getElementById('searchInput');
+    const searchValue = (searchEl && searchEl.value ? searchEl.value : '').toLowerCase().trim();
 
     const squadFilterEl = document.getElementById('squadFilter');
-    const squadValue = squadFilterEl ? squadFilterEl.value.toLowerCase() : '';
+    const squadValue = squadFilterEl ? squadFilterEl.value.toLowerCase().trim() : '';
 
+    // Cards do slide ativo; com fallback se a classe .active não estiver presente
     const activeSlide = document.querySelector('.slide-content.active');
-    const cards = activeSlide.querySelectorAll('.project-card');
+    const cards = (activeSlide || document).querySelectorAll('.project-card');
 
     cards.forEach(card => {
         const clientName = (card.getAttribute('data-cliente') || '').toLowerCase();
@@ -87,7 +87,13 @@ function filterClients() {
 
         const matchSquad = !squadValue || squadName === squadValue;
 
-        card.style.display = (matchSearch && matchSquad) ? '' : 'none';
+        // O CSS da página usa `.project-card { display: flex !important }`,
+        // então é preciso usar !important para conseguir esconder o card.
+        if (matchSearch && matchSquad) {
+            card.style.removeProperty('display'); // volta ao display do CSS (flex)
+        } else {
+            card.style.setProperty('display', 'none', 'important');
+        }
     });
 }
 

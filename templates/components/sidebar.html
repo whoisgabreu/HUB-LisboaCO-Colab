@@ -30,7 +30,7 @@
 
         <!-- Grupo Operação -->
         {% set can_see_operacao = session.posicao in ["Gerência", "Sócio"] or session.funcao in ["Account", "Gestor de Tráfego"] %}
-        {% set can_see_criativa = session.posicao in ["Gerência", "Sócio", "Coordenador"] or session.funcao in ["Designer", "WebDesigner", "Account", "Gestor de Tráfego"] %}
+        {% set can_see_criativa = session.posicao in ["Gerência", "Sócio", "Coordenador"] or session.funcao in ["Designer", "Webdesigner", "Account", "Gestor de Tráfego"] %}
         
         {% if can_see_operacao or can_see_criativa %}
         <div class="nav-group">

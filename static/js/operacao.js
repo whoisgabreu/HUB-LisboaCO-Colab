@@ -943,7 +943,7 @@ async function loadPlanoMidia(pipefyId, mes, ano) {
                     <td colspan="5" style="padding:3rem;color:var(--text-muted);text-align:center;">
                         <i class="fas fa-file-invoice-dollar" style="font-size:2rem;margin-bottom:1rem;display:block;opacity:0.3;"></i>
                         Nenhum plano de mídia lançado para este mês.<br>
-                        <button class="btn-add-task btn-auth-gt" style="margin-top:1rem;background:var(--accent-red);" onclick="openGTModal('modal-novo-plano')">
+                        <button class="btn-add-task btn-auth-gt" style="margin-top:1rem;background:var(--accent-red);" onclick="openNovoPlanModal()">
                             <i class="fas fa-plus"></i> Lançar Plano de Mídia
                         </button>
                     </td>
@@ -1570,17 +1570,32 @@ window.deletePlanoMidia = deletePlanoMidia;
 // ─── WIZARD PLANO DE MÍDIA ────────────────────────────────────────────────────
 
 let editorRows = [];
+// Mês/ano alvo do wizard (permite editar meses passados a partir do histórico)
+let wizardMes = null;
+let wizardAno = null;
 
-function openNovoPlanModal() {
-    const label = `${MESES_PT[currentMonth - 1]} ${currentYear}`;
+function openNovoPlanModal(mes, ano, prefill) {
+    wizardMes = mes || currentMonth;
+    wizardAno = ano || currentYear;
+
+    const label = `${MESES_PT[wizardMes - 1]} ${wizardAno}`;
     const el = document.getElementById('display-wizard-date');
     if (el) el.innerText = label;
 
-    editorRows = [];
-    addEditorRow();
+    if (prefill && Array.isArray(prefill.canais) && prefill.canais.length) {
+        editorRows = prefill.canais.map(c => ({
+            canal: c.canal || '',
+            campanhas: c.campanhas || '',
+            percent_budget: parseFloat(c.percent_budget) || 0
+        }));
+        renderEditorRows();
+    } else {
+        editorRows = [];
+        addEditorRow();
+    }
 
     const budgetInput = document.getElementById('wizard-total-budget');
-    if (budgetInput) budgetInput.value = 0;
+    if (budgetInput) budgetInput.value = (prefill && prefill.budget_total) ? prefill.budget_total : 0;
 
     calculateEditorValues();
     openGTModal('modal-novo-plano');
@@ -1622,7 +1637,7 @@ function renderEditorRows() {
 
 function calculateEditorValues() {
     const total = parseFloat(document.getElementById('wizard-total-budget')?.value || 0);
-    const days = new Date(currentYear, currentMonth, 0).getDate();
+    const days = new Date(wizardAno || currentYear, wizardMes || currentMonth, 0).getDate();
     let totalPct = 0, totalBudget = 0, totalDaily = 0;
 
     editorRows.forEach((row, i) => {
@@ -1653,7 +1668,9 @@ function editCurrentPlan() {
 
 async function saveFinalPlan() {
     const total = parseFloat(document.getElementById('wizard-total-budget')?.value || 0);
-    const days = new Date(currentYear, currentMonth, 0).getDate();
+    const mes = wizardMes || currentMonth;
+    const ano = wizardAno || currentYear;
+    const days = new Date(ano, mes, 0).getDate();
 
     if (editorRows.length === 0) {
         showToast('Adicione ao menos uma campanha.', 'error');
@@ -1670,8 +1687,8 @@ async function saveFinalPlan() {
 
     const payload = {
         pipefy_id: currentProject.pipefy_id,
-        mes: currentMonth,
-        ano: currentYear,
+        mes: mes,
+        ano: ano,
         dados_plano: { budget_total: total, canais }
     };
 
@@ -1689,8 +1706,13 @@ async function saveFinalPlan() {
             showToast(`Plano salvo! ${result.rows_total_for_project} linha(s) na tabela operacao para este projeto.`);
             console.log('[plano-midia] snapshot atual no BD:', result.snapshot);
             closeGTModal('modal-novo-plano');
-            loadPlanoMidia(currentProject.pipefy_id, currentMonth, currentYear);
-            loadEntregas(currentProject.pipefy_id, currentMonth, currentYear);
+            // Recarrega o histórico (reflete edição de meses passados)
+            loadHistoricoPlanos(currentProject.pipefy_id);
+            // Só recarrega o painel principal/entregas se o mês editado for o exibido
+            if (mes === currentMonth && ano === currentYear) {
+                loadPlanoMidia(currentProject.pipefy_id, currentMonth, currentYear);
+                loadEntregas(currentProject.pipefy_id, currentMonth, currentYear);
+            }
         } else {
             showToast('Falha ao salvar: ' + (result.error || `status ${res.status}`), 'error');
         }
@@ -1711,14 +1733,20 @@ async function loadHistoricoPlanos(pipefyId) {
     } catch (e) { console.error("Erro ao carregar histórico:", e); }
 }
 
+let historicoPlanosData = [];
+
 function renderHistoricoPlanos(data) {
     const container = document.getElementById('history-accordion-container');
     if (!container) return;
+
+    historicoPlanosData = Array.isArray(data) ? data : [];
 
     if (!data.length) {
         container.innerHTML = '<p style="text-align:center;color:var(--text-muted);padding:2rem;">Nenhum histórico encontrado para este projeto.</p>';
         return;
     }
+
+    const podeEditar = hasGTAuth();
 
     container.innerHTML = data.map((p, idx) => {
         const monthId = `history-${p.mes}-${p.ano}`;
@@ -1738,7 +1766,14 @@ function renderHistoricoPlanos(data) {
                         <span class="badge-gt" style="background:var(--accent-red); color:white; padding:4px 12px; border-radius:20px; font-weight:600; font-size:0.75rem;">${MESES_PT[p.mes - 1]} ${p.ano}</span>
                         <span style="color: var(--text-main); font-size: 0.85rem; font-weight:600;">Budget Total: R$ ${p.budget_total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
                     </div>
-                    <i class="fas fa-chevron-down history-arrow" style="transition:transform 0.3s;"></i>
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        ${podeEditar ? `
+                        <button onclick="event.stopPropagation(); editHistoryPlan(${idx})" title="Editar plano deste mês"
+                            style="display:inline-flex; align-items:center; gap:6px; background:rgba(214,22,22,0.1); border:1px solid rgba(214,22,22,0.25); color:var(--accent-red); cursor:pointer; font-size:0.72rem; font-weight:600; padding:5px 12px; border-radius:8px; transition:all 0.15s;">
+                            <i class="fas fa-pen"></i> Editar
+                        </button>` : ''}
+                        <i class="fas fa-chevron-down history-arrow" style="transition:transform 0.3s;"></i>
+                    </div>
                 </div>
                 <div class="history-month-content" style="padding:1rem; background:rgba(0,0,0,0.1); border-radius:0 0 12px 12px; margin-top:-12px; margin-bottom:15px; border:1px solid var(--border-color); border-top:none;">
                     <table class="op-spreadsheet" style="font-size: 0.78rem; width:100%;">
@@ -1767,6 +1802,21 @@ function toggleHistoryMonth(id) {
 }
 window.toggleHistoryMonth = toggleHistoryMonth;
 
+/**
+ * Abre o wizard pré-preenchido para editar o plano de mídia de um mês passado.
+ */
+function editHistoryPlan(idx) {
+    const p = historicoPlanosData[idx];
+    if (!p) return;
+    if (!hasGTAuth()) {
+        showToast('Você não tem permissão para editar planos de mídia.', 'error');
+        return;
+    }
+    closeGTModal('modal-historico-planos');
+    openNovoPlanModal(p.mes, p.ano, { canais: p.canais, budget_total: p.budget_total });
+}
+window.editHistoryPlan = editHistoryPlan;
+
 // ─── FILTRO DE BUSCA DE PROJETOS ──────────────────────────────────────────────
 
 function filterProjects() {
@@ -1775,7 +1825,8 @@ function filterProjects() {
         const name = (card.querySelector('h3')?.textContent || '').toLowerCase();
         const product = (card.querySelector('p')?.textContent || '').toLowerCase();
         const squad = (card.querySelector('.op-card-meta')?.textContent || '').toLowerCase();
-        card.style.display = (name.includes(searchValue) || product.includes(searchValue) || squad.includes(searchValue)) ? 'block' : 'none';
+        const match = name.includes(searchValue) || product.includes(searchValue) || squad.includes(searchValue);
+        card.style.display = match ? '' : 'none';
     });
 }
 

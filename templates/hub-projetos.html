@@ -77,11 +77,11 @@
                         {% if session.squad == "Gerência" %}
                         <input type="text" name="busca" value="" autocomplete="off" autocorrect="off"
                             autocapitalize="off" spellcheck="false" id="searchInput"
-                            placeholder="Buscar por cliente ou squad..." onkeyup="filterClients()">
+                            placeholder="Buscar por cliente ou squad..." onkeyup="filterClients(this)">
                         {% else %}
                         <input type="text" name="busca" value="" autocomplete="off" autocorrect="off"
                             autocapitalize="off" spellcheck="false" id="searchInput" placeholder="Buscar por cliente..."
-                            onkeyup="filterClients()">
+                            onkeyup="filterClients(this)">
                         {% endif %}
                     </div>
                     <div class="squad-filter-wrap">
