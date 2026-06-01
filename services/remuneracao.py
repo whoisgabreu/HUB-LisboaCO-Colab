@@ -177,7 +177,8 @@ def calcular_metricas_mensais(mes, ano):
 
             # Lógica de Streaks
             historico = db.query(MetricaMensal).filter(
-                MetricaMensal.email_investidor == inv.email
+                MetricaMensal.email_investidor == inv.email,
+                (MetricaMensal.ano < ano) | ((MetricaMensal.ano == ano) & (MetricaMensal.mes < mes))
             ).order_by(desc(MetricaMensal.ano), desc(MetricaMensal.mes)).first()
 
             green_streak = 0
