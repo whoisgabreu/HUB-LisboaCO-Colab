@@ -275,10 +275,9 @@ body.tema-claro td[class*="-flag-table"] span {
 
 body.tema-claro .yellow-flag,
 body.tema-claro .yellow-flag-table {
-    background-color: #fbbf24 !important;
-    /* Amarelo mais saturado */
-    color: #451a03 !important;
-    /* Contraste altíssimo */
+    background-color: #ca8a04 !important;
+    /* Âmbar/dourado mais escuro p/ o branco ficar legível */
+    color: #ffffff !important;
     border: none !important;
 }
 
@@ -296,8 +295,17 @@ body.tema-claro .green-pdc-flag-table {
     border: none !important;
 }
 
-/* Texto da PDC na tabela é neon (#00ff00) por padrão — força branco no claro */
-body.tema-claro .green-pdc-flag-table span {
+/* Flag preta (Black) no claro — fundo escuro + texto branco */
+body.tema-claro .black-flag,
+body.tema-claro .black-flag-table {
+    background-color: #1e293b !important;
+    color: #ffffff !important;
+    border: none !important;
+}
+
+/* O <span> interno das flags de tabela tem cor neon própria (amarelo/verde/vermelho),
+   que fica invisível sobre o fundo colorido. Força branco em TODAS — sempre visível. */
+body.tema-claro td[class*="-flag-table"] span {
     color: #ffffff !important;
 }
 
