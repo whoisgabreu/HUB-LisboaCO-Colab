@@ -95,11 +95,56 @@ function filterClients(inputEl) {
             card.style.setProperty('display', 'none', 'important');
         }
     });
+
+    updateTabCounts();
+}
+
+function updateTabCounts() {
+    const searchEl = document.getElementById('searchInput');
+    const searchValue = (searchEl && searchEl.value ? searchEl.value : '').toLowerCase().trim();
+
+    const squadFilterEl = document.getElementById('squadFilter');
+    const squadValue = squadFilterEl ? squadFilterEl.value.toLowerCase().trim() : '';
+
+    ['ativos', 'onetime', 'inativos'].forEach(slideName => {
+        const slide = document.getElementById(`slide-${slideName}`);
+        if (!slide) return;
+
+        const cards = slide.querySelectorAll('.project-card');
+        let count = 0;
+
+        if (!searchValue && !squadValue) {
+            count = cards.length;
+        } else {
+            cards.forEach(card => {
+                const clientName = (card.getAttribute('data-cliente') || '').toLowerCase();
+                const squadName  = (card.getAttribute('data-squad') || '').toLowerCase();
+
+                const matchSearch = !searchValue
+                    || clientName.includes(searchValue)
+                    || squadName.includes(searchValue);
+
+                const matchSquad = !squadValue || squadName === squadValue;
+
+                if (matchSearch && matchSquad) count++;
+            });
+        }
+
+        const tabBtn = document.querySelector(`.tab-btn[onclick*="'${slideName}'"]`);
+        if (tabBtn) {
+            const countEl = tabBtn.querySelector('.tab-count');
+            if (countEl) countEl.textContent = count;
+        }
+    });
 }
 
 function populateSquadFilter() {
     const select = document.getElementById('squadFilter');
     if (!select) return;
+
+    while (select.options.length > 1) {
+        select.remove(1);
+    }
 
     const squads = new Set();
     document.querySelectorAll('.project-card').forEach(card => {
@@ -337,6 +382,64 @@ function closeProjectModal() {
 function backToClientModal() {
     document.getElementById('projectModal').classList.remove('active');
     if (currentClientData) {
+        const { nome, projetos, tipo } = currentClientData;
+
+        document.getElementById('clientModalTitle').textContent = `Projetos de: ${nome}`;
+
+        const projectsList = document.getElementById('projectsList');
+        projectsList.innerHTML = '';
+
+        const formatarData = (dataISO) => {
+            if (!dataISO) return '—';
+            const [ano, mes, dia] = dataISO.split('T')[0].split('-');
+            return `${dia}/${mes}/${ano}`;
+        };
+
+        let totalFee = 0;
+        let moeda = null;
+        projetos.forEach(projeto => {
+            if (projeto.fee) {
+                totalFee += Number(projeto.fee);
+                moeda = projeto.moeda;
+            }
+        });
+
+        const totalFeeFormatado = formatCurrency(totalFee, moeda);
+
+        const totalItem = document.createElement('div');
+        totalItem.className = 'project-total-fee';
+        totalItem.innerHTML = `
+            <strong>Fee Total:</strong> ${totalFeeFormatado || '—'}
+        `;
+        projectsList.appendChild(totalItem);
+
+        projetos.forEach(projeto => {
+            const feeFormatado = formatCurrency(projeto.fee, projeto.moeda);
+
+            const projectItem = document.createElement('div');
+            projectItem.className = 'project-list-item';
+            projectItem.innerHTML = `
+                <div class="project-item-info">
+                    <h4>${projeto.produto_contratado || 'Sem nome'}</h4>
+                    <p>
+                        Squad: ${projeto.squad_atribuida || 'N/A'} |
+                        Fee: ${feeFormatado || '—'} |
+                        Data Inicio: ${formatarData(projeto.data_de_inicio)}
+                    </p>
+                </div>
+                <button class="btn-view">
+                    <i class="fa-solid fa-eye"></i> Ver Detalhes
+                </button>
+            `;
+
+            projectItem.querySelector('.btn-view').addEventListener('click', (e) => {
+                e.stopPropagation();
+                openProjectModal(projeto, tipo);
+            });
+
+            projectsList.appendChild(projectItem);
+        });
+
         document.getElementById('clientModal').classList.add('active');
     }
     isEditMode = false;
@@ -468,10 +571,17 @@ RECARREGAR DADOS
 async function recarregarDados() {
     try {
         const response = await fetch('/api/projetos/listar');
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const dados = await response.json();
         atualizarCards(dados);
     } catch (error) {
         console.error('Erro ao recarregar dados locais:', error);
+        if (window.showToast) {
+            window.showToast(
+                'Alterações salvas, mas ocorreu um erro ao atualizar a página. Recarregue (F5) para ver os dados atualizados.',
+                'error'
+            );
+        }
     }
 }
 
@@ -531,7 +641,7 @@ function atualizarCards(dados) {
                     data-cliente="${cliente.toLowerCase()}"
                     data-projetos='${JSON.stringify(projetos)}'
                     data-tipo="${tipoProjeto}"
-                    data-squad="${primeiroProj.squad_atribuida}"
+                    data-squad="${(primeiroProj.squad_atribuida || '').toLowerCase()}"
                     onclick="openClientModal(this)">
                     <div class="project-header">
                         <div class="project-icon ${tipoSlide === 'inativos' ? 'inactive' : ''}">
@@ -558,10 +668,8 @@ function atualizarCards(dados) {
         }).join('');
     });
 
-    const searchInput = document.getElementById('searchInput');
-    if (searchInput && searchInput.value) {
-        filterClients();
-    }
+    populateSquadFilter();
+    filterClients();
 }
 
 /* ==============================

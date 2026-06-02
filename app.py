@@ -754,6 +754,7 @@ def _projeto_to_dict(projeto):
         "orcamento_midia_meta": projeto.orcamento_midia_meta,
         "orcamento_midia_google": projeto.orcamento_midia_google,
         "data_fim": projeto.data_fim.isoformat() if projeto.data_fim else None,
+        "url_webhook_gchat": projeto.url_webhook_gchat,
         "ekyte_workspace": projeto.ekyte_workspace,
         "extra": projeto.extra or {},
         "notas": projeto.notas or {},

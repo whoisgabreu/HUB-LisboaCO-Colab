@@ -102,7 +102,7 @@
                             {% for cliente_nome, projetos in clientes_ativos.items() %}
                             <div class="project-card" data-cliente="{{ cliente_nome|lower }}"
                                 data-projetos='{{ projetos|tojson|safe }}' data-tipo="ativo"
-                                data-squad="{{ projetos[0].squad_atribuida|lower }}" onclick="openClientModal(this)">
+                                data-squad="{{ projetos[0].squad_atribuida|lower if projetos[0].squad_atribuida else '' }}" onclick="openClientModal(this)">
                                 <div class="project-header">
                                     <div class="project-icon">
                                         <i class="fa-solid fa-building"></i>
