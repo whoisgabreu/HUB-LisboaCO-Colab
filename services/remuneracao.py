@@ -41,7 +41,7 @@ def calcular_metricas_mensais(mes, ano):
         # Mês atual para Churn
         mes_atual_str = f"{ano}-{mes:02d}"
 
-        for inv in investidores:
+        def _processar_investidor(inv):
             # 0. Carregar a métrica primeiro para poder acessar o historico_projetos
             metrica = db.query(MetricaMensal).filter(
                 MetricaMensal.email_investidor == inv.email,
@@ -308,6 +308,15 @@ def calcular_metricas_mensais(mes, ano):
 
             # Flush individual para evitar bulk INSERT/UPDATE problemático com colunas GENERATED (FetchedValue)
             db.flush()
+
+        for inv in investidores:
+            try:
+                _processar_investidor(inv)
+            except Exception as e:
+                import traceback
+                print(f"[remuneracao] Erro ao processar {inv.email}: {e}")
+                traceback.print_exc()
+                continue
 
         db.commit()
 

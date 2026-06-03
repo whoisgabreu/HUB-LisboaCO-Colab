@@ -306,8 +306,8 @@ class ProjetoParticipacaoService:
                 # Arredonda para 2 casas decimais antes de gravar (ex: 167.5945712 → 167.59)
                 total_proporcional_brl = total_proporcional_brl.quantize(Decimal("0.01"))
 
-                # Apenas fixo_mrr_entrega e fixo_mrr_projeto_total — não afetam as colunas GENERATED
-                m.fixo_mrr_entrega = total_proporcional_brl
+                # Apenas fixo_mrr_projeto_total — não afeta as colunas GENERATED
+                # fixo_mrr_entrega NÃO é atualizado aqui pois representa MRR de entregas reais
                 m.fixo_mrr_projeto_total = total_proporcional_brl
                 db.flush()
 

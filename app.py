@@ -307,7 +307,7 @@ def _get_or_create_entrega_record(db, email, mes, ano):
     """
     record = db.query(MetricaMensal).filter_by(
         email_investidor=email, mes=mes, ano=ano
-    ).first()
+    ).with_for_update().first()
     if record is None:
         record = MetricaMensal(
             email_investidor=email,
@@ -322,12 +322,13 @@ def _get_or_create_entrega_record(db, email, mes, ano):
 
 # ─────────────────────────────────────────────────────────────────────────────
 
-def _recalcular_mrr_por_entregas(record):
+def _recalcular_mrr_por_entregas(db, record):
     """
     Recalcula os campos de MRR no MetricaMensal após o registro de uma entrega.
     Garante que fixo_mrr_entrega, fixo_mrr_atual, fixo_churn_atual e
     fixo_mrr_projeto_total fiquem sempre consistentes entre si.
     O banco usa fixo_mrr_atual (entregue - churn) para todas as fórmulas GENERATED.
+    Usa a sessão do caller (db) para evitar sessões extras e N+1 queries.
     """
     from decimal import Decimal
 
@@ -344,107 +345,108 @@ def _recalcular_mrr_por_entregas(record):
     churn_calculado = Decimal("0")
     novos_detalhes = []
 
-    with Session() as db_aux:
-        # Busca todos os vínculos (ativos + inativados no mês para churn)
-        from sqlalchemy import or_, and_, extract
-        todos_vinculos = db_aux.query(InvestidorProjeto).filter(
-            InvestidorProjeto.email_investidor == record.email_investidor
-        ).all()
+    # Batch query: busca todos os vínculos e projetos em 2 queries
+    from models import Projeto
+    from sqlalchemy import or_, and_, extract
+    todos_vinculos = db.query(InvestidorProjeto).filter(
+        InvestidorProjeto.email_investidor == record.email_investidor
+    ).all()
 
-        usd_rate = None  # carregado uma vez se necessário
+    # Batch query projetos (elimina N+1)
+    proj_ids = list({v.pipefy_id_projeto for v in todos_vinculos})
+    projs_map = {}
+    if proj_ids:
+        projs_list = db.query(Projeto).filter(Projeto.pipefy_id.in_(proj_ids)).all()
+        projs_map = {p.pipefy_id: p for p in projs_list}
 
-        for v in todos_vinculos:
-            pid = str(v.pipefy_id_projeto)
+    usd_rate = None
 
-            from models import Projeto
-            proj = db_aux.query(Projeto).filter_by(pipefy_id=v.pipefy_id_projeto).first()
-                
-            moeda_proj = str(proj.moeda).strip().upper() if proj and proj.moeda else "BRL"
+    for v in todos_vinculos:
+        pid = str(v.pipefy_id_projeto)
+        proj = projs_map.get(v.pipefy_id_projeto)
+        moeda_proj = str(proj.moeda).strip().upper() if proj and proj.moeda else "BRL"
 
-            if moeda_proj == "USD":
-                from services.currency import CurrencyService
-                if usd_rate is None:
-                    usd_rate = CurrencyService.get_usd_to_brl_rate()
+        if moeda_proj == "USD":
+            from services.currency import CurrencyService
+            if usd_rate is None:
+                usd_rate = CurrencyService.get_usd_to_brl_rate()
 
-            # FEE COMPLETO — para mrr_portfolio_total (flag e teto)
-            fee_full = Decimal(str(v.fee_projeto or 0))
-            if v.cientista:
-                fee_full *= Decimal("1.5")
+        # FEE COMPLETO — para mrr_portfolio_total (flag e teto)
+        fee_full = Decimal(str(v.fee_projeto or 0))
+        if v.cientista:
+            fee_full *= Decimal("1.5")
+        if moeda_proj == "USD" and usd_rate:
+            fee_full *= usd_rate
+        fee_full = fee_full.quantize(Decimal("0.01"))
+
+        # FEE PROPORCIONAL — para MRR entregue e churn (dias trabalhados no mês)
+        proj_hist = next((h for h in hist if str(h.get("projeto_id")) == pid), None)
+        if proj_hist and "valor_proporcional" in proj_hist:
+            fee = Decimal(str(proj_hist["valor_proporcional"]))
             if moeda_proj == "USD" and usd_rate:
-                fee_full *= usd_rate
-            fee_full = fee_full.quantize(Decimal("0.01"))
+                fee *= usd_rate
+            fee = fee.quantize(Decimal("0.01"))
+        else:
+            fee = fee_full
 
-            # FEE PROPORCIONAL — para MRR entregue e churn (dias trabalhados no mês)
-            proj_hist = next((h for h in hist if str(h.get("projeto_id")) == pid), None)
-            if proj_hist and "valor_proporcional" in proj_hist:
-                # valor_proporcional está na moeda original — precisa converter USD→BRL
-                fee = Decimal(str(proj_hist["valor_proporcional"]))
-                if moeda_proj == "USD" and usd_rate:
-                    fee *= usd_rate
-                fee = fee.quantize(Decimal("0.01"))
+        eh_churn_atual_proj = False
+        if not v.active:
+            if v.inactivated_at and v.inactivated_at.strftime("%Y-%m") == mes_atual_str:
+                eh_churn_atual_proj = True
+
+        if v.active or eh_churn_atual_proj:
+            mrr_portfolio_total += fee_full
+
+            detalhe = {
+                "id": v.pipefy_id_projeto,
+                "nome": v.nome_projeto,
+                "moeda": moeda_proj,
+                "cientista": bool(v.cientista),
+                "ativo": v.active,
+                "fee": float(fee_full)
+            }
+
+            if eh_churn_atual_proj:
+                churn_calculado += fee
+                detalhe["churned"] = True
+                detalhe["data_churn"] = v.inactivated_at.strftime("%d/%m/%Y")
+
+            novos_detalhes.append(detalhe)
+
+            p = entregas_map.get(pid)
+            if record.ano == 2026 and record.mes in (2, 3):
+                progresso = Decimal("0")
             else:
-                fee = fee_full  # sem histórico proporcional, usa fee completo
-
-            eh_churn_atual_proj = False
-            if not v.active:
-                if v.inactivated_at and v.inactivated_at.strftime("%Y-%m") == mes_atual_str:
-                    eh_churn_atual_proj = True
-
-            if v.active or eh_churn_atual_proj:
-                mrr_portfolio_total += fee_full
-                
-                detalhe = {
-                    "id": v.pipefy_id_projeto,
-                    "nome": v.nome_projeto,
-                    "moeda": moeda_proj,
-                    "cientista": bool(v.cientista),
-                    "ativo": v.active,
-                    "fee": float(fee_full)
-                }
-
-                if eh_churn_atual_proj:
-                    churn_calculado += fee
-                    detalhe["churned"] = True
-                    detalhe["data_churn"] = v.inactivated_at.strftime("%d/%m/%Y")
-                
-                novos_detalhes.append(detalhe)
-
-                p = entregas_map.get(pid)
-                if record.ano == 2026 and record.mes in (2, 3):
-                    progresso = Decimal("0")
-                else:
-                    if p:
-                        if is_criativo:
-                            c_c = p.get("criativos", {}).get("contratados", 0)
-                            c_e = p.get("criativos", {}).get("entregues", 0)
-                            v_c = p.get("videos", {}).get("contratados", 0)
-                            v_e = p.get("videos", {}).get("entregues", 0)
-                            l_c = p.get("lp", {}).get("contratados", 0)
-                            l_e = p.get("lp", {}).get("entregues", 0)
-                            total_meta = c_c + v_c + l_c
-                            # Cap por categoria: entrega acima do contratado não conta no MRR
-                            total_entregues = min(c_e, c_c) + min(v_e, v_c) + min(l_e, l_c)
-                            progresso = Decimal(str(total_entregues / total_meta)) if total_meta > 0 else Decimal("1")
-                        else:
-                            itens = p.get("entregas", [])
-                            if not itens:
-                                progresso = Decimal("0")
-                            else:
-                                from decimal import ROUND_HALF_UP
-                                peso_por_tipo = Decimal("100.0") / Decimal(str(len(itens)))
-                                sum_progresso = Decimal("0")
-                                for item in itens:
-                                    meta = Decimal(str(item.get("meta", 0)))
-                                    entregues = min(Decimal(str(item.get("entregues", 0))), meta)
-                                    if meta > 0:
-                                        sum_progresso += (entregues / meta) * peso_por_tipo
-                                
-                                sum_progresso = sum_progresso.to_integral_value(rounding=ROUND_HALF_UP)
-                                progresso = sum_progresso / Decimal("100.0")
+                if p:
+                    if is_criativo:
+                        c_c = p.get("criativos", {}).get("contratados", 0)
+                        c_e = p.get("criativos", {}).get("entregues", 0)
+                        v_c = p.get("videos", {}).get("contratados", 0)
+                        v_e = p.get("videos", {}).get("entregues", 0)
+                        l_c = p.get("lp", {}).get("contratados", 0)
+                        l_e = p.get("lp", {}).get("entregues", 0)
+                        total_meta = c_c + v_c + l_c
+                        total_entregues = min(c_e, c_c) + min(v_e, v_c) + min(l_e, l_c)
+                        progresso = Decimal(str(total_entregues / total_meta)) if total_meta > 0 else Decimal("1")
                     else:
-                        progresso = Decimal("1") if is_criativo else Decimal("0")
+                        itens = p.get("entregas", [])
+                        if not itens:
+                            progresso = Decimal("0")
+                        else:
+                            from decimal import ROUND_HALF_UP
+                            peso_por_tipo = Decimal("100.0") / Decimal(str(len(itens)))
+                            sum_progresso = Decimal("0")
+                            for item in itens:
+                                meta = Decimal(str(item.get("meta", 0)))
+                                entregues = min(Decimal(str(item.get("entregues", 0))), meta)
+                                if meta > 0:
+                                    sum_progresso += (entregues / meta) * peso_por_tipo
+                            sum_progresso = sum_progresso.to_integral_value(rounding=ROUND_HALF_UP)
+                            progresso = sum_progresso / Decimal("100.0")
+                else:
+                    progresso = Decimal("1") if is_criativo else Decimal("0")
 
-                total_mrr_entregue += fee * progresso
+            total_mrr_entregue += fee * progresso
 
     record.fixo_mrr_entrega = total_mrr_entregue
     record.fixo_mrr_atual = max(Decimal("0"), total_mrr_entregue - churn_calculado)
@@ -724,7 +726,7 @@ def _sync_metrica_entregas_operacao(email, pipefy_id, mes, ano):
 
             if changed:
                 flag_modified(metrica, "entregas_operacao")
-                _recalcular_mrr_por_entregas(metrica)
+                _recalcular_mrr_por_entregas(db, metrica)
                 db.commit()
                 print(f"[metrica sync] OK {email} projeto={pipefy_id} counts={counts}")
             else:
@@ -1932,7 +1934,7 @@ def update_criativa_entregues():
             lista = update_entregues(lista_atual, projeto_id, cliente_nome, categoria, valor)
             record.entregas_criativos = lista
             flag_modified(record, "entregas_criativos")
-            _recalcular_mrr_por_entregas(record)
+            _recalcular_mrr_por_entregas(db, record)
             db.commit()
             db.refresh(record)
 
@@ -2253,7 +2255,7 @@ def update_entregas_operacao_entregues():
             )
             record.entregas_operacao = lista
             flag_modified(record, "entregas_operacao")
-            _recalcular_mrr_por_entregas(record)
+            _recalcular_mrr_por_entregas(db, record)
             db.commit()
             db.refresh(record)
             
@@ -2314,7 +2316,7 @@ def update_entregas_operacao_links():
             )
             record.entregas_operacao = lista
             flag_modified(record, "entregas_operacao")
-            _recalcular_mrr_por_entregas(record)
+            _recalcular_mrr_por_entregas(db, record)
             db.commit()
             return jsonify({"ok": True, "entregas_operacao": lista})
     except SQLAlchemyError as e:
@@ -2848,7 +2850,7 @@ def update_snapshot_links():
                 db, email, pipefy_id, int(mes), int(ano)
             )
             if metrica:
-                _recalcular_mrr_por_entregas(metrica)
+                _recalcular_mrr_por_entregas(db, metrica)
             db.commit()
         return jsonify({"ok": True})
     except Exception as e:
