@@ -421,16 +421,28 @@ async function deltaEntregue(projId, clienteNome, categoria, delta) {
             return;
         }
 
-        const data = await resp.json();
-        if (data.remu && _opRemuJson && _opRemuJson.rows) {
-            const idx = _opRemuJson.rows.findIndex(r => r.mes === data.remu.mes && r.ano === data.remu.ano);
-            if (idx >= 0) {
-                _opRemuJson.rows[idx] = { ..._opRemuJson.rows[idx], ...data.remu };
-            } else {
-                _opRemuJson.rows.push(data.remu);
-            }
-            _renderDesignerRemu(_opRemuJson);
-        }
+        // Aguarda lote de alterações antes de recalcular (debounce 800ms)
+        if (!window._designerRecalcTimer) window._designerRecalcTimer = {};
+        const key = `${_designerEmailAtual}_${_mesSelecionado}_${_anoSelecionado}`;
+        if (window._designerRecalcTimer[key]) clearTimeout(window._designerRecalcTimer[key]);
+        window._designerRecalcTimer[key] = setTimeout(() => {
+            fetch(`/api/remuneracao/recalcular-investidor/${encodeURIComponent(_designerEmailAtual)}/${_mesSelecionado}/${_anoSelecionado}`, {
+                method: 'POST',
+            })
+                .then(r => r.json())
+                .then(data2 => {
+                    if (data2.remu && _opRemuJson && _opRemuJson.rows) {
+                        const idx = _opRemuJson.rows.findIndex(r => r.mes === data2.remu.mes && r.ano === data2.remu.ano);
+                        if (idx >= 0) {
+                            _opRemuJson.rows[idx] = { ..._opRemuJson.rows[idx], ...data2.remu };
+                        } else {
+                            _opRemuJson.rows.push(data2.remu);
+                        }
+                        _renderDesignerRemu(_opRemuJson);
+                    }
+                })
+                .catch(err => console.warn('[deltaEntregue] Recalcular MRR falhou:', err));
+        }, 800);
 
     } catch (e) {
         console.error(e);
@@ -1587,17 +1599,29 @@ function opDelta(projId, tipo, delta) {
     })
         .then(r => r.ok ? r.json() : r.json().then(e => { throw new Error(e.error || r.status); }))
         .then(data => {
-            if (data.remu && _opRemuJson && _opRemuJson.rows) {
-                const idx = _opRemuJson.rows.findIndex(r => r.mes === data.remu.mes && r.ano === data.remu.ano);
-                if (idx >= 0) {
-                    // Preserva flags que o JS usa e substitui campos de valor
-                    _opRemuJson.rows[idx] = { ..._opRemuJson.rows[idx], ...data.remu };
-                } else {
-                    _opRemuJson.rows.push(data.remu);
-                }
-                _renderOpView();
-                _renderOpRemu(_opRemuJson);
-            }
+            // Aguarda lote de alterações antes de recalcular (debounce 800ms)
+            if (!window._opRecalcTimer) window._opRecalcTimer = {};
+            const key = `${_opEmail}_${mes}_${ano}`;
+            if (window._opRecalcTimer[key]) clearTimeout(window._opRecalcTimer[key]);
+            window._opRecalcTimer[key] = setTimeout(() => {
+                fetch(`/api/remuneracao/recalcular-investidor/${encodeURIComponent(_opEmail)}/${mes}/${ano}`, {
+                    method: 'POST',
+                })
+                    .then(r => r.json())
+                    .then(data2 => {
+                        if (data2.remu && _opRemuJson && _opRemuJson.rows) {
+                            const idx = _opRemuJson.rows.findIndex(r => r.mes === data2.remu.mes && r.ano === data2.remu.ano);
+                            if (idx >= 0) {
+                                _opRemuJson.rows[idx] = { ..._opRemuJson.rows[idx], ...data2.remu };
+                            } else {
+                                _opRemuJson.rows.push(data2.remu);
+                            }
+                            _renderOpView();
+                            _renderOpRemu(_opRemuJson);
+                        }
+                    })
+                    .catch(err => console.warn('[opDelta] Recalcular MRR falhou:', err));
+            }, 800);
         })
         .catch(err => {
             console.error('[opDelta] Erro ao salvar entrega:', err);

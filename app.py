@@ -726,7 +726,6 @@ def _sync_metrica_entregas_operacao(email, pipefy_id, mes, ano):
 
             if changed:
                 flag_modified(metrica, "entregas_operacao")
-                _recalcular_mrr_por_entregas(db, metrica)
                 db.commit()
                 print(f"[metrica sync] OK {email} projeto={pipefy_id} counts={counts}")
             else:
@@ -1934,28 +1933,8 @@ def update_criativa_entregues():
             lista = update_entregues(lista_atual, projeto_id, cliente_nome, categoria, valor)
             record.entregas_criativos = lista
             flag_modified(record, "entregas_criativos")
-            _recalcular_mrr_por_entregas(db, record)
             db.commit()
-            db.refresh(record)
-
-            remu_atualizada = {
-                "month_year": f"{record.mes:02d}/{record.ano}",
-                "mes": record.mes,
-                "ano": record.ano,
-                "mrr": float(record.fixo_mrr_atual or 0),
-                "mrr_bruto_entregue": float(record.fixo_mrr_entrega or 0),
-                "mrr_total": float(record.fixo_mrr_projeto_total or 0),
-                "mrr_esperado": float(record.fixo_mrr_esperado or 0),
-                "mrr_teto": float(record.fixo_mrr_teto or 0),
-                "churn": float(record.calc_churn_real_percentual or 0),
-                "churn_rs": float(record.fixo_churn_atual or 0),
-                "variable_brl": float(record.calc_variavel_total or 0),
-                "total_brl": max(float(record.calc_remuneracao_total or 0), float(record.fixo_remuneracao_minima or 0)),
-                "rem_min": float(record.fixo_remuneracao_minima or 0),
-                "rem_max": float(record.fixo_remuneracao_maxima or 0),
-                "fixo": float(record.fixo_remuneracao_fixa or 0),
-            }
-            return jsonify({"ok": True, "entregas_criativos": lista, "remu": remu_atualizada})
+            return jsonify({"ok": True, "entregas_criativos": lista})
     except Exception as e:
         import traceback
         traceback.print_exc()
@@ -2255,28 +2234,8 @@ def update_entregas_operacao_entregues():
             )
             record.entregas_operacao = lista
             flag_modified(record, "entregas_operacao")
-            _recalcular_mrr_por_entregas(db, record)
             db.commit()
-            db.refresh(record)
-            
-            remu_atualizada = {
-                "month_year": f"{record.mes:02d}/{record.ano}",
-                "mes": record.mes,
-                "ano": record.ano,
-                "mrr": float(record.fixo_mrr_atual or 0),
-                "mrr_bruto_entregue": float(record.fixo_mrr_entrega or 0),
-                "mrr_total": float(record.fixo_mrr_projeto_total or 0),
-                "mrr_esperado": float(record.fixo_mrr_esperado or 0),
-                "mrr_teto": float(record.fixo_mrr_teto or 0),
-                "churn": float(record.calc_churn_real_percentual or 0),
-                "churn_rs": float(record.fixo_churn_atual or 0),
-                "variable_brl": float(record.calc_variavel_total or 0),
-                "total_brl": max(float(record.calc_remuneracao_total or 0), float(record.fixo_remuneracao_minima or 0)),
-                "rem_min": float(record.fixo_remuneracao_minima or 0),
-                "rem_max": float(record.fixo_remuneracao_maxima or 0),
-                "fixo": float(record.fixo_remuneracao_fixa or 0),
-            }
-            return jsonify({"ok": True, "entregas_operacao": lista, "remu": remu_atualizada})
+            return jsonify({"ok": True, "entregas_operacao": lista})
     except SQLAlchemyError as e:
         return jsonify({"error": str(e)}), 500
 
@@ -2316,7 +2275,6 @@ def update_entregas_operacao_links():
             )
             record.entregas_operacao = lista
             flag_modified(record, "entregas_operacao")
-            _recalcular_mrr_por_entregas(db, record)
             db.commit()
             return jsonify({"ok": True, "entregas_operacao": lista})
     except SQLAlchemyError as e:
@@ -2590,6 +2548,54 @@ def recalcular_historico_remuneracao():
         print(f"Erro ao recalcular histórico: {e}")
         return jsonify({"error": str(e)}), 500
 
+
+@app.route("/api/remuneracao/recalcular-investidor/<email>/<int:mes>/<int:ano>", methods=["POST"])
+@check_session
+def recalcular_investidor(email, mes, ano):
+    """Recalcula MRR de um investidor específico para um mês/ano.
+    Chamado pelo frontend APÓS o lote de marcações de entrega para evitar
+    N recálculos simultâneos e inconsistências de concorrência."""
+    try:
+        with Session() as db:
+            if mes > dt.now().month and ano >= dt.now().year:
+                return jsonify({"error": "Mês futuro não permitido."}), 400
+
+            record = db.query(MetricaMensal).filter_by(
+                email_investidor=email, mes=mes, ano=ano
+            ).with_for_update().first()
+
+            if not record:
+                return jsonify({"error": "Registro não encontrado. Crie entregas primeiro."}), 404
+
+            _recalcular_mrr_por_entregas(db, record)
+            db.commit()
+            db.refresh(record)
+
+            return jsonify({
+                "ok": True,
+                "remu": {
+                    "month_year": f"{record.mes:02d}/{record.ano}",
+                    "mes": record.mes,
+                    "ano": record.ano,
+                    "mrr": float(record.fixo_mrr_atual or 0),
+                    "mrr_bruto_entregue": float(record.fixo_mrr_entrega or 0),
+                    "mrr_total": float(record.fixo_mrr_projeto_total or 0),
+                    "mrr_esperado": float(record.fixo_mrr_esperado or 0),
+                    "mrr_teto": float(record.fixo_mrr_teto or 0),
+                    "churn": float(record.calc_churn_real_percentual or 0),
+                    "churn_rs": float(record.fixo_churn_atual or 0),
+                    "variable_brl": float(record.calc_variavel_total or 0),
+                    "total_brl": max(float(record.calc_remuneracao_total or 0), float(record.fixo_remuneracao_minima or 0)),
+                    "rem_min": float(record.fixo_remuneracao_minima or 0),
+                    "rem_max": float(record.fixo_remuneracao_maxima or 0),
+                    "fixo": float(record.fixo_remuneracao_fixa or 0),
+                }
+            })
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # AUXILIARES DE AUTOMAÇÃO DE ENTREGAS
 # ─────────────────────────────────────────────────────────────────────────────
@@ -2849,8 +2855,6 @@ def update_snapshot_links():
             metrica = OperacaoSnapshotService.sync_to_metrica(
                 db, email, pipefy_id, int(mes), int(ano)
             )
-            if metrica:
-                _recalcular_mrr_por_entregas(db, metrica)
             db.commit()
         return jsonify({"ok": True})
     except Exception as e:
