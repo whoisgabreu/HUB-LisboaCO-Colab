@@ -231,6 +231,56 @@ body {
   color: #D61616;
 }
 
+/* ── Checkbox "Lembrar por 7 dias" ── */
+
+.remember-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #64748b;
+  cursor: pointer;
+  user-select: none;
+  margin: -4px 0;
+}
+
+.remember-checkbox input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 5px;
+  background: #f8fafc;
+  cursor: pointer;
+  transition: border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.remember-checkbox input[type="checkbox"]:hover {
+  border-color: #cbd5e1;
+  background: #f1f5f9;
+}
+
+.remember-checkbox input[type="checkbox"]:checked {
+  border-color: #D61616;
+  background: #D61616;
+}
+
+.remember-checkbox input[type="checkbox"]:checked::after {
+  content: '\f00c';
+  font-family: 'Font Awesome 6 Free';
+  font-weight: 900;
+  font-size: 10px;
+  color: #fff;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
 /* ── Botão principal ── */
 
 #login-btn {

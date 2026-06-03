@@ -32,6 +32,7 @@ from services.kanban_service import KanbanService, PhaseTransitionError
 
 app = Flask(__name__)
 app.secret_key = os.urandom(10).hex()
+app.permanent_session_lifetime = timedelta(days=7)
 
 # Configuração do Scheduler
 scheduler = APScheduler()
@@ -879,6 +880,9 @@ def login():
                     session["nivel_acesso"] = user.nivel_acesso
                     session["pode_editar_kanban"] = user.pode_editar_kanban
                     session["profile_picture"] = user.profile_picture
+
+                    if request.form.get("remember"):
+                        session.permanent = True
 
                     print(session)
 
