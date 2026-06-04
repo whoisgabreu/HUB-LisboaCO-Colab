@@ -231,7 +231,10 @@ function switchOperacaoTab(tabId) {
             loadPlanoMidia(pid, currentMonth, currentYear);
             loadHistoricoPlanos(pid);
         }
-        if (tabId === 'entregas') loadEntregas(pid, currentMonth, currentYear);
+        if (tabId === 'entregas') {
+            initMonthSelect('entregas-month-select');
+            loadEntregas(pid, currentMonth, currentYear);
+        }
         if (tabId === 'fat-variavel') {
             loadFaturamentoVariavel();
         }
@@ -626,6 +629,16 @@ async function toggleTask(id, element) {
 }
 
 // ─── ENTREGAS DO MÊS — BARRAS DE PROGRESSO ───────────────────────────────────
+
+// Navega o histórico de entregas por mês (formato "YYYY-MM" vindo do seletor).
+function filterEntregasByMonth(val) {
+    if (!currentProject) return;
+    const parts = (val || '').split('-');
+    if (parts.length !== 2) return;
+    const ano = parseInt(parts[0], 10);
+    const mes = parseInt(parts[1], 10);
+    loadEntregas(currentProject.pipefy_id, mes, ano);
+}
 
 async function loadEntregas(pipefyId, mes, ano) {
     const meses = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
@@ -1105,6 +1118,27 @@ async function saveOtimizacao() {
 
 // ─── LINKS ÚTEIS ─────────────────────────────────────────────────────────────
 
+// Lê o mês/ano selecionado no seletor da aba de Links (formato "YYYY-MM").
+// Garante que salvar/limpar link retroativo grave no mês correto, e não no mês atual.
+function getLinksSelectedPeriod() {
+    const sel = document.getElementById('links-month-select');
+    if (sel && sel.value) {
+        const parts = sel.value.split('-');
+        if (parts.length === 2) {
+            return {
+                mes: parseInt(parts[1], 10),
+                ano: parseInt(parts[0], 10),
+                val: sel.value,
+            };
+        }
+    }
+    return {
+        mes: currentMonth,
+        ano: currentYear,
+        val: `${currentYear}-${String(currentMonth).padStart(2, '0')}`,
+    };
+}
+
 async function loadFixedLinks(pipefyId, monthVal = null) {
     let m = currentMonth;
     let y = currentYear;
@@ -1168,20 +1202,21 @@ function clearFixedLink(key) {
         confirmText: 'Sim, limpar',
         onConfirm: async () => {
             try {
+                const periodo = getLinksSelectedPeriod();
                 const res = await fetch('/api/operacao/snapshot/links', {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         pipefy_id: currentProject.pipefy_id,
-                        mes: currentMonth,
-                        ano: currentYear,
+                        mes: periodo.mes,
+                        ano: periodo.ano,
                         tipo,
                         link: '',
                     }),
                 });
                 if (res.ok) {
                     showToast('Link removido');
-                    loadFixedLinks(currentProject.pipefy_id);
+                    loadFixedLinks(currentProject.pipefy_id, periodo.val);
                 } else {
                     const err = await res.json().catch(() => ({}));
                     showToast(err.error || 'Falha ao remover link', 'error');
@@ -1206,10 +1241,11 @@ async function openFixedLinkModal(key) {
     document.getElementById('fixed-link-key').value = key;
     document.getElementById('fixed-link-modal-title').textContent = `Definir Link — ${titles[key] || key}`;
 
-    // Carrega valor atual do BD
+    // Carrega valor atual do BD (do mês selecionado na aba de Links)
     let currentUrl = '';
     try {
-        const res = await fetch(`/api/operacao/snapshot/${currentProject?.pipefy_id}/${currentMonth}/${currentYear}`);
+        const periodo = getLinksSelectedPeriod();
+        const res = await fetch(`/api/operacao/snapshot/${currentProject?.pipefy_id}/${periodo.mes}/${periodo.ano}`);
         if (res.ok) {
             const snap = await res.json();
             const tipoMap = { kpi: 'kpis', forecasting: 'forecasting' };
@@ -1229,6 +1265,7 @@ async function saveFixedLink() {
     // Mapeia 'kpi' → 'kpis' para o nome da seção no BD
     const tipoMap = { kpi: 'kpis', forecasting: 'forecasting' };
     const tipo = tipoMap[key] || key;
+    const periodo = getLinksSelectedPeriod();
 
     try {
         const res = await fetch('/api/operacao/snapshot/links', {
@@ -1236,8 +1273,8 @@ async function saveFixedLink() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 pipefy_id: currentProject.pipefy_id,
-                mes: currentMonth,
-                ano: currentYear,
+                mes: periodo.mes,
+                ano: periodo.ano,
                 tipo,
                 link: url,
             }),
@@ -1247,7 +1284,7 @@ async function saveFixedLink() {
             alert("Erro ao salvar link: " + (err.error || "Erro desconhecido"));
             return;
         }
-        loadFixedLinks(currentProject.pipefy_id);
+        loadFixedLinks(currentProject.pipefy_id, periodo.val);
         closeGTModal('modal-fixed-link');
     } catch (e) {
         console.error('Erro ao salvar link fixo:', e);
@@ -1454,13 +1491,17 @@ async function saveCheckin() {
     const clienteReclamou = document.getElementById('checkin-cliente-reclamou').value === 'true';
     const obs = document.getElementById('checkin-obs').value;
     const transcricao = document.getElementById('checkin-transcricao').value.trim();
+    const dataInput = (document.getElementById('checkin-data') || {}).value;
 
-    const now = new Date();
-    const week = Math.ceil(((now - new Date(now.getFullYear(), 0, 1)) / 86400000 + 1) / 7);
-    const semana_ano = `${currentYear}-W${String(week).padStart(2, '0')}`;
+    // Permite check-in retroativo: usa a data informada (ou hoje, se vazia).
+    const ref = dataInput ? new Date(dataInput + 'T00:00:00') : new Date();
+    const week = Math.ceil(((ref - new Date(ref.getFullYear(), 0, 1)) / 86400000 + 1) / 7);
+    const semana_ano = `${ref.getFullYear()}-W${String(week).padStart(2, '0')}`;
+    const dataIso = `${ref.getFullYear()}-${String(ref.getMonth() + 1).padStart(2, '0')}-${String(ref.getDate()).padStart(2, '0')}`;
 
     const payload = {
         pipefy_id: currentProject.pipefy_id,
+        data: dataIso,
         semana_ano, compareceu,
         campanhas_ativas: campanhasAtivas,
         gap_comunicacao: gapComunicacao,
@@ -1582,6 +1623,10 @@ function openNovoPlanModal(mes, ano, prefill) {
     const el = document.getElementById('display-wizard-date');
     if (el) el.innerText = label;
 
+    // Seletor de período: permite criar/editar plano de mídia retroativo.
+    const periodoInput = document.getElementById('wizard-periodo');
+    if (periodoInput) periodoInput.value = `${wizardAno}-${String(wizardMes).padStart(2, '0')}`;
+
     if (prefill && Array.isArray(prefill.canais) && prefill.canais.length) {
         editorRows = prefill.canais.map(c => ({
             canal: c.canal || '',
@@ -1599,6 +1644,18 @@ function openNovoPlanModal(mes, ano, prefill) {
 
     calculateEditorValues();
     openGTModal('modal-novo-plano');
+}
+
+function onWizardPeriodoChange(val) {
+    // val no formato "YYYY-MM" vindo do <input type="month">
+    if (!val) return;
+    const parts = val.split('-');
+    if (parts.length !== 2) return;
+    wizardAno = parseInt(parts[0], 10);
+    wizardMes = parseInt(parts[1], 10);
+    const el = document.getElementById('display-wizard-date');
+    if (el) el.innerText = `${MESES_PT[wizardMes - 1]} ${wizardAno}`;
+    calculateEditorValues();
 }
 
 function addEditorRow() {

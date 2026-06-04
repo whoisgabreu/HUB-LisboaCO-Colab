@@ -662,11 +662,12 @@
 
                     <!-- ABA: ENTREGAS DO MÊS -->
                     <section id="section-entregas" class="op-content-section">
-                        <header class="tasks-header-actions" style="margin-bottom: 2rem;">
+                        <header class="tasks-header-actions" style="margin-bottom: 2rem; display:flex; align-items:center; justify-content:space-between; gap:1rem;">
                             <div class="op-section-title" style="margin-bottom: 0;">
                                 <div class="op-icon-box"><i class="fas fa-list-check"></i></div>
                                 <h3>Entregas do Mês <span id="display-entregas-date" style="color:#D61616;font-weight:600;font-size:0.9rem;margin-left:10px;"></span></h3>
                             </div>
+                            <select id="entregas-month-select" class="gt-form-select" onchange="filterEntregasByMonth(this.value)" style="width:auto;padding:0.4rem 0.7rem;font-size:0.82rem;max-width:150px;"></select>
                         </header>
 
                         <!-- Painel de resumo: KPIs + gráfico -->
@@ -906,6 +907,11 @@
 
             <div style="padding: 1.5rem 2rem;">
                 <div style="display: flex; gap: 12px; align-items: flex-end; margin-bottom: 1.5rem;">
+                    <div class="gt-form-group" style="flex: 0 0 170px; margin: 0;">
+                        <label class="gt-form-label">Período (Mês)</label>
+                        <input type="month" id="wizard-periodo" class="gt-form-input"
+                            onchange="onWizardPeriodoChange(this.value)">
+                    </div>
                     <div class="gt-form-group" style="flex: 1; margin: 0;">
                         <label class="gt-form-label">Budget Mensal (R$)</label>
                         <input type="number" id="wizard-total-budget" class="gt-form-input" value="0"
@@ -1022,6 +1028,11 @@
             <div class="gt-modal-header">
                 <h3 class="gt-modal-title">Check-in Semanal</h3>
                 <button class="gt-modal-close" onclick="closeGTModal('modal-novo-checkin')">&times;</button>
+            </div>
+
+            <div class="gt-form-group" style="margin-bottom: 14px;">
+                <label class="gt-form-label">Data do Check-in</label>
+                <input type="date" id="checkin-data" class="gt-form-input" style="margin-top: 6px;">
             </div>
 
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">

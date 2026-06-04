@@ -2900,13 +2900,14 @@ def save_checkin():
     data = request.json or {}
     email = session.get("email")
     pipefy_id = data.get("pipefy_id")
-    now = dt.now()
-    mes, ano = now.month, now.year
+    # Permite check-in retroativo: deriva mes/ano da data informada (igual à otimização).
+    d = dt.strptime(data.get("data", ""), "%Y-%m-%d") if data.get("data") else dt.now()
+    mes, ano = d.month, d.year
 
     print(f"[checkin POST] email={email} projeto={pipefy_id} mes={mes} ano={ano}")
 
     checkin_snap = {
-        "data": now.strftime("%Y-%m-%d"),
+        "data": d.strftime("%Y-%m-%d"),
         "semana": data.get("semana_ano", ""),
         "stakeholder_participou": data.get("compareceu", False),
         "campanhas_ativas": data.get("campanhas_ativas", True),
