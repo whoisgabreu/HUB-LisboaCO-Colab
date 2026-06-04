@@ -788,6 +788,7 @@ function _renderDoughnutEntregas(pct, cor) {
             plugins: {
                 legend: { display: false },
                 tooltip: {
+                    enabled: false,
                     backgroundColor: isTemaClaro ? '#1f2937' : '#1a1a2e',
                     titleFont: { family: 'Poppins', size: 12 },
                     bodyFont:  { family: 'Poppins', size: 11 },

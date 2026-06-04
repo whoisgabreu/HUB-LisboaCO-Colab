@@ -4048,10 +4048,10 @@ body.tema-claro .op-card-premium .op-card-fee-value {
 /* Layout de Links Ãteis (CartÃµes de Acesso) */
 .access-links-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 1.5rem;
+    min-width: 0;
 }
-
 .access-link-card {
     background: #fff;
     border-radius: 12px;
@@ -4061,6 +4061,20 @@ body.tema-claro .op-card-premium .op-card-fee-value {
     gap: 1rem;
     position: relative;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+    min-width: 0;
+    overflow: hidden;
+}
+
+.access-link-card a {
+    max-width: 100%;
+    min-width: 0;
+}
+
+.access-link-card a span {
+    min-width: 0 !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
 }
 
 .access-link-header {
