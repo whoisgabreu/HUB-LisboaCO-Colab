@@ -4757,6 +4757,8 @@ def public_form_submit(token):
                 dados[campo['id']] = raw == "true"
             elif campo['tipo'] == 'number':
                 try:
+                    if raw:
+                        raw = raw.replace(',', '.')
                     dados[campo['id']] = float(raw) if raw else None
                 except ValueError:
                     dados[campo['id']] = raw

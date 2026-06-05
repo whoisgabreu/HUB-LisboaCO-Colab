@@ -331,7 +331,7 @@
                                     <span>Sim</span>
                                 </div>
                             {% elif campo.tipo == 'number' %}
-                                <input type="number" step="any" name="{{ field_id }}" class="form-input" {% if campo.obrigatorio %}required{% endif %}>
+                                <input type="text" inputmode="decimal" name="{{ field_id }}" class="form-input" {% if campo.obrigatorio %}required{% endif %}>
                             {% elif campo.tipo == 'datetime' %}
                                 <input type="datetime-local" name="{{ field_id }}" class="form-input" {% if campo.obrigatorio %}required{% endif %}>
                             {% elif campo.tipo == 'link' %}

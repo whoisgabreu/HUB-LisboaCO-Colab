@@ -622,8 +622,9 @@ const modal = {
         const input = document.createElement('input');
         input.id = `field_${campo.id}`;
         input.className = 'modern-input';
-        input.type = (campo.tipo === 'number') ? 'number' : 
+        input.type = (campo.tipo === 'number') ? 'text' : 
                      (campo.tipo === 'datetime') ? 'datetime-local' : 'text';
+        if (campo.tipo === 'number') input.inputMode = 'decimal';
         input.value = val || '';
         return input;
     },

@@ -138,11 +138,26 @@ class KanbanService:
             "moeda": p.moeda
         }
 
+    def _process_number_fields(self, config: Dict[str, Any], dados: Dict[str, Any]):
+        """Converte vírgula para ponto e transforma em float para campos do tipo number."""
+        for fase in config.get('fases', []):
+            for campo in fase.get('campos', []):
+                if campo['tipo'] == 'number' and campo['id'] in dados:
+                    val = dados[campo['id']]
+                    if val is not None and val != '':
+                        try:
+                            if isinstance(val, str):
+                                val = val.replace(',', '.')
+                            dados[campo['id']] = float(val)
+                        except (ValueError, TypeError):
+                            pass
+
     def create_card(self, slug: str, nome: str, dados_iniciais: Dict[str, Any], usuario_email: str) -> Projeto:
         """Cria um novo projeto/card no Kanban."""
         config = self.get_board_config(slug)
         fases = sorted(config['fases'], key=lambda x: x['ordem'])
         primeira_fase = fases[0]
+        self._process_number_fields(config, dados_iniciais)
 
         # Gerar pipefy_id único (Integer)
         while True:
@@ -237,6 +252,9 @@ class KanbanService:
         
         # Atualiza dados dinâmicos (Merge NoSQL)
         current_dados = projeto.kanban_dados or {}
+
+        self._process_number_fields(config, dados_fase)
+
         current_dados.update(dados_fase)
         projeto.kanban_dados = current_dados
         
@@ -293,10 +311,13 @@ class KanbanService:
             projeto.nome = nome
 
         current_dados = projeto.kanban_dados or {}
+
+        config = self.get_board_config()
+        self._process_number_fields(config, novos_dados)
+
         current_dados.update(novos_dados)
         projeto.kanban_dados = current_dados
 
-        config = self.get_board_config()
         self._apply_column_mappings(projeto, config, current_dados)
         
         # Identificar o que mudou para o log técnico
@@ -448,6 +469,8 @@ class KanbanService:
         }
         dados_iniciais['_board_slug'] = slug
         dados_iniciais['_origem_clonagem'] = 'snapshot'
+
+        self._process_number_fields(config, dados_iniciais)
 
         new_id = random.randint(100000000, 999999999)
         while self.db.query(Projeto).filter_by(pipefy_id=new_id).first():
@@ -624,6 +647,8 @@ class KanbanService:
 
         now_date = datetime.now()
         dados['_board_slug'] = slug
+
+        self._process_number_fields(config, dados)
 
         projeto = Projeto(
             pipefy_id=new_id,
