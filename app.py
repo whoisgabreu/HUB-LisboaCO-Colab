@@ -495,6 +495,86 @@ def _operacao_get_snapshot(pipefy_id, mes, ano):
         return None
 
 
+def _infer_entregas_op_responsavel(db, email, pipefy_id, responsavel_hint=""):
+    if responsavel_hint in ("account", "gt", "cientista"):
+        hint = responsavel_hint
+    else:
+        hint = ""
+
+    vinculo = db.query(InvestidorProjeto).filter_by(
+        email_investidor=email, pipefy_id_projeto=pipefy_id
+    ).first()
+    if vinculo and vinculo.cientista:
+        return "cientista"
+
+    if hint in ("account", "gt"):
+        return hint
+
+    investidor = db.query(Investidor).filter(Investidor.email.ilike(email)).first()
+    if investidor and investidor.funcao in ("Account", "Coordenador de CX"):
+        return "account"
+    return "gt"
+
+
+def _sync_snapshot_links_from_entregas_op(db, pipefy_id, mes, ano, responsavel,
+                                          link_relatorio=None, link_kpi=None, link_forecast=None):
+    """Espelha links salvos na visão consolidada para o snapshot oficial do projeto."""
+    updates = []
+    if link_kpi is not None:
+        updates.append(("kpis", {"link": link_kpi or ""}))
+    if link_forecast is not None:
+        updates.append(("forecasting", {"link": link_forecast or ""}))
+    if link_relatorio is not None:
+        if responsavel == "account":
+            section = "relatorio_account"
+        elif responsavel == "gt":
+            section = "relatorio_gt"
+        else:
+            section = "relatorio_mensal"
+        updates.append((section, {"link": link_relatorio or ""}))
+
+    for section_key, payload in updates:
+        OperacaoSnapshotService.update_section(
+            db, pipefy_id, int(mes), int(ano), section_key, payload
+        )
+
+
+def _apply_legacy_links_to_snapshot_dict(snap, entry, responsavel):
+    """Copia links antigos de entregas_operacao para o snapshot em memória, se faltarem."""
+    changed = False
+
+    legacy_kpi = entry.get("link_kpi") or ""
+    if legacy_kpi and not ((snap.get("kpis") or {}).get("link")):
+        snap["kpis"] = dict(snap.get("kpis") or {})
+        snap["kpis"]["link"] = legacy_kpi
+        changed = True
+
+    legacy_forecast = entry.get("link_forecast") or ""
+    if legacy_forecast and not ((snap.get("forecasting") or {}).get("link")):
+        snap["forecasting"] = dict(snap.get("forecasting") or {})
+        snap["forecasting"]["link"] = legacy_forecast
+        changed = True
+
+    legacy_relatorio = entry.get("link_relatorio") or ""
+    has_report = (
+        (snap.get("relatorio_mensal") or {}).get("link") or
+        (snap.get("relatorio_account") or {}).get("link") or
+        (snap.get("relatorio_gt") or {}).get("link")
+    )
+    if legacy_relatorio and not has_report:
+        if responsavel == "account":
+            section = "relatorio_account"
+        elif responsavel == "gt":
+            section = "relatorio_gt"
+        else:
+            section = "relatorio_mensal"
+        snap[section] = dict(snap.get(section) or {})
+        snap[section]["link"] = legacy_relatorio
+        changed = True
+
+    return changed
+
+
 def _operacao_save_section(pipefy_id, mes, ano, section_key, data, append=False, nome=None):
     """
     Salva uma seção do JSON entregas na tabela plataforma_geral.operacao.
@@ -590,9 +670,6 @@ def _sync_metrica_entregas_operacao(email, pipefy_id, mes, ano):
     """
     try:
         from datetime import datetime as _dt
-        now = _dt.now()
-        if ano < now.year or (ano == now.year and mes < now.month):
-            return
 
         snap = _operacao_get_snapshot(pipefy_id, mes, ano)
         if not snap:
@@ -614,7 +691,8 @@ def _sync_metrica_entregas_operacao(email, pipefy_id, mes, ano):
 
             lista = list(metrica.entregas_operacao or [])
             entry = next((e for e in lista if str(e.get("projeto_id")) == str(pipefy_id)), None)
-            
+            entry_created = False
+
             if not entry:
                 # Se não existe, precisamos criar a entrada baseada no vínculo (checar se é cientista)
                 vinculo = db.query(InvestidorProjeto).filter_by(
@@ -639,6 +717,7 @@ def _sync_metrica_entregas_operacao(email, pipefy_id, mes, ano):
                 entry = _build_entrega_op_entry(pipefy_id, proj_name, hint)
                 lista.append(entry)
                 metrica.entregas_operacao = lista
+                entry_created = True
                 # Não retornamos, continuamos para preencher os counts no novo entry
 
             # Extrair contagens do snapshot — todos os tipos, sem filtrar por cargo
@@ -667,13 +746,13 @@ def _sync_metrica_entregas_operacao(email, pipefy_id, mes, ano):
                 "relatorio_gt":            1 if (relatorio_gt_link or relatorio_link) else 0,
             }
 
+            responsavel_entry = entry.get("responsavel", "")
             links = {}
-            if kpis_link:
+            if responsavel_entry in ("gt", "cientista") or entry.get("link_kpi"):
                 links["link_kpi"] = kpis_link
-            if forecasting_link:
+            if responsavel_entry in ("account", "cientista") or entry.get("link_forecast"):
                 links["link_forecast"] = forecasting_link
-            if relatorio_link:
-                links["link_relatorio"] = relatorio_link
+            links["link_relatorio"] = relatorio_link or relatorio_acc_link or relatorio_gt_link
 
             # Contabilizar tarefas semanais (planner_monday)
             tarefas_snap = snap.get("tarefas_semanais") or []
@@ -708,7 +787,7 @@ def _sync_metrica_entregas_operacao(email, pipefy_id, mes, ano):
             for tpl in _ENTREGAS_ACCOUNT_TPL + _ENTREGAS_GT_TPL:
                 _metas_corretas[tpl["nome"]] = tpl["meta"]
 
-            changed = False
+            changed = entry_created
             for ent in entry.get("entregas", []):
                 n = ent.get("nome")
                 if n in counts and ent.get("entregues") != counts[n]:
@@ -726,6 +805,7 @@ def _sync_metrica_entregas_operacao(email, pipefy_id, mes, ano):
 
             if changed:
                 flag_modified(metrica, "entregas_operacao")
+                _recalcular_mrr_por_entregas(db, metrica)
                 db.commit()
                 print(f"[metrica sync] OK {email} projeto={pipefy_id} counts={counts}")
             else:
@@ -733,6 +813,245 @@ def _sync_metrica_entregas_operacao(email, pipefy_id, mes, ano):
     except Exception as e:
         import traceback; traceback.print_exc()
         print(f"[metrica sync] ERRO: {e}")
+
+
+def _sync_entregas_operacao_periodo(email, mes, ano):
+    """Concilia snapshots do projeto com entregas_operacao para um usuário/mês."""
+    project_ids = set()
+    try:
+        with Session() as db:
+            record = db.query(MetricaMensal).filter_by(
+                email_investidor=email, mes=mes, ano=ano
+            ).first()
+
+            if record and record.entregas_operacao:
+                for entry in record.entregas_operacao or []:
+                    pid = entry.get("projeto_id")
+                    if not pid:
+                        continue
+                    project_ids.add(str(pid))
+
+                    # Recupera links legados que foram salvos só em entregas_operacao.
+                    legacy_relatorio = entry.get("link_relatorio") or None
+                    legacy_kpi = entry.get("link_kpi") or None
+                    legacy_forecast = entry.get("link_forecast") or None
+                    if legacy_relatorio or legacy_kpi or legacy_forecast:
+                        responsavel = _infer_entregas_op_responsavel(
+                            db, email, int(pid), entry.get("responsavel", "")
+                        )
+                        _sync_snapshot_links_from_entregas_op(
+                            db, int(pid), mes, ano, responsavel,
+                            link_relatorio=legacy_relatorio,
+                            link_kpi=legacy_kpi,
+                            link_forecast=legacy_forecast,
+                        )
+
+            vinculos = db.query(InvestidorProjeto.pipefy_id_projeto).filter_by(
+                email_investidor=email
+            ).all()
+            for v in vinculos:
+                pid = str(v.pipefy_id_projeto)
+                if _operacao_get_snapshot(pid, mes, ano):
+                    project_ids.add(pid)
+
+            db.commit()
+
+        for pid in project_ids:
+            _sync_metrica_entregas_operacao(email, int(pid), int(mes), int(ano))
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        print(f"[metrica sync periodo] ERRO: {e}")
+
+
+def _sync_entregas_operacao_periodo_fast(email, mes, ano):
+    """Concilia entregas_operacao em lote, evitando uma sincronizacao por projeto."""
+    try:
+        with Session() as db:
+            investidor = db.query(Investidor).filter(Investidor.email.ilike(email)).first()
+            if not investidor:
+                return
+
+            vinculos = db.query(InvestidorProjeto).filter_by(
+                email_investidor=email
+            ).all()
+            pid_values = list({str(v.pipefy_id_projeto) for v in vinculos if v.pipefy_id_projeto})
+            if not pid_values:
+                return
+
+            rows = db.execute(text(
+                "SELECT id, id_projeto, nome, entregas FROM plataforma_geral.operacao "
+                "WHERE id_projeto = ANY(:ids) AND mes = :mes AND ano = :ano"
+            ), {"ids": pid_values, "mes": int(mes), "ano": int(ano)}).mappings().all()
+            if not rows:
+                return
+
+            record = db.query(MetricaMensal).filter_by(
+                email_investidor=email, mes=int(mes), ano=int(ano)
+            ).first()
+            if record is None:
+                record = _get_or_create_entrega_record(db, email, int(mes), int(ano))
+
+            lista = list(record.entregas_operacao or [])
+            entries_by_pid = {
+                str(e.get("projeto_id")): e
+                for e in lista
+                if e.get("projeto_id")
+            }
+            vinculos_by_pid = {str(v.pipefy_id_projeto): v for v in vinculos}
+
+            tarefas_por_pid = defaultdict(int)
+            try:
+                tarefas_db = db.query(OperacaoTarefa).filter(
+                    OperacaoTarefa.projeto_pipefy_id.in_([int(pid) for pid in pid_values]),
+                    OperacaoTarefa.tipo == "semanal",
+                    OperacaoTarefa.ano == int(ano),
+                ).all()
+                for tarefa in tarefas_db:
+                    try:
+                        if tarefa.referencia and "-W" in tarefa.referencia:
+                            y, w = map(int, tarefa.referencia.split("-W"))
+                            d = dt.fromisocalendar(y, w, 1)
+                            if d.month == int(mes):
+                                tarefas_por_pid[str(tarefa.projeto_pipefy_id)] += 1
+                    except Exception:
+                        pass
+            except Exception:
+                tarefas_por_pid = defaultdict(int)
+
+            metas_corretas = {
+                tpl["nome"]: tpl["meta"]
+                for tpl in _ENTREGAS_ACCOUNT_TPL + _ENTREGAS_GT_TPL
+            }
+            changed = False
+
+            for row in rows:
+                pid = str(row["id_projeto"])
+                vinculo = vinculos_by_pid.get(pid)
+                if not vinculo:
+                    continue
+
+                snap = row["entregas"] if isinstance(row["entregas"], dict) else (
+                    json.loads(row["entregas"]) if row["entregas"] else {}
+                )
+
+                entry = entries_by_pid.get(pid)
+                if not entry:
+                    if vinculo.cientista:
+                        responsavel = "cientista"
+                    else:
+                        responsavel = "account" if investidor.funcao in ("Account", "Coordenador de CX") else "gt"
+                    proj_name = vinculo.nome_projeto or row["nome"] or f"Projeto {pid}"
+                    entry = _build_entrega_op_entry(pid, proj_name, responsavel)
+                    lista.append(entry)
+                    entries_by_pid[pid] = entry
+                    changed = True
+
+                responsavel = _infer_entregas_op_responsavel(
+                    db, email, int(pid), entry.get("responsavel", "")
+                )
+                if _apply_legacy_links_to_snapshot_dict(snap, entry, responsavel):
+                    db.execute(text(
+                        "UPDATE plataforma_geral.operacao "
+                        "SET entregas = CAST(:ent AS jsonb) WHERE id = :rid"
+                    ), {"ent": json.dumps(snap, ensure_ascii=False), "rid": row["id"]})
+                    changed = True
+
+                plano_planos = (snap.get("plano_midia") or {}).get("planos") or []
+                otims = snap.get("otimizacoes") or []
+                checkins = snap.get("checkin_semanal") or []
+                kpis_link = (snap.get("kpis") or {}).get("link") or ""
+                forecasting_link = (snap.get("forecasting") or {}).get("link") or ""
+                relatorio_link = (snap.get("relatorio_mensal") or {}).get("link") or ""
+                relatorio_acc_link = (snap.get("relatorio_account") or {}).get("link") or ""
+                relatorio_gt_link = (snap.get("relatorio_gt") or {}).get("link") or ""
+                goal_snap = snap.get("metas") or {}
+
+                counts = {
+                    "plano_de_midia": 1 if plano_planos else 0,
+                    "documento_de_otimizacao": min(len(otims), 4),
+                    "kpis": 1 if kpis_link else 0,
+                    "csat_checkin": min(len(checkins), 4),
+                    "forecasting": 1 if (forecasting_link or goal_snap.get("concluida")) else 0,
+                    "relatorio_mensal": 1 if (relatorio_link or relatorio_acc_link or relatorio_gt_link) else 0,
+                    "relatorio_account": 1 if (relatorio_acc_link or relatorio_link) else 0,
+                    "relatorio_gt": 1 if (relatorio_gt_link or relatorio_link) else 0,
+                    "planner_monday": min(
+                        len(snap.get("tarefas_semanais") or []) or tarefas_por_pid.get(pid, 0),
+                        4,
+                    ),
+                }
+
+                for entrega in entry.get("entregas", []):
+                    nome = entrega.get("nome")
+                    if nome in counts and entrega.get("entregues") != counts[nome]:
+                        entrega["entregues"] = counts[nome]
+                        changed = True
+                    meta_correta = metas_corretas.get(nome)
+                    if meta_correta and entrega.get("meta") != meta_correta:
+                        entrega["meta"] = meta_correta
+                        changed = True
+
+                links = {"link_relatorio": relatorio_link or relatorio_acc_link or relatorio_gt_link}
+                if responsavel in ("gt", "cientista") or entry.get("link_kpi"):
+                    links["link_kpi"] = kpis_link
+                if responsavel in ("account", "cientista") or entry.get("link_forecast"):
+                    links["link_forecast"] = forecasting_link
+                for key, value in links.items():
+                    if entry.get(key) != value:
+                        entry[key] = value
+                        changed = True
+
+            if changed:
+                record.entregas_operacao = lista
+                flag_modified(record, "entregas_operacao")
+                _recalcular_mrr_por_entregas(db, record)
+                db.commit()
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        print(f"[metrica sync periodo fast] ERRO: {e}")
+
+
+def _sync_legacy_links_for_project(email, pipefy_id, mes, ano):
+    """Concilia apenas links legados do projeto aberto, sem varrer o periodo."""
+    try:
+        with Session() as db:
+            record = db.query(MetricaMensal).filter_by(
+                email_investidor=email, mes=int(mes), ano=int(ano)
+            ).first()
+            if not record or not record.entregas_operacao:
+                return
+
+            entry = next(
+                (e for e in record.entregas_operacao or [] if str(e.get("projeto_id")) == str(pipefy_id)),
+                None,
+            )
+            if not entry:
+                return
+
+            row = db.execute(text(
+                "SELECT id, entregas FROM plataforma_geral.operacao "
+                "WHERE id_projeto = :id AND mes = :mes AND ano = :ano LIMIT 1"
+            ), {"id": str(pipefy_id), "mes": int(mes), "ano": int(ano)}).mappings().first()
+            if not row:
+                return
+
+            snap = row["entregas"] if isinstance(row["entregas"], dict) else (
+                json.loads(row["entregas"]) if row["entregas"] else {}
+            )
+            responsavel = _infer_entregas_op_responsavel(
+                db, email, int(pipefy_id), entry.get("responsavel", "")
+            )
+            if not _apply_legacy_links_to_snapshot_dict(snap, entry, responsavel):
+                return
+
+            db.execute(text(
+                "UPDATE plataforma_geral.operacao "
+                "SET entregas = CAST(:ent AS jsonb) WHERE id = :rid"
+            ), {"ent": json.dumps(snap, ensure_ascii=False), "rid": row["id"]})
+            db.commit()
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        print(f"[snapshot legacy links] ERRO: {e}")
 
 
 def _projeto_to_dict(projeto):
@@ -2142,6 +2461,7 @@ def get_entregas_operacao(email, mes, ano):
     if not is_high_level and user_email != email:
         return jsonify({"error": "Acesso restrito"}), 403
     try:
+        _sync_entregas_operacao_periodo_fast(email, mes, ano)
         with Session() as db:
             record = db.query(MetricaMensal).filter_by(
                 email_investidor=email, mes=mes, ano=ano
@@ -2234,6 +2554,7 @@ def update_entregas_operacao_entregues():
             )
             record.entregas_operacao = lista
             flag_modified(record, "entregas_operacao")
+            _recalcular_mrr_por_entregas(db, record)
             db.commit()
             return jsonify({"ok": True, "entregas_operacao": lista})
     except SQLAlchemyError as e:
@@ -2267,6 +2588,7 @@ def update_entregas_operacao_links():
 
     try:
         with Session() as db:
+            responsavel = _infer_entregas_op_responsavel(db, email, int(projeto_id), responsavel)
             record = _get_or_create_entrega_record(db, email, int(mes), int(ano))
             lista = _update_entrega_op_links(
                 list(record.entregas_operacao or []),
@@ -2275,8 +2597,19 @@ def update_entregas_operacao_links():
             )
             record.entregas_operacao = lista
             flag_modified(record, "entregas_operacao")
+            _sync_snapshot_links_from_entregas_op(
+                db, int(projeto_id), int(mes), int(ano), responsavel,
+                link_relatorio=link_relatorio,
+                link_kpi=link_kpi,
+                link_forecast=link_forecast,
+            )
             db.commit()
-            return jsonify({"ok": True, "entregas_operacao": lista})
+        _sync_metrica_entregas_operacao(email, int(projeto_id), int(mes), int(ano))
+        with Session() as db:
+            record = db.query(MetricaMensal).filter_by(
+                email_investidor=email, mes=int(mes), ano=int(ano)
+            ).first()
+            return jsonify({"ok": True, "entregas_operacao": record.entregas_operacao if record else lista})
     except SQLAlchemyError as e:
         return jsonify({"error": str(e)}), 500
     except Exception as e:
@@ -2395,6 +2728,9 @@ def update_op_delivery_coord():
 def get_monthly_deliveries(pipefy_id, mes, ano):
     """Calcula entregas concluídas baseado no snapshot da tabela operacao."""
     try:
+        email = session.get("email")
+        if email:
+            _sync_legacy_links_for_project(email, pipefy_id, mes, ano)
         snap = _operacao_get_snapshot(pipefy_id, mes, ano)
         if not snap:
             return jsonify([])
@@ -2852,10 +3188,8 @@ def update_snapshot_links():
                 db, pipefy_id, int(mes), int(ano),
                 tipo, {"link": link},
             )
-            metrica = OperacaoSnapshotService.sync_to_metrica(
-                db, email, pipefy_id, int(mes), int(ano)
-            )
             db.commit()
+        _sync_metrica_entregas_operacao(email, int(pipefy_id), int(mes), int(ano))
         return jsonify({"ok": True})
     except Exception as e:
         import traceback
@@ -2900,13 +3234,14 @@ def save_checkin():
     data = request.json or {}
     email = session.get("email")
     pipefy_id = data.get("pipefy_id")
-    now = dt.now()
-    mes, ano = now.month, now.year
+    # Permite check-in retroativo: deriva mes/ano da data informada (igual à otimização).
+    d = dt.strptime(data.get("data", ""), "%Y-%m-%d") if data.get("data") else dt.now()
+    mes, ano = d.month, d.year
 
     print(f"[checkin POST] email={email} projeto={pipefy_id} mes={mes} ano={ano}")
 
     checkin_snap = {
-        "data": now.strftime("%Y-%m-%d"),
+        "data": d.strftime("%Y-%m-%d"),
         "semana": data.get("semana_ano", ""),
         "stakeholder_participou": data.get("compareceu", False),
         "campanhas_ativas": data.get("campanhas_ativas", True),
