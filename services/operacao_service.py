@@ -89,14 +89,16 @@ class OperacaoSnapshotService:
     TABLE  = "operacao"
 
     _EMPTY = {
-        "plano_midia":      {"budget_total": 0, "planos": []},
-        "otimizacoes":      [],
-        "forecasting":      {"link": ""},
-        "kpis":             {"link": ""},
-        "checkin_semanal":  [],
-        "relatorio_account":{"link": ""},
-        "relatorio_gt":     {"link": ""},
-        "metas":            {},
+        "plano_midia":        {"budget_total": 0, "planos": []},
+        "otimizacoes":        [],
+        "forecasting":        {"link": ""},
+        "kpis":               {"link": ""},
+        "checkin_semanal":    [],
+        "relatorio_mensal":   {"link": ""},
+        "relatorio_account":  {"link": ""},
+        "relatorio_gt":       {"link": ""},
+        "metas":              {},
+        "tarefas_semanais":   [],
     }
 
     # ── helpers SQL puros ───────────────────────────────────────────────────

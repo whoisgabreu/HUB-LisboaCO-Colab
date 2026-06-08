@@ -7,6 +7,8 @@
 let currentProject = null;
 let currentMonth = new Date().getMonth() + 1;
 let currentYear = new Date().getFullYear();
+let selectedMonth = currentMonth;
+let selectedYear = currentYear;
 
 const MESES_PT = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
 let currentFatVariavelRecords = [];
@@ -247,8 +249,8 @@ async function loadProjectData() {
     if (!currentProject) return;
     const pipefyId = currentProject.pipefy_id;
 
-    loadPlanoMidia(pipefyId, currentMonth, currentYear);
-    loadEntregas(pipefyId, currentMonth, currentYear);
+    loadPlanoMidia(pipefyId, selectedMonth, selectedYear);
+    loadEntregas(pipefyId, selectedMonth, selectedYear);
 }
 
 let currentMetaPeriod = null;
@@ -574,7 +576,9 @@ async function addNewTask(tipo = 'semanal') {
 
     let payload = {
         pipefy_id: currentProject.pipefy_id,
-        tipo, descricao: descInput.value, referencia, ano: currentYear
+        tipo, descricao: descInput.value, referencia,
+        mes: selectedMonth,
+        ano: selectedYear,
     };
 
     // Para metas (quarter), incluímos os campos estruturados no campo descricao como JSON
@@ -608,7 +612,7 @@ async function addNewTask(tipo = 'semanal') {
             }
             closeGTModal(modalId);
             // Após salvar tarefa, reprocessar entregas (afeta planner_monday, forecasting, relatorio)
-            await fetch(`/api/operacao/monthly-deliveries/${currentProject.pipefy_id}/${currentMonth}/${currentYear}`);
+            await fetch(`/api/operacao/monthly-deliveries/${currentProject.pipefy_id}/${selectedMonth}/${selectedYear}`);
             loadProjectData();
         }
     } catch (e) { console.error(e); }
@@ -624,7 +628,7 @@ async function toggleTask(id, element) {
         });
         element.closest('.task-item').classList.toggle('completed');
         // Recalcula entregas pois pode ter impactado relatorio/forecasting
-        loadEntregas(currentProject.pipefy_id, currentMonth, currentYear);
+        loadEntregas(currentProject.pipefy_id, selectedMonth, selectedYear);
     } catch (e) { console.error(e); }
 }
 
@@ -635,9 +639,9 @@ function filterEntregasByMonth(val) {
     if (!currentProject) return;
     const parts = (val || '').split('-');
     if (parts.length !== 2) return;
-    const ano = parseInt(parts[0], 10);
-    const mes = parseInt(parts[1], 10);
-    loadEntregas(currentProject.pipefy_id, mes, ano);
+    selectedYear = parseInt(parts[0], 10);
+    selectedMonth = parseInt(parts[1], 10);
+    loadEntregas(currentProject.pipefy_id, selectedMonth, selectedYear);
 }
 
 async function loadEntregas(pipefyId, mes, ano) {
@@ -932,7 +936,7 @@ function saveMetasModal() {
     }
 
     closeMetasModal();
-    loadEntregas(currentProject.pipefy_id, currentMonth, currentYear);
+    loadEntregas(currentProject.pipefy_id, selectedMonth, selectedYear);
     if (typeof showToast === 'function') showToast('Metas atualizadas com sucesso!', 'success');
 }
 
@@ -1106,7 +1110,8 @@ async function saveOtimizacao() {
             document.getElementById('opt-date').value = '';
             document.getElementById('opt-details').value = '';
             loadOtimizacoes(currentProject.pipefy_id);
-            loadEntregas(currentProject.pipefy_id, currentMonth, currentYear);
+            await fetch(`/api/operacao/monthly-deliveries/${currentProject.pipefy_id}/${selectedMonth}/${selectedYear}`);
+            loadEntregas(currentProject.pipefy_id, selectedMonth, selectedYear);
         } else {
             const errorData = await res.json();
             showToast(errorData.error || 'Erro ao salvar otimização.', 'error');
@@ -1523,7 +1528,11 @@ async function saveCheckin() {
             document.getElementById('checkin-obs').value = '';
             closeGTModal('modal-novo-checkin');
             loadCheckins(currentProject.pipefy_id);
-            loadEntregas(currentProject.pipefy_id, currentMonth, currentYear);
+            await fetch(`/api/operacao/monthly-deliveries/${currentProject.pipefy_id}/${selectedMonth}/${selectedYear}`);
+            loadEntregas(currentProject.pipefy_id, selectedMonth, selectedYear);
+        } else {
+            const err = await res.json();
+            showToast(err.error || 'Falha ao registrar checkin', 'error');
         }
     } catch (e) { console.error(e); }
 }
@@ -1543,7 +1552,8 @@ async function deleteCheckin(mes, ano, index) {
                 if (res.ok) {
                     showToast('Check-in removido');
                     loadCheckins(currentProject.pipefy_id);
-                    loadEntregas(currentProject.pipefy_id, currentMonth, currentYear);
+                    await fetch(`/api/operacao/monthly-deliveries/${currentProject.pipefy_id}/${selectedMonth}/${selectedYear}`);
+                    loadEntregas(currentProject.pipefy_id, selectedMonth, selectedYear);
                 } else {
                     const err = await res.json();
                     showToast(err.error || 'Falha ao deletar', 'error');
@@ -1570,7 +1580,8 @@ async function deleteOtimizacao(mes, ano, index) {
                 if (res.ok) {
                     showToast('Otimização removida');
                     loadOtimizacoes(currentProject.pipefy_id);
-                    loadEntregas(currentProject.pipefy_id, currentMonth, currentYear);
+                    await fetch(`/api/operacao/monthly-deliveries/${currentProject.pipefy_id}/${selectedMonth}/${selectedYear}`);
+                    loadEntregas(currentProject.pipefy_id, selectedMonth, selectedYear);
                 } else {
                     const err = await res.json();
                     showToast(err.error || 'Falha ao deletar', 'error');
@@ -1593,12 +1604,13 @@ async function deletePlanoMidia() {
         icon: 'fa-eraser',
         onConfirm: async () => {
             try {
-                const url = `/api/operacao/plano-midia/${currentProject.pipefy_id}/${currentMonth}/${currentYear}`;
+                const url = `/api/operacao/plano-midia/${currentProject.pipefy_id}/${selectedMonth}/${selectedYear}`;
                 const res = await fetch(url, { method: 'DELETE' });
                 if (res.ok) {
                     showToast('Plano de mídia removido');
-                    loadPlanoMidia(currentProject.pipefy_id, currentMonth, currentYear);
-                    loadEntregas(currentProject.pipefy_id, currentMonth, currentYear);
+                    loadPlanoMidia(currentProject.pipefy_id, selectedMonth, selectedYear);
+                    await fetch(`/api/operacao/monthly-deliveries/${currentProject.pipefy_id}/${selectedMonth}/${selectedYear}`);
+                    loadEntregas(currentProject.pipefy_id, selectedMonth, selectedYear);
                 } else {
                     const err = await res.json();
                     showToast(err.error || 'Falha ao deletar', 'error');
@@ -1766,11 +1778,9 @@ async function saveFinalPlan() {
             closeGTModal('modal-novo-plano');
             // Recarrega o histórico (reflete edição de meses passados)
             loadHistoricoPlanos(currentProject.pipefy_id);
-            // Só recarrega o painel principal/entregas se o mês editado for o exibido
-            if (mes === currentMonth && ano === currentYear) {
-                loadPlanoMidia(currentProject.pipefy_id, currentMonth, currentYear);
-                loadEntregas(currentProject.pipefy_id, currentMonth, currentYear);
-            }
+            loadPlanoMidia(currentProject.pipefy_id, selectedMonth, selectedYear);
+            await fetch(`/api/operacao/monthly-deliveries/${currentProject.pipefy_id}/${selectedMonth}/${selectedYear}`);
+            loadEntregas(currentProject.pipefy_id, selectedMonth, selectedYear);
         } else {
             showToast('Falha ao salvar: ' + (result.error || `status ${res.status}`), 'error');
         }
@@ -1908,10 +1918,15 @@ async function decrementPlannerMonday(pipefyId) {
                 const res = await fetch('/api/operacao/tarefas', {
                     method: 'DELETE',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ pipefy_id: pipefyId })
+                    body: JSON.stringify({
+                        pipefy_id: pipefyId,
+                        mes: selectedMonth,
+                        ano: selectedYear,
+                    })
                 });
                 if (res.ok) {
                     showToast('Registro do Planner Monday removido.');
+                    await fetch(`/api/operacao/monthly-deliveries/${pipefyId}/${selectedMonth}/${selectedYear}`);
                     loadProjectData();
                 } else {
                     const err = await res.json();
@@ -1939,7 +1954,8 @@ async function incrementPlannerMonday(pipefyId) {
         tipo: 'semanal',
         descricao: `Registro manual via dashboard em ${now.toLocaleDateString('pt-BR')}`,
         referencia: referencia,
-        ano: now.getFullYear()
+        mes: selectedMonth,
+        ano: selectedYear,
     };
 
     try {
@@ -1950,7 +1966,7 @@ async function incrementPlannerMonday(pipefyId) {
         });
         if (res.ok) {
             showToast('Registro do Planner Monday adicionado!');
-            // Recarrega os dados da tela para atualizar contadores
+            await fetch(`/api/operacao/monthly-deliveries/${pipefyId}/${selectedMonth}/${selectedYear}`);
             loadProjectData();
         } else {
             const err = await res.json();

@@ -77,11 +77,23 @@ def check_access(roles):
             user_role = session.get("funcao", "").strip()
             user_posicao = session.get("posicao", "").strip()
             
+            import unicodedata
             # Se for Gerência, Sócio ou Coordenador via posição, concede acesso a quase tudo
-            is_high_level = user_posicao in ["Gerência", "Sócio", "Coordenador"]
+            _pos_norm = unicodedata.normalize('NFC', user_posicao.lower())
+            is_high_level = any(
+                unicodedata.normalize('NFC', r.lower()) == _pos_norm
+                for r in ["Gerência", "Sócio", "Coordenador"]
+            )
             
             # Verifica se o cargo solicitado está na lista ou se é Gerência/Sócio
-            if not is_high_level and not any(role.lower() == user_role.lower() for role in roles):
+            # Normaliza NFC para evitar diferenças de composição Unicode (ex: á vs a+acento)
+            import unicodedata
+            _user_norm = unicodedata.normalize('NFC', user_role.lower())
+            if not is_high_level and not any(
+                unicodedata.normalize('NFC', role.lower()) == _user_norm
+                for role in roles
+            ):
+                print(f"[check_access] BLOQUEADO: user_role={user_role!r} user_posicao={user_posicao!r} roles={roles}")
                 return render_template("index.html", error="Acesso restrito.")
             return f(*args, **kwargs)
         return wrapper
@@ -466,13 +478,16 @@ def _recalcular_mrr_por_entregas(db, record):
 def _operacao_empty_json():
     """Estrutura padrão do JSON entregas."""
     return {
-        "plano_midia":      {"budget_total": 0, "planos": []},
-        "otimizacoes":      [],
-        "forecasting":      {"link": ""},
-        "kpis":             {"link": ""},
-        "checkin_semanal":  [],
-        "relatorio_mensal": {"link": ""},
-        "metas":            {},
+        "plano_midia":        {"budget_total": 0, "planos": []},
+        "otimizacoes":        [],
+        "forecasting":        {"link": ""},
+        "kpis":               {"link": ""},
+        "checkin_semanal":    [],
+        "relatorio_mensal":   {"link": ""},
+        "relatorio_account":  {"link": ""},
+        "relatorio_gt":       {"link": ""},
+        "metas":              {},
+        "tarefas_semanais":   [],
     }
 
 
@@ -720,6 +735,29 @@ def _sync_metrica_entregas_operacao(email, pipefy_id, mes, ano):
                 entry_created = True
                 # Não retornamos, continuamos para preencher os counts no novo entry
 
+            # Verificar se o template da entry condiz com o cargo atual
+            _vinculo = db.query(InvestidorProjeto).filter_by(
+                email_investidor=email, pipefy_id_projeto=pipefy_id
+            ).first()
+            if _vinculo:
+                if _vinculo.cientista:
+                    _expected_resp = "cientista"
+                else:
+                    _expected_resp = "account" if investidor.funcao in ("Account", "Coordenador de CX") else "gt"
+                _current_resp = entry.get("responsavel", "")
+                if _current_resp != _expected_resp:
+                    _existing = {e.get("nome"): e.get("entregues", 0) for e in entry.get("entregas", [])}
+                    entry["responsavel"] = _expected_resp
+                    entry["entregas"] = _build_entregas_op_list(_expected_resp)
+                    for _e in entry["entregas"]:
+                        if _e["nome"] in _existing:
+                            _e["entregues"] = _existing[_e["nome"]]
+                    _template_changed = True
+                else:
+                    _template_changed = False
+            else:
+                _template_changed = False
+
             # Extrair contagens do snapshot — todos os tipos, sem filtrar por cargo
             plano_planos     = (snap.get("plano_midia") or {}).get("planos") or []
             otims            = snap.get("otimizacoes") or []
@@ -755,10 +793,11 @@ def _sync_metrica_entregas_operacao(email, pipefy_id, mes, ano):
             links["link_relatorio"] = relatorio_link or relatorio_acc_link or relatorio_gt_link
 
             # Contabilizar tarefas semanais (planner_monday)
-            tarefas_snap = snap.get("tarefas_semanais") or []
-            count_semanal = len(tarefas_snap)
-            if count_semanal == 0:
+            if "tarefas_semanais" in snap:
+                count_semanal = len(snap["tarefas_semanais"])
+            else:
                 # Fallback para tabela antiga — SAVEPOINT protege a sessão
+                count_semanal = 0
                 try:
                     nested = db.begin_nested()
                     tarefas_db = db.query(OperacaoTarefa).filter_by(
@@ -773,7 +812,6 @@ def _sync_metrica_entregas_operacao(email, pipefy_id, mes, ano):
                         except Exception: pass
                     nested.commit()
                 except Exception:
-                    # Tabela operacao_tarefas pode não existir — nested.rollback salva o restante da transação
                     try:
                         nested.rollback()
                     except Exception:
@@ -782,18 +820,20 @@ def _sync_metrica_entregas_operacao(email, pipefy_id, mes, ano):
                     count_semanal = 0
             counts["planner_monday"] = min(count_semanal, 4)
 
-            # Mapa de metas corretas baseado nos templates oficiais
-            _metas_corretas = {}
-            for tpl in _ENTREGAS_ACCOUNT_TPL + _ENTREGAS_GT_TPL:
-                _metas_corretas[tpl["nome"]] = tpl["meta"]
+            # Preservar contagens maiores registradas via /criativa (MetricaMensal)
+            _existing = {e.get("nome"): e.get("entregues", 0) for e in entry.get("entregas", [])}
+            _metas_corretas = {tpl["nome"]: tpl["meta"] for tpl in _ENTREGAS_ACCOUNT_TPL + _ENTREGAS_GT_TPL}
+            for _nome in list(counts.keys()):
+                _existing_val = _existing.get(_nome, 0)
+                _meta_val = _metas_corretas.get(_nome, 4)
+                counts[_nome] = min(max(counts[_nome], _existing_val), _meta_val)
 
-            changed = entry_created
+            changed = entry_created or _template_changed
             for ent in entry.get("entregas", []):
                 n = ent.get("nome")
                 if n in counts and ent.get("entregues") != counts[n]:
                     ent["entregues"] = counts[n]
                     changed = True
-                # Corrigir meta desatualizada (ex: csat_checkin era 1, agora é 4)
                 meta_correta = _metas_corretas.get(n)
                 if meta_correta and ent.get("meta") != meta_correta:
                     ent["meta"] = meta_correta
@@ -901,6 +941,7 @@ def _sync_entregas_operacao_periodo_fast(email, mes, ano):
 
             tarefas_por_pid = defaultdict(int)
             try:
+                nested_t = db.begin_nested()
                 tarefas_db = db.query(OperacaoTarefa).filter(
                     OperacaoTarefa.projeto_pipefy_id.in_([int(pid) for pid in pid_values]),
                     OperacaoTarefa.tipo == "semanal",
@@ -915,7 +956,12 @@ def _sync_entregas_operacao_periodo_fast(email, mes, ano):
                                 tarefas_por_pid[str(tarefa.projeto_pipefy_id)] += 1
                     except Exception:
                         pass
+                nested_t.commit()
             except Exception:
+                try:
+                    nested_t.rollback()
+                except Exception:
+                    pass
                 tarefas_por_pid = defaultdict(int)
 
             metas_corretas = {
@@ -966,6 +1012,8 @@ def _sync_entregas_operacao_periodo_fast(email, mes, ano):
                 relatorio_gt_link = (snap.get("relatorio_gt") or {}).get("link") or ""
                 goal_snap = snap.get("metas") or {}
 
+                _snap_monday = len(snap["tarefas_semanais"]) if "tarefas_semanais" in snap else tarefas_por_pid.get(pid, 0)
+
                 counts = {
                     "plano_de_midia": 1 if plano_planos else 0,
                     "documento_de_otimizacao": min(len(otims), 4),
@@ -975,11 +1023,14 @@ def _sync_entregas_operacao_periodo_fast(email, mes, ano):
                     "relatorio_mensal": 1 if (relatorio_link or relatorio_acc_link or relatorio_gt_link) else 0,
                     "relatorio_account": 1 if (relatorio_acc_link or relatorio_link) else 0,
                     "relatorio_gt": 1 if (relatorio_gt_link or relatorio_link) else 0,
-                    "planner_monday": min(
-                        len(snap.get("tarefas_semanais") or []) or tarefas_por_pid.get(pid, 0),
-                        4,
-                    ),
+                    "planner_monday": min(_snap_monday, 4),
                 }
+
+                # Preservar contagens maiores registradas via /criativa (MetricaMensal)
+                _existing = {e.get("nome"): e.get("entregues", 0) for e in entry.get("entregas", [])}
+                for _nome in list(counts.keys()):
+                    _meta_val = metas_corretas.get(_nome, 4)
+                    counts[_nome] = min(max(counts[_nome], _existing.get(_nome, 0)), _meta_val)
 
                 for entrega in entry.get("entregas", []):
                     nome = entrega.get("nome")
@@ -2357,10 +2408,18 @@ def save_tarefa():
     descricao = data.get("descricao")
 
     try:
-        # Determinar mes/ano a partir da referência
-        if referencia and "-M" in referencia:
+        # Determinar mes/ano — priorizar valores explícitos enviados pelo frontend
+        mes = data.get("mes")
+        ano = data.get("ano")
+        if mes is not None and ano is not None:
+            mes, ano = int(mes), int(ano)
+        elif referencia and "-M" in referencia:
             parts = referencia.split("-M")
             ano, mes = int(parts[0]), int(parts[1])
+        elif referencia and "-W" in referencia and tipo == "semanal":
+            y, w = map(int, referencia.split("-W"))
+            d = dt.fromisocalendar(y, w, 1)
+            mes, ano = d.month, d.year
         else:
             now = dt.now()
             mes, ano = now.month, now.year
@@ -2391,37 +2450,66 @@ def save_tarefa():
 
 @app.route("/api/operacao/tarefas", methods=["DELETE"])
 @check_session
-@check_access(["Account", "Cientista"])
+@check_access(["Account", "Gestor de Tráfego"])
 def delete_tarefa_manual():
-    """Remove o último registro manual do Planner Monday do mês atual."""
+    """Remove o último registro manual do Planner Monday."""
     data = request.json or {}
     pipefy_id = data.get("pipefy_id")
     if not pipefy_id:
         return jsonify({"error": "pipefy_id obrigatório"}), 400
 
-    now = dt.now()
-    mes, ano = now.month, now.year
+    # Priorizar mes/ano explícitos enviados pelo frontend
+    mes = data.get("mes")
+    ano = data.get("ano")
+    if mes is None or ano is None:
+        referencia = data.get("referencia", "")
+        if referencia and "-W" in referencia:
+            try:
+                y, w = map(int, referencia.split("-W"))
+                d = dt.fromisocalendar(y, w, 1)
+                mes, ano = d.month, d.year
+            except Exception:
+                now = dt.now()
+                mes, ano = now.month, now.year
+        else:
+            now = dt.now()
+            mes, ano = now.month, now.year
+    else:
+        mes, ano = int(mes), int(ano)
     email = session.get("email")
 
     try:
         snap = _operacao_get_snapshot(pipefy_id, mes, ano)
-        if not snap or "tarefas_semanais" not in snap:
-            return jsonify({"error": "Nenhum registro encontrado"}), 404
+        lst = list(snap["tarefas_semanais"]) if snap and "tarefas_semanais" in snap else []
         
-        lst = list(snap["tarefas_semanais"])
         if not lst:
+            # Fallback: decrementar MetricaMensal diretamente (fonte da /criativa)
+            with Session() as _db:
+                _metrica = _db.query(MetricaMensal).filter_by(
+                    email_investidor=email, mes=int(mes), ano=int(ano)
+                ).first()
+                if _metrica and _metrica.entregas_operacao:
+                    for _entry in _metrica.entregas_operacao:
+                        if str(_entry.get("projeto_id")) == str(pipefy_id):
+                            for _ee in _entry.get("entregas", []):
+                                if _ee.get("nome") == "planner_monday" and _ee.get("entregues", 0) > 0:
+                                    _ee["entregues"] -= 1
+                                    flag_modified(_metrica, "entregas_operacao")
+                                    _db.commit()
+                                    return jsonify({"status": "success", "source": "metrica"})
+                            break
             return jsonify({"error": "Nenhum registro para remover"}), 400
-        
+
         # Remove a última tarefa (decremento)
         del lst[-1]
-        
+
         with engine.begin() as conn:
             snap["tarefas_semanais"] = lst
             conn.execute(text(
                 "UPDATE plataforma_geral.operacao SET entregas = CAST(:ent AS jsonb) "
                 "WHERE id_projeto = :id AND mes = :mes AND ano = :ano"
             ), {"ent": json.dumps(snap, ensure_ascii=False), "id": str(pipefy_id), "mes": mes, "ano": ano})
-            
+
         _sync_metrica_entregas_operacao(email, pipefy_id, mes, ano)
         return jsonify({"status": "success"})
     except Exception as e:
@@ -2469,6 +2557,49 @@ def get_entregas_operacao(email, mes, ano):
             return jsonify(record.entregas_operacao if record else [])
     except SQLAlchemyError as e:
         return jsonify({"error": str(e)}), 500
+
+
+def _sync_snapshot_entrega_count(projeto_id, mes, ano, nome_entrega, valor, email, cliente_nome=""):
+    """Espelha contagem de entrega definida via /criativa no snapshot da operacao.
+    Apenas para tipos onde o snapshot armazena flags/links simples ou tarefas semanais.
+    Tipos array (checkin_semanal, otimizacoes) são preservados no snapshot real;
+    a contagem alternativa vem via fallback MetricaMensal em get_monthly_deliveries."""
+    _snap = _operacao_get_snapshot(projeto_id, mes, ano)
+    if _snap is None:
+        _snap = {}
+    if nome_entrega == "planner_monday":
+        _target = min(valor, 4)
+        _current = list(_snap.get("tarefas_semanais") or [])
+        if _target > len(_current):
+            for _ in range(_target - len(_current)):
+                _current.append({"descricao": "Registro via criativa",
+                                 "criado_por": email,
+                                 "data": dt.now().strftime("%Y-%m-%d")})
+        elif _target < len(_current):
+            del _current[_target:]
+        _snap["tarefas_semanais"] = _current
+    elif nome_entrega == "plano_de_midia":
+        if valor >= 1:
+            _snap["plano_midia"] = {"budget_total": 0, "planos": [
+                {"canal": "Manual", "nome_campanha": "Registro via criativa",
+                 "%_budget": 0, "R$_budget": 0, "budget_dia": 0}]}
+        else:
+            _snap["plano_midia"] = {"budget_total": 0, "planos": []}
+    elif nome_entrega in ("kpis", "forecasting", "relatorio_account", "relatorio_gt", "relatorio_mensal"):
+        _s = dict(_snap.get(nome_entrega) or {})
+        _s["link"] = "manual" if valor >= 1 else ""
+        _snap[nome_entrega] = _s
+    with engine.begin() as _conn:
+        _res = _conn.execute(text(
+            "UPDATE plataforma_geral.operacao SET entregas = CAST(:ent AS jsonb) "
+            "WHERE id_projeto = :id AND mes = :mes AND ano = :ano"
+        ), {"ent": json.dumps(_snap), "id": str(projeto_id), "mes": mes, "ano": ano})
+        if _res.rowcount == 0:
+            _conn.execute(text(
+                "INSERT INTO plataforma_geral.operacao (id_projeto, nome, mes, ano, entregas) "
+                "VALUES (:id, :nome, :mes, :ano, CAST(:ent AS jsonb))"
+            ), {"id": str(projeto_id), "nome": cliente_nome,
+                "mes": mes, "ano": ano, "ent": json.dumps(_snap)})
 
 
 @app.route("/api/operacao/entregas-op/entregues", methods=["PUT"])
@@ -2555,6 +2686,11 @@ def update_entregas_operacao_entregues():
             record.entregas_operacao = lista
             flag_modified(record, "entregas_operacao")
             _recalcular_mrr_por_entregas(db, record)
+
+            # Sincronizar snapshot quando /criativa altera qualquer entrega
+            _sync_snapshot_entrega_count(str(projeto_id), int(mes), int(ano),
+                                         nome_entrega, int(valor), email, cliente_nome)
+
             db.commit()
             return jsonify({"ok": True, "entregas_operacao": lista})
     except SQLAlchemyError as e:
@@ -2726,109 +2862,145 @@ def update_op_delivery_coord():
 @app.route("/api/operacao/monthly-deliveries/<int:pipefy_id>/<int:mes>/<int:ano>", methods=["GET"])
 @check_session
 def get_monthly_deliveries(pipefy_id, mes, ano):
-    """Calcula entregas concluídas baseado no snapshot da tabela operacao."""
+    """Calcula entregas concluídas baseado no snapshot + fallback MetricaMensal."""
     try:
         email = session.get("email")
         if email:
             _sync_legacy_links_for_project(email, pipefy_id, mes, ano)
+
         snap = _operacao_get_snapshot(pipefy_id, mes, ano)
         if not snap:
-            return jsonify([])
+            snap = {}
+
+        # Ler MetricaMensal do usuário atual como fallback para /criativa
+        metrica_counts = {}
+        if email:
+            try:
+                with Session() as _db:
+                    _rec = _db.query(MetricaMensal).filter_by(
+                        email_investidor=email, mes=int(mes), ano=int(ano)
+                    ).first()
+                    if _rec and _rec.entregas_operacao:
+                        for _entry in _rec.entregas_operacao:
+                            if str(_entry.get("projeto_id")) == str(pipefy_id):
+                                for _ee in _entry.get("entregas", []):
+                                    metrica_counts[_ee.get("nome")] = _ee.get("entregues", 0)
+                                break
+            except Exception as e:
+                print(f"[monthly-deliveries] erro MetricaMensal: {e}")
+
+        def _m(metrica_nome, snap_count):
+            return max(snap_count, metrica_counts.get(metrica_nome, 0))
 
         deliveries = []
         idx = 0
 
-        # Plano de mídia — meta 1
+        # Dados do snapshot
         planos = (snap.get("plano_midia") or {}).get("planos") or []
-        if planos:
-            idx += 1
-            deliveries.append({
-                "id": idx, "role": "Gestor de Tráfego",
-                "delivery_type": "plano_midia", "status": "completed",
-                "count": 1,
-                "fee_snapshot": 0, "mrr_contribution": 0, "completed_at": None,
-            })
-
-        # Otimizações — meta 4
         otims = snap.get("otimizacoes") or []
-        cnt_otim = len(otims)
+        checkins = snap.get("checkin_semanal") or []
+        tarefas_semanais = snap.get("tarefas_semanais") or []
+        kpis_link = (snap.get("kpis") or {}).get("link") or ""
+        forecasting_link = (snap.get("forecasting") or {}).get("link") or ""
+        relatorio_link = (snap.get("relatorio_mensal") or {}).get("link") or ""
+        relatorio_acc_link = (snap.get("relatorio_account") or {}).get("link") or ""
+        relatorio_gt_link = (snap.get("relatorio_gt") or {}).get("link") or ""
+
+        # === PLANO DE MÍDIA — meta 1 ===
+        cnt = _m("plano_de_midia", 1 if planos else 0)
+        idx += 1
+        deliveries.append({
+            "id": idx, "role": "Gestor de Tráfego",
+            "delivery_type": "plano_midia",
+            "status": "completed" if cnt >= 1 else "pending",
+            "count": min(cnt, 1),
+            "fee_snapshot": 0, "mrr_contribution": 0, "completed_at": None,
+        })
+
+        # === OTIMIZAÇÕES — meta 4 ===
+        cnt = _m("documento_de_otimizacao", len(otims))
         idx += 1
         deliveries.append({
             "id": idx, "role": "Gestor de Tráfego",
             "delivery_type": "otimizacao",
-            "status": "completed" if cnt_otim >= 4 else ("partial" if cnt_otim > 0 else "pending"),
-            "count": min(cnt_otim, 4),
+            "status": "completed" if cnt >= 4 else ("partial" if cnt > 0 else "pending"),
+            "count": min(cnt, 4),
             "fee_snapshot": 0, "mrr_contribution": 0, "completed_at": None,
         })
 
-        # Checkin — meta 4
-        checkins = snap.get("checkin_semanal") or []
-        cnt_checkin = len(checkins)
+        # === CHECK-IN / CSAT — meta 4 ===
+        cnt = _m("csat_checkin", len(checkins))
         idx += 1
         deliveries.append({
             "id": idx, "role": "Account",
             "delivery_type": "checkin",
-            "status": "completed" if cnt_checkin >= 4 else ("partial" if cnt_checkin > 0 else "pending"),
-            "count": min(cnt_checkin, 4),
+            "status": "completed" if cnt >= 4 else ("partial" if cnt > 0 else "pending"),
+            "count": min(cnt, 4),
             "fee_snapshot": 0, "mrr_contribution": 0, "completed_at": None,
         })
 
-        # Forecasting — meta 1
-        if (snap.get("forecasting") or {}).get("link"):
-            idx += 1
-            deliveries.append({
-                "id": idx, "role": "Account",
-                "delivery_type": "forecasting", "status": "completed",
-                "count": 1,
-                "fee_snapshot": 0, "mrr_contribution": 0, "completed_at": None,
-            })
+        # === FORECASTING — meta 1 ===
+        cnt = _m("forecasting", 1 if forecasting_link else 0)
+        idx += 1
+        deliveries.append({
+            "id": idx, "role": "Account",
+            "delivery_type": "forecasting",
+            "status": "completed" if cnt >= 1 else "pending",
+            "count": min(cnt, 1),
+            "fee_snapshot": 0, "mrr_contribution": 0, "completed_at": None,
+        })
 
-        # KPIs — meta 1
-        if (snap.get("kpis") or {}).get("link"):
-            idx += 1
-            deliveries.append({
-                "id": idx, "role": "Gestor de Tráfego",
-                "delivery_type": "kpis", "status": "completed",
-                "count": 1,
-                "fee_snapshot": 0, "mrr_contribution": 0, "completed_at": None,
-            })
+        # === KPIs — meta 1 ===
+        cnt = _m("kpis", 1 if kpis_link else 0)
+        idx += 1
+        deliveries.append({
+            "id": idx, "role": "Gestor de Tráfego",
+            "delivery_type": "kpis",
+            "status": "completed" if cnt >= 1 else "pending",
+            "count": min(cnt, 1),
+            "fee_snapshot": 0, "mrr_contribution": 0, "completed_at": None,
+        })
 
-        # Relatórios Mensais (qualquer tipo serve para preencher)
-        has_any_report = (
-            (snap.get("relatorio_mensal") or {}).get("link") or
-            (snap.get("relatorio_gt") or {}).get("link") or
-            (snap.get("relatorio_account") or {}).get("link")
-        )
-        if has_any_report:
-            # Emite os três tipos para garantir compatibilidade com qualquer perfil no frontend
-            idx += 1
-            deliveries.append({
-                "id": idx, "role": "Gestor de Tráfego",
-                "delivery_type": "relatorio_mensal", "status": "completed",
-                "count": 1, "fee_snapshot": 0, "mrr_contribution": 0, "completed_at": None,
-            })
-            idx += 1
-            deliveries.append({
-                "id": idx, "role": "Gestor de Tráfego",
-                "delivery_type": "relatorio_gt", "status": "completed",
-                "count": 1, "fee_snapshot": 0, "mrr_contribution": 0, "completed_at": None,
-            })
-            idx += 1
-            deliveries.append({
-                "id": idx, "role": "Account",
-                "delivery_type": "relatorio_account", "status": "completed",
-                "count": 1, "fee_snapshot": 0, "mrr_contribution": 0, "completed_at": None,
-            })
+        # === RELATÓRIO MENSAL — meta 1 ===
+        has_report = relatorio_link or relatorio_acc_link or relatorio_gt_link
+        cnt = _m("relatorio_mensal", 1 if has_report else 0)
+        idx += 1
+        deliveries.append({
+            "id": idx, "role": "Gestor de Tráfego",
+            "delivery_type": "relatorio_mensal",
+            "status": "completed" if cnt >= 1 else "pending",
+            "count": min(cnt, 1),
+            "fee_snapshot": 0, "mrr_contribution": 0, "completed_at": None,
+        })
 
-        # Planner Monday — meta 4
-        tarefas_semanais = snap.get("tarefas_semanais") or []
-        cnt_monday = len(tarefas_semanais)
+        cnt = _m("relatorio_gt", 1 if (relatorio_gt_link or relatorio_link) else 0)
+        idx += 1
+        deliveries.append({
+            "id": idx, "role": "Gestor de Tráfego",
+            "delivery_type": "relatorio_gt",
+            "status": "completed" if cnt >= 1 else "pending",
+            "count": min(cnt, 1),
+            "fee_snapshot": 0, "mrr_contribution": 0, "completed_at": None,
+        })
+
+        cnt = _m("relatorio_account", 1 if (relatorio_acc_link or relatorio_link) else 0)
+        idx += 1
+        deliveries.append({
+            "id": idx, "role": "Account",
+            "delivery_type": "relatorio_account",
+            "status": "completed" if cnt >= 1 else "pending",
+            "count": min(cnt, 1),
+            "fee_snapshot": 0, "mrr_contribution": 0, "completed_at": None,
+        })
+
+        # === PLANNER MONDAY — meta 4 ===
+        cnt = _m("planner_monday", len(tarefas_semanais))
         idx += 1
         deliveries.append({
             "id": idx, "role": "Account",
             "delivery_type": "planner_monday",
-            "status": "completed" if cnt_monday >= 4 else ("partial" if cnt_monday > 0 else "pending"),
-            "count": min(cnt_monday, 4),
+            "status": "completed" if cnt >= 4 else ("partial" if cnt > 0 else "pending"),
+            "count": min(cnt, 4),
             "fee_snapshot": 0, "mrr_contribution": 0, "completed_at": None,
         })
 
@@ -3228,7 +3400,7 @@ def save_otimizacao_api():
 
 @app.route("/api/operacao/checkin", methods=["POST"])
 @check_session
-@check_access(["Account", "Cientista", "Gerência", "Desenvolvedor"])
+@check_access(["Account", "Cientista", "Gerência", "Desenvolvedor", "Gestor de Tráfego"])
 def save_checkin():
     """Salva checkin APENAS na tabela operacao.entregas.checkin_semanal (append)."""
     data = request.json or {}
