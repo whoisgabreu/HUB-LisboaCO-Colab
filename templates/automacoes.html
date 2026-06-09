@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Automações | Hub Lisboa</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="static/style/styles.css">
+    <link rel="stylesheet" href="static/style/automacoes.css">
+    <link rel="stylesheet" href="static/style/tema-claro.css">
+    <script src="static/js/app.js" defer></script>
+    <script src="static/js/automacoes.js" defer></script>
+    <script src="static/js/tema.js" defer></script>
+    <script>
+        window.APP_CONFIG = {
+            userEmail: "{{ session.email }}",
+            userToken: "{{ session.token }}",
+            podeEditarKanban: {{ 'true' if session.pode_editar_kanban else 'false' }},
+            userAccessLevel: "{{ session.nivel_acesso }}"
+        };
+    </script>
+</head>
+
+<body>
+    {% include "components/header.html" %}
+    {% include "components/sidebar.html" %}
+
+    <div class="app-shell">
+        <div class="sidebar-overlay"></div>
+        <div class="main-content">
+            <main class="automacoes-dashboard">
+                <header class="automacoes-header">
+                    <div class="header-left">
+                        <h1><i class="fas fa-robot"></i> Automações</h1>
+                        <p class="header-subtitle">Configure webhooks disparados por eventos do Kanban e do projeto</p>
+                    </div>
+                    <div class="header-actions">
+                        <button id="btnViewLogs" class="btn-secondary"><i class="fas fa-history"></i> Histórico</button>
+                        <button id="btnNewAutomacao" class="btn-primary"><i class="fas fa-plus"></i> Nova Automação</button>
+                    </div>
+                </header>
+
+                <div id="automacoesTabContent" class="automacoes-tab-content">
+                    <div class="automacoes-layout">
+                        <div class="automacoes-main">
+                            <div id="automacoesList" class="automacoes-list">
+                                <div class="empty-state" id="emptyState">
+                                    <i class="fas fa-robot"></i>
+                                    <h3>Nenhuma automação cadastrada</h3>
+                                    <p>Crie sua primeira automação para disparar webhooks baseados em eventos do Kanban.</p>
+                                    <button id="btnEmptyNew" class="btn-primary"><i class="fas fa-plus"></i> Criar Automação</button>
+                                </div>
+                            </div>
+                        </div>
+                        <aside class="automacoes-sidebar-ref">
+                            <div class="ref-card">
+                                <h4><i class="fas fa-code"></i> Variáveis disponíveis</h4>
+                                <p class="ref-subtitle">Use estas variáveis no payload personalizado:</p>
+                                <div class="ref-vars">
+                                    <div class="ref-var"><code>{{ '{{' }}card_id{{ '}}' }}</code><span>ID do card</span></div>
+                                    <div class="ref-var"><code>{{ '{{' }}card_title{{ '}}' }}</code><span>Título do card</span></div>
+                                    <div class="ref-var"><code>{{ '{{' }}phase_id{{ '}}' }}</code><span>ID da fase</span></div>
+                                    <div class="ref-var"><code>{{ '{{' }}phase_name{{ '}}' }}</code><span>Nome da fase</span></div>
+                                    <div class="ref-var"><code>{{ '{{' }}project_id{{ '}}' }}</code><span>ID do projeto</span></div>
+                                    <div class="ref-var"><code>{{ '{{' }}project_name{{ '}}' }}</code><span>Nome do projeto</span></div>
+                                    <div class="ref-var"><code>{{ '{{' }}project_date{{ '}}' }}</code><span>Data do projeto</span></div>
+                                    <div class="ref-var"><code>{{ '{{' }}current_date{{ '}}' }}</code><span>Data atual</span></div>
+                                </div>
+                            </div>
+                        </aside>
+                    </div>
+                </div>
+
+                <div id="logsTabContent" class="logs-tab-content" style="display:none;">
+                    <div class="logs-header">
+                        <h2><i class="fas fa-history"></i> Histórico de Execução</h2>
+                        <button id="btnBackToAutomacoes" class="btn-secondary"><i class="fas fa-arrow-left"></i> Voltar</button>
+                    </div>
+                    <div id="logsList" class="logs-list">
+                        <div class="empty-state">
+                            <i class="fas fa-history"></i>
+                            <p>Nenhuma execução registrada ainda.</p>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Modal: Criar/Editar Automação -->
+    <div id="automacaoModalOverlay" class="modal-overlay">
+        <div class="modal-content automacao-modal">
+            <div class="modal-header">
+                <h2 id="automacaoModalTitle"><i class="fas fa-plus-circle"></i> Nova Automação</h2>
+                <button class="btn-close-modal" id="btnCloseAutomacaoModal"><i class="fas fa-xmark"></i></button>
+            </div>
+            <div class="automacao-modal-body" id="automacaoModalBody">
+                <input type="hidden" id="editAutomacaoId" value="">
+
+                <div class="form-group">
+                    <label><i class="fas fa-tag"></i> Nome da Automação</label>
+                    <input type="text" id="inputNome" class="modern-input" placeholder="Ex: Notificar novo projeto" maxlength="200">
+                </div>
+
+                <div class="form-group">
+                    <label><i class="fas fa-align-left"></i> Descrição <span class="opcional">(opcional)</span></label>
+                    <textarea id="inputDescricao" class="modern-input" rows="2" placeholder="Descrição da automação..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label><i class="fas fa-power-off"></i> Status</label>
+                    <label class="switch">
+                        <input type="checkbox" id="inputAtiva" checked>
+                        <span class="switch-slider"></span>
+                    </label>
+                    <span id="statusLabel" class="status-label">Ativa</span>
+                </div>
+
+                <hr class="section-divider">
+
+                <h3 class="section-title"><i class="fas fa-bolt"></i> Gatilho (Trigger)</h3>
+
+                <div class="form-group">
+                    <label>Evento</label>
+                    <select id="inputTriggerType" class="modern-select">
+                        <option value="">Selecione um gatilho...</option>
+                        <optgroup label="Kanban">
+                            <option value="card_entered_phase">Card entrou em uma fase</option>
+                            <option value="card_left_phase">Card saiu de uma fase</option>
+                            <option value="card_moved">Card foi movido entre fases</option>
+                            <option value="card_created">Card foi criado</option>
+                            <option value="card_archived">Card foi arquivado</option>
+                        </optgroup>
+                        <optgroup label="Projeto (Data)">
+                            <option value="project_days_before">Faltam X dias para a data do projeto</option>
+                            <option value="project_date_today">Data do projeto é hoje</option>
+                            <option value="project_days_after">Passaram X dias da data do projeto</option>
+                        </optgroup>
+                    </select>
+                </div>
+
+                <div id="triggerPhaseConfig" class="trigger-config" style="display:none;">
+                    <div class="form-group">
+                        <label>Fase</label>
+                        <select id="inputTriggerPhase" class="modern-select">
+                            <option value="">Selecione uma fase...</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="triggerFromToConfig" class="trigger-config" style="display:none;">
+                    <div class="form-group">
+                        <label>Da fase</label>
+                        <select id="inputTriggerFromPhase" class="modern-select">
+                            <option value="">Selecione...</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Para a fase</label>
+                        <select id="inputTriggerToPhase" class="modern-select">
+                            <option value="">Selecione...</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="triggerDaysConfig" class="trigger-config" style="display:none;">
+                    <div class="form-group">
+                        <label>Dias</label>
+                        <input type="number" id="inputTriggerDays" class="modern-input" placeholder="Ex: 30" min="1" value="30">
+                    </div>
+                </div>
+
+                <hr class="section-divider">
+
+                <h3 class="section-title"><i class="fas fa-plug"></i> Ação: Webhook</h3>
+
+                <div class="form-group">
+                    <label><i class="fas fa-link"></i> URL do Webhook</label>
+                    <input type="url" id="inputWebhookUrl" class="modern-input" placeholder="https://exemplo.com/webhook">
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Método HTTP</label>
+                        <select id="inputHttpMethod" class="modern-select">
+                            <option value="POST">POST</option>
+                            <option value="PUT">PUT</option>
+                            <option value="PATCH">PATCH</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Tipo de Conteúdo</label>
+                        <select id="inputContentType" class="modern-select">
+                            <option value="json">JSON</option>
+                            <option value="form">Form Data</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label><i class="fas fa-lock"></i> Token de Autenticação <span class="opcional">(opcional)</span></label>
+                    <input type="password" id="inputToken" class="modern-input" placeholder="Bearer token...">
+                </div>
+
+                <div class="form-group">
+                    <label><i class="fas fa-headers"></i> Headers Personalizados <span class="opcional">(opcional)</span></label>
+                    <div id="headersContainer">
+                        <div class="header-row">
+                            <input type="text" class="modern-input header-key" placeholder="Chave">
+                            <input type="text" class="modern-input header-value" placeholder="Valor">
+                            <button class="btn-icon btn-remove-header" title="Remover"><i class="fas fa-times"></i></button>
+                        </div>
+                    </div>
+                    <button id="btnAddHeader" class="btn-secondary btn-sm"><i class="fas fa-plus"></i> Adicionar Header</button>
+                </div>
+
+                <div class="form-group">
+                    <label><i class="fas fa-code"></i> Payload Personalizado <span class="opcional">(opcional)</span></label>
+                    <textarea id="inputPayload" class="modern-input payload-input" rows="6" placeholder='{"card_id": "{{ "{{" }}card_id{{ "}}" }}", "title": "{{ "{{" }}card_title{{ "}}" }}", "phase": "{{ "{{" }}phase_name{{ "}}" }}"}'></textarea>
+                    <div class="variables-help">
+                        <span><i class="fas fa-info-circle"></i> Variáveis disponíveis:</span>
+                        <code>{{ '{{' }}card_id{{ '}}' }}</code> <code>{{ '{{' }}card_title{{ '}}' }}</code> <code>{{ '{{' }}phase_id{{ '}}' }}</code>
+                        <code>{{ '{{' }}phase_name{{ '}}' }}</code> <code>{{ '{{' }}project_id{{ '}}' }}</code> <code>{{ '{{' }}project_name{{ '}}' }}</code>
+                        <code>{{ '{{' }}project_date{{ '}}' }}</code> <code>{{ '{{' }}current_date{{ '}}' }}</code>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="btnCancelAutomacao" class="btn-secondary">Cancelar</button>
+                <button id="btnSaveAutomacao" class="btn-primary"><i class="fas fa-check"></i> Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Confirmação -->
+    <div id="confirmModalOverlay" class="modal-overlay">
+        <div class="modal-content confirm-modal">
+            <div class="modal-header">
+                <h2><i class="fas fa-exclamation-triangle" style="color:#e74c3c;"></i> Confirmar Exclusão</h2>
+                <button class="btn-close-modal" id="btnCloseConfirm"><i class="fas fa-xmark"></i></button>
+            </div>
+            <div class="confirm-modal-body">
+                <p id="confirmMessage">Tem certeza que deseja excluir esta automação?</p>
+            </div>
+            <div class="modal-footer">
+                <button id="btnConfirmCancel" class="btn-secondary">Cancelar</button>
+                <button id="btnConfirmDelete" class="btn-danger"><i class="fas fa-trash"></i> Excluir</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Configurações do Usuário (Perfil / Aparência) -->
+    {% include "components/modal-configuracoes.html" %}
+
+    <!-- Toast Notifications -->
+    <div id="toastContainer"></div>
+</body>
+
+</html>

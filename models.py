@@ -1,3 +1,4 @@
+from datetime import datetime
 from sqlalchemy import Column, Integer, String, Boolean, Date, Text, DECIMAL, BigInteger, FetchedValue, DateTime, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB
 from database import Base
@@ -354,6 +355,41 @@ class KanbanHistorico(Base):
     data_evento = Column(DateTime, server_default=FetchedValue())
     usuario_email = Column(String(255))
     snapshot = Column(JSONB, nullable=False)
+
+
+class Automacao(Base):
+    """Tabela: plataforma_geral.automacoes"""
+    __tablename__ = "automacoes"
+    __table_args__ = {"schema": "plataforma_geral"}
+
+    id = Column(Integer, primary_key=True)
+    nome = Column(String(200), nullable=False)
+    descricao = Column(Text)
+    ativa = Column(Boolean, default=True)
+    trigger_type = Column(String(50), nullable=False)
+    trigger_config = Column(JSONB, nullable=False, default=dict)
+    action_type = Column(String(50), nullable=False, default="webhook")
+    action_config = Column(JSONB, nullable=False, default=dict)
+    created_at = Column(DateTime, server_default=FetchedValue())
+    updated_at = Column(DateTime, server_default=FetchedValue(), onupdate=datetime.now)
+
+
+class AutomacaoLog(Base):
+    """Tabela: plataforma_geral.automacoes_log"""
+    __tablename__ = "automacoes_log"
+    __table_args__ = {"schema": "plataforma_geral"}
+
+    id = Column(Integer, primary_key=True)
+    automacao_id = Column(Integer, nullable=False)
+    automacao_nome = Column(String(200))
+    event_type = Column(String(50))
+    card_id = Column(Integer)
+    project_id = Column(Integer)
+    url_chamada = Column(Text)
+    http_status = Column(Integer)
+    status = Column(String(20), nullable=False)  # 'success' ou 'failure'
+    error_message = Column(Text)
+    executed_at = Column(DateTime, server_default=FetchedValue())
 
 
 # Tabela 'operacao' acessada via SQL puro em OperacaoSnapshotService

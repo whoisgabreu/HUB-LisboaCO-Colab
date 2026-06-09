@@ -19,13 +19,14 @@ from models import (
     OperacaoTarefa, OperacaoEntregaMensal, OperacaoPlanoMidia,
     OperacaoOtimizacao, OperacaoCheckin,
     MonthlyDelivery, OperacaoLinkUtil, EntregaCriativa,
-    KanbanConfig, KanbanHistorico
+    KanbanConfig, KanbanHistorico, Automacao, AutomacaoLog
 )
 
 from services.remuneracao import calcular_metricas_mensais
 from services.operacao_service import OperacaoService, OperacaoSnapshotService
 from services.projeto_participacao_service import ProjetoParticipacaoService
 from services.kanban_service import KanbanService, PhaseTransitionError
+from services.automacao_service import AutomacaoService
 
 
 
@@ -58,6 +59,18 @@ scheduler.start()
 @scheduler.task('cron', id='do_remuneracao_daily', hour=0, minute=0)
 def daily_remuneration_job():
     job_recalcular_remuneracao()
+
+@scheduler.task('cron', id='do_automacoes_project_date_daily', hour=1, minute=0)
+def daily_automacoes_project_date_job():
+    """Verifica gatilhos baseados em data do projeto."""
+    print(f"[{dt.now()}] Verificando gatilhos de data de projeto nas automações...")
+    try:
+        with Session() as db:
+            service = AutomacaoService(db)
+            service.check_project_date_triggers()
+        print("Verificação de gatilhos de data concluída.")
+    except Exception as e:
+        print(f"Erro na verificação de gatilhos de data: {e}")
 
 
 def check_session(func):
@@ -4497,8 +4510,22 @@ def api_kanban_move():
     with Session() as db:
         service = KanbanService(db)
         try:
-            # card_id no kanban é o pipefy_id no projeto
+            projeto = db.query(Projeto).filter_by(pipefy_id=int(card_id)).first()
+            old_phase_name = projeto.fase_do_pipefy if projeto else ""
+            config = service.get_board_config()
+            old_phase = next((f for f in config.get("fases", []) if f["nome"] == old_phase_name), {})
+            new_phase = next((f for f in config.get("fases", []) if f["id"] == nova_fase_id), {})
+
             service.move_card(int(card_id), nova_fase_id, dados_fase, usuario_email)
+
+            project_date = projeto.data_de_inicio.isoformat() if projeto and projeto.data_de_inicio else None
+            _disparar_automacoes_card_movido(
+                int(card_id), projeto.nome if projeto else "",
+                old_phase.get("id", ""), old_phase_name,
+                new_phase.get("id", ""), new_phase.get("nome", ""),
+                int(card_id), projeto.nome if projeto else "", project_date
+            )
+
             return jsonify({"status": "success"})
         except PhaseTransitionError as e:
             return jsonify({"error": str(e)}), 422
@@ -4522,6 +4549,15 @@ def api_kanban_create_card():
         try:
             nome = data.get("nome", "Novo Projeto")
             projeto = service.create_card("fluxo-projetos", nome, dados_iniciais, usuario_email)
+            config = service.get_board_config("fluxo-projetos")
+            fases = config.get("fases", [])
+            primeira_fase = fases[0] if fases else {"id": "", "nome": ""}
+            project_date = projeto.data_de_inicio.isoformat() if projeto.data_de_inicio else None
+            _disparar_automacoes_card_criado(
+                projeto.pipefy_id, projeto.nome,
+                primeira_fase["id"], primeira_fase["nome"],
+                projeto.pipefy_id, projeto.nome, project_date
+            )
             return jsonify({"status": "success", "card_id": projeto.pipefy_id})
         except Exception as e:
             import traceback; traceback.print_exc()
@@ -4613,6 +4649,152 @@ def api_kanban_migrate_card_board():
         except Exception as e:
             import traceback; traceback.print_exc()
             return jsonify({"error": str(e)}), 500
+
+
+# ─── AUTOMAÇÕES (Webhooks) ──────────────────────────────────────────────────
+
+@app.route("/automacoes")
+@check_session
+def view_automacoes():
+    """Renderiza a página de automações."""
+    return render_template("automacoes.html", user_name=session.get("nome"))
+
+
+@app.route("/api/automacoes", methods=["GET"])
+@check_session
+def api_automacoes_list():
+    """Lista todas as automações."""
+    with Session() as db:
+        service = AutomacaoService(db)
+        return jsonify(service.list_automacoes())
+
+
+@app.route("/api/automacoes", methods=["POST"])
+@check_session
+def api_automacoes_create():
+    """Cria uma nova automação."""
+    data = request.json or {}
+    if not data.get("nome"):
+        return jsonify({"error": "Nome é obrigatório."}), 400
+    if not data.get("trigger_type"):
+        return jsonify({"error": "Tipo de gatilho é obrigatório."}), 400
+    if not data.get("action_config", {}).get("url"):
+        return jsonify({"error": "URL do webhook é obrigatória."}), 400
+
+    with Session() as db:
+        service = AutomacaoService(db)
+        try:
+            a = service.create_automacao(data)
+            return jsonify({"status": "success", "automacao": service._to_dict(a)})
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/automacoes/<int:automacao_id>", methods=["PUT"])
+@check_session
+def api_automacoes_update(automacao_id):
+    """Atualiza uma automação."""
+    data = request.json or {}
+    with Session() as db:
+        service = AutomacaoService(db)
+        try:
+            a = service.update_automacao(automacao_id, data)
+            return jsonify({"status": "success", "automacao": service._to_dict(a)})
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 404
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/automacoes/<int:automacao_id>", methods=["DELETE"])
+@check_session
+def api_automacoes_delete(automacao_id):
+    """Exclui uma automação."""
+    with Session() as db:
+        service = AutomacaoService(db)
+        try:
+            service.delete_automacao(automacao_id)
+            return jsonify({"status": "success"})
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 404
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/automacoes/<int:automacao_id>/toggle", methods=["POST"])
+@check_session
+def api_automacoes_toggle(automacao_id):
+    """Ativa/desativa uma automação."""
+    with Session() as db:
+        service = AutomacaoService(db)
+        try:
+            ativa = service.toggle_automacao(automacao_id)
+            return jsonify({"status": "success", "ativa": ativa})
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 404
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/automacoes/logs", methods=["GET"])
+@check_session
+def api_automacoes_logs():
+    """Lista os logs de execução."""
+    automacao_id = request.args.get("automacao_id", type=int)
+    limit = request.args.get("limit", 100, type=int)
+    with Session() as db:
+        service = AutomacaoService(db)
+        return jsonify(service.list_logs(limit=limit, automacao_id=automacao_id))
+
+
+@app.route("/api/automacoes/triggers", methods=["GET"])
+@check_session
+def api_automacoes_triggers():
+    """Retorna os tipos de gatilho disponíveis."""
+    from services.automacao_service import TRIGGER_TYPES
+    return jsonify(TRIGGER_TYPES)
+
+
+@app.route("/api/automacoes/variables", methods=["GET"])
+@check_session
+def api_automacoes_variables():
+    """Retorna as variáveis disponíveis para o payload."""
+    from services.automacao_service import VARIABLES
+    return jsonify(VARIABLES)
+
+
+@app.route("/api/automacoes/kanban-config", methods=["GET"])
+@check_session
+def api_automacoes_kanban_config():
+    """Retorna as fases do Kanban para configurar gatilhos."""
+    slug = request.args.get("slug", "fluxo-projetos")
+    with Session() as db:
+        service = KanbanService(db)
+        config = service.get_board_config(slug)
+        fases = config.get("fases", [])
+        return jsonify([{"id": f["id"], "nome": f["nome"]} for f in fases])
+
+
+# ─── HOOKS: Gatilhos de Automação nos eventos do Kanban ─────────────────────
+
+def _disparar_automacoes_card_criado(card_id, card_title, phase_id, phase_name, project_id, project_name, project_date):
+    try:
+        with Session() as db:
+            service = AutomacaoService(db)
+            service.trigger_card_created(card_id, card_title, phase_id, phase_name, project_id, project_name, project_date)
+    except Exception as e:
+        print(f"[automacao] Erro ao disparar trigger card_created: {e}")
+
+
+def _disparar_automacoes_card_movido(card_id, card_title, old_phase_id, old_phase_name, new_phase_id, new_phase_name, project_id, project_name, project_date):
+    try:
+        with Session() as db:
+            service = AutomacaoService(db)
+            service.trigger_card_left_phase(card_id, card_title, old_phase_id, old_phase_name, project_id, project_name, project_date)
+            service.trigger_card_entered_phase(card_id, card_title, new_phase_id, new_phase_name, project_id, project_name, project_date)
+            service.trigger_card_moved(card_id, card_title, old_phase_id, old_phase_name, new_phase_id, new_phase_name, project_id, project_name, project_date)
+    except Exception as e:
+        print(f"[automacao] Erro ao disparar trigger card_moved: {e}")
 
 
 @app.route("/api/ranking", methods=["GET"])
