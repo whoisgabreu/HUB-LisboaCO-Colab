@@ -5550,19 +5550,26 @@ body.tema-claro .switch-slider {
     border-radius: 12px;
     overflow: hidden;
     background: #000;
+    max-width: 420px;
+    margin: 0 auto;
 }
 
 .face-camera-wrapper {
     position: relative;
     width: 100%;
+    max-width: 400px;
+    margin: 0 auto;
     aspect-ratio: 4/3;
     background: #111;
+    border-radius: 8px;
+    overflow: hidden;
 }
 
 .face-camera-wrapper video {
     width: 100%;
     height: 100%;
     object-fit: cover;
+    transform: scaleX(-1);
 }
 
 .face-detection-overlay {

@@ -133,7 +133,6 @@ function captureFrame(quality) {
     canvas.width = 320;
     canvas.height = 240;
     const ctx = canvas.getContext('2d');
-    ctx.setTransform(-1, 0, 0, 1, 320, 0);
     ctx.drawImage(video, 0, 0, 320, 240);
     return canvas.toDataURL('image/jpeg', quality || 0.5);
 }
@@ -610,7 +609,6 @@ function captureLoginFrame() {
     canvas.width = 320;
     canvas.height = 240;
     const ctx = canvas.getContext('2d');
-    ctx.setTransform(-1, 0, 0, 1, 320, 0);
     ctx.drawImage(video, 0, 0, 320, 240);
     return canvas.toDataURL('image/jpeg', 0.5);
 }
