@@ -15,7 +15,20 @@ const board = {
         modal.init();
         await this.loadBoardList();
         await this.refresh();
-        
+
+        // Abrir card específico se passado via query string ?card_id=
+        const params = new URLSearchParams(window.location.search);
+        const cardId = params.get('card_id');
+        if (cardId) {
+            history.replaceState({}, '', '/kanban');
+            try {
+                const card = await api.getCard(cardId);
+                modal.showView(card, this.config);
+            } catch (err) {
+                toast.error(`Card #${cardId} não encontrado no Kanban.`);
+            }
+        }
+
         document.getElementById('kanbanBoard').addEventListener('click', (e) => {
             const linkIcon = e.target.closest('.column-form-link');
             if (!linkIcon) return;

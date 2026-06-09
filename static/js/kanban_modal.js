@@ -60,6 +60,10 @@ const modal = {
                         <span class="phase-badge-dot"></span>${currentPhase.nome || 'Sem fase'}
                     </span>
                     ${updatedLabel ? `<span class="modal-meta-sep">·</span><span class="modal-meta-time"><i class="far fa-clock"></i> ${updatedLabel}</span>` : ''}
+                    <span class="modal-meta-sep">·</span>
+                    <a href="/hub-projetos?card_id=${card.card_id}" target="_blank" class="modal-hub-link" title="Abrir no Hub de Projetos">
+                        <i class="fas fa-external-link-alt"></i> Hub
+                    </a>
                 </div>
             </div>
         `;

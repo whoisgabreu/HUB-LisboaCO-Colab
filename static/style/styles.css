@@ -1241,6 +1241,14 @@ option {
     overflow: hidden;
 }
 
+.sidebar-footer .user-dropdown {
+    top: auto;
+    bottom: 100%;
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+    right: 0.5rem;
+}
+
 .user-dropdown.active {
     opacity: 1;
     visibility: visible;
@@ -1282,11 +1290,6 @@ option {
 .logout-item:hover {
     background-color: rgba(255, 68, 68, 0.1);
     color: #ff6666;
-}
-
-/* Ajuste na user-info para posicionamento relativo */
-.user-info {
-    position: relative;
 }
 
 /* Remove o botÃÂÃÂ£o de logout antigo do CSS */
@@ -2286,25 +2289,57 @@ option {
 
 /* Sidebar Footer */
 .sidebar-footer {
-    padding: 1.2rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 1rem 1rem;
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
     display: flex;
     align-items: center;
-    gap: 0.8rem;
+    gap: 0.6rem;
     cursor: pointer;
     transition: 0.2s;
+    position: relative;
+    flex-shrink: 0;
+}
+
+.sidebar-footer:hover {
+    background-color: rgba(255, 255, 255, 0.02);
+}
+
+.sidebar-user-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.sidebar-user-role {
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.2;
+}
+
+.user-avatar-icon {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    color: var(--text-muted);
 }
 
 .user-avatar {
-    width: 32px;
-    height: 32px;
+    width: 48px;
+    height: 48px;
     border-radius: 50%;
     border: 1px solid rgba(214, 22, 22, 0.5);
     object-fit: cover;
 }
 
 .sidebar-user-name {
-    font-size: 0.8rem;
+    font-size: 1rem;
     font-weight: 600;
     color: var(--text-main);
     white-space: nowrap;

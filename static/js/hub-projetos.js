@@ -308,9 +308,8 @@ function openProjectModal(projectData, tipoProjeto) {
     pipefyButton.onclick = (e) => {
         if (e.button === 0) {
             window.open(
-                `https://app.pipefy.com/open-cards/${projectData.pipefy_id}`,
-                '_blank',
-                'noopener,noreferrer'
+                `/kanban?card_id=${projectData.pipefy_id}`,
+                '_blank'
             );
         }
     };
@@ -1189,3 +1188,27 @@ function removerVinculoLocal(email) {
     projectVinculosLocal = projectVinculosLocal.filter(v => v.email !== email);
     renderVinculos();
 }
+
+// ── Abrir projeto diretamente via ?card_id= na URL ──
+document.addEventListener('DOMContentLoaded', function autoOpenCard() {
+    const params = new URLSearchParams(window.location.search);
+    const cardId = params.get('card_id');
+    if (!cardId) return;
+
+    history.replaceState({}, '', '/hub-projetos');
+
+    const cards = document.querySelectorAll('.project-card');
+    for (const cardEl of cards) {
+        let projetos;
+        try {
+            projetos = JSON.parse(cardEl.getAttribute('data-projetos'));
+        } catch { continue; }
+        const projeto = projetos.find(p => String(p.pipefy_id) === cardId);
+        if (projeto) {
+            const tipo = cardEl.getAttribute('data-tipo') || 'ativo';
+            openClientModal(cardEl);
+            setTimeout(() => openProjectModal(projeto, tipo), 100);
+            return;
+        }
+    }
+});

@@ -156,7 +156,7 @@
                         const img = document.createElement('img');
                         img.id = 'headerUserAvatar';
                         img.alt = 'Avatar';
-                        img.className = 'user-avatar-header';
+                        img.className = 'user-avatar';
                         headerAvatar.parentNode.replaceChild(img, headerAvatar);
                         img.src = data.url;
                     } else {

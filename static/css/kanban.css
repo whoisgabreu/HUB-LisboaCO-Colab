@@ -1824,6 +1824,21 @@ body.kanban-page .main-content {
     font-size: 0.78rem;
 }
 
+.modal-hub-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--kanban-accent, #4ea8de);
+    text-decoration: none;
+    font-size: 0.72rem;
+    font-weight: 600;
+    transition: opacity 0.15s;
+}
+.modal-hub-link:hover {
+    opacity: 0.75;
+    text-decoration: underline;
+}
+
 .phase-badge {
     display: inline-flex;
     align-items: center;
