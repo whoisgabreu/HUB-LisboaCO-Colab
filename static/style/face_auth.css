@@ -1,0 +1,239 @@
+/* ─── FACE AUTH (standalone para login) ─────────────────── */
+
+.face-login-section {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #e2e8f0;
+}
+
+.face-login-section .face-login-divider {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.face-login-section .face-login-divider::before,
+.face-login-section .face-login-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: #e2e8f0;
+}
+
+.face-login-section .face-login-divider span {
+    font-size: 0.8rem;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.btn-face-login {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    width: 100%;
+    height: 48px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #ffffff;
+    background: #1e293b;
+    border: 1.5px solid #334155;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.18s ease;
+    font-family: 'Inter', 'Poppins', sans-serif;
+}
+
+.btn-face-login:hover {
+    background: #334155;
+    border-color: #475569;
+}
+
+.face-camera-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.85);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.face-camera-modal {
+    width: 90%;
+    max-width: 500px;
+    background: #1e1e24;
+    border-radius: 16px;
+    overflow: hidden;
+    color: #fff;
+}
+
+.face-camera-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.face-camera-modal-header h3 {
+    margin: 0;
+    font-size: 1rem;
+    color: #fff;
+}
+
+.face-camera-modal-header button {
+    background: none;
+    border: none;
+    color: #a0a0a0;
+    font-size: 1.2rem;
+    cursor: pointer;
+}
+
+.face-camera-modal-body {
+    position: relative;
+}
+
+.face-camera-modal-body video {
+    width: 100%;
+    display: block;
+    transform: scaleX(-1);
+}
+
+/* Mirror video preview so user sees themselves as in a mirror */
+#face-video,
+#face-login-video {
+    transform: scaleX(-1);
+}
+
+/* ─── Overlay / guia ─── */
+
+.face-detection-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+}
+
+.face-guide-ring {
+    width: 180px;
+    height: 220px;
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    border-radius: 50%;
+    box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.3);
+}
+
+.face-instruction {
+    position: absolute;
+    bottom: 20px;
+    color: white;
+    font-size: 0.85rem;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+    background: rgba(0, 0, 0, 0.6);
+    padding: 6px 16px;
+    border-radius: 20px;
+}
+
+/* ─── Progresso ─── */
+
+.face-progress {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    background: #2a2a2a;
+}
+
+.face-progress-bar {
+    flex: 1;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.face-progress-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #D61616, #ff4444);
+    border-radius: 3px;
+    transition: width 0.2s ease;
+}
+
+.face-progress-text {
+    font-size: 0.8rem;
+    color: #a0a0a0;
+    min-width: 3rem;
+    text-align: right;
+}
+
+/* ─── Liveness ─── */
+
+.face-liveness-area {
+    padding: 0.75rem 1rem;
+    background: #2a2a2a;
+    text-align: center;
+}
+
+.face-liveness-title {
+    font-size: 0.8rem;
+    color: #a0a0a0;
+    margin-bottom: 0.25rem;
+}
+
+.face-liveness-challenge {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #D61616;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+/* ─── Sucesso ─── */
+
+.face-success-overlay {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 1rem;
+    background: #1e1e24;
+    min-height: 300px;
+}
+
+.face-success-icon {
+    font-size: 5rem;
+    color: #22c55e;
+    animation: faceSuccessPop 0.5s ease;
+}
+
+@keyframes faceSuccessPop {
+    0% { transform: scale(0); opacity: 0; }
+    60% { transform: scale(1.2); }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+.face-success-text {
+    margin-top: 1rem;
+    font-size: 1.1rem;
+    color: #e2e8f0;
+    font-weight: 500;
+}
+
+.face-success-sub {
+    margin-top: 0.4rem;
+    font-size: 0.85rem;
+    color: #94a3b8;
+}
+
+.face-fail-icon {
+    color: #ef4444;
+}

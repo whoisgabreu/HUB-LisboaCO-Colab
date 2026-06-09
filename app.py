@@ -19,7 +19,8 @@ from models import (
     OperacaoTarefa, OperacaoEntregaMensal, OperacaoPlanoMidia,
     OperacaoOtimizacao, OperacaoCheckin,
     MonthlyDelivery, OperacaoLinkUtil, EntregaCriativa,
-    KanbanConfig, KanbanHistorico, Automacao, AutomacaoLog
+    KanbanConfig, KanbanHistorico, Automacao, AutomacaoLog,
+    UserFace, FaceAuthLog
 )
 
 from services.remuneracao import calcular_metricas_mensais
@@ -5136,6 +5137,365 @@ def public_form_submit(token):
             config = service.get_board_config(slug)
             board_nome = config.get("nome", slug)
             return render_template("form_card.html", erro=f"Erro ao criar card: {str(e)}", fase=fase, board_nome=board_nome, token=token)
+
+
+# ─── FACE AUTH ───────────────────────────────────────────────────────────────
+
+FACE_CAPTURE_MIN_FRAMES = 8
+FACE_RATE_LIMIT_MAX_ATTEMPTS = 5
+FACE_RATE_LIMIT_WINDOW = 15
+_face_rate_limit_store = {}
+
+def _check_face_rate_limit(email):
+    now = dt.now()
+    if email not in _face_rate_limit_store:
+        _face_rate_limit_store[email] = []
+    _face_rate_limit_store[email] = [
+        t for t in _face_rate_limit_store[email]
+        if (now - t).total_seconds() < FACE_RATE_LIMIT_WINDOW * 60
+    ]
+    return len(_face_rate_limit_store[email]) < FACE_RATE_LIMIT_MAX_ATTEMPTS
+
+
+def _increment_face_rate_limit(email):
+    _face_rate_limit_store.setdefault(email, []).append(dt.now())
+
+
+def _log_face_auth(db, email, event_type, status, similarity=None, samples=None, error_message=None):
+    user = db.query(Investidor).filter_by(email=email).first() if email else None
+    log_entry = FaceAuthLog(
+        user_id=getattr(user, 'id', None) if user else None,
+        email=email,
+        event_type=event_type,
+        status=status,
+        similarity=f"{similarity:.4f}" if similarity is not None else None,
+        samples=samples,
+        ip_address=request.remote_addr,
+        user_agent=request.headers.get("User-Agent", "")[:500],
+        error_message=error_message
+    )
+    db.add(log_entry)
+
+
+@app.route("/api/face/biometry/status", methods=["GET"])
+@check_session
+def face_biometry_status():
+    email = session.get("email")
+    if not email:
+        return jsonify({"error": "Usuário não autenticado"}), 401
+    try:
+        with Session() as db:
+            user = db.query(Investidor).filter_by(email=email).first()
+            if not user:
+                return jsonify({"error": "Usuário não encontrado"}), 404
+            faces = db.query(UserFace).filter_by(user_id=user.id, is_active=True).all()
+            return jsonify({
+                "has_biometry": len(faces) > 0,
+                "total_faces": len(faces),
+                "last_registration": faces[0].created_at.isoformat() if faces else None,
+                "total_samples": sum(f.samples or 0 for f in faces) if faces else 0
+            })
+    except SQLAlchemyError as e:
+        print(f"[FaceAuth] Erro ao consultar status: {e}")
+        return jsonify({"error": "Erro ao consultar status da biometria"}), 500
+
+
+@app.route("/api/face/biometry/register", methods=["POST"])
+@check_session
+def face_biometry_register():
+    email = session.get("email")
+    if not email:
+        return jsonify({"error": "Usuário não autenticado"}), 401
+    data = request.get_json()
+    if not data or "frames" not in data:
+        return jsonify({"error": "Nenhum frame enviado"}), 400
+    frames = data["frames"]
+    if len(frames) < FACE_CAPTURE_MIN_FRAMES:
+        return jsonify({"error": f"Mínimo de {FACE_CAPTURE_MIN_FRAMES} frames necessários. Enviados: {len(frames)}"}), 400
+    from face_auth.face_service import process_frames_for_biometric_registration
+    try:
+        result = process_frames_for_biometric_registration(frames)
+    except Exception as e:
+        print(f"[FaceAuth] Erro no processamento facial: {e}")
+        return jsonify({"error": f"Erro ao processar frames: {str(e)}"}), 500
+    if not result["success"]:
+        return jsonify({"error": result["error"]}), 400
+    try:
+        with Session() as db:
+            user = db.query(Investidor).filter_by(email=email).first()
+            if not user:
+                return jsonify({"error": "Usuário não encontrado"}), 404
+            new_face = UserFace(
+                user_id=user.id,
+                embedding=result["embedding"],
+                is_active=True,
+                samples=result["samples"],
+                created_at=dt.now()
+            )
+            db.add(new_face)
+            _log_face_auth(db, email, "REGISTER", "SUCCESS",
+                           samples=result["samples"])
+            db.commit()
+            return jsonify({
+                "success": True,
+                "message": "Biometria facial cadastrada com sucesso.",
+                "samples": result["samples"],
+                "liveness_score": result.get("liveness_score", 0)
+            })
+    except SQLAlchemyError as e:
+        print(f"[FaceAuth] Erro ao salvar biometria: {e}")
+        return jsonify({"error": "Erro ao salvar biometria no banco"}), 500
+
+
+@app.route("/api/face/biometry/update", methods=["POST"])
+@check_session
+def face_biometry_update():
+    email = session.get("email")
+    if not email:
+        return jsonify({"error": "Usuário não autenticado"}), 401
+    data = request.get_json()
+    if not data or "frames" not in data:
+        return jsonify({"error": "Nenhum frame enviado"}), 400
+    frames = data["frames"]
+    if len(frames) < FACE_CAPTURE_MIN_FRAMES:
+        return jsonify({"error": f"Mínimo de {FACE_CAPTURE_MIN_FRAMES} frames necessários. Enviados: {len(frames)}"}), 400
+    from face_auth.face_service import process_frames_for_biometric_registration
+    try:
+        result = process_frames_for_biometric_registration(frames)
+    except Exception as e:
+        print(f"[FaceAuth] Erro no processamento facial: {e}")
+        return jsonify({"error": f"Erro ao processar frames: {str(e)}"}), 500
+    if not result["success"]:
+        return jsonify({"error": result["error"]}), 400
+    try:
+        with Session() as db:
+            user = db.query(Investidor).filter_by(email=email).first()
+            if not user:
+                return jsonify({"error": "Usuário não encontrado"}), 404
+            faces = db.query(UserFace).filter_by(user_id=user.id, is_active=True).all()
+            for face in faces:
+                face.is_active = False
+            new_face = UserFace(
+                user_id=user.id,
+                embedding=result["embedding"],
+                is_active=True,
+                samples=result["samples"],
+                created_at=dt.now()
+            )
+            db.add(new_face)
+            _log_face_auth(db, email, "UPDATE", "SUCCESS",
+                           samples=result["samples"])
+            db.commit()
+            return jsonify({
+                "success": True,
+                "message": "Biometria facial atualizada com sucesso.",
+                "samples": result["samples"],
+                "liveness_score": result.get("liveness_score", 0)
+            })
+    except SQLAlchemyError as e:
+        print(f"[FaceAuth] Erro ao atualizar biometria: {e}")
+        return jsonify({"error": "Erro ao atualizar biometria no banco"}), 500
+
+
+@app.route("/api/face/biometry/delete", methods=["POST"])
+@check_session
+def face_biometry_delete():
+    email = session.get("email")
+    if not email:
+        return jsonify({"error": "Usuário não autenticado"}), 401
+    try:
+        with Session() as db:
+            user = db.query(Investidor).filter_by(email=email).first()
+            if not user:
+                return jsonify({"error": "Usuário não encontrado"}), 404
+            faces = db.query(UserFace).filter_by(user_id=user.id, is_active=True).all()
+            if not faces:
+                return jsonify({"error": "Nenhuma biometria encontrada"}), 404
+            for face in faces:
+                db.delete(face)
+            _log_face_auth(db, email, "DELETE", "SUCCESS")
+            db.commit()
+            return jsonify({"success": True, "message": "Biometria facial removida com sucesso."})
+    except SQLAlchemyError as e:
+        print(f"[FaceAuth] Erro ao remover biometria: {e}")
+        return jsonify({"error": "Erro ao remover biometria"}), 500
+
+
+@app.route("/api/face/login/check", methods=["POST"])
+def face_login_check():
+    from face_auth.face_service import get_face_analysis
+    get_face_analysis()
+    data = request.get_json()
+    if not data or "email" not in data:
+        return jsonify({"error": "Email não informado"}), 400
+    email = data["email"]
+    try:
+        with Session() as db:
+            user = db.query(Investidor).filter_by(email=email).first()
+            if not user or user.ativo is not True:
+                return jsonify({"has_face_biometry": False, "user_exists": False}), 200
+            faces = db.query(UserFace).filter_by(user_id=user.id, is_active=True).count()
+            return jsonify({
+                "has_face_biometry": faces > 0,
+                "user_exists": True,
+                "name": user.nome
+            })
+    except SQLAlchemyError as e:
+        print(f"[FaceAuth] Erro ao verificar biometria: {e}")
+        return jsonify({"error": "Erro ao verificar disponibilidade facial"}), 500
+
+
+@app.route("/api/face/login/authenticate", methods=["POST"])
+def face_login_authenticate():
+    data = request.get_json()
+    if not data or "email" not in data or "frame" not in data:
+        return jsonify({"error": "Dados incompletos"}), 400
+    email = data["email"]
+    frame_b64 = data["frame"]
+    if not _check_face_rate_limit(email):
+        return jsonify({"error": "Muitas tentativas. Aguarde 15 minutos."}), 429
+    from face_auth.face_service import process_login_frame, match_face
+    result = process_login_frame(frame_b64)
+    if not result["success"]:
+        return jsonify({"error": result["error"]}), 400
+    try:
+        with Session() as db:
+            user = db.query(Investidor).filter_by(email=email).first()
+            if not user or user.ativo is not True:
+                _log_face_auth(db, email, "LOGIN", "FAILURE",
+                               error_message="Usuário não encontrado ou inativo")
+                db.commit()
+                return jsonify({"error": "Usuário não encontrado ou inativo"}), 401
+            faces = db.query(UserFace).filter_by(user_id=user.id, is_active=True).all()
+            if not faces:
+                _log_face_auth(db, email, "LOGIN", "FAILURE",
+                               error_message="Nenhuma biometria cadastrada")
+                db.commit()
+                return jsonify({"error": "Nenhuma biometria cadastrada"}), 401
+            stored_embeddings = [f.embedding for f in faces]
+            match_result = match_face(result["embedding"], stored_embeddings)
+            if match_result["match"]:
+                token = os.urandom(10).hex()
+                auth_entry = db.get(Auth, user.email)
+                if auth_entry:
+                    auth_entry.token = token
+                else:
+                    max_id = db.query(Auth.id).order_by(Auth.id.desc()).first()
+                    auth_entry = Auth(id=(max_id[0] + 1) if max_id else 1,
+                                      email=user.email, token=token)
+                    db.add(auth_entry)
+                db.commit()
+                session["nome"] = user.nome
+                session["email"] = user.email
+                session["token"] = token
+                session["funcao"] = user.funcao
+                session["posicao"] = user.posicao
+                session["senioridade"] = user.senioridade
+                session["squad"] = user.squad
+                session["nivel_acesso"] = user.nivel_acesso
+                session["pode_editar_kanban"] = user.pode_editar_kanban
+                session["profile_picture"] = user.profile_picture
+                _log_face_auth(db, email, "LOGIN", "SUCCESS",
+                               similarity=match_result["similarity"])
+                db.commit()
+                return jsonify({
+                    "success": True,
+                    "message": "Autenticação facial bem-sucedida.",
+                    "similarity": match_result["similarity"],
+                    "redirect": url_for("home")
+                })
+            else:
+                _increment_face_rate_limit(email)
+                _log_face_auth(db, email, "LOGIN", "FAILURE",
+                               similarity=match_result["similarity"],
+                               error_message=f"Similaridade {match_result['similarity']:.4f} abaixo do threshold")
+                db.commit()
+                return jsonify({
+                    "error": "Rosto não reconhecido.",
+                    "similarity": match_result["similarity"],
+                    "threshold": match_result["threshold"]
+                }), 401
+    except SQLAlchemyError as e:
+        print(f"[FaceAuth] Erro na autenticação facial: {e}")
+        return jsonify({"error": "Erro ao processar autenticação facial"}), 500
+
+
+@app.route("/api/face/login/capture-and-auth", methods=["POST"])
+def face_login_capture_and_auth():
+    data = request.get_json()
+    if not data or "email" not in data or "frames" not in data:
+        return jsonify({"error": "Dados incompletos"}), 400
+    email = data["email"]
+    frames = data["frames"]
+    if not _check_face_rate_limit(email):
+        return jsonify({"error": "Muitas tentativas. Aguarde 15 minutos."}), 429
+    from face_auth.face_service import process_frames_for_biometric_registration, process_login_frame, match_face
+    liveness_result = process_frames_for_biometric_registration(frames)
+    if not liveness_result["success"]:
+        return jsonify({"error": liveness_result["error"]}), 400
+    avg_embedding = liveness_result["embedding"]
+    try:
+        with Session() as db:
+            user = db.query(Investidor).filter_by(email=email).first()
+            if not user or user.ativo is not True:
+                _log_face_auth(db, email, "LOGIN", "FAILURE",
+                               error_message="Usuário não encontrado ou inativo")
+                db.commit()
+                return jsonify({"error": "Usuário não encontrado ou inativo"}), 401
+            faces = db.query(UserFace).filter_by(user_id=user.id, is_active=True).all()
+            if not faces:
+                _log_face_auth(db, email, "LOGIN", "FAILURE",
+                               error_message="Nenhuma biometria cadastrada")
+                db.commit()
+                return jsonify({"error": "Nenhuma biometria cadastrada"}), 401
+            stored_embeddings = [f.embedding for f in faces]
+            match_result = match_face(avg_embedding, stored_embeddings)
+            if match_result["match"]:
+                token = os.urandom(10).hex()
+                auth_entry = db.get(Auth, user.email)
+                if auth_entry:
+                    auth_entry.token = token
+                else:
+                    max_id = db.query(Auth.id).order_by(Auth.id.desc()).first()
+                    auth_entry = Auth(id=(max_id[0] + 1) if max_id else 1,
+                                      email=user.email, token=token)
+                    db.add(auth_entry)
+                db.commit()
+                session["nome"] = user.nome
+                session["email"] = user.email
+                session["token"] = token
+                session["funcao"] = user.funcao
+                session["posicao"] = user.posicao
+                session["senioridade"] = user.senioridade
+                session["squad"] = user.squad
+                session["nivel_acesso"] = user.nivel_acesso
+                session["pode_editar_kanban"] = user.pode_editar_kanban
+                session["profile_picture"] = user.profile_picture
+                _log_face_auth(db, email, "LOGIN", "SUCCESS",
+                               similarity=match_result["similarity"],
+                               samples=len(frames))
+                db.commit()
+                return jsonify({
+                    "success": True,
+                    "message": "Autenticação facial bem-sucedida.",
+                    "similarity": match_result["similarity"],
+                    "redirect": url_for("home")
+                })
+            else:
+                _increment_face_rate_limit(email)
+                _log_face_auth(db, email, "LOGIN", "FAILURE",
+                               similarity=match_result["similarity"],
+                               samples=len(frames),
+                               error_message=f"Similaridade {match_result['similarity']:.4f} abaixo do threshold")
+                db.commit()
+                return jsonify({
+                    "error": "Rosto não reconhecido.",
+                    "similarity": match_result["similarity"],
+                    "threshold": match_result["threshold"]
+                }), 401
+    except SQLAlchemyError as e:
+        print(f"[FaceAuth] Erro na autenticação facial: {e}")
+        return jsonify({"error": "Erro ao processar autenticação facial"}), 500
 
 
 if __name__ == "__main__":

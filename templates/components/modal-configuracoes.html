@@ -21,6 +21,9 @@
                 <button class="config-tab-btn" onclick="switchConfigTab(event, 'aparencia')">
                     <i class="fas fa-palette"></i> Aparência
                 </button>
+                <button class="config-tab-btn" onclick="switchConfigTab(event, 'biometria')">
+                    <i class="fas fa-face-smile"></i> Biometria Facial
+                </button>
             </aside>
 
             <main class="modal-config-content">
@@ -117,6 +120,61 @@
                         </div>
                     </div>
                 </section>
+
+                <!-- Aba: Biometria Facial -->
+                <section id="config-biometria" class="config-section">
+                    <div class="face-biometry-container">
+                        <div id="face-status-info" class="face-status-card">
+                            <div class="face-status-header">
+                                <i class="fas fa-face-smile"></i>
+                                <h4>Biometria Facial</h4>
+                            </div>
+                            <div id="face-status-content">
+                                <p class="face-loading">Carregando status...</p>
+                            </div>
+                        </div>
+
+                        <div id="face-camera-area" class="face-camera-area" style="display:none;">
+                            <div class="face-camera-wrapper">
+                                <video id="face-video" autoplay playsinline></video>
+                                <canvas id="face-canvas" style="display:none;"></canvas>
+                                <div id="face-detection-overlay" class="face-detection-overlay">
+                                    <div class="face-guide-ring"></div>
+                                    <p id="face-camera-instruction" class="face-instruction">Posicione seu rosto no centro</p>
+                                </div>
+                            </div>
+                            <div id="face-capture-progress" class="face-progress" style="display:none;">
+                                <div class="face-progress-bar">
+                                    <div id="face-progress-fill" class="face-progress-fill"></div>
+                                </div>
+                                <span id="face-progress-text">0/30</span>
+                            </div>
+                            <div id="face-liveness-area" class="face-liveness-area" style="display:none;">
+                                <p class="face-liveness-title">Desafio de Vivacidade</p>
+                                <p id="face-liveness-challenge" class="face-liveness-challenge">Pisque os olhos</p>
+                            </div>
+                        </div>
+
+                        <div id="face-actions" class="face-actions">
+                            <button id="btn-face-register" class="btn-primary" onclick="startFaceRegistration()">
+                                <i class="fas fa-camera"></i> Registrar Biometria
+                            </button>
+                            <button id="btn-face-update" class="btn-secondary" onclick="startFaceUpdate()" style="display:none;">
+                                <i class="fas fa-sync"></i> Atualizar Biometria
+                            </button>
+                            <button id="btn-face-delete" class="btn-danger" onclick="confirmFaceDelete()" style="display:none;">
+                                <i class="fas fa-trash"></i> Remover Biometria
+                            </button>
+                            <button id="btn-face-cancel" class="btn-secondary" onclick="cancelFaceCapture()" style="display:none;">
+                                <i class="fas fa-times"></i> Cancelar
+                            </button>
+                        </div>
+
+                        <div class="face-info-text">
+                            <p><i class="fas fa-info-circle"></i> Sua biometria facial é armazenada de forma segura como dados numéricos (embeddings). As imagens capturadas não são armazenadas.</p>
+                        </div>
+                    </div>
+                </section>
             </main>
         </div>
     </div>
@@ -153,3 +211,4 @@
 </div>
 
 <script src="/static/js/configuracoes.js"></script>
+<script src="/static/js/face_auth.js"></script>

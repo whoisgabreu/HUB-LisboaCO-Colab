@@ -10,7 +10,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
     rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='style/login.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style/face_auth.css') }}">
   <script src="{{ url_for('static', filename='js/login.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/face_auth.js') }}" defer></script>
   {% include "components/icon_title.html" %}
 </head>
 
@@ -64,6 +66,15 @@
           <i class="fa-solid fa-arrow-right"></i>
         </button>
 
+        <div id="face-login-options" class="face-login-section">
+          <div class="face-login-divider">
+            <span>Ou</span>
+          </div>
+          <button type="button" class="btn-face-login" id="btn-face-login" onclick="handleFaceLoginClick()">
+            <i class="fas fa-face-smile"></i>
+            Entrar com Face
+          </button>
+        </div>
       </form>
 
       <footer class="login-footer">

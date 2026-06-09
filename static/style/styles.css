@@ -5477,3 +5477,323 @@ body.tema-claro .switch-slider {
     font-size: 0.75rem;
     color: var(--text-muted);
 }
+
+/* ─── FACE AUTH ───────────────────────────────────────────── */
+
+.face-biometry-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.face-status-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 1.25rem;
+}
+
+.face-status-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.face-status-header i {
+    font-size: 1.5rem;
+    color: #D61616;
+}
+
+.face-status-header h4 {
+    margin: 0;
+    font-size: 1rem;
+}
+
+.face-status-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.4rem 0;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 0.85rem;
+}
+
+.face-status-item:last-child {
+    border-bottom: none;
+}
+
+.face-status-label {
+    color: var(--text-muted);
+}
+
+.face-status-value {
+    font-weight: 600;
+}
+
+.face-status-value.active {
+    color: #22c55e;
+}
+
+.face-status-value.inactive {
+    color: var(--text-muted);
+}
+
+.face-loading {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    text-align: center;
+    padding: 1rem;
+}
+
+.face-camera-area {
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    overflow: hidden;
+    background: #000;
+}
+
+.face-camera-wrapper {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 4/3;
+    background: #111;
+}
+
+.face-camera-wrapper video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.face-detection-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+}
+
+.face-guide-ring {
+    width: 180px;
+    height: 220px;
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    border-radius: 50%;
+    box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.3);
+}
+
+.face-instruction {
+    position: absolute;
+    bottom: 20px;
+    color: white;
+    font-size: 0.85rem;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+    background: rgba(0, 0, 0, 0.6);
+    padding: 6px 16px;
+    border-radius: 20px;
+}
+
+.face-progress {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    background: var(--card-bg);
+}
+
+.face-progress-bar {
+    flex: 1;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.face-progress-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #D61616, #ff4444);
+    border-radius: 3px;
+    transition: width 0.2s ease;
+}
+
+.face-progress-text {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    min-width: 3rem;
+    text-align: right;
+}
+
+.face-liveness-area {
+    padding: 0.75rem 1rem;
+    background: var(--card-bg);
+    text-align: center;
+}
+
+.face-liveness-title {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-bottom: 0.25rem;
+}
+
+.face-liveness-challenge {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #D61616;
+}
+
+.face-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.face-actions .btn-danger {
+    background: #dc2626;
+    color: white;
+    border: none;
+    padding: 0.6rem 1.2rem;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    transition: background 0.2s;
+}
+
+.face-actions .btn-danger:hover {
+    background: #b91c1c;
+}
+
+.face-info-text {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    padding: 0.5rem 0;
+}
+
+.face-info-text i {
+    color: #D61616;
+    margin-right: 0.25rem;
+}
+
+.face-result-ok {
+    color: #22c55e;
+    font-weight: 600;
+    text-align: center;
+    padding: 0.5rem;
+}
+
+.face-result-error {
+    color: #dc2626;
+    font-weight: 500;
+    text-align: center;
+    padding: 0.5rem;
+    font-size: 0.85rem;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+/* ─── FACE LOGIN ──────────────────────────────────────────── */
+
+.face-login-section {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #e2e8f0;
+}
+
+.face-login-section .face-login-divider {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.face-login-section .face-login-divider::before,
+.face-login-section .face-login-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: #e2e8f0;
+}
+
+.face-login-section .face-login-divider span {
+    font-size: 0.8rem;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.btn-face-login {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    width: 100%;
+    height: 48px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #ffffff;
+    background: #1e293b;
+    border: 1.5px solid #334155;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.18s ease;
+}
+
+.btn-face-login:hover {
+    background: #334155;
+    border-color: #475569;
+}
+
+.face-camera-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.85);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.face-camera-modal {
+    width: 90%;
+    max-width: 500px;
+    background: #1e1e24;
+    border-radius: 16px;
+    overflow: hidden;
+}
+
+.face-camera-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.face-camera-modal-header h3 {
+    margin: 0;
+    font-size: 1rem;
+}
+
+.face-camera-modal-header button {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 1.2rem;
+    cursor: pointer;
+}
+
+.face-camera-modal-body {
+    position: relative;
+}
+
+.face-camera-modal-body video {
+    width: 100%;
+    display: block;
+}
