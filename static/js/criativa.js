@@ -27,25 +27,23 @@ function _isCoordinador() {
  * - Se estiver na view de equipe: recarrega a página normalmente.
  */
 function handlePeriodoChange() {
+    const selMes = document.getElementById('sel-mes');
+    const selAno = document.getElementById('sel-ano');
+    _mesSelecionado = parseInt(selMes.value);
+    _anoSelecionado = parseInt(selAno.value);
+
     const isDetalhe = document.getElementById('criativa-view-designer-detalhe')
         ?.classList.contains('active');
     const isOpDetalhe = document.getElementById('criativa-view-operacional-detalhe')
         ?.classList.contains('active');
 
-    const form = document.getElementById('form-periodo');
-    let emailToOpen = '';
-    if (isDetalhe && _designerEmailAtual) emailToOpen = _designerEmailAtual;
-    else if (isOpDetalhe && _opEmail) emailToOpen = _opEmail;
-
-    if (emailToOpen) {
-        let input = document.createElement('input');
-        input.type = 'hidden';
-        input.name = 'open_email';
-        input.value = emailToOpen;
-        form.appendChild(input);
+    if (isDetalhe && _designerEmailAtual) {
+        _fetchAndRefreshDetalhe();
+    } else if (isOpDetalhe && _opEmail) {
+        _fetchAndRefreshOpDetalhe();
+    } else {
+        document.getElementById('form-periodo').submit();
     }
-    
-    form.submit();
 }
 
 /**
@@ -54,14 +52,16 @@ function handlePeriodoChange() {
  */
 async function _fetchAndRefreshDetalhe() {
     try {
-        const resp = await fetch(
-            `/api/criativa/entregas/${encodeURIComponent(_designerEmailAtual)}/${_mesSelecionado}/${_anoSelecionado}`
-        );
-        if (!resp.ok) throw new Error('Falha ao buscar dados do período.');
-        const entregas = await resp.json();
+        const [entregasResp, remuResp] = await Promise.all([
+            fetch(`/api/criativa/entregas/${encodeURIComponent(_designerEmailAtual)}/${_mesSelecionado}/${_anoSelecionado}`),
+            fetch(`/api/remuneracao/recalcular-investidor/${encodeURIComponent(_designerEmailAtual)}/${_mesSelecionado}/${_anoSelecionado}`, { method: 'POST' })
+        ]);
 
-        // Remergeia os dados do período nos clientes base (preserva nome e projeto_id)
-        _clientesDetalheAtual = _clientesBaseAtual.map(c => {
+        if (!entregasResp.ok) throw new Error('Falha ao buscar dados do período.');
+        const entregas = await entregasResp.json();
+
+        // Remergeia os dados do período nos clientes atuais (preserva fee, churned, etc.)
+        _clientesDetalheAtual = _clientesDetalheAtual.map(c => {
             const entry = (entregas || []).find(e => String(e.projeto_id) === String(c.projeto_id));
             return {
                 ...c,
@@ -75,8 +75,95 @@ async function _fetchAndRefreshDetalhe() {
             };
         });
 
+        // Atualiza remuneração para o novo período
+        if (remuResp.ok) {
+            const data2 = await remuResp.json();
+            if (data2.remu && _opRemuJson && _opRemuJson.rows) {
+                const idx = _opRemuJson.rows.findIndex(r => r.mes === data2.remu.mes && r.ano === data2.remu.ano);
+                if (idx >= 0) {
+                    _opRemuJson.rows[idx] = { ..._opRemuJson.rows[idx], ...data2.remu };
+                } else {
+                    _opRemuJson.rows.push(data2.remu);
+                }
+            }
+        }
+
         renderChartPorCliente(_clientesDetalheAtual);
         atualizarKpisDetalhe(_clientesDetalheAtual);
+        _renderDesignerRemu(_opRemuJson);
+    } catch (e) {
+        console.error(e);
+        showToast('Erro ao atualizar dados do período.', 'error');
+    }
+}
+
+/**
+ * Busca as entregas operacionais do período selecionado
+ * e atualiza a view de detalhe operacional sem recarregar a página.
+ */
+async function _fetchAndRefreshOpDetalhe() {
+    try {
+        const [entregasResp, remuResp] = await Promise.all([
+            fetch(`/api/operacao/entregas-op/${encodeURIComponent(_opEmail)}/${_mesSelecionado}/${_anoSelecionado}`),
+            fetch(`/api/remuneracao/recalcular-investidor/${encodeURIComponent(_opEmail)}/${_mesSelecionado}/${_anoSelecionado}`, { method: 'POST' })
+        ]);
+
+        // Limpa feitos anteriores antes de popular os novos
+        Object.keys(_opFeitos).forEach(pid => {
+            _opFeitos[pid] = {};
+        });
+
+        if (entregasResp.ok) {
+            const data = await entregasResp.json();
+            if (Array.isArray(data)) {
+                data.forEach(projEntry => {
+                    const pid = String(projEntry.projeto_id);
+                    if (!_opFeitos[pid]) _opFeitos[pid] = {};
+                    (projEntry.entregas || []).forEach(e => {
+                        const nomeNorm = (e.nome === 'relatorio_gt' || e.nome === 'relatorio_account')
+                            ? 'relatorio_mensal' : e.nome;
+                        for (const cfgList of Object.values(OP_ENTREGAS_CONFIG)) {
+                            const item = cfgList.find(d =>
+                                d.nome === nomeNorm &&
+                                (d.db_tipo === e.tipo || e.tipo === 'CIENTISTA')
+                            );
+                            if (item) {
+                                _opFeitos[pid][item.tipo] = e.entregues || 0;
+                                if (e.meta !== undefined) {
+                                    if (!_opMetas[pid]) _opMetas[pid] = {};
+                                    _opMetas[pid][item.tipo] = e.meta;
+                                }
+                                break;
+                            }
+                        }
+                    });
+                    if (!_opLinks[pid]) _opLinks[pid] = {};
+                    for (const cfgList of Object.values(OP_ENTREGAS_CONFIG)) {
+                        cfgList.forEach(d => {
+                            if (d.link && d.link_field && projEntry[d.link_field]) {
+                                _opLinks[pid][d.tipo] = projEntry[d.link_field];
+                            }
+                        });
+                    }
+                });
+            }
+        }
+
+        // Atualiza remuneração para o novo período
+        if (remuResp.ok) {
+            const data2 = await remuResp.json();
+            if (data2.remu && _opRemuJson && _opRemuJson.rows) {
+                const idx = _opRemuJson.rows.findIndex(r => r.mes === data2.remu.mes && r.ano === data2.remu.ano);
+                if (idx >= 0) {
+                    _opRemuJson.rows[idx] = { ..._opRemuJson.rows[idx], ...data2.remu };
+                } else {
+                    _opRemuJson.rows.push(data2.remu);
+                }
+            }
+        }
+
+        _renderOpView();
+        _renderOpRemu(_opRemuJson);
     } catch (e) {
         console.error(e);
         showToast('Erro ao atualizar dados do período.', 'error');

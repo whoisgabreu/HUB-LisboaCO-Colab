@@ -3611,9 +3611,29 @@ option {
     margin: 0;
     font-weight: 600;
     line-height: 1.25;
-    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.op-card-premium .op-card-title {
     overflow: hidden;
     text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+    min-width: 0;
+    display: block;
+}
+
+.op-card-premium:hover .op-card-title.has-overflow {
+    text-overflow: clip;
+    animation: scroll-title 6s ease-in-out infinite;
+}
+
+@keyframes scroll-title {
+    0%, 20% { text-indent: 0; }
+    50%, 70% { text-indent: var(--scroll-px, 0); }
+    100% { text-indent: 0; }
 }
 
 .op-card-premium .badge-cientista {
@@ -3628,7 +3648,7 @@ option {
     text-transform: uppercase;
     letter-spacing: 0.4px;
     vertical-align: middle;
-    margin-left: 0.25rem;
+    flex-shrink: 0;
 }
 
 .op-card-meta {

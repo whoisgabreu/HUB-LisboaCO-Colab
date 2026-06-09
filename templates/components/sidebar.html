@@ -35,21 +35,21 @@
         {% if can_see_operacao or can_see_criativa %}
         <div class="nav-group">
             <div class="nav-group-header">
-                <span>Operação</span>
+                <span>Entregas</span>
                 <i class="fas fa-chevron-right toggle-icon"></i>
             </div>
             <div class="nav-group-items">
                 {% if can_see_operacao %}
                 <a href="/operacao" class="nav-item">
                     <i class="fas fa-gears"></i>
-                    <span>Operação</span>
+                    <span>Por Projeto</span>
                 </a>
                 {% endif %}
 
                 {% if can_see_criativa %}
                 <a href="/criativa" class="nav-item">
                     <i class="fas fa-pencil-ruler"></i>
-                    <span>Entregas da Operação</span>
+                    <span>Por Pessoa</span>
                 </a>
                 {% endif %}
             </div>

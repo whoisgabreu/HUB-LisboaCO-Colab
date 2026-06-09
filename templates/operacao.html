@@ -347,7 +347,7 @@
                                 <div class="op-card-icon"><i class="fas fa-rocket"></i></div>
                                 <span class="op-card-status">Ativo</span>
                             </div>
-                            <h3>{{ p.nome }} {% if p.cientista %}<span class="badge-cientista">Cientista</span>{% endif %}</h3>
+                            <h3><span class="op-card-title">{{ p.nome }}</span> {% if p.cientista %}<span class="badge-cientista">Cientista</span>{% endif %}</h3>
                             {% if p.produto_contratado %}
                             <p class="op-card-produto">{{ p.produto_contratado }}</p>
                             {% endif %}

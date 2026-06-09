@@ -1902,6 +1902,15 @@ function filterProjects() {
 
 document.addEventListener('DOMContentLoaded', () => {
     console.log('Operação JS V10.0 Ativo 🚀');
+
+    // Scroll animation for overflowing project titles
+    document.querySelectorAll('.op-card-title').forEach(el => {
+        if (el.scrollWidth > el.clientWidth) {
+            el.classList.add('has-overflow');
+            const dist = el.clientWidth - el.scrollWidth;
+            el.style.setProperty('--scroll-px', dist + 'px');
+        }
+    });
 });
 
 /**
