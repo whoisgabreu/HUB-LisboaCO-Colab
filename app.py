@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, session, j
 from flask_apscheduler import APScheduler
 from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.middleware.proxy_fix import ProxyFix
 from collections import defaultdict
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
@@ -39,6 +40,7 @@ from services.automacao_service import AutomacaoService
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY") or os.urandom(10).hex()
 app.permanent_session_lifetime = timedelta(days=7)
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
 # Google OAuth
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
@@ -1309,9 +1311,11 @@ def login_google():
 
 @app.route("/login/callback")
 def login_callback():
-    google = OAuth2Session(
-        GOOGLE_CLIENT_ID, state=session.get("oauth_state"), redirect_uri=REDIRECT_URI
-    )
+    state = session.get("oauth_state")
+    if not state:
+        return render_template("login.html", error="Sessão expirada. Tente fazer login novamente.")
+
+    google = OAuth2Session(GOOGLE_CLIENT_ID, state=state, redirect_uri=REDIRECT_URI)
     try:
         token = google.fetch_token(
             TOKEN_URL,
@@ -1320,6 +1324,7 @@ def login_callback():
         )
     except Exception as e:
         print(f"[Google OAuth] Erro ao obter token: {e}")
+        import traceback; traceback.print_exc()
         return render_template("login.html", error="Falha na autenticação com Google.")
 
     resp = google.get("https://www.googleapis.com/oauth2/v1/userinfo")
