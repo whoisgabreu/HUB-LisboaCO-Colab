@@ -1353,19 +1353,20 @@ def login_callback():
             max_id = db.query(Auth.id).order_by(Auth.id.desc()).first()
             auth_entry = Auth(id=(max_id[0] + 1) if max_id else 1, email=user.email, token=token_auth)
             db.add(auth_entry)
-        db.commit()
 
-    session["nome"] = user.nome
-    session["email"] = user.email
-    session["token"] = token_auth
-    session["funcao"] = user.funcao
-    session["posicao"] = user.posicao
-    session["senioridade"] = user.senioridade
-    session["squad"] = user.squad
-    session["nivel_acesso"] = user.nivel_acesso
-    session["pode_editar_kanban"] = user.pode_editar_kanban
-    session["profile_picture"] = user.profile_picture
-    session.permanent = True
+        session["nome"] = user.nome
+        session["email"] = user.email
+        session["token"] = token_auth
+        session["funcao"] = user.funcao
+        session["posicao"] = user.posicao
+        session["senioridade"] = user.senioridade
+        session["squad"] = user.squad
+        session["nivel_acesso"] = user.nivel_acesso
+        session["pode_editar_kanban"] = user.pode_editar_kanban
+        session["profile_picture"] = user.profile_picture
+        session.permanent = True
+
+        db.commit()
 
     return redirect(url_for("home"))
 
