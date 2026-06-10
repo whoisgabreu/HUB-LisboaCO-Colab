@@ -1,11 +1,5 @@
 /* ─── FACE AUTH (standalone para login) ─────────────────── */
 
-.face-login-section {
-    margin-top: 1rem;
-    padding-top: 1rem;
-    border-top: 1px solid #e2e8f0;
-}
-
 .face-login-section .face-login-divider {
     display: flex;
     align-items: center;
@@ -44,6 +38,7 @@
     cursor: pointer;
     transition: all 0.18s ease;
     font-family: 'Inter', 'Poppins', sans-serif;
+    margin-bottom: 0.5rem
 }
 
 .btn-face-login:hover {
