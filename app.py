@@ -7,9 +7,13 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm.attributes import flag_modified
 from datetime import datetime as dt, timedelta
+from requests_oauthlib import OAuth2Session
+from dotenv import load_dotenv
 import os
 import json
 import uuid
+
+load_dotenv()
 
 from database import Session, engine, Base
 from models import (
@@ -33,8 +37,19 @@ from services.automacao_service import AutomacaoService
 
 
 app = Flask(__name__)
-app.secret_key = os.urandom(10).hex()
+app.secret_key = os.getenv("SECRET_KEY") or os.urandom(10).hex()
 app.permanent_session_lifetime = timedelta(days=7)
+
+# Google OAuth
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
+GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
+REDIRECT_URI = os.getenv("REDIRECT_URI")
+AUTHORIZATION_BASE_URL = "https://accounts.google.com/o/oauth2/auth"
+TOKEN_URL = "https://oauth2.googleapis.com/token"
+GOOGLE_SCOPE = [
+    "https://www.googleapis.com/auth/userinfo.email",
+    "https://www.googleapis.com/auth/userinfo.profile",
+]
 
 # Configuração do Scheduler
 scheduler = APScheduler()
@@ -1278,6 +1293,76 @@ def login():
                 return render_template("login.html", error="Erro ao conectar ao banco de dados.")
 
     return render_template("login.html")
+
+
+@app.route("/login/google")
+def login_google():
+    google = OAuth2Session(GOOGLE_CLIENT_ID, scope=GOOGLE_SCOPE, redirect_uri=REDIRECT_URI)
+    authorization_url, state = google.authorization_url(
+        AUTHORIZATION_BASE_URL,
+        access_type="offline",
+        prompt="select_account",
+    )
+    session["oauth_state"] = state
+    return redirect(authorization_url)
+
+
+@app.route("/login/callback")
+def login_callback():
+    google = OAuth2Session(
+        GOOGLE_CLIENT_ID, state=session.get("oauth_state"), redirect_uri=REDIRECT_URI
+    )
+    try:
+        token = google.fetch_token(
+            TOKEN_URL,
+            client_secret=GOOGLE_CLIENT_SECRET,
+            authorization_response=request.url,
+        )
+    except Exception as e:
+        print(f"[Google OAuth] Erro ao obter token: {e}")
+        return render_template("login.html", error="Falha na autenticação com Google.")
+
+    resp = google.get("https://www.googleapis.com/oauth2/v1/userinfo")
+    user_info = resp.json()
+    email = user_info.get("email")
+    name = user_info.get("name")
+
+    if not email:
+        return render_template("login.html", error="Não foi possível obter o e-mail do Google.")
+
+    with Session() as db:
+        user = db.query(Investidor).filter_by(email=email).first()
+        if not user:
+            return render_template(
+                "login.html",
+                error=f"E-mail {email} não encontrado no sistema. Contate a Gerência.",
+            )
+        if user.ativo is not True:
+            return render_template("login.html", error="Login inativo. Fale com a Gerência.")
+
+        token_auth = os.urandom(10).hex()
+        auth_entry = db.get(Auth, user.email)
+        if auth_entry:
+            auth_entry.token = token_auth
+        else:
+            max_id = db.query(Auth.id).order_by(Auth.id.desc()).first()
+            auth_entry = Auth(id=(max_id[0] + 1) if max_id else 1, email=user.email, token=token_auth)
+            db.add(auth_entry)
+        db.commit()
+
+    session["nome"] = user.nome
+    session["email"] = user.email
+    session["token"] = token_auth
+    session["funcao"] = user.funcao
+    session["posicao"] = user.posicao
+    session["senioridade"] = user.senioridade
+    session["squad"] = user.squad
+    session["nivel_acesso"] = user.nivel_acesso
+    session["pode_editar_kanban"] = user.pode_editar_kanban
+    session["profile_picture"] = user.profile_picture
+    session.permanent = True
+
+    return redirect(url_for("home"))
 
 
 @app.route("/dev-login")
