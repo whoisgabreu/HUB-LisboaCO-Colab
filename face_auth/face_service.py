@@ -20,7 +20,7 @@ def get_face_analysis():
     if _face_analysis is None:
         try:
             from insightface.app import FaceAnalysis
-            _face_analysis = FaceAnalysis(name='buffalo_s', providers=['CPUExecutionProvider'])
+            _face_analysis = FaceAnalysis(name='buffalo_l', providers=['CPUExecutionProvider'])
             _face_analysis.prepare(ctx_id=0, det_size=(224, 224))
         except Exception as e:
             print(f"[FaceAuth] Erro ao carregar FaceAnalysis: {e}")
@@ -125,55 +125,27 @@ def check_liveness_head_pose(pose_history):
 
 def process_frames_for_biometric_registration(frames_base64):
     embeddings = []
-    bbox_history = []
-    landmarks_list = []
-    pose_history = []
     total_frames = len(frames_base64)
 
-    for i, frame_b64 in enumerate(frames_base64):
+    for frame_b64 in frames_base64:
         frame = decode_frame(frame_b64)
         if frame is None:
             continue
 
-        extract_extra = (i % 2 == 0) or (i == total_frames - 1)
-        embedding, bbox, extra = detect_and_extract(frame, extract_landmarks=extract_extra)
+        embedding, bbox, extra = detect_and_extract(frame, extract_landmarks=False)
 
         if embedding is not None:
-            if extract_extra:
-                embeddings.append(embedding)
-            bbox_history.append(bbox)
-            if extra:
-                landmarks_list.append(extra.get("landmarks"))
-                pose_history.append(extra.get("head_pose"))
+            embeddings.append(embedding)
 
     if len(embeddings) < 3:
         return {"success": False, "error": f"Rosto detectado em apenas {len(embeddings)} de {total_frames} frames. Tente novamente com melhor iluminação."}
-
-    has_blink = validate_blink(landmarks_list)
-    has_movement = check_liveness_movement(bbox_history)
-    head_movement = check_liveness_head_pose(pose_history)
-
-    if not has_blink and not has_movement:
-        return {"success": False, "error": "Nenhuma movimentação facial detectada. Pisque os olhos ou mova a cabeça durante a captura."}
-
-    liveness_score = 0.0
-    if has_blink:
-        liveness_score += 0.5
-    if has_movement:
-        liveness_score += 0.25
-    if head_movement:
-        liveness_score += 0.25
 
     avg_embedding = np.mean(embeddings, axis=0).tolist()
 
     return {
         "success": True,
         "embedding": avg_embedding,
-        "samples": len(embeddings),
-        "liveness_score": liveness_score,
-        "has_blink": has_blink,
-        "has_movement": has_movement,
-        "has_head_movement": head_movement
+        "samples": len(embeddings)
     }
 
 

@@ -8,9 +8,7 @@ let faceCapturedFrames = [];
 let faceIsCapturing = false;
 let faceCaptureMode = null; // 'register', 'update', 'login'
 let faceLoginEmail = null;
-let faceLivenessChallenges = [];
-let faceLivenessCurrentChallenge = 0;
-let faceLivenessPassed = false;
+
 let faceAnimationId = null;
 
 function getCSRFToken() {
@@ -137,74 +135,82 @@ function captureFrame(quality) {
     return canvas.toDataURL('image/jpeg', quality || 0.5);
 }
 
-/* ─── LIVENESS CHALLENGES ────────────────────────────── */
+/* ─── CAPTURE CLICK HANDLER ────────────────────────────── */
 
-const LIVENESS_CHALLENGES = [
-    { id: 'blink', text: 'Pisque os olhos', duration: 2000 },
-    { id: 'left', text: 'Olhe para a esquerda', duration: 2000 },
-    { id: 'right', text: 'Olhe para a direita', duration: 2000 },
-    { id: 'up', text: 'Olhe para cima', duration: 2000 },
-    { id: 'smile', text: 'Sorria', duration: 2000 },
-];
+async function onCaptureClick() {
+    if (!faceIsCapturing || !faceCaptureMode) return;
 
-function shuffleChallenges() {
-    const shuffled = [...LIVENESS_CHALLENGES];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    const instruction = document.getElementById('face-camera-instruction');
+    const captureBtn = document.getElementById('btn-face-capture');
+    const cancelBtn = document.getElementById('btn-face-cancel');
+    const progressEl = document.getElementById('face-capture-progress');
+    const progressFill = document.getElementById('face-progress-fill');
+    const progressText = document.getElementById('face-progress-text');
+
+    if (captureBtn) captureBtn.style.display = 'none';
+    if (cancelBtn) cancelBtn.style.display = 'none';
+    if (instruction) instruction.textContent = 'Capturando amostras...';
+    if (progressEl) progressEl.style.display = '';
+
+    const frames = [];
+    const totalFrames = 20;
+    for (let i = 0; i < totalFrames; i++) {
+        if (!faceIsCapturing) return;
+        const frame = captureFrame();
+        if (frame) frames.push(frame);
+        const pct = ((i + 1) / totalFrames) * 100;
+        if (progressFill) progressFill.style.width = `${Math.min(100, pct)}%`;
+        if (progressText) progressText.textContent = `${i + 1}/${totalFrames}`;
+        await new Promise(r => setTimeout(r, 100));
     }
-    return shuffled.slice(0, 2);
-}
 
-async function runLivenessSequence() {
-    return new Promise((resolve) => {
-        faceLivenessChallenges = shuffleChallenges();
-        faceLivenessCurrentChallenge = 0;
-        faceLivenessPassed = false;
-        const livenessArea = document.getElementById('face-liveness-area');
-        const challengeEl = document.getElementById('face-liveness-challenge');
-        const progressEl = document.getElementById('face-capture-progress');
-        const progressFill = document.getElementById('face-progress-fill');
-        const progressText = document.getElementById('face-progress-text');
-        if (livenessArea) livenessArea.style.display = 'block';
-        if (progressEl) progressEl.style.display = 'none';
-        let challengeIndex = 0;
-        let capturedDuringChallenges = [];
-        function runNextChallenge() {
-            if (challengeIndex >= faceLivenessChallenges.length) {
-                if (livenessArea) livenessArea.style.display = 'none';
-                faceLivenessPassed = true;
-                if (progressEl) progressEl.style.display = '';
-                if (progressFill) progressFill.style.width = '0%';
-                if (progressText) progressText.textContent = '0/10';
-                resolve({ success: true, frames: capturedDuringChallenges, challengeCount: challengeIndex });
-                return;
+    if (!faceIsCapturing) return;
+    if (frames.length < 8) {
+        showToast(`Poucos frames capturados (${frames.length}). Tente novamente.`, 'erro');
+        cleanupFaceCapture();
+        return;
+    }
+
+    if (instruction) instruction.textContent = 'Processando...';
+
+    const endpoint = faceCaptureMode === 'register'
+        ? '/api/face/biometry/register'
+        : '/api/face/biometry/update';
+
+    try {
+        const res = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ frames })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+            if (faceCaptureMode === 'register') {
+                const body = document.getElementById('face-camera-area');
+                if (body) {
+                    body.innerHTML = `
+                        <div class="face-success-overlay" style="min-height:200px">
+                            <div class="face-success-icon"><i class="fas fa-check-circle"></i></div>
+                            <p class="face-success-text">Biometria cadastrada!</p>
+                        </div>
+                    `;
+                }
+                await new Promise(r => setTimeout(r, 1200));
+                cleanupFaceCapture();
+                await updateFaceStatusUI();
+            } else {
+                showToast('Biometria facial atualizada com sucesso!', 'sucesso');
+                cleanupFaceCapture();
+                await updateFaceStatusUI();
             }
-            const challenge = faceLivenessChallenges[challengeIndex];
-            if (challengeEl) challengeEl.textContent = challenge.text;
-            if (challengeEl) challengeEl.style.animation = 'none';
-            setTimeout(() => { if (challengeEl) challengeEl.style.animation = 'pulse 0.5s ease'; }, 10);
-            let challengeFrames = 0;
-            const maxChallengeFrames = 4;
-            const collectInterval = setInterval(() => {
-                if (faceIsCapturing === false) {
-                    clearInterval(collectInterval);
-                    return;
-                }
-                const frame = captureFrame();
-                if (frame) {
-                    capturedDuringChallenges.push(frame);
-                    challengeFrames++;
-                }
-                if (challengeFrames >= maxChallengeFrames) {
-                    clearInterval(collectInterval);
-                    challengeIndex++;
-                    setTimeout(runNextChallenge, 200);
-                }
-            }, 150);
+        } else {
+            showToast(data.error || `Erro ao ${faceCaptureMode === 'register' ? 'cadastrar' : 'atualizar'} biometria.`, 'erro');
+            cleanupFaceCapture();
         }
-        runNextChallenge();
-    });
+    } catch (e) {
+        showToast('Erro de conexão.', 'erro');
+        cleanupFaceCapture();
+    }
 }
 
 async function captureRemainingFrames(minTotal) {
@@ -244,10 +250,12 @@ async function startFaceRegistration() {
     const cameraArea = document.getElementById('face-camera-area');
     const actions = document.getElementById('face-actions');
     const registerBtn = document.getElementById('btn-face-register');
+    const captureBtn = document.getElementById('btn-face-capture');
     const cancelBtn = document.getElementById('btn-face-cancel');
     const instruction = document.getElementById('face-camera-instruction');
     if (cameraArea) cameraArea.style.display = '';
     if (registerBtn) registerBtn.style.display = 'none';
+    if (captureBtn) captureBtn.style.display = '';
     if (cancelBtn) cancelBtn.style.display = '';
     if (instruction) instruction.textContent = 'Abrindo câmera...';
     const ok = await startCamera();
@@ -255,57 +263,11 @@ async function startFaceRegistration() {
         faceIsCapturing = false;
         if (cameraArea) cameraArea.style.display = 'none';
         if (registerBtn) registerBtn.style.display = '';
+        if (captureBtn) captureBtn.style.display = 'none';
         if (cancelBtn) cancelBtn.style.display = 'none';
         return;
     }
-    if (instruction) instruction.textContent = 'Posicione seu rosto no centro';
-    await new Promise(r => setTimeout(r, 1000));
-    if (instruction) instruction.textContent = 'Execute os desafios de vivacidade';
-    const livenessResult = await runLivenessSequence();
-    if (!faceIsCapturing) return;
-    if (!livenessResult.success) {
-        showToast('Falha na validação de vivacidade.', 'erro');
-        cleanupFaceCapture();
-        return;
-    }
-    if (instruction) instruction.textContent = 'Capturando amostras...';
-    const remainingFrames = await captureRemainingFrames(10);
-    if (!faceIsCapturing) return;
-    const allFrames = [...livenessResult.frames, ...remainingFrames];
-    if (allFrames.length < 8) {
-        showToast(`Poucos frames capturados (${allFrames.length}). Tente novamente.`, 'erro');
-        cleanupFaceCapture();
-        return;
-    }
-    if (instruction) instruction.textContent = 'Processando...';
-    try {
-        const res = await fetch('/api/face/biometry/register', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ frames: allFrames })
-        });
-        const data = await res.json();
-        if (res.ok && data.success) {
-            const body = document.getElementById('face-camera-area');
-            if (body) {
-                body.innerHTML = `
-                    <div class="face-success-overlay" style="min-height:200px">
-                        <div class="face-success-icon"><i class="fas fa-check-circle"></i></div>
-                        <p class="face-success-text">Biometria cadastrada!</p>
-                    </div>
-                `;
-            }
-            await new Promise(r => setTimeout(r, 1200));
-            cleanupFaceCapture();
-            await updateFaceStatusUI();
-        } else {
-            showToast(data.error || 'Erro ao cadastrar biometria.', 'erro');
-            cleanupFaceCapture();
-        }
-    } catch (e) {
-        showToast('Erro de conexão ao cadastrar biometria.', 'erro');
-        cleanupFaceCapture();
-    }
+    if (instruction) instruction.textContent = 'Centralize o rosto e clique em Capturar';
 }
 
 async function startFaceUpdate() {
@@ -316,11 +278,13 @@ async function startFaceUpdate() {
     const actions = document.getElementById('face-actions');
     const updateBtn = document.getElementById('btn-face-update');
     const deleteBtn = document.getElementById('btn-face-delete');
+    const captureBtn = document.getElementById('btn-face-capture');
     const cancelBtn = document.getElementById('btn-face-cancel');
     const instruction = document.getElementById('face-camera-instruction');
     if (cameraArea) cameraArea.style.display = '';
     if (updateBtn) updateBtn.style.display = 'none';
     if (deleteBtn) deleteBtn.style.display = 'none';
+    if (captureBtn) captureBtn.style.display = '';
     if (cancelBtn) cancelBtn.style.display = '';
     if (instruction) instruction.textContent = 'Abrindo câmera...';
     const ok = await startCamera();
@@ -329,47 +293,12 @@ async function startFaceUpdate() {
         if (cameraArea) cameraArea.style.display = 'none';
         if (updateBtn) updateBtn.style.display = '';
         if (deleteBtn) deleteBtn.style.display = '';
+        if (captureBtn) captureBtn.style.display = 'none';
         if (cancelBtn) cancelBtn.style.display = 'none';
         await updateFaceStatusUI();
         return;
     }
-    if (instruction) instruction.textContent = 'Posicione seu rosto no centro';
-    await new Promise(r => setTimeout(r, 1000));
-    if (instruction) instruction.textContent = 'Execute os desafios de vivacidade';
-    const livenessResult = await runLivenessSequence();
-    if (!faceIsCapturing) return;
-    if (!livenessResult.success) {
-        showToast('Falha na validação de vivacidade.', 'erro');
-        cleanupFaceCapture();
-        return;
-    }
-    if (instruction) instruction.textContent = 'Capturando amostras...';
-    const remainingFrames = await captureRemainingFrames(10);
-    if (!faceIsCapturing) return;
-    const allFrames = [...livenessResult.frames, ...remainingFrames];
-    if (allFrames.length < 8) {
-        showToast(`Poucos frames capturados (${allFrames.length}). Tente novamente.`, 'erro');
-        cleanupFaceCapture();
-        return;
-    }
-    if (instruction) instruction.textContent = 'Processando...';
-    try {
-        const res = await fetch('/api/face/biometry/update', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ frames: allFrames })
-        });
-        const data = await res.json();
-        if (res.ok && data.success) {
-            showToast('Biometria facial atualizada com sucesso!', 'sucesso');
-            await updateFaceStatusUI();
-        } else {
-            showToast(data.error || 'Erro ao atualizar biometria.', 'erro');
-        }
-    } catch (e) {
-        showToast('Erro de conexão ao atualizar biometria.', 'erro');
-    }
-    cleanupFaceCapture();
+    if (instruction) instruction.textContent = 'Centralize o rosto e clique em Capturar';
 }
 
 function confirmFaceDelete() {
@@ -399,6 +328,7 @@ function cleanupFaceCapture() {
     const updateBtn = document.getElementById('btn-face-update');
     const deleteBtn = document.getElementById('btn-face-delete');
     const cancelBtn = document.getElementById('btn-face-cancel');
+    const captureBtn = document.getElementById('btn-face-capture');
     const livenessArea = document.getElementById('face-liveness-area');
     const progressEl = document.getElementById('face-capture-progress');
     const instruction = document.getElementById('face-camera-instruction');
@@ -406,6 +336,7 @@ function cleanupFaceCapture() {
     if (livenessArea) livenessArea.style.display = 'none';
     if (progressEl) progressEl.style.display = 'none';
     if (cancelBtn) cancelBtn.style.display = 'none';
+    if (captureBtn) captureBtn.style.display = 'none';
     if (instruction) instruction.textContent = 'Posicione seu rosto no centro';
     updateFaceStatusUI();
 }
