@@ -2147,8 +2147,8 @@ def criativa():
                         "fee": info["fee"],
                         "moeda": info["moeda"],
                         "cientista": bool(p.cientista),
-                        "churned": not p.active,
-                        "data_churn": p.inactivated_at.strftime("%d/%m/%Y") if p.inactivated_at else None
+                        "churned": p.inactivated_at is not None and p.inactivated_at < _end_mes_exc.date(),
+                        "data_churn": p.inactivated_at.strftime("%d/%m/%Y") if p.inactivated_at is not None and p.inactivated_at < _end_mes_exc.date() else None
                     })
 
             # Carrega entregas_criativos de investidores_metricas_mensais_novo
@@ -2335,8 +2335,8 @@ def get_criativa_clientes(email, mes, ano):
                     "fee": info["fee"],
                     "moeda": info["moeda"],
                     "cientista": bool(v.cientista),
-                    "churned": not v.active,
-                    "data_churn": v.inactivated_at.strftime("%d/%m/%Y") if v.inactivated_at else None,
+                    "churned": v.inactivated_at is not None and v.inactivated_at < _end_mes_exc.date(),
+                    "data_churn": v.inactivated_at.strftime("%d/%m/%Y") if v.inactivated_at is not None and v.inactivated_at < _end_mes_exc.date() else None,
                 })
 
             clientes.sort(key=lambda x: x["nome"])
