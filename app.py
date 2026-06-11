@@ -2279,6 +2279,72 @@ def criativa():
 
 # ─── APIs CRIATIVA ───────────────────────────────────────────────────────────
 
+@app.route("/api/criativa/clientes/<email>/<int:mes>/<int:ano>", methods=["GET"])
+@check_session
+@check_access(["Designer", "WebDesigner", "Account", "Gestor de Tráfego"])
+def get_criativa_clientes(email, mes, ano):
+    """Retorna a lista de clientes ativos de um investidor para um determinado mês/ano,
+    replicando a lógica de filtro mensal do /criativa (projetos_rows)."""
+    try:
+        with Session() as db:
+            from sqlalchemy import or_, and_
+            _start_mes = dt(ano, mes, 1, 0, 0, 0)
+            _end_mes_exc = dt(ano + 1, 1, 1) if mes == 12 else dt(ano, mes + 1, 1)
+
+            vinculos = db.query(InvestidorProjeto).filter(
+                InvestidorProjeto.email_investidor == email,
+                or_(
+                    InvestidorProjeto.created_at == None,
+                    InvestidorProjeto.created_at < _end_mes_exc
+                ),
+                or_(
+                    InvestidorProjeto.active == True,
+                    and_(
+                        InvestidorProjeto.active == False,
+                        InvestidorProjeto.inactivated_at >= _start_mes
+                    )
+                )
+            ).all()
+
+            projeto_fees = {}
+            all_fee_rows = db.query(Projeto.pipefy_id, Projeto.fee, Projeto.moeda).all()
+            for row in all_fee_rows:
+                if row.pipefy_id:
+                    try:
+                        projeto_fees[str(row.pipefy_id)] = {
+                            "fee": float(row.fee or 0),
+                            "moeda": str(row.moeda).strip().upper() if row.moeda else "BRL",
+                        }
+                    except (ValueError, TypeError):
+                        projeto_fees[str(row.pipefy_id)] = {"fee": 0, "moeda": "BRL"}
+
+            clientes = []
+            seen = set()
+            for v in vinculos:
+                nome = (v.nome_projeto or "").strip()
+                projeto_id = v.pipefy_id_projeto
+                if not nome or not projeto_id:
+                    continue
+                if projeto_id in seen:
+                    continue
+                seen.add(projeto_id)
+                info = projeto_fees.get(str(projeto_id), {"fee": 0, "moeda": "BRL"})
+                clientes.append({
+                    "nome": nome,
+                    "projeto_id": projeto_id,
+                    "fee": info["fee"],
+                    "moeda": info["moeda"],
+                    "cientista": bool(v.cientista),
+                    "churned": not v.active,
+                    "data_churn": v.inactivated_at.strftime("%d/%m/%Y") if v.inactivated_at else None,
+                })
+
+            clientes.sort(key=lambda x: x["nome"])
+            return jsonify(clientes)
+    except SQLAlchemyError as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/criativa/entregas/<email>/<int:mes>/<int:ano>", methods=["GET"])
 @check_session
 @check_access(["Designer", "WebDesigner", "Account", "Gestor de Tráfego"])

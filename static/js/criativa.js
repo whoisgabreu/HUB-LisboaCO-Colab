@@ -52,19 +52,36 @@ function handlePeriodoChange() {
  */
 async function _fetchAndRefreshDetalhe() {
     try {
-        const [entregasResp, remuResp] = await Promise.all([
+        const [clientesResp, entregasResp, remuResp] = await Promise.all([
+            fetch(`/api/criativa/clientes/${encodeURIComponent(_designerEmailAtual)}/${_mesSelecionado}/${_anoSelecionado}`),
             fetch(`/api/criativa/entregas/${encodeURIComponent(_designerEmailAtual)}/${_mesSelecionado}/${_anoSelecionado}`),
             fetch(`/api/remuneracao/recalcular-investidor/${encodeURIComponent(_designerEmailAtual)}/${_mesSelecionado}/${_anoSelecionado}`, { method: 'POST' })
         ]);
 
+        if (!clientesResp.ok) throw new Error('Falha ao buscar clientes do período.');
         if (!entregasResp.ok) throw new Error('Falha ao buscar dados do período.');
+
+        const clientesApi = await clientesResp.json();
         const entregas = await entregasResp.json();
 
-        // Remergeia os dados do período nos clientes atuais (preserva fee, churned, etc.)
-        _clientesDetalheAtual = _clientesDetalheAtual.map(c => {
-            const entry = (entregas || []).find(e => String(e.projeto_id) === String(c.projeto_id));
+        // Rebuild _clientesBaseAtual from API — clientes ativos no mês selecionado
+        if (Array.isArray(clientesApi)) {
+            _clientesBaseAtual = clientesApi.map(c => ({
+                nome: c.nome,
+                projeto_id: c.projeto_id,
+                fee: c.fee,
+                moeda: c.moeda,
+                cientista: c.cientista,
+                churned: c.churned,
+                data_churn: c.data_churn,
+            }));
+        }
+
+        // Merge delivery data into the fresh client base for the period
+        _clientesDetalheAtual = _clientesBaseAtual.map(base => {
+            const entry = (entregas || []).find(e => String(e.projeto_id) === String(base.projeto_id));
             return {
-                ...c,
+                ...base,
                 link_criativos: entry ? (entry.link_criativos ?? '') : '',
                 criativos_c: entry ? (entry.criativos?.contratados ?? 0) : 0,
                 criativos_e: entry ? (entry.criativos?.entregues ?? 0) : 0,
@@ -103,14 +120,37 @@ async function _fetchAndRefreshDetalhe() {
  */
 async function _fetchAndRefreshOpDetalhe() {
     try {
-        const [entregasResp, remuResp] = await Promise.all([
+        const [clientesResp, entregasResp, remuResp] = await Promise.all([
+            fetch(`/api/criativa/clientes/${encodeURIComponent(_opEmail)}/${_mesSelecionado}/${_anoSelecionado}`),
             fetch(`/api/operacao/entregas-op/${encodeURIComponent(_opEmail)}/${_mesSelecionado}/${_anoSelecionado}`),
             fetch(`/api/remuneracao/recalcular-investidor/${encodeURIComponent(_opEmail)}/${_mesSelecionado}/${_anoSelecionado}`, { method: 'POST' })
         ]);
 
-        // Limpa feitos anteriores antes de popular os novos
+        // Atualiza _opClientes com a lista do período selecionado
+        if (clientesResp.ok) {
+            const clientesApi = await clientesResp.json();
+            if (Array.isArray(clientesApi)) {
+                _opClientes = clientesApi.map(c => ({
+                    nome: c.nome,
+                    projeto_id: c.projeto_id,
+                    fee: c.fee,
+                    moeda: c.moeda,
+                    cientista: c.cientista,
+                    churned: c.churned,
+                    data_churn: c.data_churn,
+                }));
+            }
+        }
+
+        // Limpa dados anteriores antes de popular os novos
         Object.keys(_opFeitos).forEach(pid => {
             _opFeitos[pid] = {};
+        });
+        Object.keys(_opMetas).forEach(pid => {
+            _opMetas[pid] = {};
+        });
+        Object.keys(_opLinks).forEach(pid => {
+            _opLinks[pid] = {};
         });
 
         if (entregasResp.ok) {
@@ -322,7 +362,15 @@ function openDesignerDetalhe(card) {
     } catch (e) { }
 
     _clientesDetalheAtual = clientes;
-    _clientesBaseAtual = clientes.map(c => ({ nome: c.nome, projeto_id: c.projeto_id }));
+    _clientesBaseAtual = clientes.map(c => ({
+        nome: c.nome,
+        projeto_id: c.projeto_id,
+        fee: c.fee,
+        moeda: c.moeda,
+        cientista: c.cientista,
+        churned: c.churned,
+        data_churn: c.data_churn,
+    }));
     _designerEmailAtual = card.getAttribute('data-designer-email') || '';
     _opRemuJson = remuJson;
     _opClientes = clientes;
@@ -944,12 +992,18 @@ function openOperacionalDetalhe(card) {
     _opClientes = clientes;
     _opRemuJson = remuJson;
 
-    // Limpa feitos anteriores deste usuário
+    // Limpa dados anteriores deste usuário
     const tipos = OP_ENTREGAS_CONFIG[funcao] || [];
     clientes.forEach(c => {
         const pid = String(c.projeto_id);
         if (_opFeitos[pid]) {
             tipos.forEach(d => { delete _opFeitos[pid][d.tipo]; });
+        }
+        if (_opMetas[pid]) {
+            tipos.forEach(d => { delete _opMetas[pid][d.tipo]; });
+        }
+        if (_opLinks[pid]) {
+            tipos.forEach(d => { delete _opLinks[pid][d.tipo]; });
         }
     });
 
