@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="static/style/styles.css">
+    <link rel="stylesheet" href="static/style/tema-claro.css">
+    {% include "components/icon_title.html" %}
+    <style>
+        .pad-card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+        }
+        .pad-card h3 {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-main);
+        }
+        .pad-card h3 i {
+            color: #d61616;
+        }
+        .pad-card > p {
+            color: #a0a0a0;
+            font-size: 0.9rem;
+            margin-bottom: 1.5rem;
+        }
+        .form-section {
+            margin-bottom: 1.5rem;
+            padding: 1.25rem;
+            background-color: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+        }
+        .form-section-title {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--text-main);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .form-section-title i {
+            color: #d61616;
+        }
+        .preview-box {
+            margin-top: 1.5rem;
+            padding: 1.25rem;
+            background-color: rgba(255, 0, 0, 0.03);
+            border: 1px solid rgba(255, 0, 0, 0.15);
+            border-radius: 8px;
+        }
+        .preview-box label {
+            font-size: 0.85rem;
+            color: #a0a0a0;
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+        .preview-textarea {
+            width: 100%;
+            min-height: 250px;
+            padding: 1rem;
+            background-color: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-main);
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            line-height: 1.6;
+            resize: vertical;
+            white-space: pre-wrap;
+            outline: none;
+        }
+        .preview-textarea:focus {
+            border-color: rgba(255, 0, 0, 0.3);
+        }
+        .preview-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.75rem;
+        }
+        .preview-actions .btn-copy {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 500;
+            background-color: #d61616;
+            color: #fff;
+            transition: 0.1s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+        .preview-actions .btn-copy:hover {
+            background-color: #911414;
+        }
+        .preview-actions .btn-copy.copied {
+            background-color: #1a9e4b;
+        }
+        .repeating-item {
+            padding: 1rem;
+            margin-bottom: 1rem;
+            background-color: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            position: relative;
+        }
+        .repeating-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+        .repeating-label {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+        .btn-remove {
+            background: none;
+            border: none;
+            color: #a0a0a0;
+            cursor: pointer;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            transition: 0.1s;
+        }
+        .btn-remove:hover {
+            color: #d61616;
+            background-color: rgba(255, 0, 0, 0.1);
+        }
+        .btn-add {
+            padding: 0.6rem 1.2rem;
+            border: 1px dashed var(--border-color);
+            border-radius: 6px;
+            background: transparent;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: 0.1s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            width: 100%;
+            justify-content: center;
+        }
+        .btn-add:hover {
+            border-color: #d61616;
+            color: #d61616;
+            background-color: rgba(255, 0, 0, 0.05);
+        }
+        .checkbox-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 0.5rem;
+            padding: 0.5rem 0;
+        }
+        .checkbox-grid label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+            color: var(--text-main);
+            cursor: pointer;
+        }
+        .checkbox-grid input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: #d61616;
+        }
+        .toggle-section {
+            margin-top: 0.5rem;
+        }
+        .toggle-section-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+            padding: 0.5rem 0;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+        .toggle-section-header:hover {
+            color: var(--text-main);
+        }
+        .toggle-section-header input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: #d61616;
+        }
+        .toggle-section-body {
+            display: none;
+            padding-top: 0.75rem;
+        }
+        .toggle-section-body.active {
+            display: block;
+        }
+        .inline-group {
+            display: flex;
+            gap: 0.75rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .inline-group .form-group {
+            flex: 1;
+            min-width: 150px;
+        }
+    </style>
+</head>
+<body>
+    {% include "components/header.html" %}
+    {% include "components/sidebar.html" %}
+
+    <div class="app-container">
+        <div class="sidebar-overlay"></div>
+        <main class="main-container">
+            <section class="welcome-section">
+                <h2>Prompts GT IA</h2>
+                <p>Gere prompts padronizados para o time de operações.</p>
+            </section>
+
+            <div class="tabs-container">
+                <button class="tab-btn active" onclick="switchPromptTab(event, 'subir-campanha')">
+                    <i class="fas fa-rocket"></i> Subir Campanha
+                </button>
+                <button class="tab-btn" onclick="switchPromptTab(event, 'otimizacao-direta')">
+                    <i class="fas fa-wrench"></i> Otimização Direta
+                </button>
+                <button class="tab-btn" onclick="switchPromptTab(event, 'otimizacao-analise')">
+                    <i class="fas fa-chart-line"></i> Otimização pela Análise
+                </button>
+                <button class="tab-btn" onclick="switchPromptTab(event, 'analise-contas')">
+                    <i class="fas fa-search"></i> Análise de Contas
+                </button>
+                <button class="tab-btn" onclick="switchPromptTab(event, 'exec-pos-analise')">
+                    <i class="fas fa-clipboard-check"></i> Execução Pós Análise
+                </button>
+                <button class="tab-btn" onclick="switchPromptTab(event, 'ga4')">
+                    <i class="fas fa-chart-pie"></i> GA4
+                </button>
+                <button class="tab-btn" onclick="switchPromptTab(event, 'tracking')">
+                    <i class="fas fa-code"></i> Tracking
+                </button>
+            </div>
+
+            <div class="slides-wrapper">
+                <!-- ============================================================ -->
+                <!-- SUBIR CAMPANHA -->
+                <!-- ============================================================ -->
+                <div class="slide-content active" id="slide-subir-campanha">
+                    <div class="pad-card">
+                        <h3><i class="fas fa-rocket"></i> Subir Campanha</h3>
+                        <p>Preencha os dados para gerar o prompt de criação de campanha.</p>
+
+                        <div class="form-section">
+                            <div class="form-section-title"><i class="fas fa-info-circle"></i> Informações Básicas</div>
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label>Cliente</label>
+                                    <input type="text" id="sc-cliente" placeholder="Nome do cliente" oninput="gerarSubirCampanha()">
+                                </div>
+                                <div class="form-group">
+                                    <label>Conta/CA</label>
+                                    <input type="text" id="sc-conta" placeholder="Nome ou ID da conta" oninput="gerarSubirCampanha()">
+                                </div>
+                                <div class="form-group">
+                                    <label>Plataforma</label>
+                                    <select id="sc-plataforma" onchange="gerarSubirCampanha()">
+                                        <option value="Meta Ads">Meta Ads</option>
+                                        <option value="Google Ads">Google Ads</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Objetivo da Campanha</label>
+                                    <select id="sc-objetivo" onchange="gerarSubirCampanha()">
+                                        <option value="Leads">Leads</option>
+                                        <option value="Mensagens">Mensagens</option>
+                                        <option value="Vendas">Vendas</option>
+                                        <option value="Tráfego">Tráfego</option>
+                                        <option value="Formulário Nativo">Formulário Nativo</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Campanha</label>
+                                    <input type="text" id="sc-campanha" placeholder="Nome da campanha" oninput="gerarSubirCampanha()">
+                                </div>
+                                <div class="form-group">
+                                    <label>Verba</label>
+                                    <input type="text" id="sc-verba" placeholder="Ex: R$ 100/dia ou orçamento total" oninput="gerarSubirCampanha()">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-section">
+                            <div class="form-section-title"><i class="fas fa-layer-group"></i> Estrutura</div>
+                            <div class="form-group" style="margin-bottom:1rem;">
+                                <label>Campanha (nome na estrutura)</label>
+                                <input type="text" id="sc-estrutura-campanha" placeholder="Nome da campanha na estrutura" oninput="gerarSubirCampanha()">
+                            </div>
+
+                            <div id="sc-conjuntos-container"></div>
+
+                            <template id="sc-conjunto-template">
+                                <div class="repeating-item">
+                                    <div class="repeating-header">
+                                        <span class="repeating-label">Conjunto <span class="item-num">01</span></span>
+                                        <button type="button" class="btn-remove" onclick="removerItem(this)"><i class="fas fa-times"></i></button>
+                                    </div>
+                                    <div class="form-grid">
+                                        <div class="form-group">
+                                            <label>Público</label>
+                                            <input type="text" class="fld-publico" placeholder="Ex: Aberto, segmentado..." oninput="gerarSubirCampanha()">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Idade</label>
+                                            <input type="text" class="fld-idade" placeholder="Ex: 21-60" oninput="gerarSubirCampanha()">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Localização</label>
+                                            <input type="text" class="fld-localizacao" placeholder="Ex: Brasil" oninput="gerarSubirCampanha()">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Posicionamentos</label>
+                                            <input type="text" class="fld-posicionamentos" placeholder="Ex: Feed, Stories" oninput="gerarSubirCampanha()">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Orçamento</label>
+                                            <input type="text" class="fld-orcamento" placeholder="Ex: R$ 50/dia" oninput="gerarSubirCampanha()">
+                                        </div>
+                                    </div>
+                                </div>
+                            </template>
+
+                            <button type="button" class="btn-add" onclick="adicionarConjunto()">
+                                <i class="fas fa-plus"></i> Adicionar Conjunto
+                            </button>
+                        </div>
+
+                        <div class="form-section">
+                            <div class="form-section-title"><i class="fas fa-palette"></i> Criativo</div>
+                            <div class="form-grid">
+                                <div class="form-group full-width">
+                                    <label>Criativos/Drive</label>
+                                    <textarea class="form-group-textarea" id="sc-drive" placeholder="Link do drive" oninput="gerarSubirCampanha()"></textarea>
+                                </div>
+                                <div class="form-group full-width">
+                                    <label>Copy/Legenda</label>
+                                    <textarea class="form-group-textarea" id="sc-copy" placeholder="Texto da legenda" oninput="gerarSubirCampanha()"></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label>Título</label>
+                                    <input type="text" id="sc-titulo" placeholder="Título do anúncio" oninput="gerarSubirCampanha()">
+                                </div>
+                                <div class="form-group">
+                                    <label>CTA</label>
+                                    <input type="text" id="sc-cta" placeholder="Ex: Saiba mais" oninput="gerarSubirCampanha()">
+                                </div>
+                                <div class="form-group">
+                                    <label>Destino</label>
+                                    <select id="sc-destino" onchange="gerarSubirCampanha()">
+                                        <option value="Formulário nativo">Formulário nativo</option>
+                                        <option value="WhatsApp">WhatsApp</option>
+                                        <option value="Site">Site</option>
+                                        <option value="LP">LP</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-section">
+                            <div class="toggle-section">
+                                <div class="toggle-section-header" onclick="toggleFormulario()">
+                                    <input type="checkbox" id="sc-tem-formulario" onchange="toggleFormulario(); gerarSubirCampanha()">
+                                    <label for="sc-tem-formulario">Possui formulário nativo?</label>
+                                </div>
+                                <div class="toggle-section-body" id="sc-form-section">
+                                    <div class="form-grid">
+                                        <div class="form-group full-width">
+                                            <label>Campos do formulário</label>
+                                            <textarea class="form-group-textarea" id="sc-form-campos" placeholder="Ex: Nome, Telefone, E-mail" oninput="gerarSubirCampanha()"></textarea>
+                                        </div>
+                                        <div class="form-group full-width">
+                                            <label>Perguntas e opções</label>
+                                            <textarea class="form-group-textarea" id="sc-form-perguntas" placeholder="1. [PERGUNTA]&#10;Opções:&#10;- [OPÇÃO]&#10;- [OPÇÃO]" oninput="gerarSubirCampanha()"></textarea>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="preview-box">
+                            <label>Prompt Gerado:</label>
+                            <textarea readonly class="preview-textarea" id="sc-output"></textarea>
+                            <div class="preview-actions">
+                                <button class="btn-copy" onclick="copiarTexto('sc-output')"><i class="fas fa-copy"></i> Copiar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ============================================================ -->
+                <!-- OTIMIZAÇÃO DIRETA -->
+                <!-- ============================================================ -->
+                <div class="slide-content" id="slide-otimizacao-direta">
+                    <div class="pad-card">
+                        <h3><i class="fas fa-wrench"></i> Otimização Direta</h3>
+                        <p>Preencha os dados para gerar o prompt de otimização direta de campanha.</p>
+
+                        <div class="form-section">
+                            <div class="form-section-title"><i class="fas fa-info-circle"></i> Informações Básicas</div>
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label>Cliente</label>
+                                    <input type="text" id="od-cliente" placeholder="Nome do cliente" oninput="gerarOtimizacaoDireta()">
+                                </div>
+                                <div class="form-group">
+                                    <label>Conta/CA</label>
+                                    <input type="text" id="od-conta" placeholder="Nome ou ID da conta" oninput="gerarOtimizacaoDireta()">
+                                </div>
+                                <div class="form-group">
+                                    <label>Plataforma</label>
+                                    <select id="od-plataforma" onchange="gerarOtimizacaoDireta()">
+                                        <option value="Meta Ads">Meta Ads</option>
+                                        <option value="Google Ads">Google Ads</option>
+                                    </select>
+                                </div>
+                                <div class="form-group full-width">
+                                    <label>Campanha alvo</label>
+                                    <input type="text" id="od-campanha-alvo" placeholder="Nome exato da campanha" oninput="gerarOtimizacaoDireta()">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-section">
+                            <div class="form-section-title"><i class="fas fa-list"></i> O que fazer</div>
+                            <div id="od-acoes-container"></div>
+                            <template id="od-acao-template">
+                                <div class="repeating-item">
+                                    <div class="repeating-header">
+                                        <span class="repeating-label">Ação <span class="item-num">01</span></span>
+                                        <button type="button" class="btn-remove" onclick="removerItem(this)"><i class="fas fa-times"></i></button>
+                                    </div>
+                                    <div class="form-group">
+                                        <textarea class="form-group-textarea" placeholder="Descreva a ação" oninput="gerarOtimizacaoDireta()" style="min-height:60px;"></textarea>
+                                    </div>
+                                </div>
+                            </template>
+                            <button type="button" class="btn-add" onclick="adicionarAcaoOd()">
+                                <i class="fas fa-plus"></i> Adicionar Ação
+                            </button>
+                        </div>
+
+                        <div class="form-section">
+                            <div class="form-section-title"><i class="fas fa-bullseye"></i> Objetos alvo</div>
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label>Campanha</label>
+                                    <input type="text" id="od-obj-campanha" oninput="gerarOtimizacaoDireta()">
+                                </div>
+                                <div class="form-group">
+                                    <label>Conjunto</label>
+                                    <input type="text" id="od-obj-conjunto" oninput="gerarOtimizacaoDireta()">
+                                </div>
+                                <div class="form-group">
+                                    <label>Anúncio</label>
+                                    <input type="text" id="od-obj-anuncio" oninput="gerarOtimizacaoDireta()">
+                                </div>
+                                <div class="form-group">
+                                    <label>Público</label>
+                                    <input type="text" id="od-obj-publico" oninput="gerarOtimizacaoDireta()">
+                                </div>
+                                <div class="form-group">
+                                    <label>Criativo</label>
+                                    <input type="text" id="od-obj-criativo" oninput="gerarOtimizacaoDireta()">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="preview-box">
+                            <label>Prompt Gerado:</label>
+                            <textarea readonly class="preview-textarea" id="od-output"></textarea>
+                            <div class="preview-actions">
+                                <button class="btn-copy" onclick="copiarTexto('od-output')"><i class="fas fa-copy"></i> Copiar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ============================================================ -->
+                <!-- OTIMIZAÇÃO PELA ANÁLISE -->
+                <!-- ============================================================ -->
+                <div class="slide-content" id="slide-otimizacao-analise">
+                    <div class="pad-card">
+                        <h3><i class="fas fa-chart-line"></i> Otimização pela Análise do GT IA</h3>
+                        <p>Preencha os dados para gerar o prompt de otimização baseada em análise.</p>
+
+                        <div class="form-section">
+                            <div class="form-section-title"><i class="fas fa-info-circle"></i> Informações Básicas</div>
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label>Cliente</label>
+                                    <input type="text" id="oa-cliente" placeholder="Nome do cliente" oninput="gerarOtimizacaoAnalise()">
+                                </div>
+                                <div class="form-group">
+                                    <label>Conta/CA</label>
+                                    <input type="text" id="oa-conta" placeholder="Nome ou ID da conta" oninput="gerarOtimizacaoAnalise()">
+                                </div>
+                                <div class="form-group">
+                                    <label>Plataforma</label>
+                                    <select id="oa-plataforma" onchange="gerarOtimizacaoAnalise()">
+                                        <option value="Meta Ads">Meta Ads</option>
+                                        <option value="Google Ads">Google Ads</option>
+                                    </select>
+                                </div>
+                                <div class="form-group full-width">
+                                    <label>Campanha alvo</label>
+                                    <input type="text" id="oa-campanha-alvo" placeholder="Nome exato da campanha" oninput="gerarOtimizacaoAnalise()">
+                                </div>
+                                <div class="form-group">
+                                    <label>Período de análise</label>
+                                    <select id="oa-periodo" onchange="gerarOtimizacaoAnalise()">
+                                        <option value="Últimos 7 dias">Últimos 7 dias</option>
+                                        <option value="Últimos 14 dias">Últimos 14 dias</option>
+                                        <option value="Últimos 30 dias">Últimos 30 dias</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Objetivo da otimização</label>
+                                    <select id="oa-objetivo" onchange="gerarOtimizacaoAnalise()">
+                                        <option value="Reduzir CPL">Reduzir CPL</option>
+                                        <option value="Aumentar leads">Aumentar leads</option>
+                                        <option value="Cortar desperdício">Cortar desperdício</option>
+                                        <option value="Melhorar CTR">Melhorar CTR</option>
+                                        <option value="Melhorar conversão">Melhorar conversão</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-section">
+                            <div class="form-section-title"><i class="fas fa-check-circle"></i> Ações permitidas</div>
+                            <div class="checkbox-grid" id="oa-acoes">
+                                <label><input type="checkbox" value="Pausar anúncios ruins" checked onchange="gerarOtimizacaoAnalise()"> Pausar anúncios ruins</label>
+                                <label><input type="checkbox" value="Pausar conjuntos ruins" checked onchange="gerarOtimizacaoAnalise()"> Pausar conjuntos ruins</label>
+                                <label><input type="checkbox" value="Realocar verba sem aumentar budget total" checked onchange="gerarOtimizacaoAnalise()"> Realocar verba</label>
+                                <label><input type="checkbox" value="Duplicar conjunto vencedor pausado" checked onchange="gerarOtimizacaoAnalise()"> Duplicar conjunto vencedor</label>
+                                <label><input type="checkbox" value="Ajustar público" onchange="gerarOtimizacaoAnalise()"> Ajustar público</label>
+                                <label><input type="checkbox" value="Ajustar posicionamentos" onchange="gerarOtimizacaoAnalise()"> Ajustar posicionamentos</label>
+                                <label><input type="checkbox" value="Trocar criativo se houver criativo aprovado" onchange="gerarOtimizacaoAnalise()"> Trocar criativo</label>
+                            </div>
+                        </div>
+
+                        <div class="form-section">
+                            <div class="form-section-title"><i class="fas fa-filter"></i> Critérios</div>
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label>CPL máximo (R$)</label>
+                                    <input type="text" id="oa-cpl-max" placeholder="Ex: 50" oninput="gerarOtimizacaoAnalise()">
+                                </div>
+                                <div class="form-group">
+                                    <label>CPL prioritário abaixo de (R$)</label>
+                                    <input type="text" id="oa-cpl-priority" placeholder="Ex: 20" oninput="gerarOtimizacaoAnalise()">
+                                </div>
+                                <div class="form-group full-width">
+                                    <label>Volume mínimo de impressões/cliques/leads</label>
+                                    <input type="text" id="oa-volume-min" placeholder="Ex: 1000 impressões" oninput="gerarOtimizacaoAnalise()">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="preview-box">
+                            <label>Prompt Gerado:</label>
+                            <textarea readonly class="preview-textarea" id="oa-output"></textarea>
+                            <div class="preview-actions">
+                                <button class="btn-copy" onclick="copiarTexto('oa-output')"><i class="fas fa-copy"></i> Copiar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ============================================================ -->
+                <!-- ANÁLISE DE CONTAS -->
+                <!-- ============================================================ -->
+                <div class="slide-content" id="slide-analise-contas">
+                    <div class="pad-card">
+                        <h3><i class="fas fa-search"></i> Análise de Contas</h3>
+                        <p>Preencha os dados para gerar o prompt de análise de contas.</p>
+
+                        <div class="form-section">
+                            <div class="form-section-title"><i class="fas fa-info-circle"></i> Informações Básicas</div>
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label>Cliente</label>
+                                    <input type="text" id="ac-cliente" placeholder="Nome do cliente" oninput="gerarAnaliseContas()">
+                                </div>
+                                <div class="form-group">
+                                    <label>Conta/CA</label>
+                                    <input type="text" id="ac-conta" placeholder="Nome ou ID da conta" oninput="gerarAnaliseContas()">
+                                </div>
+                                <div class="form-group">
+                                    <label>Plataforma</label>
+                                    <select id="ac-plataforma" onchange="gerarAnaliseContas()">
+                                        <option value="Meta Ads">Meta Ads</option>
+                                        <option value="Google Ads">Google Ads</option>
+                                        <option value="Ambas">Ambas</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Período</label>
+                                    <select id="ac-periodo" onchange="gerarAnaliseContas()">
+                                        <option value="Últimos 7 dias">Últimos 7 dias</option>
+                                        <option value="Últimos 14 dias">Últimos 14 dias</option>
+                                        <option value="Últimos 30 dias">Últimos 30 dias</option>
+                                    </select>
+                                </div>
+                                <div class="form-group full-width">
+                                    <label>Escopo (campanhas a analisar)</label>
+                                    <textarea class="form-group-textarea" id="ac-escopo" placeholder="- [NOME DA CAMPANHA]&#10;- [NOME DA CAMPANHA]&#10;- [TODAS]" oninput="gerarAnaliseContas()"></textarea>
+                                </div>
+                                <div class="form-group full-width">
+                                    <label>Objetivo da análise</label>
+                                    <textarea class="form-group-textarea" id="ac-objetivo" placeholder="Entender o que está bom, o que está ruim e quais ações devem ser feitas." oninput="gerarAnaliseContas()"></textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="preview-box">
+                            <label>Prompt Gerado:</label>
+                            <textarea readonly class="preview-textarea" id="ac-output"></textarea>
+                            <div class="preview-actions">
+                                <button class="btn-copy" onclick="copiarTexto('ac-output')"><i class="fas fa-copy"></i> Copiar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ============================================================ -->
+                <!-- EXECUÇÃO PÓS ANÁLISE -->
+                <!-- ============================================================ -->
+                <div class="slide-content" id="slide-exec-pos-analise">
+                    <div class="pad-card">
+                        <h3><i class="fas fa-clipboard-check"></i> Execução Pós Análise</h3>
+                        <p>Preencha os dados para gerar o prompt de execução das ações aprovadas.</p>
+
+                        <div class="form-section">
+                            <div class="form-section-title"><i class="fas fa-info-circle"></i> Informações</div>
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label>Cliente</label>
+                                    <input type="text" id="epa-cliente" placeholder="Nome do cliente" oninput="gerarExecPosAnalise()">
+                                </div>
+                                <div class="form-group">
+                                    <label>Conta/CA</label>
+                                    <input type="text" id="epa-conta" placeholder="Nome ou ID da conta" oninput="gerarExecPosAnalise()">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-section">
+                            <div class="form-section-title"><i class="fas fa-tasks"></i> Ações aprovadas</div>
+                            <div id="epa-acoes-container"></div>
+                            <template id="epa-acao-template">
+                                <div class="repeating-item">
+                                    <div class="repeating-header">
+                                        <span class="repeating-label">Ação <span class="item-num">01</span></span>
+                                        <button type="button" class="btn-remove" onclick="removerItem(this)"><i class="fas fa-times"></i></button>
+                                    </div>
+                                    <div class="form-group">
+                                        <textarea class="form-group-textarea" placeholder="Descreva a ação aprovada" oninput="gerarExecPosAnalise()" style="min-height:80px;"></textarea>
+                                    </div>
+                                </div>
+                            </template>
+                            <button type="button" class="btn-add" onclick="adicionarAcaoEpa()">
+                                <i class="fas fa-plus"></i> Adicionar Ação
+                            </button>
+                        </div>
+
+                        <div class="preview-box">
+                            <label>Prompt Gerado:</label>
+                            <textarea readonly class="preview-textarea" id="epa-output"></textarea>
+                            <div class="preview-actions">
+                                <button class="btn-copy" onclick="copiarTexto('epa-output')"><i class="fas fa-copy"></i> Copiar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ============================================================ -->
+                <!-- GA4 -->
+                <!-- ============================================================ -->
+                <div class="slide-content" id="slide-ga4">
+                    <div class="pad-card">
+                        <h3><i class="fas fa-chart-pie"></i> GA4</h3>
+                        <p>Preencha os dados para gerar o prompt de configuração/auditoria do GA4.</p>
+
+                        <div class="form-section">
+                            <div class="form-section-title"><i class="fas fa-info-circle"></i> Informações</div>
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label>Cliente</label>
+                                    <input type="text" id="ga4-cliente" placeholder="Nome do cliente" oninput="gerarGA4()">
+                                </div>
+                                <div class="form-group">
+                                    <label>Ação</label>
+                                    <select id="ga4-acao" onchange="gerarGA4()">
+                                        <option value="Auditar">Auditar</option>
+                                        <option value="Criar">Criar</option>
+                                        <option value="Corrigir">Corrigir</option>
+                                        <option value="Validar">Validar</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Conta GA4</label>
+                                    <input type="text" id="ga4-conta" placeholder="Nome ou ID da conta" oninput="gerarGA4()">
+                                </div>
+                                <div class="form-group">
+                                    <label>Propriedade GA4</label>
+                                    <input type="text" id="ga4-propriedade" placeholder="Nome ou ID da propriedade" oninput="gerarGA4()">
+                                </div>
+                                <div class="form-group full-width">
+                                    <label>Site/LP</label>
+                                    <input type="text" id="ga4-site" placeholder="URL" oninput="gerarGA4()">
+                                </div>
+                                <div class="form-group full-width">
+                                    <label>Objetivo</label>
+                                    <textarea class="form-group-textarea" id="ga4-objetivo" placeholder="Ex: validar conversões / configurar evento-chave / auditar tráfego" oninput="gerarGA4()"></textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-section">
+                            <div class="form-section-title"><i class="fas fa-bolt"></i> Eventos envolvidos</div>
+                            <div class="checkbox-grid" id="ga4-eventos">
+                                <label><input type="checkbox" value="generate_lead" onchange="gerarGA4()"> generate_lead</label>
+                                <label><input type="checkbox" value="form_submit" onchange="gerarGA4()"> form_submit</label>
+                                <label><input type="checkbox" value="whatsapp_click" onchange="gerarGA4()"> whatsapp_click</label>
+                                <label><input type="checkbox" value="purchase" onchange="gerarGA4()"> purchase</label>
+                                <label><input type="checkbox" value="outro" onchange="gerarGA4()"> Outro</label>
+                            </div>
+                            <div class="form-group" style="margin-top:0.75rem;">
+                                <input type="text" id="ga4-outro-evento" placeholder="Nome do outro evento" oninput="gerarGA4()">
+                            </div>
+                        </div>
+
+                        <div class="form-section">
+                            <div class="form-section-title"><i class="fas fa-list"></i> O que fazer</div>
+                            <div class="form-group">
+                                <textarea class="form-group-textarea" id="ga4-oqfazer" placeholder="- Validar se os eventos estão chegando no GA4&#10;- Conferir DebugView/Realtime&#10;- ..." oninput="gerarGA4()" style="min-height:100px;"></textarea>
+                            </div>
+                        </div>
+
+                        <div class="preview-box">
+                            <label>Prompt Gerado:</label>
+                            <textarea readonly class="preview-textarea" id="ga4-output"></textarea>
+                            <div class="preview-actions">
+                                <button class="btn-copy" onclick="copiarTexto('ga4-output')"><i class="fas fa-copy"></i> Copiar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ============================================================ -->
+                <!-- TRACKING -->
+                <!-- ============================================================ -->
+                <div class="slide-content" id="slide-tracking">
+                    <div class="pad-card">
+                        <h3><i class="fas fa-code"></i> Tracking / GTM</h3>
+                        <p>Preencha os dados para gerar o prompt de configuração de tracking.</p>
+
+                        <div class="form-section">
+                            <div class="form-section-title"><i class="fas fa-info-circle"></i> Informações</div>
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label>Cliente</label>
+                                    <input type="text" id="tr-cliente" placeholder="Nome do cliente" oninput="gerarTracking()">
+                                </div>
+                                <div class="form-group">
+                                    <label>Ação</label>
+                                    <select id="tr-acao" onchange="gerarTracking()">
+                                        <option value="Auditar">Auditar</option>
+                                        <option value="Criar">Criar</option>
+                                        <option value="Corrigir">Corrigir</option>
+                                        <option value="Validar">Validar</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Container GTM</label>
+                                    <input type="text" id="tr-container" placeholder="GTM-XXXXXXX" oninput="gerarTracking()">
+                                </div>
+                                <div class="form-group full-width">
+                                    <label>Site/LP</label>
+                                    <input type="text" id="tr-site" placeholder="URL" oninput="gerarTracking()">
+                                </div>
+                                <div class="form-group full-width">
+                                    <label>Objetivo</label>
+                                    <textarea class="form-group-textarea" id="tr-objetivo" placeholder="Ex: configurar evento de lead / validar formulário" oninput="gerarTracking()"></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label>Evento principal</label>
+                                    <select id="tr-evento" onchange="gerarTracking()">
+                                        <option value="Form Submit">Form Submit</option>
+                                        <option value="WhatsApp Click">WhatsApp Click</option>
+                                        <option value="Generate Lead">Generate Lead</option>
+                                        <option value="Purchase">Purchase</option>
+                                        <option value="Outro">Outro</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-section">
+                            <div class="form-section-title"><i class="fas fa-list"></i> O que fazer</div>
+                            <div class="form-group">
+                                <textarea class="form-group-textarea" id="tr-oqfazer" placeholder="- [AÇÃO 1]&#10;- [AÇÃO 2]" oninput="gerarTracking()" style="min-height:100px;"></textarea>
+                            </div>
+                        </div>
+
+                        <div class="form-section">
+                            <div class="form-section-title"><i class="fas fa-plug"></i> Plataformas envolvidas</div>
+                            <div class="checkbox-grid" id="tr-plataformas">
+                                <label><input type="checkbox" value="GA4" checked onchange="gerarTracking()"> GA4</label>
+                                <label><input type="checkbox" value="Meta Pixel" onchange="gerarTracking()"> Meta Pixel</label>
+                                <label><input type="checkbox" value="Google Ads" onchange="gerarTracking()"> Google Ads</label>
+                                <label><input type="checkbox" value="outra" onchange="gerarTracking()"> Outra</label>
+                            </div>
+                            <div class="form-group" style="margin-top:0.75rem;">
+                                <input type="text" id="tr-outra-plataforma" placeholder="Nome da outra plataforma" oninput="gerarTracking()">
+                            </div>
+                        </div>
+
+                        <div class="preview-box">
+                            <label>Prompt Gerado:</label>
+                            <textarea readonly class="preview-textarea" id="tr-output"></textarea>
+                            <div class="preview-actions">
+                                <button class="btn-copy" onclick="copiarTexto('tr-output')"><i class="fas fa-copy"></i> Copiar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="static/js/app.js"></script>
+    <script src="static/js/prompts-gt-ia.js"></script>
+    {% include "components/modal-configuracoes.html" %}
+    <script src="static/js/tema.js"></script>
+</body>
+</html>

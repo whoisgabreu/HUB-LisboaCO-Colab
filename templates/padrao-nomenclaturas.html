@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="static/style/styles.css">
+    <link rel="stylesheet" href="static/style/tema-claro.css">
+    {% include "components/icon_title.html" %}
+    <style>
+        .pad-card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+        }
+        .pad-card h3 {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-main);
+        }
+        .pad-card h3 i {
+            color: #d61616;
+        }
+        .preview-box {
+            margin-top: 1.5rem;
+            padding: 1.25rem;
+            background-color: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+        }
+        .preview-box label {
+            font-size: 0.85rem;
+            color: #a0a0a0;
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+        .preview-output {
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            color: var(--text-main);
+            padding: 0.75rem;
+            background-color: rgba(0, 0, 0, 0.3);
+            border-radius: 6px;
+            word-break: break-all;
+            line-height: 1.5;
+            margin-bottom: 0.75rem;
+        }
+        .preview-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+        .preview-actions .btn-copy {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 500;
+            background-color: #d61616;
+            color: #fff;
+            transition: 0.1s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+        .preview-actions .btn-copy:hover {
+            background-color: #911414;
+        }
+        .preview-actions .btn-copy.copied {
+            background-color: #1a9e4b;
+        }
+        .conjunto-mode-select {
+            margin-bottom: 1rem;
+        }
+        .conjunto-mode-select select {
+            padding: 0.5rem 1rem;
+            background-color: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-main);
+            font-size: 0.9rem;
+        }
+        .conjunto-fields {
+            display: none;
+        }
+        .conjunto-fields.active {
+            display: block;
+        }
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding-top: 0.5rem;
+        }
+        .checkbox-group input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: #d61616;
+        }
+        .checkbox-group label {
+            margin-bottom: 0;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    {% include "components/header.html" %}
+    {% include "components/sidebar.html" %}
+
+    <div class="app-container">
+        <div class="sidebar-overlay"></div>
+        <main class="main-container">
+            <section class="welcome-section">
+                <h2>Padrão Nomenclaturas</h2>
+                <p>Gere nomenclaturas padronizadas para campanhas, anúncios e UTMs.</p>
+            </section>
+
+            <div class="tabs-container">
+                <button class="tab-btn active" onclick="switchPadTab(event, 'utm')">
+                    <i class="fas fa-link"></i> UTM
+                </button>
+                <button class="tab-btn" onclick="switchPadTab(event, 'campanha-fb')">
+                    <i class="fab fa-facebook"></i> Campanha Facebook
+                </button>
+                <button class="tab-btn" onclick="switchPadTab(event, 'conjunto-fb')">
+                    <i class="fas fa-layer-group"></i> Conjunto Facebook
+                </button>
+                <button class="tab-btn" onclick="switchPadTab(event, 'anuncio-fb')">
+                    <i class="fas fa-ad"></i> Anúncio Facebook
+                </button>
+                <button class="tab-btn" onclick="switchPadTab(event, 'campanha-ggl')">
+                    <i class="fab fa-google"></i> Campanha Google
+                </button>
+                <button class="tab-btn" onclick="switchPadTab(event, 'grupo-search')">
+                    <i class="fas fa-search"></i> Grupo Google Search
+                </button>
+                <button class="tab-btn" onclick="switchPadTab(event, 'grupo-demais')">
+                    <i class="fas fa-ellipsis-h"></i> Grupo Google Demais
+                </button>
+            </div>
+
+            <div class="slides-wrapper">
+                <!-- UTM -->
+                <div class="slide-content active" id="slide-utm">
+                    <div class="pad-card">
+                        <h3><i class="fas fa-link"></i> UTM Builder</h3>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>URL *</label>
+                                <input type="text" id="utm-url" placeholder="Ex: dsada.com" oninput="gerarUTM()">
+                            </div>
+                            <div class="form-group">
+                                <label>Origem (utm_source) *</label>
+                                <input type="text" id="utm-source" placeholder="Ex: google" oninput="gerarUTM()">
+                            </div>
+                            <div class="form-group">
+                                <label>Mídia (utm_medium) *</label>
+                                <input type="text" id="utm-medium" placeholder="Ex: cpc" oninput="gerarUTM()">
+                            </div>
+                            <div class="form-group">
+                                <label>Campanha (utm_campaign)</label>
+                                <input type="text" id="utm-campaign" placeholder="Ex: suporten1n2n3" oninput="gerarUTM()">
+                            </div>
+                            <div class="form-group">
+                                <label>Termo (utm_term)</label>
+                                <input type="text" id="utm-term" placeholder="Ex: suporte" oninput="gerarUTM()">
+                            </div>
+                            <div class="form-group">
+                                <label>Conteúdo (utm_content)</label>
+                                <input type="text" id="utm-content" placeholder="Ex: {keyword}" oninput="gerarUTM()">
+                            </div>
+                        </div>
+                        <div class="preview-box">
+                            <label>URL Final:</label>
+                            <div class="preview-output" id="utm-output">Preencha os campos obrigatórios (*)</div>
+                            <div class="preview-actions">
+                                <button class="btn-copy" onclick="copiarTexto('utm-output')"><i class="fas fa-copy"></i> Copiar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Campanha Facebook -->
+                <div class="slide-content" id="slide-campanha-fb">
+                    <div class="pad-card">
+                        <h3><i class="fab fa-facebook"></i> Nomenclatura - Campanha Facebook</h3>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Número</label>
+                                <input type="number" id="campfb-numero" value="1" min="1" oninput="gerarCampanhaFB()">
+                            </div>
+                            <div class="form-group checkbox-group">
+                                <input type="checkbox" id="campfb-v4" checked onchange="gerarCampanhaFB()">
+                                <label for="campfb-v4">V4</label>
+                            </div>
+                            <div class="form-group">
+                                <label>Tipo de Campanha</label>
+                                <select id="campfb-tipo" onchange="gerarCampanhaFB()">
+                                    <option value="[CADASTRO]">[CADASTRO]</option>
+                                    <option value="[TRÁFEGO]">[TRÁFEGO]</option>
+                                    <option value="[RECONHECIMENTO]">[RECONHECIMENTO]</option>
+                                    <option value="[ENGAJAMENTO]">[ENGAJAMENTO]</option>
+                                    <option value="[VENDA]">[VENDA]</option>
+                                    <option value="[MENSAGEM]">[MENSAGEM]</option>
+                                </select>
+                            </div>
+                            <div class="form-group full-width">
+                                <label>Nome Livre</label>
+                                <input type="text" id="campfb-nome" placeholder="Ex: E-SAÚDE BRASIL" oninput="gerarCampanhaFB()">
+                            </div>
+                        </div>
+                        <div class="preview-box">
+                            <label>Nomenclatura:</label>
+                            <div class="preview-output" id="campfb-output">1 - [V4] [RECONHECIMENTO] - </div>
+                            <div class="preview-actions">
+                                <button class="btn-copy" onclick="copiarTexto('campfb-output')"><i class="fas fa-copy"></i> Copiar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Conjunto Facebook -->
+                <div class="slide-content" id="slide-conjunto-fb">
+                    <div class="pad-card">
+                        <h3><i class="fas fa-layer-group"></i> Nomenclatura - Conjunto Facebook</h3>
+                        <div class="conjunto-mode-select">
+                            <select id="conjfb-mode" onchange="switchConjuntoMode()">
+                                <option value="publico">Público</option>
+                                <option value="posicionamento">Posicionamento</option>
+                            </select>
+                        </div>
+
+                        <!-- Público mode -->
+                        <div class="conjunto-fields active" id="conjfb-mode-publico">
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label>Fator de Exclusão</label>
+                                    <input type="text" id="conjfb-fator" value="00" oninput="gerarConjuntoFB()">
+                                </div>
+                                <div class="form-group">
+                                    <label>Público</label>
+                                    <select id="conjfb-publico" onchange="gerarConjuntoFB()">
+                                        <option value="F">[F]</option>
+                                        <option value="Q">[Q]</option>
+                                        <option value="M">[M]</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Geolocalização</label>
+                                    <input type="text" id="conjfb-geo" value="BR" placeholder="Ex: BR" oninput="gerarConjuntoFB()">
+                                </div>
+                                <div class="form-group">
+                                    <label>Tipo de Público</label>
+                                    <select id="conjfb-tipo-publico" onchange="gerarConjuntoFB()">
+                                        <option value="ABERTO">[ABERTO]</option>
+                                        <option value="INT">[INT]</option>
+                                        <option value="LAL">[LAL]</option>
+                                        <option value="ENV">[ENV]</option>
+                                        <option value="RMKT">[RMKT]</option>
+                                        <option value="ADV +">[ADV +]</option>
+                                        <option value="MIX">[MIX]</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Sexo</label>
+                                    <select id="conjfb-sexo" onchange="gerarConjuntoFB()">
+                                        <option value="H/M">H/M</option>
+                                        <option value="H">H</option>
+                                        <option value="M">M</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Idade</label>
+                                    <input type="text" id="conjfb-idade" value="21 - 60" placeholder="Ex: 21 - 60" oninput="gerarConjuntoFB()">
+                                </div>
+                                <div class="form-group full-width">
+                                    <label>Nome Personalizado do Público</label>
+                                    <input type="text" id="conjfb-nome" placeholder="Ex: ABERTO ESTADOS" oninput="gerarConjuntoFB()">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Posicionamento mode -->
+                        <div class="conjunto-fields" id="conjfb-mode-posicionamento">
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label>Fator de Exclusão</label>
+                                    <input type="text" id="conjfb-pos-fator" value="00" oninput="gerarConjuntoFB()">
+                                </div>
+                                <div class="form-group">
+                                    <label>Público</label>
+                                    <select id="conjfb-pos-publico" onchange="gerarConjuntoFB()">
+                                        <option value="ABERTO">ABERTO</option>
+                                        <option value="SEGMENTADO">SEGMENTADO</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Plataforma</label>
+                                    <select id="conjfb-plataforma" onchange="gerarConjuntoFB()">
+                                        <option value="FB">FB</option>
+                                        <option value="IG">IG</option>
+                                        <option value="FB/IG">FB/IG</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Posicionamento</label>
+                                    <select id="conjfb-posicionamento" onchange="gerarConjuntoFB()">
+                                        <option value="AUTO">AUTO</option>
+                                        <option value="FEED">FEED</option>
+                                        <option value="STORIES">STORIES</option>
+                                        <option value="REELS">REELS</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Sexo</label>
+                                    <select id="conjfb-pos-sexo" onchange="gerarConjuntoFB()">
+                                        <option value="H/M">H/M</option>
+                                        <option value="H">H</option>
+                                        <option value="M">M</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Idade</label>
+                                    <input type="text" id="conjfb-pos-idade" value="18-65+" placeholder="Ex: 18-65+" oninput="gerarConjuntoFB()">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="preview-box">
+                            <label>Nomenclatura:</label>
+                            <div class="preview-output" id="conjfb-output">00 - [F] [BR] [ABERTO] [H/M] [21 - 60] - </div>
+                            <div class="preview-actions">
+                                <button class="btn-copy" onclick="copiarTexto('conjfb-output')"><i class="fas fa-copy"></i> Copiar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Anúncio Facebook -->
+                <div class="slide-content" id="slide-anuncio-fb">
+                    <div class="pad-card">
+                        <h3><i class="fas fa-ad"></i> Nomenclatura - Anúncio Facebook</h3>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Número</label>
+                                <input type="number" id="anuncfb-numero" value="1" min="1" oninput="gerarAnuncioFB()">
+                            </div>
+                            <div class="form-group">
+                                <label>Formato</label>
+                                <select id="anuncfb-formato" onchange="gerarAnuncioFB()">
+                                    <option value="[PUBLICAÇÃO]">[PUBLICAÇÃO]</option>
+                                    <option value="[CATALOGO]">[CATALOGO]</option>
+                                    <option value="[VIDEO]">[VIDEO]</option>
+                                    <option value="[ESTATICO]">[ESTATICO]</option>
+                                    <option value="[CARROSSEL]">[CARROSSEL]</option>
+                                    <option value="[MOTION]">[MOTION]</option>
+                                </select>
+                            </div>
+                            <div class="form-group full-width">
+                                <label>Nome Livre</label>
+                                <input type="text" id="anuncfb-nome" placeholder="Ex: QUERO FALAR COM VOCÊ DONO" oninput="gerarAnuncioFB()">
+                            </div>
+                        </div>
+                        <div class="preview-box">
+                            <label>Nomenclatura:</label>
+                            <div class="preview-output" id="anuncfb-output">1 [PUBLICAÇÃO] - </div>
+                            <div class="preview-actions">
+                                <button class="btn-copy" onclick="copiarTexto('anuncfb-output')"><i class="fas fa-copy"></i> Copiar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Campanha Google -->
+                <div class="slide-content" id="slide-campanha-ggl">
+                    <div class="pad-card">
+                        <h3><i class="fab fa-google"></i> Nomenclatura - Campanha Google</h3>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Número</label>
+                                <input type="number" id="campggl-numero" value="1" min="1" oninput="gerarCampanhaGGL()">
+                            </div>
+                            <div class="form-group checkbox-group">
+                                <input type="checkbox" id="campggl-v4" checked onchange="gerarCampanhaGGL()">
+                                <label for="campggl-v4">V4</label>
+                            </div>
+                            <div class="form-group">
+                                <label>Tipo de Campanha</label>
+                                <select id="campggl-tipo" onchange="gerarCampanhaGGL()">
+                                    <option value="[SHOPPING]">[SHOPPING]</option>
+                                    <option value="[SEARCH]">[SEARCH]</option>
+                                    <option value="[PMAX]">[PMAX]</option>
+                                    <option value="[YOUTUBE]">[YOUTUBE]</option>
+                                    <option value="[DEMAND GEN]">[DEMAND GEN]</option>
+                                    <option value="[DISPLAY]">[DISPLAY]</option>
+                                    <option value="[APP] [INSTALAÇÃO]">[APP] [INSTALAÇÃO]</option>
+                                    <option value="[APP] [ENGAJAMENTO]">[APP] [ENGAJAMENTO]</option>
+                                    <option value="[APP] [PRÉ-REGISTRO]">[APP] [PRÉ-REGISTRO]</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Objetivo de Campanha</label>
+                                <select id="campggl-objetivo" onchange="gerarCampanhaGGL()">
+                                    <option value="[VENDAS]">[VENDAS]</option>
+                                    <option value="[LEADS]">[LEADS]</option>
+                                    <option value="[TRAFEGO]">[TRAFEGO]</option>
+                                    <option value="[APLICATIVO]">[APLICATIVO]</option>
+                                    <option value="[RECONHECIMENTO]">[RECONHECIMENTO]</option>
+                                    <option value="[VISITAS LOCAIS]">[VISITAS LOCAIS]</option>
+                                    <option value="[SEM ORIENTAÇÃO]">[SEM ORIENTAÇÃO]</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Geolocalização</label>
+                                <input type="text" id="campggl-geo" placeholder="Ex: Fort Lauderdale" oninput="gerarCampanhaGGL()">
+                            </div>
+                            <div class="form-group full-width">
+                                <label>Nome Livre</label>
+                                <input type="text" id="campggl-nome" placeholder="Ex: Concorrentes" oninput="gerarCampanhaGGL()">
+                            </div>
+                        </div>
+                        <div class="preview-box">
+                            <label>Nomenclatura:</label>
+                            <div class="preview-output" id="campggl-output">1 - [V4] [SEARCH] [LEADS] - </div>
+                            <div class="preview-actions">
+                                <button class="btn-copy" onclick="copiarTexto('campggl-output')"><i class="fas fa-copy"></i> Copiar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Grupo Google Search -->
+                <div class="slide-content" id="slide-grupo-search">
+                    <div class="pad-card">
+                        <h3><i class="fas fa-search"></i> Nomenclatura - Grupo Google Search</h3>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Referencial do GA</label>
+                                <input type="text" id="grpsearch-ref" value="00" oninput="gerarGrupoSearch()">
+                            </div>
+                            <div class="form-group">
+                                <label>Correspondência da Palavra</label>
+                                <select id="grpsearch-corresp" onchange="gerarGrupoSearch()">
+                                    <option value="AMPLA">AMPLA</option>
+                                    <option value="FRASE">FRASE</option>
+                                    <option value="EXATA">EXATA</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Sexo</label>
+                                <select id="grpsearch-sexo" onchange="gerarGrupoSearch()">
+                                    <option value="H/M">H/M</option>
+                                    <option value="H">H</option>
+                                    <option value="M">M</option>
+                                </select>
+                            </div>
+                            <div class="form-group full-width">
+                                <label>Nome Personalizado</label>
+                                <input type="text" id="grpsearch-nome" placeholder="Ex: Locação Galpão Lonado" oninput="gerarGrupoSearch()">
+                            </div>
+                        </div>
+                        <div class="preview-box">
+                            <label>Nomenclatura:</label>
+                            <div class="preview-output" id="grpsearch-output">00 - [AMPLA] [H/M] - </div>
+                            <div class="preview-actions">
+                                <button class="btn-copy" onclick="copiarTexto('grpsearch-output')"><i class="fas fa-copy"></i> Copiar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Grupo Google Demais -->
+                <div class="slide-content" id="slide-grupo-demais">
+                    <div class="pad-card">
+                        <h3><i class="fas fa-ellipsis-h"></i> Nomenclatura - Grupo Google Demais</h3>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Referencial do GA</label>
+                                <input type="text" id="grpdemais-ref" value="00" oninput="gerarGrupoDemais()">
+                            </div>
+                            <div class="form-group">
+                                <label>Público Base</label>
+                                <select id="grpdemais-publico" onchange="gerarGrupoDemais()">
+                                    <option value="KW">KW</option>
+                                    <option value="LISTA">LISTA</option>
+                                    <option value="ENV YOUTUBE">ENV YOUTUBE</option>
+                                    <option value="CANAIS YOUTUBE">CANAIS YOUTUBE</option>
+                                    <option value="INT & INFO">INT & INFO</option>
+                                    <option value="GA4">GA4</option>
+                                    <option value="SITES SEMELHANTES">SITES SEMELHANTES</option>
+                                    <option value="APPS SEMELHANTES">APPS SEMELHANTES</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Detalhes do Público</label>
+                                <input type="text" id="grpdemais-detalhes" placeholder="Ex: INFANTIS" oninput="gerarGrupoDemais()">
+                            </div>
+                            <div class="form-group">
+                                <label>Sexo</label>
+                                <select id="grpdemais-sexo" onchange="gerarGrupoDemais()">
+                                    <option value="H/M">H/M</option>
+                                    <option value="H">H</option>
+                                    <option value="M">M</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Idade</label>
+                                <input type="text" id="grpdemais-idade" placeholder="Ex: 18-55" oninput="gerarGrupoDemais()">
+                            </div>
+                            <div class="form-group full-width">
+                                <label>Nome Personalizado</label>
+                                <input type="text" id="grpdemais-nome" placeholder="Ex: Locação Galpão Lonado" oninput="gerarGrupoDemais()">
+                            </div>
+                        </div>
+                        <div class="preview-box">
+                            <label>Nomenclatura:</label>
+                            <div class="preview-output" id="grpdemais-output">00 - [CANAIS YOUTUBE] [] [H/M] [] - </div>
+                            <div class="preview-actions">
+                                <button class="btn-copy" onclick="copiarTexto('grpdemais-output')"><i class="fas fa-copy"></i> Copiar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="static/js/app.js"></script>
+    <script src="static/js/padrao-nomenclaturas.js"></script>
+    {% include "components/modal-configuracoes.html" %}
+    <script src="static/js/tema.js"></script>
+</body>
+</html>

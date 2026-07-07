@@ -84,6 +84,24 @@
         </div>
         {% endif %}
 
+        <!-- Grupo Ferramentas -->
+        <div class="nav-group">
+            <div class="nav-group-header">
+                <span>Ferramentas</span>
+                <i class="fas fa-chevron-right toggle-icon"></i>
+            </div>
+            <div class="nav-group-items">
+                <a href="/padrao-nomenclaturas" class="nav-item">
+                    <i class="fas fa-tag"></i>
+                    <span>Padrão Nomenclaturas</span>
+                </a>
+                <a href="/prompts-gt-ia" class="nav-item">
+                    <i class="fas fa-robot"></i>
+                    <span>Prompts GT IA</span>
+                </a>
+            </div>
+        </div>
+
         <!-- Grupo Administração -->
         {% if session.nivel_acesso == "Admin" %}
         <div class="nav-group">

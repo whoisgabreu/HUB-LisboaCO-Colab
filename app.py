@@ -38,7 +38,8 @@ from services.automacao_service import AutomacaoService
 
 
 app = Flask(__name__)
-app.secret_key = os.getenv("SECRET_KEY") or os.urandom(10).hex()
+app.secret_key = os.getenv("SECRET_KEY")
+## oros.urandom(10).hex()
 app.permanent_session_lifetime = timedelta(days=7)
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
@@ -2022,6 +2023,18 @@ def painel_ranking():
 @check_session
 def vendas():
     return render_template("vendas.html")
+
+
+@app.route("/padrao-nomenclaturas", methods=["GET"])
+@check_session
+def padrao_nomenclaturas():
+    return render_template("padrao-nomenclaturas.html")
+
+
+@app.route("/prompts-gt-ia", methods=["GET"])
+@check_session
+def prompts_gt_ia():
+    return render_template("prompts-gt-ia.html")
 
 
 @app.route("/operacao", methods=["GET"])
