@@ -1658,6 +1658,9 @@ def hub_projetos():
     onetime_data = _buscar_projetos_db(Projeto, email, squad, status='Onetime')
     onetime = _agrupar_por_cliente(onetime_data)
 
+    onboarding_data = _buscar_projetos_db(Projeto, email, squad, status='Onboarding')
+    onboarding = _agrupar_por_cliente(onboarding_data)
+
     inativos_data = _buscar_projetos_db(Projeto, email, squad, status='Inativo')
     inativos = _agrupar_por_cliente(inativos_data)
 
@@ -1665,6 +1668,7 @@ def hub_projetos():
         "hub-projetos.html",
         clientes_ativos=ativos,
         clientes_onetime=onetime,
+        clientes_onboarding=onboarding,
         clientes_inativos=inativos,
         squads=squads
     )
@@ -4307,6 +4311,7 @@ def api_listar_projetos():
     # Busca dados locais
     ativos = _buscar_projetos_db(Projeto, email, squad, status='Ativo')
     onetime = _buscar_projetos_db(Projeto, email, squad, status='Onetime')
+    onboarding = _buscar_projetos_db(Projeto, email, squad, status='Onboarding')
     inativos = _buscar_projetos_db(Projeto, email, squad, status='Inativo')
     
     # Formata para ser compatível com o que atualizarCards espera (baseado no formato n8n legado se necessário, 
@@ -4314,6 +4319,7 @@ def api_listar_projetos():
     return jsonify({
         "ativos": [{"projetos": p} for p in ativos],
         "onetime": [{"projetos": p} for p in onetime],
+        "onboarding": [{"projetos": p} for p in onboarding],
         "inativos": [{"projetos": p} for p in inativos]
     })
 

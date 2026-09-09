@@ -143,7 +143,7 @@ const kanbanConfig = {
                         <div class="form-group-inline" style="flex:1.2;">
                             <label>Status do Projeto *</label>
                             <div class="status-pills" data-findex="${fIndex}">
-                                ${['Ativo', 'Onetime', 'Inativo'].map(s => `
+                                ${['Ativo', 'Onetime', 'Inativo', 'Onboarding'].map(s => `
                                     <button type="button" class="status-pill status-pill-${s.toLowerCase()} ${fase.status_do_projeto === s ? 'active' : ''}" data-findex="${fIndex}" data-status="${s}">
                                         <span class="status-pill-dot"></span>${s}
                                     </button>

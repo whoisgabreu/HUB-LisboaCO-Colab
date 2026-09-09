@@ -1797,6 +1797,11 @@ body.kanban-page .main-content {
     border-color: rgba(148, 163, 184, 0.45);
     color: #94a3b8;
 }
+.status-pill-onboarding.active {
+    background: rgba(245, 158, 11, 0.15);
+    border-color: rgba(245, 158, 11, 0.45);
+    color: #f59e0b;
+}
 
 /* ═══ HEADER DO MODAL DO CARD — BADGE DA FASE ═══ */
 .modal-title-wrap {

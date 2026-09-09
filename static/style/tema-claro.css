@@ -1635,6 +1635,11 @@ body.tema-claro .status-pill-inativo.active {
     border-color: rgba(148, 163, 184, 0.5) !important;
     color: #475569 !important;
 }
+body.tema-claro .status-pill-onboarding.active {
+    background: rgba(245, 158, 11, 0.12) !important;
+    border-color: rgba(245, 158, 11, 0.45) !important;
+    color: #d97706 !important;
+}
 
 /* Badge da fase no modal do card — tema claro */
 body.tema-claro .modal-title-text {

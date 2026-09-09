@@ -360,8 +360,8 @@ class KanbanService:
             status = fase.get('status_do_projeto')
             if not status:
                 raise ValueError(f"A fase '{fase.get('nome', f'Fase {i+1}')}' não possui um status de projeto definido.")
-            if status not in ['Ativo', 'Onetime', 'Inativo']:
-                raise ValueError(f"A fase '{fase.get('nome')}' possui um status de projeto inválido: '{status}'. Os valores permitidos são: Ativo, Onetime, Inativo.")
+            if status not in ['Ativo', 'Onetime', 'Inativo', 'Onboarding']:
+                raise ValueError(f"A fase '{fase.get('nome')}' possui um status de projeto inválido: '{status}'. Os valores permitidos são: Ativo, Onetime, Inativo, Onboarding.")
 
         stmt = select(KanbanConfig).where(KanbanConfig.slug == slug)
         result = self.db.execute(stmt).scalar_one_or_none()

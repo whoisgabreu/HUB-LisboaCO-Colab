@@ -106,7 +106,7 @@ function updateTabCounts() {
     const squadFilterEl = document.getElementById('squadFilter');
     const squadValue = squadFilterEl ? squadFilterEl.value.toLowerCase().trim() : '';
 
-    ['ativos', 'onetime', 'inativos'].forEach(slideName => {
+    ['ativos', 'onetime', 'onboarding', 'inativos'].forEach(slideName => {
         const slide = document.getElementById(`slide-${slideName}`);
         if (!slide) return;
 
@@ -592,10 +592,11 @@ function atualizarCards(dados) {
     const tiposMap = {
         'ativos': 'ativo',
         'onetime': 'onetime', 
+        'onboarding': 'onboarding',
         'inativos': 'inativo'
     };
 
-    ['ativos', 'onetime', 'inativos'].forEach(tipoSlide => {
+    ['ativos', 'onetime', 'onboarding', 'inativos'].forEach(tipoSlide => {
         const slide = document.getElementById(`slide-${tipoSlide}`);
         if (!slide) return;
 
@@ -623,7 +624,7 @@ function atualizarCards(dados) {
             grid.innerHTML = `
                 <div class="empty-state">
                     <i class="fa-solid fa-inbox"></i>
-                    <h3>Nenhum cliente ${tipoSlide === 'onetime' ? 'one-time' : tipoSlide}</h3>
+                    <h3>Nenhum cliente ${tipoSlide === 'onetime' ? 'one-time' : tipoSlide === 'onboarding' ? 'em onboarding' : tipoSlide}</h3>
                 </div>
             `;
             return;

@@ -63,6 +63,11 @@
                         One-Time
                         <span class="tab-count">{{ clientes_onetime|length }}</span>
                     </button>
+                    <button class="tab-btn" onclick="switchTab(event, 'onboarding')">
+                        <i class="fa-solid fa-arrow-right-to-bracket"></i>
+                        Onboarding
+                        <span class="tab-count">{{ clientes_onboarding|length }}</span>
+                    </button>
                     <button class="tab-btn" onclick="switchTab(event, 'inativos')">
                         <i class="fa-solid fa-archive"></i>
                         Inativos
@@ -168,6 +173,45 @@
                             <div class="empty-state">
                                 <i class="fa-solid fa-inbox"></i>
                                 <h3>Nenhum cliente one-time</h3>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- SLIDE ONBOARDING -->
+                    <div class="slide-content" id="slide-onboarding">
+                        <div class="projects-grid">
+                            {% if clientes_onboarding %}
+                            {% for cliente_nome, projetos in clientes_onboarding.items() %}
+                            <div class="project-card" data-cliente="{{ cliente_nome|lower }}"
+                                data-projetos='{{ projetos|tojson|safe }}' data-tipo="onboarding"
+                                data-squad="{{ projetos[0].squad_atribuida|lower if projetos[0].squad_atribuida else '' }}"
+                                onclick="openClientModal(this)">
+                                <div class="project-header">
+                                    <div class="project-icon">
+                                        <i class="fa-solid fa-building"></i>
+                                    </div>
+                                </div>
+                                <h3 class="project-title">{{ cliente_nome|title }}</h3>
+                                <p class="project-description">
+                                    Squad: {{ projetos[0].squad_atribuida if projetos[0].squad_atribuida else 'N/A' }}
+                                </p>
+                                <div class="project-meta">
+                                    <span>
+                                        <i class="fa-solid fa-calendar"></i>
+                                        {{ projetos[0].data_de_inicio | format_date }}
+                                    </span>
+                                    <span>
+                                        <i class="fa-solid fa-layer-group"></i>
+                                        {{ projetos|length }} projetos
+                                    </span>
+                                </div>
+                            </div>
+                            {% endfor %}
+                            {% else %}
+                            <div class="empty-state">
+                                <i class="fa-solid fa-inbox"></i>
+                                <h3>Nenhum cliente em onboarding</h3>
                             </div>
                             {% endif %}
                         </div>
