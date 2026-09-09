@@ -5306,6 +5306,12 @@ def public_form_submit(token):
 
         try:
             projeto = service.create_card_in_phase(slug, fase, nome, dados, usuario_email)
+            _disparar_automacoes_card_criado(
+                projeto.pipefy_id, projeto.nome,
+                fase.get("id", ""), fase.get("nome", ""),
+                projeto.pipefy_id, projeto.nome,
+                projeto.data_de_inicio.isoformat() if projeto.data_de_inicio else None
+            )
             return render_template("form_card.html", sucesso=True, fase=fase, board_nome=service.get_board_config(slug).get("nome", slug))
         except Exception as e:
             config = service.get_board_config(slug)
