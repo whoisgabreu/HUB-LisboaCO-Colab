@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, Boolean, Date, Text, DECIMAL, BigInteger, FetchedValue, DateTime, UniqueConstraint, ForeignKey
+from sqlalchemy import Column, Integer, String, Boolean, Date, Text, DECIMAL, BigInteger, FetchedValue, DateTime, UniqueConstraint, ForeignKey, text
 from sqlalchemy.dialects.postgresql import JSONB
 from database import Base
 
@@ -390,7 +390,7 @@ class AutomacaoLog(Base):
     http_status = Column(Integer)
     status = Column(String(20), nullable=False)  # 'success' ou 'failure'
     error_message = Column(Text)
-    executed_at = Column(DateTime, server_default=FetchedValue())
+    executed_at = Column(DateTime, server_default=text("(now() AT TIME ZONE 'America/Sao_Paulo')"))
 
 
 class UserFace(Base):
