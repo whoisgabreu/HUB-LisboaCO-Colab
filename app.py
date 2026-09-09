@@ -5262,10 +5262,6 @@ def public_form_submit(token):
     if not _check_rate_limit(ip):
         return render_template("form_card.html", erro="Limite de envios atingido. Tente novamente mais tarde.", fase=None, board_nome=None)
 
-    honeypot = request.form.get("_hp", "")
-    if honeypot:
-        return render_template("form_card.html", erro="Envio suspeito.", fase=None, board_nome=None)
-
     with Session() as db:
         service = KanbanService(db)
         slug, fase = service.find_phase_by_token(token)

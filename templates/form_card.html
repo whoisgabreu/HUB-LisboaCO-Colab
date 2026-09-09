@@ -229,7 +229,6 @@
         .success-msg p { color: var(--ink-soft); font-size: 0.92rem; line-height: 1.5; }
         .success-msg p strong { color: var(--ink); }
 
-        .hp-field { position: absolute; left: -9999px; opacity: 0; height: 0; overflow: hidden; }
         .form-footer {
             display: flex;
             align-items: center;
@@ -292,9 +291,6 @@
             </div>
             <div class="form-body">
                 <form method="POST" action="/form-card/{{ token }}">
-                    <div class="hp-field">
-                        <input type="text" name="_hp" tabindex="-1" autocomplete="off">
-                    </div>
                     <div class="form-group">
                         <label>Nome do Projeto <span class="required">*</span></label>
                         <input type="text" name="nome_projeto" class="form-input" required placeholder="Ex: Cliente XYZ">
