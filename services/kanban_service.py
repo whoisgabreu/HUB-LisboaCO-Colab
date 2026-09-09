@@ -18,7 +18,8 @@ class KanbanService:
             "produto_contratado", "data_de_inicio", "cohort", 
             "meta_account_id", "google_account_id", "url_webhook_gchat",
             "step", "informacoes_gerais", "orcamento_midia_meta", 
-            "orcamento_midia_google", "data_fim", "ekyte_workspace"
+            "orcamento_midia_google", "data_fim", "ekyte_workspace",
+            "responsavel_projeto"
         ]
 
     def get_board_config(self, slug: str = "fluxo-projetos") -> Optional[Dict[str, Any]]:

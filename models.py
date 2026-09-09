@@ -71,6 +71,7 @@ class Projeto(Base):
     notas = Column(JSONB)
     ekyte_workspace = Column(String(2500))
     status = Column(String(50))
+    responsavel_projeto = Column(String(50)) # E-mail do Gestor de Projeto
     kanban_dados = Column(JSONB) # Dados dinâmicos do Kanban
 
 class RemuneracaoCargo(Base):

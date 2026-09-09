@@ -281,6 +281,7 @@ function openProjectModal(projectData, tipoProjeto) {
     document.getElementById('modal_fase_pipefy').value = projectData.fase_do_pipefy || '';
     document.getElementById('modal_webhook_url').value = projectData.url_webhook_gchat || '';
     document.getElementById('modal_ekyte_workspace').value = projectData.ekyte_workspace || '';
+    loadResponsavelOptions(projectData.responsavel_projeto || '');
     
     // Campo: Contrato Variável
     const checkboxContratoVar = document.getElementById('modal_contrato_variavel');
@@ -716,16 +717,20 @@ async function updateProject(event) {
         });
 
         if (response.ok) {
-            if (window.showToast) window.showToast("Projeto e vínculos atualizados com sucesso!", "success");
-            await recarregarDados();
-            closeProjectModal();
+            if (window.showToast) window.showToast("Projeto salvo com sucesso!", "success");
+            window.location.href = `/hub-projetos?card_id=${data.pipefy_id}`;
         } else {
-            const err = await response.json();
-            alert(`Erro ao salvar localmente: ${err.error || 'Erro desconhecido'}`);
+            const err = await response.json().catch(() => ({}));
+            alert(`Erro ao salvar: ${err.error || 'Erro desconhecido'}`);
         }
     } catch (error) {
         console.error('Erro ao atualizar projeto:', error);
-        alert('Ocorreu um erro ao salvar as alterações.');
+        const pipefyId = data?.pipefy_id;
+        if (pipefyId) {
+            window.location.href = `/hub-projetos?card_id=${pipefyId}`;
+        } else {
+            alert('Ocorreu um erro ao salvar as alterações.');
+        }
     }
 }
 
@@ -955,6 +960,28 @@ async function loadActiveInvestors() {
         });
     } catch (error) {
         console.error('Erro ao carregar investidores ativos:', error);
+    }
+}
+
+async function loadResponsavelOptions(selectedEmail = '') {
+    try {
+        const response = await fetch('/api/admin/investidores-ativos');
+        const investidores = await response.json();
+
+        const select = document.getElementById('modal_responsavel_projeto');
+        if (!select) return;
+
+        select.innerHTML = '<option value="">Selecione o responsável...</option>';
+        investidores.forEach(inv => {
+            const option = document.createElement('option');
+            option.value = inv.email;
+            option.textContent = `${inv.nome} (${inv.email})`;
+            select.appendChild(option);
+        });
+
+        select.value = selectedEmail;
+    } catch (error) {
+        console.error('Erro ao carregar responsáveis:', error);
     }
 }
 

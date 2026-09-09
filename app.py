@@ -1160,6 +1160,7 @@ def _projeto_to_dict(projeto):
         "data_fim": projeto.data_fim.isoformat() if projeto.data_fim else None,
         "url_webhook_gchat": projeto.url_webhook_gchat,
         "ekyte_workspace": projeto.ekyte_workspace,
+        "responsavel_projeto": projeto.responsavel_projeto,
         "extra": projeto.extra or {},
         "notas": projeto.notas or {},
         # Flag de contrato variável — lida do campo JSONB extra
@@ -4062,7 +4063,8 @@ def update_projeto_local(pipefy_id):
                 "step": "Fase",
                 "informacoes_gerais": "Informações Gerais",
                 "orcamento_midia_meta": "Orçamento Meta",
-                "orcamento_midia_google": "Orçamento Google"
+                "orcamento_midia_google": "Orçamento Google",
+                "responsavel_projeto": "Responsável pelo Projeto"
             }
 
             for field, label in fields_to_track.items():
@@ -4072,10 +4074,15 @@ def update_projeto_local(pipefy_id):
                         new_val = int(new_val)
                     
                     old_val = getattr(projeto, field)
-                    if str(old_val) != str(new_val):
+                    old_norm = str(old_val) if old_val not in (None, "", "None") else ""
+                    new_norm = str(new_val) if new_val not in (None, "", "None") else ""
+                    if isinstance(old_val, (int, float)):
+                        if new_norm in ("", "0") and old_norm in ("", "0"):
+                            new_norm = old_norm
+                    if old_norm != new_norm:
                         changes[field] = {
-                            "antes": str(old_val) if old_val is not None else "",
-                            "depois": str(new_val)
+                            "antes": old_norm,
+                            "depois": new_norm
                         }
 
             # Atualiza campos básicos do projeto
@@ -4093,6 +4100,7 @@ def update_projeto_local(pipefy_id):
             if "step" in data: projeto.step = data["step"]
             if "informacoes_gerais" in data: projeto.informacoes_gerais = data["informacoes_gerais"]
             if "ekyte_workspace" in data: projeto.ekyte_workspace = data["ekyte_workspace"]
+            if "responsavel_projeto" in data: projeto.responsavel_projeto = data["responsavel_projeto"]
             
             # Orçamentos: Resetar se for inativo, senão atualizar
             if is_inativo or data.get("tipo_projeto") == "inativo":
