@@ -300,7 +300,7 @@ const kanbanConfig = {
                                             <span class="field-sync-arrow"><i class="fas fa-arrow-right-long"></i></span>
                                             <select class="modern-select field-mapping-select field-mapping-compact" data-findex="${fIndex}" data-cindex="${cIndex}">
                                                 <option value="">Selecione a coluna...</option>
-                                                ${["nome", "documento", "fee", "moeda", "squad_atribuida", "produto_contratado", "data_de_inicio", "cohort", "meta_account_id", "google_account_id", "url_webhook_gchat", "step", "informacoes_gerais", "orcamento_midia_meta", "orcamento_midia_google", "data_fim", "ekyte_workspace"].map(col => `
+                                                ${["nome", "documento", "fee", "moeda", "squad_atribuida", "produto_contratado", "data_de_inicio", "cohort", "meta_account_id", "google_account_id", "url_webhook_gchat", "step", "informacoes_gerais", "orcamento_midia_meta", "orcamento_midia_google", "data_fim", "ekyte_workspace", "responsavel_projeto"].map(col => `
                                                     <option value="${col}" ${col === campo.mapeamento_coluna ? 'selected' : ''}>${col}</option>
                                                 `).join('')}
                                             </select>
