@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+{% from "_macros.html" import kpi, duracao, th %}
+
+{% block content %}
+{% set status_info = {
+  'ativo': ['Ativo', 'text-bg-success'],
+  'semi_cliente': ['Semi · sem cliente', 'text-bg-warning'],
+  'semi_equipe': ['Semi · sem equipe', 'text-bg-warning'],
+  'inativo': ['Inativo', 'text-bg-danger'],
+  'nunca': ['Nunca ativo', 'text-bg-secondary']
+} %}
+
+<div class="row g-3 mb-3">
+  {{ kpi('Críticos', kpi_contagem.criticos, desc='Alertas de severidade crítica (inatividade, silêncio, nunca ativo).', icon='bi-exclamation-octagon', cor='red') }}
+  {{ kpi('Avisos', kpi_contagem.avisos, desc='Alertas de atenção (semi-inatividade, concentração, sem resposta, mapeamento).', icon='bi-exclamation-triangle', cor='orange') }}
+  {{ kpi('Grupos inativos', kpi_contagem.grupos_inativos, desc='Grupos monitorados nunca ativos ou sem interação no período.', icon='bi-hourglass-split', cor='purple') }}
+  {{ kpi('Sem resposta', kpi_contagem.sem_resposta, desc='Mensagens de cliente sem resposta da equipe.', icon='bi-x-circle', cor='red') }}
+  {{ kpi('Não mapeados', kpi_contagem.nao_mapeados, desc='Remetentes fora do equipe.json e clientes.json.', icon='bi-person-x', cor='orange') }}
+  <div class="col"></div>
+</div>
+
+<div class="card mb-3">
+  <div class="card-body">
+    <h6 class="card-title">Pontos de atenção</h6>
+    <div class="table-responsive">
+      <table class="table table-sm table-hover align-middle">
+        <thead>
+          <tr>
+            {{ th('Nível', 'Severidade do alerta.') }}
+            {{ th('Tipo', 'Categoria: Inatividade, Concentração, Sem resposta, Silêncio, Mapeamento.') }}
+            {{ th('Grupo / Item') }}
+            {{ th('Descrição') }}
+            {{ th('Ação') }}
+          </tr>
+        </thead>
+        <tbody>
+          {% for a in alerts %}
+          <tr>
+            <td><span class="badge {{ 'text-bg-danger' if a.nivel == 'danger' else 'text-bg-warning' }}">{{ 'Crítico' if a.nivel == 'danger' else 'Atenção' }}</span></td>
+            <td>{{ a.tipo }}</td>
+            <td>{{ a.item }}</td>
+            <td>{{ a.texto }}</td>
+            <td><a class="btn btn-sm btn-outline-secondary" href="{{ a.link }}">Ver <i class="bi bi-box-arrow-up-right"></i></a></td>
+          </tr>
+          {% else %}
+          <tr><td colspan="5" class="text-muted">Nenhum ponto crítico no período filtrado.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<ul class="nav nav-tabs mb-3" role="tablist">
+  <li class="nav-item"><button class="nav-link active" id="tabQualidade-btn" data-bs-toggle="tab" data-bs-target="#tabQualidade" type="button" role="tab">Qualidade & Mapeamento</button></li>
+  <li class="nav-item"><button class="nav-link" id="tabAtividade-btn" data-bs-toggle="tab" data-bs-target="#tabAtividade" type="button" role="tab">Atividade por grupo</button></li>
+  <li class="nav-item"><button class="nav-link" id="tabMensagens-btn" data-bs-toggle="tab" data-bs-target="#tabMensagens" type="button" role="tab">Mensagens</button></li>
+</ul>
+
+<div class="tab-content">
+  <div class="tab-pane fade show active" id="tabQualidade" role="tabpanel">
+    <div class="row g-3">
+      <div class="col-md-6">
+        <div class="card h-100">
+          <div class="card-body">
+            <h6 class="card-title">Qualidade dos dados</h6>
+            <ul class="list-unstyled mb-0">
+              <li>Mensagens sem texto (eventos de sistema): <strong>{{ qualidade.sem_texto }}</strong></li>
+              <li>Sem grupo: <strong>{{ qualidade.sem_grupo }}</strong></li>
+              <li>Sem data: <strong>{{ qualidade.sem_data }}</strong></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="card h-100">
+          <div class="card-body">
+            <h6 class="card-title">Remetentes não mapeados</h6>
+            <p class="text-muted small">Fora do <code>equipe.json</code> e <code>clientes.json</code> — tratados como cliente.</p>
+            {% if nao_mapeados %}
+            <p class="mb-2"><strong>{{ nao_mapeados|length }}</strong> remetente(s) para classificar.</p>
+            <a class="btn btn-sm btn-primary" href="{{ url_for('dashboard_grupos.equipe_view') }}">Classificar em Equipe &amp; Clientes <i class="bi bi-box-arrow-up-right"></i></a>
+            {% else %}
+            <div class="text-muted">Todos os remetentes mapeados.</div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-pane fade" id="tabAtividade" role="tabpanel">
+    <div class="card">
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table table-sm table-hover align-middle">
+            <thead>
+              <tr>
+                {{ th('Grupo') }}
+                {{ th('Última mensagem') }}
+                {{ th('Por', 'Quem enviou a última mensagem do grupo.') }}
+                {{ th('Horas desde a última (no período)', 'Tempo sem atividade no grupo, relativo à última mensagem do período filtrado.') }}
+                {{ th('Status', 'Classificação segundo o limiar de inatividade.') }}
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in ultima_atividade %}
+              {% set st = status_por_grupo.get(item.grupo) %}
+              {% set si = status_info[st.status] if st else ['—', 'text-bg-secondary'] %}
+              <tr>
+                <td><a href="{{ url_for('dashboard_grupos.sla', grupo=item.grupo) }}">{{ item.grupo }}</a></td>
+                <td>{{ item.ts.strftime('%d/%m/%Y %H:%M') }}</td>
+                <td>{{ item.nome }}</td>
+                <td>{{ ((resumo.fim - item.ts).total_seconds() / 3600)|round(1) }}h</td>
+                <td><span class="badge {{ si[1] }}">{{ si[0] }}</span></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-pane fade" id="tabMensagens" role="tabpanel">
+    <div class="card">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <h6 class="card-title mb-0">Últimas mensagens</h6>
+          <form method="get" class="d-flex gap-2">
+            <input type="text" name="q" class="form-control form-control-sm" value="{{ q }}" placeholder="Buscar por texto, nome ou grupo...">
+            <button class="btn btn-sm btn-primary">Buscar</button>
+            {% if busca_ativa %}<a class="btn btn-sm btn-outline-secondary" href="{{ request.path }}?limpar=1">Limpar</a>{% endif %}
+          </form>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-sm table-hover align-middle">
+            <thead>
+              <tr>
+                {{ th('Quando') }}
+                {{ th('Grupo') }}
+                {{ th('Autor') }}
+                {{ th('Tipo', 'Equipe = membro do equipe.json; Cliente = demais.') }}
+                {{ th('Mensagem') }}
+              </tr>
+            </thead>
+            <tbody>
+              {% for m in historico|reverse %}
+              <tr>
+                <td class="text-nowrap">{{ m.ts.strftime('%d/%m %H:%M') }}</td>
+                <td>{{ m.grupo }}</td>
+                <td>{{ m.nome }}</td>
+                <td><span class="badge {{ 'text-bg-primary' if m.tipo == 'equipe' else 'text-bg-secondary' }}">{{ m.tipo }}</span></td>
+                <td class="text-truncate" style="max-width:40rem">{{ m.resumo }}</td>
+              </tr>
+              {% else %}
+              <tr><td colspan="5" class="text-muted">Nenhuma mensagem encontrada.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% if total_paginas > 1 %}
+        <nav>
+          <ul class="pagination pagination-sm mb-0">
+            <li class="page-item {{ 'disabled' if pag <= 1 }}"><a class="page-link" href="{{ request.path }}?pag={{ pag - 1 }}&q={{ q }}">Anterior</a></li>
+            <li class="page-item disabled"><span class="page-link">Página {{ pag }} de {{ total_paginas }}</span></li>
+            <li class="page-item {{ 'disabled' if pag >= total_paginas }}"><a class="page-link" href="{{ request.path }}?pag={{ pag + 1 }}&q={{ q }}">Próxima</a></li>
+          </ul>
+        </nav>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

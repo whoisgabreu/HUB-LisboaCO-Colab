@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% from "_macros.html" import kpi, kpi_modal, grafico, th %}
+
+{% block content %}
+{% set status_info = {
+  'ativo': ['Ativo', 'text-bg-success'],
+  'semi_cliente': ['Semi · sem cliente', 'text-bg-warning'],
+  'semi_equipe': ['Semi · sem equipe', 'text-bg-warning'],
+  'inativo': ['Inativo', 'text-bg-danger'],
+  'nunca': ['Nunca ativo', 'text-bg-secondary']
+} %}
+<p class="text-muted small mb-3">Inatividade medida em relação ao fim do período filtrado (última mensagem). Limiar: <strong>{{ limite }} dias</strong> sem interação. Grupos monitorados vêm do catálogo <code>group_id</code>.</p>
+<div class="row g-3 mb-3">
+  {{ kpi('Grupos monitorados', status|length, desc='Total de grupos no catálogo group_id.', icon='bi-collection', cor='teal') }}
+  {{ kpi_modal('Nunca ativos', contagem.get('nunca', 0), 'nunca', 'Monitorados sem nenhuma mensagem no período.', icon='bi-slash-circle', cor='purple') }}
+  {{ kpi_modal('Inativos', contagem.get('inativo', 0), 'inativo', 'Sem interação de ambos os lados há ' ~ limite ~ ' dias ou mais.', icon='bi-hourglass-split', cor='red') }}
+  {{ kpi_modal('Semi · sem cliente', contagem.get('semi_cliente', 0), 'semi_cliente', 'Cliente não interage há ' ~ limite ~ ' dias ou mais.', icon='bi-person-x', cor='orange') }}
+  {{ kpi_modal('Semi · sem equipe', contagem.get('semi_equipe', 0), 'semi_equipe', 'Equipe não interage há ' ~ limite ~ ' dias ou mais.', icon='bi-person-gear', cor='orange') }}
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col">
+    {{ grafico('Dias sem interação por grupo', 'chartInativos', desc='Dias desde a última mensagem do grupo até o fim do período. Cor: verde = ativo, âmbar = semi-inativo, vermelho = inativo.') }}
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <h6 class="card-title">Status dos grupos monitorados</h6>
+    <div class="table-responsive">
+      <table class="table table-sm table-hover align-middle" id="tblStatus">
+        <thead>
+          <tr>
+            {{ th('Grupo') }}
+            {{ th('Lid', 'ID do grupo no WhatsApp (identidade estável).') }}
+            {{ th('Msgs', 'Mensagens do grupo no período filtrado.') }}
+            {{ th('Última atividade', 'Última mensagem de qualquer lado (no período).') }}
+            {{ th('Dias ocioso', 'Dias desde a última mensagem do grupo até o fim do período.') }}
+            {{ th('Dias sem equipe', 'Dias desde a última mensagem da equipe.') }}
+            {{ th('Dias sem cliente', 'Dias desde a última mensagem do cliente.') }}
+            {{ th('Status', 'Classificação segundo o limiar de inatividade.') }}
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in status %}
+          {% set si = status_info[s.status] %}
+          <tr data-status="{{ s.status }}">
+            <td><a href="{{ url_for('dashboard_grupos.sla', grupo=s.nome) }}">{{ s.nome }}</a></td>
+            <td class="text-muted small">{{ s.lid }}</td>
+            <td>{{ s.msgs }}</td>
+            <td>{{ s.ult_ambos.strftime('%d/%m %H:%M') if s.ult_ambos is not none else '—' }}</td>
+            <td>{{ s.dias_ambos if s.dias_ambos is not none else '—' }}</td>
+            <td>{{ s.dias_sem_equipe if s.dias_sem_equipe is not none else '—' }}</td>
+            <td>{{ s.dias_sem_cliente if s.dias_sem_cliente is not none else '—' }}</td>
+            <td><span class="badge {{ si[1] }}">{{ si[0] }}</span></td>
+          </tr>
+          {% else %}
+          <tr><td colspan="8" class="text-muted">Nenhum grupo monitorado.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="statusGruposModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="statusGruposTitulo"></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+      <div class="modal-body" id="statusGruposCorpo"></div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const statusData = {{ status|tojson }};
+const statusLabel = {{ {'ativo':'Ativo','semi_cliente':'Semi · sem cliente','semi_equipe':'Semi · sem equipe','inativo':'Inativo','nunca':'Nunca ativo'}|tojson }};
+</script>
+<script src="{{ url_for('dashboard_grupos.static', filename='js/inativos.js') }}"></script>
+{% endblock %}

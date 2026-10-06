@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block content %}
+{% if msg %}
+<div class="alert alert-success py-2">{{ msg }}</div>
+{% endif %}
+{% if erro %}
+<div class="alert alert-danger py-2">{{ erro }}</div>
+{% endif %}
+
+<div class="card">
+  <div class="card-body">
+    <h6 class="card-title">Configurações do dashboard</h6>
+    <p class="text-muted small">
+      Janela de atendimento (usada no SLA útil), metas de resposta e limiar de inatividade.
+      As alterações passam a valer imediatamente em todas as telas, sem reiniciar o sistema.
+    </p>
+    <form method="post" class="row g-3">
+      <div class="col-md-3">
+        <label class="form-label small">Início do atendimento</label>
+        <input type="time" name="inicio" class="form-control form-control-sm" value="{{ cfg.atendimento.inicio }}" required>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label small">Fim do atendimento</label>
+        <input type="time" name="fim" class="form-control form-control-sm" value="{{ cfg.atendimento.fim }}" required>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label small">Meta equipe → cliente (min)</label>
+        <input type="number" name="equipe_para_cliente_min" class="form-control form-control-sm" value="{{ cfg.metas.equipe_para_cliente_min }}" min="1" required>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label small">Meta cliente → equipe (min)</label>
+        <input type="number" name="cliente_para_equipe_min" class="form-control form-control-sm" value="{{ cfg.metas.cliente_para_equipe_min }}" min="1" required>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label small">Inatividade (dias)</label>
+        <input type="number" name="inatividade_dias" class="form-control form-control-sm" value="{{ cfg.inatividade_dias }}" min="1" required>
+      </div>
+      <div class="col-md-6 d-flex align-items-end">
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" name="dias_uteis" id="diasUteis" {{ 'checked' if cfg.atendimento.dias_uteis }}>
+          <label class="form-check-label small" for="diasUteis">Contar apenas dias úteis (seg–sex) na janela de atendimento</label>
+        </div>
+      </div>
+      <div class="col-12">
+        <button class="btn btn-sm btn-primary"><i class="bi bi-check2 me-1"></i>Salvar</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

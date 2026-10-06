@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="pt-BR" data-bs-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dashboard Grupo Clientes</title>
+  <link rel="icon" type="image/png" href="{{ url_for('dashboard_grupos.static', filename='favicon.png') }}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <link href="{{ url_for('dashboard_grupos.static', filename='css/style.css') }}" rel="stylesheet">
+</head>
+<body>
+{% set titulo = {'geral':'Visão Geral','sla':'SLA & Respostas','grupos':'Grupos & Remetentes','engajamento':'Engajamento','inativos':'Monitoramento de Grupos','diagnostico':'Diagnóstico','equipe':'Equipe & Clientes','churn':'Churn','config':'Configurações'}.get(page, 'Dashboard') %}
+{% set navs = [
+  ('geral', 'Visão Geral', 'bi-grid-1x2'),
+  ('sla', 'SLA & Respostas', 'bi-clock-history'),
+  ('grupos', 'Grupos & Remetentes', 'bi-people'),
+  ('engajamento', 'Engajamento', 'bi-activity'),
+  ('inativos', 'Monitoramento de Grupos', 'bi-hourglass-split'),
+  ('diagnostico', 'Diagnóstico', 'bi-clipboard-pulse'),
+  ('equipe', 'Equipe & Clientes', 'bi-person-gear'),
+  ('churn', 'Churn', 'bi-slash-circle'),
+  ('config', 'Configurações', 'bi-gear'),
+] %}
+{% set nf = [f.grupo, f.de, f.ate, f.dias, f.tipo, f.papel]|select|list|length %}
+
+<div class="dg-layout">
+  <aside class="dg-sidebar" id="dgSidebar">
+    <a href="/" class="dg-voltar" title="Voltar ao HUB">
+      <i class="bi bi-arrow-left"></i>
+      <span>Voltar ao HUB</span>
+    </a>
+    <div class="dg-logo">
+      <span class="dg-logo-ico"><i class="bi bi-bar-chart-fill"></i></span>
+      <span>Análise de Grupo<br>Clientes</span>
+    </div>
+    <nav class="dg-nav">
+      {% for chave, rotulo, icone in navs %}
+      <a class="dg-nav-item {{ 'active' if page == chave }}"
+         href="{{ url_for('dashboard_grupos.' + {'geral':'visao_geral','sla':'sla','grupos':'grupos','engajamento':'engajamento','inativos':'inativos','diagnostico':'diagnostico','equipe':'equipe_view','churn':'churn_view','config':'config_view'}[chave]) }}">
+        <i class="bi {{ icone }}"></i><span>{{ rotulo }}</span>
+      </a>
+      {% endfor %}
+    </nav>
+    <div class="dg-sidebar-foot text-muted small">Equipe & clientes em<br>equipe.json / clientes.json</div>
+  </aside>
+
+  <div class="dg-main">
+    <header class="dg-topbar">
+      <div class="d-flex align-items-center gap-3">
+        <button class="icon-btn d-lg-none" id="dgHamburger" type="button" aria-label="Menu"><i class="bi bi-list"></i></button>
+        <h1 class="dg-title">{{ titulo }}</h1>
+      </div>
+      <div class="d-flex align-items-center gap-2">
+        <span class="badge rounded-pill text-bg-secondary" title="Mensagens no filtro atual"><i class="bi bi-chat-dots me-1"></i>{{ total_filtrado }}</span>
+        <button class="icon-btn" id="filtrosBtn" type="button" data-bs-toggle="collapse" data-bs-target="#filtrosPanel" aria-expanded="false" title="Filtros">
+          <i class="bi bi-funnel"></i>
+          {% if nf %}<span class="filtros-badge">{{ nf }}</span>{% endif %}
+        </button>
+        <a class="icon-btn" href="{{ url_for('dashboard_grupos.exportar_csv') }}" title="Exportar CSV"><i class="bi bi-download"></i></a>
+        <button class="icon-btn" type="button" data-bs-toggle="modal" data-bs-target="#glossarioModal" title="Ajuda"><i class="bi bi-question-lg"></i></button>
+        <button class="icon-btn" id="temaBtn" type="button" title="Alternar tema"><i class="bi bi-moon-stars"></i></button>
+      </div>
+    </header>
+
+    <div class="collapse dg-filtros" id="filtrosPanel">
+      <form method="get" class="card card-body filter-bar">
+        <div class="row g-2 align-items-end">
+          {% if page != 'churn' %}
+          <div class="col-auto">
+            <label class="form-label mb-0 small">Grupo</label>
+            <div class="dg-combo" data-combo>
+              <input type="text" class="form-control form-control-sm dg-combo-input" placeholder="Buscar grupo..." value="{{ f.grupo or '' }}" autocomplete="off" role="combobox" aria-expanded="false">
+              <input type="hidden" name="grupo" value="{{ f.grupo or '' }}">
+              <ul class="dg-combo-list" role="listbox">
+                {% for g in grupos %}<li role="option" data-value="{{ g }}">{{ g }}</li>{% endfor %}
+              </ul>
+            </div>
+          </div>
+          {% endif %}
+          <div class="col-auto">
+            <label class="form-label mb-0 small">De</label>
+            <input type="date" name="de" class="form-control form-control-sm" value="{{ f.de or '' }}">
+          </div>
+          <div class="col-auto">
+            <label class="form-label mb-0 small">Até</label>
+            <input type="date" name="ate" class="form-control form-control-sm" value="{{ f.ate or '' }}">
+          </div>
+          <div class="col-auto">
+            <label class="form-label mb-0 small">Últimos N dias</label>
+            <input type="number" name="dias" class="form-control form-control-sm" style="width:90px" value="{{ f.dias or '' }}" min="1" placeholder="—">
+          </div>
+          <div class="col-auto">
+            <label class="form-label mb-0 small">Autor</label>
+            <select name="tipo" class="form-select form-select-sm">
+              <option value="">Todos</option>
+              <option value="equipe" {{ 'selected' if f.tipo == 'equipe' }}>Equipe</option>
+              <option value="cliente" {{ 'selected' if f.tipo == 'cliente' }}>Cliente</option>
+            </select>
+          </div>
+          <div class="col-auto">
+            <label class="form-label mb-0 small">Papel</label>
+            <div class="dg-combo" data-combo>
+              <input type="text" class="form-control form-control-sm dg-combo-input" placeholder="Buscar papel..." value="{{ f.papel or '' }}" autocomplete="off" role="combobox" aria-expanded="false">
+              <input type="hidden" name="papel" value="{{ f.papel or '' }}">
+              <ul class="dg-combo-list" role="listbox">
+                {% for p in papeis %}<li role="option" data-value="{{ p }}">{{ p }}</li>{% endfor %}
+              </ul>
+            </div>
+          </div>
+          <div class="col-auto">
+            <button class="btn btn-sm btn-primary"><i class="bi bi-check2 me-1"></i>Aplicar</button>
+            <a class="btn btn-sm btn-outline-secondary" href="{{ request.path }}?limpar=1">Limpar</a>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    {% set rotulos_filtro = {'grupo':'Grupo','de':'De','ate':'Até','dias':'Últimos','tipo':'Autor','papel':'Papel'} %}
+    {% set filtros_ativos = [] %}
+    {% for k in ['grupo','de','ate','dias','tipo','papel'] %}
+      {% if f.get(k) %}{% set _ = filtros_ativos.append(k) %}{% endif %}
+    {% endfor %}
+    {% if filtros_ativos %}
+    <div class="dg-filter-chips">
+      <span class="text-muted small me-1"><i class="bi bi-funnel"></i> Filtros:</span>
+      {% for k in filtros_ativos %}
+        {% set mantem = [] %}
+        {% for k2 in ['grupo','de','ate','dias','tipo','papel'] %}
+          {% if k2 != k and f.get(k2) %}{% set _ = mantem.append(k2 ~ '=' ~ (f[k2]|string|urlencode)) %}{% endif %}
+        {% endfor %}
+        <span class="dg-chip">
+          {{ rotulos_filtro[k] }}:
+          {% if k == 'tipo' %}{{ 'Equipe' if f[k] == 'equipe' else 'Cliente' }}{% elif k == 'dias' %}{{ f[k] }} dias{% else %}{{ f[k] }}{% endif %}
+          <a href="{{ request.path }}?{{ mantem|join('&') }}{% if mantem %}&{% endif %}{{ k }}=" class="dg-chip-x" title="Remover filtro">&times;</a>
+        </span>
+      {% endfor %}
+      <a href="{{ request.path }}?limpar=1" class="dg-chip dg-chip-clear">Limpar tudo</a>
+    </div>
+    {% endif %}
+
+    <main class="dg-content">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script src="{{ url_for('dashboard_grupos.static', filename='js/filtro-busca.js') }}"></script>
+<script src="{{ url_for('dashboard_grupos.static', filename='js/paginacao.js') }}"></script>
+<script>
+(function () {
+  const root = document.documentElement;
+  const tema = localStorage.getItem('dg_tema') || 'light';
+  root.setAttribute('data-bs-theme', tema);
+  const btn = document.getElementById('temaBtn');
+  function atualizaIcone() {
+    if (!btn) return;
+    const escuro = root.getAttribute('data-bs-theme') === 'dark';
+    btn.innerHTML = escuro ? '<i class="bi bi-sun"></i>' : '<i class="bi bi-moon-stars"></i>';
+  }
+  atualizaIcone();
+  btn && btn.addEventListener('click', function () {
+    const atual = root.getAttribute('data-bs-theme') === 'dark' ? 'light' : 'dark';
+    root.setAttribute('data-bs-theme', atual);
+    localStorage.setItem('dg_tema', atual);
+    atualizaIcone();
+  });
+  const hb = document.getElementById('dgHamburger');
+  hb && hb.addEventListener('click', function () { document.body.classList.toggle('dg-sidebar-open'); });
+  document.querySelectorAll('.dg-nav-item').forEach(function (a) {
+    a.addEventListener('click', function () { document.body.classList.remove('dg-sidebar-open'); });
+  });
+})();
+document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => new bootstrap.Tooltip(el, { trigger: 'hover focus' }));
+</script>
+
+<div class="modal fade" id="glossarioModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Glossário</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+      <div class="modal-body">
+        <p class="text-muted small">Definição dos termos usados no dashboard.</p>
+        <dl class="row">
+          <dt class="col-sm-4">SLA útil</dt><dd class="col-sm-8">Tempo de resposta contando apenas dentro da janela de atendimento configurada (08:00–18:00, dias úteis). Madrugadas e fins de semana não contam.</dd>
+          <dt class="col-sm-4">SLA bruto</dt><dd class="col-sm-8">Tempo de resposta corrido, incluindo madrugada e fim de semana.</dd>
+          <dt class="col-sm-4">P50 (mediana)</dt><dd class="col-sm-8">Metade das respostas ocorreu em tempo menor ou igual a este valor.</dd>
+          <dt class="col-sm-4">P90</dt><dd class="col-sm-8">90% das respostas ocorreu em tempo menor ou igual a este valor (cenário lento típico).</dd>
+          <dt class="col-sm-4">Média</dt><dd class="col-sm-8">Média aritmética dos tempos de resposta medidos.</dd>
+          <dt class="col-sm-4">Amostras (n)</dt><dd class="col-sm-8">Quantidade de respostas medidas usadas no cálculo das métricas daquele item.</dd>
+          <dt class="col-sm-4">Taxa de resposta</dt><dd class="col-sm-8">% das mensagens que receberam resposta dentro do período analisado.</dd>
+          <dt class="col-sm-4">% dentro da meta</dt><dd class="col-sm-8">% das mensagens respondidas dentro do tempo alvo configurado (ex.: equipe em até 60 min, cliente em até 180 min).</dd>
+          <dt class="col-sm-4">Sem resposta</dt><dd class="col-sm-8">Mensagens que não receberam resposta até o fim do período analisado.</dd>
+          <dt class="col-sm-4">Gap médio</dt><dd class="col-sm-8">Tempo ocioso médio entre uma mensagem/turno e o seguinte no grupo.</dd>
+          <dt class="col-sm-4">Gap máx</dt><dd class="col-sm-8">Maior período de silêncio entre mensagens do grupo.</dd>
+          <dt class="col-sm-4">% do volume (concentração)</dt><dd class="col-sm-8">% das mensagens do grupo enviadas pelo remetente mais ativo. Alto indica dependência de uma pessoa.</dd>
+          <dt class="col-sm-4">Minutos úteis</dt><dd class="col-sm-8">Tempo de resposta computado dentro da janela de atendimento.</dd>
+          <dt class="col-sm-4">Sem texto (evento de sistema)</dt><dd class="col-sm-8">Mensagens sem conteúdo (ex.: membro entrou/saiu do grupo ou falha de coleta). Não contam para o SLA.</dd>
+          <dt class="col-sm-4">Clientes inativos</dt><dd class="col-sm-8">Clientes presentes no grupo mas que nunca responderam a uma mensagem da equipe.</dd>
+          <dt class="col-sm-4">1ª vs 2ª metade</dt><dd class="col-sm-8">Comparação do volume da primeira metade do período filtrado com a segunda (evolução no período).</dd>
+          <dt class="col-sm-4">Não mapeados</dt><dd class="col-sm-8">Remetentes que não estão no equipe.json nem no clientes.json — tratados como cliente. Revisar se algum é da equipe.</dd>
+          <dt class="col-sm-4">Papel (equipe / cliente)</dt><dd class="col-sm-8">Função atribuída no mapeamento. Equipe: Gestor de Projeto, Account Manager, etc. Cliente: Stakeholder, atendente, sócio, etc. Usado para filtrar e medir engajamento.</dd>
+          <dt class="col-sm-4">Stakeholder</dt><dd class="col-sm-8">Papel do cliente que representa a parte interessada no grupo (ex.: dono/sócio do cliente, decisor).</dd>
+          <dt class="col-sm-4">Engajamento</dt><dd class="col-sm-8">Participação e resposta de cada papel/grupo: volume enviado, % do total, taxa de resposta e SLA.</dd>
+          <dt class="col-sm-4">Engajamento por pessoa</dt><dd class="col-sm-8">Métricas individuais de cada cliente mapeado (clientes.json) — permite identificar qual Stakeholder participa pouco ou não responde.</dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+</div>
+{% block scripts %}{% endblock %}
+</body>
+</html>

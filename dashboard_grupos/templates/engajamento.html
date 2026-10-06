@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+{% from "_macros.html" import kpi, kpi_modal, grafico, duracao, th %}
+
+{% block content %}
+<p class="text-muted small mb-3">Métricas consideram o filtro atual (grupo/período/autor/papel). Para engajamento de um grupo específico, use o filtro <strong>Grupo</strong> na barra acima.</p>
+{% set pcts = engajamento|selectattr('tipo', 'equalto', 'cliente')|list %}
+<div class="row g-3 mb-3">
+  {{ kpi('Papéis distintos', por_papel|length, desc='Papéis (equipe + cliente) com mensagens no período.', icon='bi-tags', cor='purple') }}
+  {{ kpi('Papéis de cliente', pcts|length, desc='Papéis de cliente (Stakeholder, atendente, sócio...) presentes no período.', icon='bi-person-gear', cor='orange') }}
+  {{ kpi('% do volume dos clientes', ((resumo.msgs_cliente / resumo.total * 100)|round(1)|string + '%') if resumo and resumo.total else '—', desc='Participação dos clientes no total de mensagens.', icon='bi-percent', cor='blue') }}
+  {{ kpi_modal('Clientes inativos', clientes_inativos|length, 'inativos', 'Clientes que receberam mensagem da equipe mas nunca responderam.', icon='bi-person-x', cor='red', hint='ver clientes') }}
+  {{ kpi_modal('Clientes em risco', clientes_risco|length, 'risco', 'Clientes sem enviar mensagem há ' ~ limite ~ ' dias ou mais, ou que nunca responderam.', icon='bi-exclamation-triangle', cor='orange', hint='ver clientes') }}
+  <div class="col"></div>
+</div>
+
+<div class="row g-3 mb-3">
+  {{ grafico('Mensagens por papel', 'chartPapel', desc='Volume de mensagens por papel (equipe e cliente mapeados).') }}
+  {{ grafico('Participação % do volume por papel', 'chartParticipacao', desc='Fatia da participação de cada papel no total de mensagens do período.') }}
+</div>
+
+<div class="row g-3 mb-3">
+  {{ grafico('Top clientes por mensagens', 'chartTopClientes', desc='Clientes mapeados ordenados por volume de mensagens.') }}
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <ul class="nav nav-tabs flex-wrap mb-3" id="engajamentoTabs" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#pane-papel" type="button" role="tab">Engajamento por papel</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#pane-pessoa" type="button" role="tab">Engajamento por pessoa</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#pane-inativos" type="button" role="tab">Clientes inativos</button>
+      </li>
+    </ul>
+    <div class="tab-content">
+      <div class="tab-pane fade show active" id="pane-papel" role="tabpanel">
+        <h6 class="card-title">Engajamento por papel</h6>
+        <p class="text-muted small mb-2">Volume, participação, resposta e SLA de cada papel mapeado.</p>
+        <div class="table-responsive">
+          <table class="table table-sm table-hover align-middle" id="tblPapel" data-paginate>
+            <thead>
+              <tr>
+                {{ th('Papel') }}
+                {{ th('Pessoas', 'Nomes mapeados com esse papel (equipe.json ou clientes.json).') }}
+                {{ th('Tipo', 'Equipe = equipe.json; Cliente = clientes.json.') }}
+                {{ th('Msgs', 'Mensagens enviadas por quem tem esse papel.') }}
+                {{ th('% volume', 'Participação do papel no total de mensagens do período.') }}
+                {{ th('Grupos', 'Grupos em que o papel aparece.') }}
+                {{ th('Taxa resposta', '% das mensagens do papel que receberam resposta do outro lado.') }}
+                {{ th('SLA útil médio (min)', 'Tempo médio de resposta (minutos úteis) do outro lado.') }}
+                {{ th('P50', 'Mediana dos tempos de resposta.') }}
+                {{ th('P90', '90% dos tempos de resposta abaixo deste valor.') }}
+                {{ th('Sem resposta', 'Mensagens do papel sem resposta até o fim do período.') }}
+              </tr>
+            </thead>
+            <tbody>
+              {% for e in engajamento %}
+              <tr>
+                <td>{{ e.papel }}</td>
+                <td>{{ pessoas_por_papel.get(e.papel, [])|join(', ') }}</td>
+                <td><span class="badge {{ 'text-bg-primary' if e.tipo == 'equipe' else 'text-bg-secondary' }}">{{ e.tipo }}</span></td>
+                <td>{{ e.msgs }}</td>
+                <td>{{ e.pct_volume }}%</td>
+                <td>{{ e.grupos }}</td>
+                <td>{{ e.taxa_resposta }}%</td>
+                <td>{{ e.sla_media or '—' }}</td>
+                <td>{{ e.sla_p50 or '—' }}</td>
+                <td>{{ e.sla_p90 or '—' }}</td>
+                <td>{{ e.sem_resposta }}</td>
+              </tr>
+              {% else %}
+              <tr class="dg-empty"><td colspan="11" class="text-muted">Nenhum papel mapeado no período. Classifique autores na página Equipe.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="tab-pane fade" id="pane-pessoa" role="tabpanel">
+        <h6 class="card-title">Engajamento por pessoa (clientes mapeados)</h6>
+        <p class="text-muted small mb-2">Cada linha é um cliente do <code>clientes.json</code> (Stakeholder, atendente, sócio...). Use o filtro <strong>Grupo</strong> para ver o engajamento de cada um em um grupo específico.</p>
+        <div class="table-responsive">
+          <table class="table table-sm table-hover align-middle" id="tblPessoa" data-paginate>
+            <thead>
+              <tr>
+                {{ th('Cliente') }}
+                {{ th('Papel') }}
+                {{ th('Msgs', 'Mensagens enviadas pelo cliente no período.') }}
+                {{ th('% volume', 'Participação do cliente no total de mensagens do período.') }}
+                {{ th('Grupos', 'Grupos em que o cliente aparece.') }}
+                {{ th('Taxa resposta', '% das mensagens do cliente que receberam resposta da equipe.') }}
+                {{ th('SLA útil médio (min)', 'Tempo médio (minutos úteis) até a equipe responder.') }}
+                {{ th('P50', 'Mediana dos tempos de resposta da equipe.') }}
+                {{ th('P90', '90% dos tempos de resposta da equipe abaixo deste valor.') }}
+                {{ th('Sem resposta', 'Mensagens do cliente sem resposta da equipe até o fim do período.') }}
+              </tr>
+            </thead>
+            <tbody>
+              {% for p in por_pessoa_cliente %}
+              <tr>
+                <td>{{ p.nome }}</td>
+                <td>{{ p.papel }}</td>
+                <td>{{ p.msgs }}</td>
+                <td>{{ p.pct_volume }}%</td>
+                <td>{{ p.grupos }}</td>
+                <td>{{ p.taxa_resposta }}%</td>
+                <td>{{ p.sla_media or '—' }}</td>
+                <td>{{ p.sla_p50 or '—' }}</td>
+                <td>{{ p.sla_p90 or '—' }}</td>
+                <td>{{ p.sem_resposta }}</td>
+              </tr>
+              {% else %}
+              <tr class="dg-empty"><td colspan="10" class="text-muted">Nenhum cliente mapeado no período. Adicione clientes com papel na página Equipe.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="tab-pane fade" id="pane-inativos" role="tabpanel">
+        <h6 class="card-title">Clientes inativos (recebem da equipe mas nunca respondem)</h6>
+        <div class="table-responsive">
+          <table class="table table-sm table-hover align-middle" id="tblEngInativos" data-paginate>
+            <thead>
+              <tr>
+                {{ th('Cliente') }}
+                {{ th('Papel', 'Papel atribuído no clientes.json (ex.: Stakeholder).') }}
+                {{ th('Msgs', 'Mensagens enviadas pelo cliente no período.') }}
+                {{ th('Grupos') }}
+              </tr>
+            </thead>
+            <tbody>
+              {% for c in clientes_inativos %}
+              <tr>
+                <td>{{ c.nome }}</td>
+                <td>{{ c.papel or '—' }}</td>
+                <td>{{ c.msgs }}</td>
+                <td>{{ c.grupos }}</td>
+              </tr>
+              {% else %}
+              <tr class="dg-empty"><td colspan="4" class="text-muted">Nenhum cliente inativo detectado.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="clientesInativosModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="clientesInativosTitulo"></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+      <div class="modal-body" id="clientesInativosCorpo"></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="clientesRiscoModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="clientesRiscoTitulo"></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+      <div class="modal-body" id="clientesRiscoCorpo"></div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const papel = {{ por_papel|tojson }};
+const participacao = [{% for e in engajamento %}{{ e.pct_volume }}{{ ',' if not loop.last }}{% endfor %}];
+const participacaoLabels = [{% for e in engajamento %}{{ e.papel|tojson }}{{ ',' if not loop.last }}{% endfor %}];
+const topClientes = {{ por_pessoa_cliente|tojson }};
+const clientesRisco = {{ clientes_risco|tojson }};
+</script>
+<script src="{{ url_for('dashboard_grupos.static', filename='js/engajamento.js') }}"></script>
+{% endblock %}

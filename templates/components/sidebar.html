@@ -57,28 +57,16 @@
         {% endif %}
 
         <!-- Grupo Gestão & CS -->
-        {% if session.email in ["martins.gabriel@v4company.com", "gabriel.lasaro@v4company.com"] %}
+        {% if session.posicao in ["Gerência", "Sócio", "Coordenador"] %}
         <div class="nav-group">
             <div class="nav-group-header">
                 <span>Gestão & CS</span>
                 <i class="fas fa-chevron-right toggle-icon"></i>
             </div>
             <div class="nav-group-items">
-                <a href="/hub-cs-cx" class="nav-item">
-                    <i class="fas fa-users"></i>
-                    <span>Hub de CS/CX</span>
-                </a>
-                <a href="/painel-atribuicao" class="nav-item">
-                    <i class="fas fa-tasks"></i>
-                    <span>Painel de Atribuição</span>
-                </a>
-                <a href="/vendas" class="nav-item">
-                    <i class="fas fa-shopping-cart"></i>
-                    <span>Vendas</span>
-                </a>
-                <a href="/cockpit" class="nav-item">
-                    <i class="fas fa-tachometer-alt"></i>
-                    <span>Cockpit</span>
+                <a href="/grupos" class="nav-item">
+                    <i class="fas fa-comments"></i>
+                    <span>Análise de Grupos</span>
                 </a>
             </div>
         </div>

@@ -34,6 +34,8 @@ from services.projeto_participacao_service import ProjetoParticipacaoService
 from services.kanban_service import KanbanService, PhaseTransitionError
 from services.automacao_service import AutomacaoService
 
+from dashboard_grupos.hub_integration import register as register_dashboard_grupos
+
 
 
 
@@ -42,6 +44,9 @@ app.secret_key = os.getenv("SECRET_KEY")
 ## oros.urandom(10).hex()
 app.permanent_session_lifetime = timedelta(days=7)
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+
+# Dashboard de Análise de Grupos (blueprint isolado, acessível em /grupos)
+register_dashboard_grupos(app)
 
 # Google OAuth
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")

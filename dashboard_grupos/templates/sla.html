@@ -1,0 +1,248 @@
+{% extends "base.html" %}
+{% from "_macros.html" import kpi, grafico, duracao, th %}
+
+{% block content %}
+{% set e2c = sla_geral.equipe_para_cliente %}
+{% set c2e = sla_geral.cliente_para_equipe %}
+<div class="row g-3 mb-3">
+  {{ kpi('SLA útil equipe → cliente', duracao(e2c.util.media), 'bruto: ' ~ duracao(e2c.bruto.media), 'Tempo de resposta contando só dentro da janela de atendimento (08:00–18:00, dias úteis).', 'bi-clock', 'blue') }}
+  {{ kpi('SLA útil cliente → equipe', duracao(c2e.util.media), 'bruto: ' ~ duracao(c2e.bruto.media), 'Tempo de resposta contando só dentro da janela de atendimento (08:00–18:00, dias úteis).', 'bi-clock-history', 'green') }}
+  {{ kpi('Meta equipe → cliente (' ~ e2c.meta_min ~ 'min)', e2c.pct_dentro_meta|string + '%', desc='% das mensagens de cliente respondidas pela equipe dentro do tempo alvo.', icon='bi-bullseye', cor='orange') }}
+  {{ kpi('Meta cliente → equipe (' ~ c2e.meta_min ~ 'min)', c2e.pct_dentro_meta|string + '%', desc='% das mensagens de equipe respondidas pelo cliente dentro do tempo alvo.', icon='bi-bullseye', cor='purple') }}
+  {{ kpi('Taxa resposta equipe', e2c.taxa_resposta|string + '%', desc='% das mensagens/turnos de cliente que receberam resposta da equipe.', icon='bi-check-circle', cor='green') }}
+  {{ kpi('Taxa resposta cliente', c2e.taxa_resposta|string + '%', desc='% das mensagens/turnos de equipe que receberam resposta do cliente.', icon='bi-check-circle', cor='blue') }}
+</div>
+<div class="row g-3 mb-3">
+  <div class="col">
+    <button type="button" class="card dg-kpi h-100 w-100 text-start border-0" data-dg-modal="semRespEquipe">
+      <div class="card-body">
+        <div class="dg-kpi-icon dg-red"><i class="bi bi-x-circle"></i></div>
+        <div class="dg-kpi-valor">{{ e2c.sem_resposta }}</div>
+        <div class="dg-kpi-label text-muted small">
+          Msgs cliente sem resposta
+          <span class="desc-icon" data-bs-toggle="tooltip" data-bs-placement="top" title="Mensagens de cliente sem resposta da equipe até o fim do período. Clique para ver.">?</span>
+        </div>
+        <div class="text-muted small dg-kpi-hint"><i class="bi bi-eye me-1"></i>ver mensagens</div>
+      </div>
+    </button>
+  </div>
+  <div class="col">
+    <button type="button" class="card dg-kpi h-100 w-100 text-start border-0" data-dg-modal="semRespCliente">
+      <div class="card-body">
+        <div class="dg-kpi-icon dg-orange"><i class="bi bi-x-circle"></i></div>
+        <div class="dg-kpi-valor">{{ c2e.sem_resposta }}</div>
+        <div class="dg-kpi-label text-muted small">
+          Msgs equipe sem resposta
+          <span class="desc-icon" data-bs-toggle="tooltip" data-bs-placement="top" title="Mensagens da equipe sem resposta do cliente até o fim do período. Clique para ver.">?</span>
+        </div>
+        <div class="text-muted small dg-kpi-hint"><i class="bi bi-eye me-1"></i>ver mensagens</div>
+      </div>
+    </button>
+  </div>
+  <div class="col"></div><div class="col"></div><div class="col"></div><div class="col"></div>
+</div>
+
+<div class="modal fade" id="semRespostaModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="semRespostaTitulo"></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+      <div class="modal-body" id="semRespostaCorpo"></div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mb-3">
+  {{ grafico('Tempo de resposta da equipe — distribuição', 'chartHistEquipe', desc='Quantas respostas da equipe entraram em cada faixa de tempo útil. Verde = dentro da meta (' ~ metas.equipe_para_cliente_min ~ ' min); âmbar = faixa que cruza a meta; vermelho = acima.') }}
+  {{ grafico('Tempo de resposta do cliente — distribuição', 'chartHistCliente', desc='Quantas respostas do cliente entraram em cada faixa de tempo útil. Verde = dentro da meta (' ~ metas.cliente_para_equipe_min ~ ' min); âmbar = faixa que cruza a meta; vermelho = acima.') }}
+</div>
+<div class="row g-3">
+  {{ grafico('SLA útil por hora (msg do cliente)', 'chartSlaHora', desc='Tempo útil médio de resposta da equipe conforme a hora em que a mensagem do cliente chegou.') }}
+  {{ grafico('SLA útil por dia da semana (msg do cliente)', 'chartSlaDia', desc='Tempo útil médio de resposta da equipe por dia da semana em que a mensagem do cliente chegou (a janela de atendimento considera dias úteis).') }}
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <ul class="nav nav-tabs flex-wrap mb-3" id="slaTabs" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#pane-e2c" type="button" role="tab">Equipe &rarr; Cliente</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#pane-c2e" type="button" role="tab">Cliente &rarr; Equipe</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#pane-gaps" type="button" role="tab">Gaps / ocioso</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#pane-primeira" type="button" role="tab">1ª resposta do dia</button>
+      </li>
+    </ul>
+    <div class="tab-content">
+      <div class="tab-pane fade show active" id="pane-e2c" role="tabpanel">
+        <h6 class="card-title">SLA — Equipe respondendo Cliente</h6>
+        <p class="text-muted small mb-2">Tempo útil que a equipe levou para responder mensagens de cliente.</p>
+        <div class="table-responsive">
+          <table class="table table-sm table-hover align-middle" id="tblE2C" data-paginate>
+            <thead>
+              <tr>
+                {{ th('Grupo') }}
+                {{ th('Msgs cliente', 'Mensagens de cliente que precisavam de resposta da equipe.') }}
+                {{ th('Média', 'Tempo útil médio de resposta da equipe.') }}
+                {{ th('P50', 'Mediana — metade das respostas em tempo menor ou igual a este valor.') }}
+                {{ th('P90', '90% das respostas em tempo menor ou igual a este valor.') }}
+                {{ th('Dentro da meta', '% respondida dentro do tempo alvo configurado.') }}
+                {{ th('Taxa resposta', '% das mensagens de cliente que receberam resposta da equipe.') }}
+                {{ th('Sem resposta', 'Mensagens de cliente sem resposta da equipe até o fim do período.') }}
+              </tr>
+            </thead>
+            <tbody>
+              {% for g, d in por_grupo.items() %}
+              {% set a = d.equipe_para_cliente %}
+              <tr>
+                <td>{{ g }}</td>
+                <td>{{ a.util.n + a.sem_resposta }}</td>
+                <td>{{ duracao(a.util.media) }}</td>
+                <td>{{ duracao(a.util.p50) }}</td>
+                <td>{{ duracao(a.util.p90) }}</td>
+                <td>{{ a.pct_dentro_meta }}%</td>
+                <td>{{ a.taxa_resposta }}%</td>
+                <td>{{ a.sem_resposta }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="tab-pane fade" id="pane-c2e" role="tabpanel">
+        <h6 class="card-title">SLA — Cliente respondendo Equipe</h6>
+        <p class="text-muted small mb-2">Tempo útil que o cliente levou para responder mensagens da equipe.</p>
+        <div class="table-responsive">
+          <table class="table table-sm table-hover align-middle" id="tblC2E" data-paginate>
+            <thead>
+              <tr>
+                {{ th('Grupo') }}
+                {{ th('Msgs equipe', 'Mensagens da equipe que precisavam de resposta do cliente.') }}
+                {{ th('Média', 'Tempo útil médio de resposta do cliente.') }}
+                {{ th('P50', 'Mediana — metade das respostas em tempo menor ou igual a este valor.') }}
+                {{ th('P90', '90% das respostas em tempo menor ou igual a este valor.') }}
+                {{ th('Dentro da meta', '% respondida dentro do tempo alvo configurado.') }}
+                {{ th('Taxa resposta', '% das mensagens da equipe que receberam resposta do cliente.') }}
+                {{ th('Sem resposta', 'Mensagens da equipe sem resposta do cliente até o fim do período.') }}
+              </tr>
+            </thead>
+            <tbody>
+              {% for g, d in por_grupo.items() %}
+              {% set b = d.cliente_para_equipe %}
+              <tr>
+                <td>{{ g }}</td>
+                <td>{{ b.util.n + b.sem_resposta }}</td>
+                <td>{{ duracao(b.util.media) }}</td>
+                <td>{{ duracao(b.util.p50) }}</td>
+                <td>{{ duracao(b.util.p90) }}</td>
+                <td>{{ b.pct_dentro_meta }}%</td>
+                <td>{{ b.taxa_resposta }}%</td>
+                <td>{{ b.sem_resposta }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="tab-pane fade" id="pane-gaps" role="tabpanel">
+        <h6 class="card-title">Tempo ocioso entre mensagens (gaps)</h6>
+        <p class="text-muted small mb-2">Intervalos de silêncio entre mensagens/turnos de cada grupo.</p>
+        <div class="table-responsive">
+          <table class="table table-sm table-hover align-middle" id="tblGaps" data-paginate>
+            <thead>
+              <tr>
+                {{ th('Grupo') }}
+                {{ th('Msgs', 'Total de mensagens do grupo no período.') }}
+                {{ th('Gap médio', 'Tempo ocioso médio entre mensagens/turnos do grupo.') }}
+                {{ th('Gap máx', 'Maior período de silêncio entre mensagens do grupo.') }}
+              </tr>
+            </thead>
+            <tbody>
+              {% for g, d in por_grupo.items() %}
+              <tr>
+                <td>{{ g }}</td>
+                <td>{{ d.total }}</td>
+                <td>{{ duracao(d.gaps.media) }}</td>
+                <td>{{ duracao(d.gaps.max) }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="tab-pane fade" id="pane-primeira" role="tabpanel">
+        <h6 class="card-title">Primeira resposta do dia (cliente → equipe)</h6>
+        <p class="text-muted small mb-2">Clique numa linha para ver as mensagens do par (cliente e resposta da equipe).</p>
+        <div class="table-responsive">
+          <table class="table table-sm table-hover align-middle" id="tblPrimeiras" data-paginate>
+            <thead>
+              <tr>
+                {{ th('Dia') }}
+                {{ th('Grupo') }}
+                {{ th('Cliente às') }}
+                {{ th('Equipe às') }}
+                <th>
+                  <span class="d-inline-flex align-items-center gap-1">
+                    Minutos úteis
+                    <span class="desc-icon" data-bs-toggle="tooltip" data-bs-placement="top" title="Tempo de resposta computado dentro da janela de atendimento.">?</span>
+                    <button type="button" class="btn btn-sm btn-outline-secondary dg-sort" id="sortMinutos" title="Ordenar por tempo de resposta">
+                      <i class="bi bi-arrow-down-up"></i>
+                    </button>
+                  </span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for p in primeiras_respostas %}
+              <tr class="row-click" data-idx="{{ loop.index0 }}" data-orig="{{ loop.index0 }}" data-minutos="{{ p.minutos_uteis }}" title="Ver histórico do par">
+                <td>{{ p.dia }}</td>
+                <td>{{ p.grupo }}</td>
+                <td>{{ p.de }}</td>
+                <td>{{ p.resposta }}</td>
+                <td>{{ p.minutos_uteis }}</td>
+              </tr>
+              {% else %}
+              <tr class="dg-empty"><td colspan="5" class="text-muted">Sem dados no período.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="primeiraModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="primeiraTitulo"></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+      <div class="modal-body" id="primeiraCorpo"></div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const histEquipe = {{ hist_equipe|tojson }};
+const histCliente = {{ hist_cliente|tojson }};
+const slaHora = {{ sla_por_hora|tojson }};
+const slaDia = {{ sla_dia_semana|tojson }};
+const semRespEquipe = {{ sem_resp_equipe|tojson }};
+const semRespCliente = {{ sem_resp_cliente|tojson }};
+const primeirasRespostas = {{ primeiras_respostas|tojson }};
+</script>
+<script src="{{ url_for('dashboard_grupos.static', filename='js/sla.js') }}"></script>
+{% endblock %}

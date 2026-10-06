@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% from "_macros.html" import duracao, th %}
+
+{% block content %}
+<p class="text-muted small mb-3">Engajamento por papel e clientes inativos ficam na tela <a href="{{ url_for('dashboard_grupos.engajamento') }}">Engajamento</a>.</p>
+
+<div class="card">
+  <div class="card-body">
+    <ul class="nav nav-tabs flex-wrap mb-3" id="gruposTabs" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#pane-grupos" type="button" role="tab">Grupos &amp; Remetentes</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#pane-remetentes" type="button" role="tab">Análise por remetente</button>
+      </li>
+    </ul>
+    <div class="tab-content">
+      <div class="tab-pane fade show active" id="pane-grupos" role="tabpanel">
+        <h6 class="card-title">Grupos &amp; Remetentes</h6>
+        <div class="table-responsive">
+          <table class="table table-sm table-hover align-middle" id="tblGrupos" data-paginate>
+            <thead>
+              <tr>
+                {{ th('Grupo') }}
+                {{ th('Top remetente', 'Remetente que mais enviou mensagens no grupo.') }}
+                {{ th('% do volume', '% das mensagens do grupo enviadas pelo remetente mais ativo (concentração).') }}
+                {{ th('Gap médio', 'Tempo ocioso médio entre mensagens/turnos do grupo.') }}
+                {{ th('Gap máx', 'Maior período de silêncio entre mensagens do grupo.') }}
+                {{ th('Taxa resp. equipe', '% das mensagens de cliente que receberam resposta da equipe.') }}
+                {{ th('Taxa resp. cliente', '% das mensagens de equipe que receberam resposta do cliente.') }}
+              </tr>
+            </thead>
+            <tbody>
+              {% for g, c in concentracao.items() %}
+              {% set d = por_grupo.get(g) %}
+              <tr>
+                <td><a href="{{ url_for('dashboard_grupos.sla', grupo=g) }}">{{ g }}</a></td>
+                <td>{{ c.top_remetente }}</td>
+                <td>{{ c.top_pct }}%</td>
+                <td>{{ duracao(d.gaps.media) if d else '—' }}</td>
+                <td>{{ duracao(d.gaps.max) if d else '—' }}</td>
+                <td>{{ d.equipe_para_cliente.taxa_resposta }}%</td>
+                <td>{{ d.cliente_para_equipe.taxa_resposta }}%</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="tab-pane fade" id="pane-remetentes" role="tabpanel">
+        <h6 class="card-title">Análise por remetente (lid)</h6>
+        <div class="table-responsive">
+          <table class="table table-sm table-hover align-middle" id="tblRemetentes" data-paginate>
+            <thead>
+              <tr>
+                {{ th('Remetente') }}
+                {{ th('Tipo', 'Equipe = na lista do equipe.json; Cliente = demais.') }}
+                {{ th('Papel', 'Função do membro da equipe (ex.: gestor, comercial).') }}
+                {{ th('Msgs', 'Total de mensagens enviadas pelo remetente no período.') }}
+                {{ th('Grupos', 'Quantidade de grupos em que o remetente aparece.') }}
+                {{ th('SLA útil médio (min)', 'Tempo médio de resposta (em minutos úteis) do outro lado quando este remetente envia.') }}
+                {{ th('P50', 'Mediana dos tempos de resposta — metade foi mais rápido que isso.') }}
+                {{ th('P90', '90% dos tempos de resposta ficaram abaixo deste valor.') }}
+                {{ th('Amostras', 'Quantidade de respostas medidas usadas no cálculo das métricas do remetente.') }}
+              </tr>
+            </thead>
+            <tbody>
+              {% for r in por_remetente %}
+              <tr>
+                <td>{{ r.nome }}</td>
+                <td><span class="badge {{ 'text-bg-primary' if r.tipo == 'equipe' else 'text-bg-secondary' }}">{{ r.tipo }}</span></td>
+                <td>{{ r.papel or '—' }}</td>
+                <td>{{ r.msgs }}</td>
+                <td>{{ r.grupos }}</td>
+                <td>{{ r.sla_media or '—' }}</td>
+                <td>{{ r.sla_p50 or '—' }}</td>
+                <td>{{ r.sla_p90 or '—' }}</td>
+                <td>{{ r.sla_n }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('dashboard_grupos.static', filename='js/grupos.js') }}"></script>
+{% endblock %}

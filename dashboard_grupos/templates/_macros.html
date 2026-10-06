@@ -1,0 +1,80 @@
+{% macro duracao(min) -%}
+  {% if min is none %}<span class="text-secondary">—</span>
+  {% elif min < 1 %}{{ (min * 60)|round(0, 'ceil')|int }}s
+  {% elif min < 60 %}{{ min|round|int }}min
+  {% elif min < 1440 %}{{ (min // 60)|int }}h {{ (min % 60)|round|int }}min
+  {% else %}{{ (min // 1440)|int }}d {{ ((min % 1440) // 60)|int }}h{% endif %}
+{%- endmacro %}
+
+{% macro kpi(label, valor, sub='', desc='', icon='bi-graph-up-arrow', cor='blue') -%}
+<div class="col">
+  <div class="card dg-kpi h-100">
+    <div class="card-body">
+      <div class="dg-kpi-icon dg-{{ cor }}"><i class="bi {{ icon }}" aria-hidden="true"></i></div>
+      <div class="dg-kpi-valor">{{ valor }}</div>
+      <div class="dg-kpi-label text-muted small">
+        {{ label }}{% if desc %} <span class="desc-icon" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ desc }}" aria-label="{{ desc }}">?</span>{% endif %}
+      </div>
+      {% if sub %}<div class="text-muted small">{{ sub }}</div>{% endif %}
+    </div>
+  </div>
+</div>
+{%- endmacro %}
+
+{% macro kpi_modal(label, valor, alvo, desc='', icon='bi-graph-up-arrow', cor='blue', hint='ver grupos') -%}
+<div class="col">
+  <button type="button" class="card dg-kpi h-100 w-100 text-start border-0" data-status-modal="{{ alvo }}">
+    <div class="card-body">
+      <div class="dg-kpi-icon dg-{{ cor }}"><i class="bi {{ icon }}" aria-hidden="true"></i></div>
+      <div class="dg-kpi-valor">{{ valor }}</div>
+      <div class="dg-kpi-label text-muted small">
+        {{ label }}{% if desc %} <span class="desc-icon" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ desc }}" aria-label="{{ desc }}">?</span>{% endif %}
+      </div>
+      <div class="text-muted small dg-kpi-hint"><i class="bi bi-eye me-1" aria-hidden="true"></i>{{ hint }}</div>
+    </div>
+  </button>
+</div>
+{%- endmacro %}
+
+{% macro th(label, desc='') -%}
+<th scope="col">
+  {% if desc %}<span data-bs-toggle="tooltip" data-bs-placement="top" title="{{ desc }}">{{ label }} <span class="desc-icon" aria-hidden="true">?</span></span>
+  {% else %}{{ label }}{% endif %}
+</th>
+{%- endmacro %}
+
+{% macro grafico(titulo, container, desc='') -%}
+<div class="col">
+  <div class="card h-100">
+    <div class="card-body">
+      <h6 class="card-title">{{ titulo }}{% if desc %} <span class="desc-icon" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ desc }}" aria-label="{{ desc }}">?</span>{% endif %}</h6>
+      <div class="chart-box"><canvas id="{{ container }}" role="img" aria-label="{{ titulo }}{% if desc %}. {{ desc }}{% endif %}"></canvas></div>
+    </div>
+  </div>
+</div>
+{%- endmacro %}
+
+{% macro heatmap_tabela(grid) -%}
+{% set dias = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'] %}
+{% set maxv = grid|map('max')|max or 1 %}
+<div class="table-responsive">
+  <table class="table table-sm heatmap mb-0">
+    <thead>
+      <tr><th></th>{% for h in range(6, 22) %}<th class="text-center small">{{ h }}h</th>{% endfor %}<th></th></tr>
+    </thead>
+    <tbody>
+      {% for linha in grid %}
+      <tr>
+        <td class="small text-muted">{{ dias[loop.index0] }}</td>
+        {% for h in range(6, 22) %}
+        {% set v = linha[h] %}
+        <td class="heat-cell" data-v="{{ v }}" title="{{ dias[loop.index0] }} {{ h }}h: {{ v }} msgs"
+            style="--v:{{ (v * 100 / maxv)|round }}"></td>
+        {% endfor %}
+        <td class="small text-muted">{{ linha|sum }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{%- endmacro %}

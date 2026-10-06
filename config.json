@@ -1,0 +1,12 @@
+{
+  "atendimento": {
+    "inicio": "08:00",
+    "fim": "18:00",
+    "dias_uteis": true
+  },
+  "metas": {
+    "equipe_para_cliente_min": 60,
+    "cliente_para_equipe_min": 180
+  },
+  "inatividade_dias": 3
+}

@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+
+{% block content %}
+{% if msg %}
+<div class="alert alert-success py-2">{{ msg }}</div>
+{% endif %}
+{% if erro %}
+<div class="alert alert-danger py-2">{{ erro }}</div>
+{% endif %}
+
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+  <div class="d-flex gap-2 align-items-center flex-wrap">
+    <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('dashboard_grupos.mapping_export') }}"><i class="bi bi-download me-1"></i>Exportar mapeamento</a>
+    <form method="post" action="{{ url_for('dashboard_grupos.mapping_import') }}" enctype="multipart/form-data" class="d-flex gap-2 align-items-center" onsubmit="return confirm('Importar o mapeamento e substituir equipe/clientes/churn atuais?');">
+      <input type="file" name="arquivo" accept="application/json,.json" class="form-control form-control-sm" style="max-width:220px" required>
+      <button class="btn btn-sm btn-outline-danger"><i class="bi bi-upload me-1"></i>Importar</button>
+    </form>
+  </div>
+  <input type="text" id="equipeBusca" class="form-control form-control-sm" style="max-width:320px" placeholder="Buscar por nome ou LID..." autocomplete="off">
+</div>
+
+<ul class="nav nav-tabs flex-wrap mb-3" id="equipeTabs" role="tablist">
+  <li class="nav-item" role="presentation">
+    <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#pane-mapeados" type="button" role="tab">Autores Mapeados</button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#pane-nao-mapeados" type="button" role="tab">Autores não mapeados</button>
+  </li>
+</ul>
+
+<div class="tab-content">
+  <div class="tab-pane fade show active" id="pane-mapeados" role="tabpanel">
+    <div class="row g-3">
+      <div class="col-md-6">
+        <div class="card h-100">
+          <div class="card-body">
+            <h6 class="card-title">Equipe</h6>
+            <p class="text-muted small">Membros do <code>equipe.json</code>.</p>
+            <div class="table-responsive">
+              <table class="table table-sm table-hover align-middle" id="tblEquipe">
+                <thead>
+                  <tr><th>Nome</th><th>Papel</th><th class="text-end">Ações</th></tr>
+                </thead>
+                <tbody>
+                  {% for m in membros|selectattr('tipo', 'equalto', 'equipe') %}
+                  <tr>
+                    <td>{{ m.nome }}</td>
+                    <td>{{ m.papel }}</td>
+                    <td class="text-end">
+                      <form method="post" class="d-inline" onsubmit="return confirm('Remover {{ m.nome }} do mapeamento?');">
+                        <input type="hidden" name="acao" value="remove">
+                        <input type="hidden" name="nome" value="{{ m.nome }}">
+                        <button class="btn btn-sm btn-outline-danger">Remover</button>
+                      </form>
+                    </td>
+                  </tr>
+                  {% else %}
+                  <tr class="dg-empty"><td colspan="3" class="text-muted">Nenhum autor de equipe mapeado.</td></tr>
+                  {% endfor %}
+                  <tr class="dg-filter-empty d-none"><td colspan="3" class="text-muted">Nenhum resultado para a busca.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-6">
+        <div class="card h-100">
+          <div class="card-body">
+            <h6 class="card-title">Clientes</h6>
+            <p class="text-muted small">Clientes do <code>clientes.json</code> (Stakeholder, atendente, sócio...).</p>
+            <div class="table-responsive">
+              <table class="table table-sm table-hover align-middle" id="tblClientes">
+                <thead>
+                  <tr><th>Nome</th><th>Papel</th><th class="text-end">Ações</th></tr>
+                </thead>
+                <tbody>
+                  {% for m in membros|selectattr('tipo', 'equalto', 'cliente') %}
+                  <tr>
+                    <td>{{ m.nome }}</td>
+                    <td>{{ m.papel }}</td>
+                    <td class="text-end">
+                      <form method="post" class="d-inline" onsubmit="return confirm('Remover {{ m.nome }} do mapeamento?');">
+                        <input type="hidden" name="acao" value="remove">
+                        <input type="hidden" name="nome" value="{{ m.nome }}">
+                        <button class="btn btn-sm btn-outline-danger">Remover</button>
+                      </form>
+                    </td>
+                  </tr>
+                  {% else %}
+                  <tr class="dg-empty"><td colspan="3" class="text-muted">Nenhum cliente mapeado.</td></tr>
+                  {% endfor %}
+                  <tr class="dg-filter-empty d-none"><td colspan="3" class="text-muted">Nenhum resultado para a busca.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card mt-3">
+      <div class="card-body">
+        <h6 class="card-title">Adicionar autor</h6>
+        <form method="post" class="row g-2 align-items-end">
+          <input type="hidden" name="acao" value="add">
+          <div class="col">
+            <label class="form-label mb-0 small">Nome</label>
+            <input type="text" name="nome" class="form-control form-control-sm" placeholder="Nome exibido no WhatsApp" required>
+          </div>
+          <div class="col">
+            <label class="form-label mb-0 small">Papel</label>
+            <input type="text" name="papel" class="form-control form-control-sm" placeholder="ex.: Gestor, Stakeholder..." required>
+          </div>
+          <div class="col-auto">
+            <label class="form-label mb-0 small">Tipo</label>
+            <select name="tipo" class="form-select form-select-sm">
+              <option value="equipe">Equipe</option>
+              <option value="cliente">Cliente</option>
+            </select>
+          </div>
+          <div class="col-auto">
+            <button class="btn btn-sm btn-primary">Adicionar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-pane fade" id="pane-nao-mapeados" role="tabpanel">
+    <div class="card">
+      <div class="card-body">
+        <h6 class="card-title">Autores não mapeados</h6>
+        <p class="text-muted small">Fora dos dois arquivos — tratados como cliente. Classifique com papel e tipo.</p>
+        {% if nao_mapeados %}
+        <div class="table-responsive">
+          <table class="table table-sm table-hover align-middle" id="tblNaoMapeados">
+            <thead><tr><th>Nome</th><th>Lid</th><th class="text-end">Msgs</th><th>Classificar</th></tr></thead>
+            <tbody>
+              {% for n in nao_mapeados %}
+              <tr>
+                <td>{{ n.nome }}</td>
+                <td class="text-muted small">{{ n.lid }}</td>
+                <td class="text-end">{{ n.count }}</td>
+                <td>
+                  <form method="post" class="d-flex gap-1 justify-content-end">
+                    <input type="hidden" name="acao" value="add">
+                    <input type="hidden" name="nome" value="{{ n.nome }}">
+                    <input type="text" name="papel" class="form-control form-control-sm" style="width:130px" placeholder="Papel" required>
+                    <select name="tipo" class="form-select form-select-sm" style="width:100px">
+                      <option value="cliente">Cliente</option>
+                      <option value="equipe">Equipe</option>
+                    </select>
+                    <button class="btn btn-sm btn-primary">OK</button>
+                  </form>
+                </td>
+              </tr>
+              {% endfor %}
+              <tr class="dg-filter-empty d-none"><td colspan="4" class="text-muted">Nenhum resultado para a busca.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="text-muted">Todos os remetentes mapeados.</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('dashboard_grupos.static', filename='js/equipe.js') }}"></script>
+{% endblock %}

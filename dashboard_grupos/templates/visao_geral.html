@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% from "_macros.html" import kpi, grafico, heatmap_tabela %}
+
+{% block content %}
+<div class="row g-3 mb-3">
+  {{ kpi('Total mensagens', resumo.total if resumo else 0, icon='bi-chat-dots', cor='blue', desc='Mensagens coletadas no período filtrado (inclui eventos sem texto).') }}
+  {{ kpi('Remetentes únicos', resumo.remetentes if resumo else 0, icon='bi-people', cor='purple', desc='Pessoas distintas identificadas pelo LID do WhatsApp.') }}
+  {{ kpi('Grupos monitorados', grupos_monitorados if grupos_monitorados else 0, sub='ativos no período: ' ~ (grupos_ativos if grupos_ativos else 0), icon='bi-collection', cor='teal', desc='Grupos no catálogo (group_id). Sub = grupos com mensagens no período filtrado.') }}
+  {{ kpi('Dias com atividade', resumo.dias if resumo else 0, icon='bi-calendar-check', cor='green', desc='Dias distintos com ao menos uma mensagem.') }}
+  {{ kpi('Mensagens equipe', resumo.msgs_equipe if resumo else 0, icon='bi-person-badge', cor='blue', desc='Enviadas por membros listados no equipe.json.') }}
+  {{ kpi('Mensagens cliente', resumo.msgs_cliente if resumo else 0, icon='bi-person-bounding-box', cor='orange', desc='Enviadas por remetentes fora do equipe.json.') }}
+</div>
+{% if resumo %}
+<div class="text-muted small mb-3">Período: <strong>{{ resumo.inicio.strftime('%d/%m/%Y %H:%M') }}</strong> até <strong>{{ resumo.fim.strftime('%d/%m/%Y %H:%M') }}</strong></div>
+{% endif %}
+
+<div class="row g-3 mb-3">
+  {{ grafico('Mensagens por dia', 'chartDia', desc='Total de mensagens por dia no período filtrado. A linha tracejada azul é a média móvel de 7 dias (tendência).') }}
+  <div class="col">
+    <div class="card h-100">
+      <div class="card-body">
+        <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+          <h6 class="card-title mb-0">Comparação: 1ª vs 2ª metade do período
+            <span class="desc-icon" data-bs-toggle="tooltip" data-bs-placement="top" title="Divide o período filtrado em 2 metades de duração igual por data de calendário e compara o volume de mensagens por dia. Cinza = 1ª metade; vermelho = 2ª metade. Respeita os filtros da barra.">?</span>
+          </h6>
+        </div>
+        <div class="d-flex flex-wrap gap-2 mb-2">
+          {% set m1i = comparacao.metade1_ini.strftime('%d/%m') if comparacao.metade1_ini else '—' %}
+          {% set m1f = comparacao.metade1_fim.strftime('%d/%m') if comparacao.metade1_fim else '—' %}
+          {% set m2i = comparacao.metade2_ini.strftime('%d/%m') if comparacao.metade2_ini else '—' %}
+          {% set m2f = comparacao.metade2_fim.strftime('%d/%m') if comparacao.metade2_fim else '—' %}
+          <span class="dg-chip dg-chip-c1">1ª metade ({{ m1i }}–{{ m1f }}): {{ comparacao.totais[0] }} msgs</span>
+          <span class="dg-chip dg-chip-c2">2ª metade ({{ m2i }}–{{ m2f }}): {{ comparacao.totais[1] }} msgs</span>
+          <span class="dg-chip {{ 'dg-chip-up' if comparacao.delta_pct > 0 else ('dg-chip-down' if comparacao.delta_pct < 0 else 'dg-chip-neutral') }}">Δ {{ comparacao.delta_pct }}%</span>
+        </div>
+        <div class="chart-box"><canvas id="chartComparacao"></canvas></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="row g-3 mb-3">
+  <div class="col">
+    <div class="card h-100">
+      <div class="card-body">
+        <h6 class="card-title">Heatmap de atividade (dia da semana × hora)
+          <span class="desc-icon" data-bs-toggle="tooltip" data-bs-placement="top" title="Intensidade de mensagens por dia da semana e hora. Células mais intensas = mais atividade.">?</span>
+        </h6>
+        {{ heatmap_tabela(heatmap) }}
+      </div>
+    </div>
+  </div>
+  {{ grafico('Atividade por hora do dia', 'chartHora', desc='Distribuição do volume por hora do dia (0–23h).') }}
+</div>
+<div class="row g-3">
+  {{ grafico('Mensagens por grupo', 'chartGrupos', desc='Total de mensagens por grupo no período filtrado.') }}
+  {{ grafico('Mensagens por remetente', 'chartRemetentes', desc='Total de mensagens por remetente (nome exibido).') }}
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if resumo %}
+<script>
+const serieDia = {{ serie_dia|tojson }};
+const horas = {{ horas|tojson }};
+const comparacao = {{ comparacao|tojson }};
+const grupos = {{ top_grupos|tojson }};
+const remetentes = {{ top_remetentes|tojson }};
+</script>
+<script src="{{ url_for('dashboard_grupos.static', filename='js/visao_geral.js') }}"></script>
+{% endif %}
+{% endblock %}
