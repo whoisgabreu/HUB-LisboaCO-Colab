@@ -48,6 +48,16 @@ app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 # Dashboard de Análise de Grupos (blueprint isolado, acessível em /grupos)
 register_dashboard_grupos(app)
 
+
+@app.route("/favicon.ico")
+def favicon():
+    """Fallback global para o favicon, solicitado automaticamente pelo navegador."""
+    return send_from_directory(
+        os.path.join(app.root_path, "static"),
+        "favicon.ico",
+        mimetype="image/vnd.microsoft.icon",
+    )
+
 # Google OAuth
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
