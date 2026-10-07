@@ -35,6 +35,7 @@ from services.kanban_service import KanbanService, PhaseTransitionError
 from services.automacao_service import AutomacaoService
 
 from dashboard_grupos.hub_integration import register as register_dashboard_grupos
+from feed.hub_integration import register as register_feed
 
 
 
@@ -47,6 +48,9 @@ app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
 # Dashboard de Análise de Grupos (blueprint isolado, acessível em /grupos)
 register_dashboard_grupos(app)
+
+# Feed social (blueprint isolado, APIs em /api/feed)
+register_feed(app)
 
 
 @app.route("/favicon.ico")
@@ -105,6 +109,19 @@ def daily_automacoes_project_date_job():
         print("Verificação de gatilhos de data concluída.")
     except Exception as e:
         print(f"Erro na verificação de gatilhos de data: {e}")
+
+
+@scheduler.task('cron', id='feed_birthdays_daily', hour=0, minute=5)
+def daily_feed_birthdays_job():
+    """Cria o post fixado de aniversário dos colaboradores do dia."""
+    print(f"[{dt.now()}] Verificando aniversários para o feed...")
+    try:
+        from feed.service import FeedService
+        with Session() as db:
+            criados = FeedService(db).verificar_aniversarios(forcar=True)
+        print(f"Aniversários: {criados} post(s) criado(s).")
+    except Exception as e:
+        print(f"Erro ao verificar aniversários do feed: {e}")
 
 
 def check_session(func):
