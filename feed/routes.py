@@ -170,3 +170,23 @@ def desfixar_post(post_id):
             return jsonify({"ok": True})
         except Exception as e:  # noqa: BLE001
             return _erro(e)
+
+
+# ── Widgets ───────────────────────────────────────────────────────────────────
+
+
+@bp.route("/widgets", methods=["GET"])
+def widgets():
+    with Session() as db:
+        try:
+            svc = FeedService(db)
+            return jsonify(
+                {
+                    "aniversariantes": svc.aniversariantes_do_dia(),
+                    "proximos_eventos": svc.proximos_eventos(),
+                    "em_alta": svc.em_alta(),
+                    "ranking": svc.ranking_participacao(),
+                }
+            )
+        except Exception as e:  # noqa: BLE001
+            return _erro(e)

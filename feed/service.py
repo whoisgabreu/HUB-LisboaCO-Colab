@@ -443,3 +443,132 @@ class FeedService:
 
         _ULTIMA_VERIFICACAO_ANIVERSARIO = hoje
         return criados
+
+    # ── Widgets ───────────────────────────────────────────────────────────────
+
+    def aniversariantes_do_dia(self) -> List[Dict[str, Any]]:
+        hoje = self._agora().date()
+        rows = self.db.execute(
+            select(Investidor)
+            .where(
+                Investidor.data_nascimento.isnot(None),
+                Investidor.ativo.is_(True),
+                func.extract("month", Investidor.data_nascimento) == hoje.month,
+                func.extract("day", Investidor.data_nascimento) == hoje.day,
+            )
+            .order_by(Investidor.nome.asc())
+        ).scalars().all()
+        return [
+            {
+                "email": i.email,
+                "nome": i.nome,
+                "profile_picture": i.profile_picture,
+                "funcao": i.funcao or i.posicao,
+                "idade": hoje.year - i.data_nascimento.year,
+            }
+            for i in rows
+        ]
+
+    def proximos_eventos(self, limite: int = 5) -> List[Dict[str, Any]]:
+        agora = self._agora()
+        rows = self.db.execute(
+            select(FeedPost)
+            .where(
+                FeedPost.tipo == "evento",
+                FeedPost.deletado.is_(False),
+                FeedPost.evento_data.isnot(None),
+                FeedPost.evento_data >= agora,
+            )
+            .order_by(FeedPost.evento_data.asc())
+            .limit(limite)
+        ).scalars().all()
+        autores = self._autores([p.autor_email for p in rows])
+        return [
+            {
+                "id": p.id,
+                "titulo": p.titulo,
+                "evento_data": p.evento_data.isoformat() if p.evento_data else None,
+                "evento_local": p.evento_local,
+                "autor": self._autor_dict(autores.get(p.autor_email)),
+            }
+            for p in rows
+        ]
+
+    def em_alta(self, limite: int = 3, dias: int = 7) -> List[Dict[str, Any]]:
+        desde = self._agora() - timedelta(days=dias)
+        rows = self.db.execute(
+            select(FeedPost, func.count(FeedReacao.id).label("total"))
+            .join(FeedReacao, FeedReacao.post_id == FeedPost.id)
+            .where(FeedPost.deletado.is_(False), FeedPost.criado_em >= desde)
+            .group_by(FeedPost.id)
+            .order_by(func.count(FeedReacao.id).desc(), FeedPost.criado_em.desc())
+            .limit(limite)
+        ).all()
+        autores = self._autores([p.autor_email for p, _ in rows])
+        return [
+            {
+                "id": p.id,
+                "titulo": p.titulo,
+                "tipo": p.tipo,
+                "conteudo": (p.conteudo or "")[:120],
+                "total_reacoes": total,
+                "criado_em": p.criado_em.isoformat() if p.criado_em else None,
+                "autor": self._autor_dict(autores.get(p.autor_email)),
+            }
+            for p, total in rows
+        ]
+
+    def ranking_participacao(self, limite: int = 5, dias: int = 7) -> List[Dict[str, Any]]:
+        desde = self._agora() - timedelta(days=dias)
+
+        posts_por = dict(
+            self.db.execute(
+                select(FeedPost.autor_email, func.count())
+                .where(
+                    FeedPost.deletado.is_(False),
+                    FeedPost.criado_em >= desde,
+                    FeedPost.autor_email.isnot(None),
+                )
+                .group_by(FeedPost.autor_email)
+            ).all()
+        )
+        reac_por = dict(
+            self.db.execute(
+                select(FeedReacao.usuario_email, func.count())
+                .where(FeedReacao.criado_em >= desde)
+                .group_by(FeedReacao.usuario_email)
+            ).all()
+        )
+        coment_por = dict(
+            self.db.execute(
+                select(FeedComentario.autor_email, func.count())
+                .where(
+                    FeedComentario.deletado.is_(False),
+                    FeedComentario.criado_em >= desde,
+                )
+                .group_by(FeedComentario.autor_email)
+            ).all()
+        )
+
+        emails = set(posts_por) | set(reac_por) | set(coment_por)
+        autores = self._autores(list(emails))
+
+        itens = []
+        for email in emails:
+            inv = autores.get(email)
+            posts = posts_por.get(email, 0)
+            reacoes = reac_por.get(email, 0)
+            comentarios = coment_por.get(email, 0)
+            itens.append(
+                {
+                    "email": email,
+                    "nome": inv.nome if inv else email,
+                    "profile_picture": inv.profile_picture if inv else None,
+                    "posts": posts,
+                    "reacoes": reacoes,
+                    "comentarios": comentarios,
+                    "total": posts + reacoes + comentarios,
+                }
+            )
+        itens.sort(key=lambda x: x["total"], reverse=True)
+        return itens[:limite]
