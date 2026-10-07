@@ -2,6 +2,9 @@
 
 {% include "components/up-button.html" %}
 
+<link rel="stylesheet" href="/static/style/notificacoes.css">
+<script src="/static/js/notificacoes.js" defer></script>
+
 <!-- Decoy para capturar Autofill indesejado do Chrome -->
 <div style="position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); border: 0;">
     <input type="text" name="prevent_autofill_email" tabindex="-1">
@@ -20,4 +23,19 @@
         </div>
     </div>
 
+    <div class="header-right">
+        <button id="notifBell" class="notif-bell" title="Notificações" onclick="Notificacoes.toggle(event)">
+            <i class="fa-regular fa-bell"></i>
+            <span id="notifBadge" class="notif-badge" style="display:none;">0</span>
+        </button>
+        <div id="notifDropdown" class="notif-dropdown">
+            <div class="notif-head">
+                <span>Notificações</span>
+                <button type="button" onclick="Notificacoes.marcarTodas()">Marcar todas como lidas</button>
+            </div>
+            <div id="notifList" class="notif-list">
+                <div class="notif-empty">Sem notificações.</div>
+            </div>
+        </div>
+    </div>
 </header>

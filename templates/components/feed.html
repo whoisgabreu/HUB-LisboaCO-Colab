@@ -19,27 +19,56 @@
 
     <!-- Composer -->
     <div class="feed-composer">
-        <div class="feed-avatar">
-            {% if session.profile_picture %}
-            <img src="/static/images/profile_pictures/{{ session.profile_picture }}" alt="{{ session.nome }}">
-            {% else %}
-            <i class="fa-solid fa-user-tie"></i>
-            {% endif %}
-        </div>
-        <div class="feed-composer-body">
-            <textarea id="feedTexto" rows="2"
-                placeholder="No que você está pensando, {{ session.nome.split(' ')[0] }}?"></textarea>
-            <div class="feed-composer-actions">
-                {% if pode_gerenciar %}
-                <button type="button" class="feed-btn ghost" onclick="Feed.toggleEvento()">
-                    <i class="fa-regular fa-calendar-plus"></i> Evento
-                </button>
+        <div class="feed-composer-title">No que está pensando hoje?</div>
+        <div class="feed-composer-main">
+            <div class="feed-avatar">
+                {% if session.profile_picture %}
+                <img src="/static/images/profile_pictures/{{ session.profile_picture }}" alt="{{ session.nome }}">
+                {% else %}
+                <i class="fa-solid fa-user-tie"></i>
                 {% endif %}
-                <button type="button" class="feed-btn primary" onclick="Feed.publicar()">
-                    <i class="fa-solid fa-paper-plane"></i> Publicar
-                </button>
+            </div>
+            <div class="feed-composer-body">
+                <textarea id="feedTexto" rows="2" maxlength="3000" placeholder="Escreva algo para o time..."></textarea>
+                <div id="feedMencaoBox" class="feed-mencao-box"></div>
+
+                <!-- Enquete -->
+                <div id="feedEnqueteForm" class="feed-enquete-form">
+                    <div class="feed-enquete-opcoes" id="feedEnqueteOpcoes"></div>
+                    <button type="button" class="feed-btn ghost small" onclick="Feed.addOpcaoEnquete()">
+                        <i class="fa-solid fa-plus"></i> Adicionar opção
+                    </button>
+                </div>
+
+                <div class="feed-composer-actions">
+                    <div class="feed-composer-tools">
+                        <button type="button" class="feed-ico-btn" title="Emoji" onclick="Feed.toggleEmoji(event)">
+                            <i class="fa-regular fa-face-smile"></i>
+                        </button>
+                        <button type="button" class="feed-ico-btn" title="Enquete" onclick="Feed.toggleEnquete()">
+                            <i class="fa-solid fa-square-poll-vertical"></i>
+                        </button>
+                        {% if pode_gerenciar %}
+                        <button type="button" class="feed-ico-btn" title="Evento" onclick="Feed.toggleEvento()">
+                            <i class="fa-regular fa-calendar-plus"></i>
+                        </button>
+                        {% endif %}
+                        <span id="feedCharCount" class="feed-char">0/3000</span>
+                    </div>
+                    <div class="feed-composer-right">
+                        <select id="feedVisibilidade" class="feed-select" title="Visibilidade">
+                            <option value="todos">Todos</option>
+                            <option value="squad">Minha squad</option>
+                            <option value="gestao">Gerência</option>
+                        </select>
+                        <button type="button" class="feed-btn primary" onclick="Feed.publicar()">
+                            <i class="fa-solid fa-paper-plane"></i> Publicar
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
+        <div id="feedEmojiPicker" class="feed-emoji-picker"></div>
     </div>
 
     <!-- Formulário de Evento (somente privilegiados) -->
@@ -66,6 +95,28 @@
     </div>
     {% endif %}
 
+    <!-- Toolbar -->
+    <div class="feed-toolbar">
+        <div class="feed-search">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input id="feedBusca" type="text" placeholder="Buscar no feed...">
+        </div>
+        <select id="feedTipo" class="feed-select">
+            <option value="">Tudo</option>
+            <option value="post">Publicações</option>
+            <option value="evento">Eventos</option>
+            <option value="enquete">Enquetes</option>
+            <option value="aniversario">Aniversários</option>
+        </select>
+        <button type="button" id="feedSalvosBtn" class="feed-btn ghost small" onclick="Feed.toggleSalvos()">
+            <i class="fa-regular fa-bookmark"></i> Salvos
+        </button>
+    </div>
+
+    <div id="feedNovos" class="feed-novos" onclick="Feed.carregarNovos()">
+        <i class="fa-solid fa-arrow-up"></i> <span id="feedNovosQtd">0</span> novas publicações
+    </div>
+
     <!-- Lista de posts -->
     <div id="feedList" class="feed-list">
         <div class="feed-loading"><i class="fa-solid fa-spinner fa-spin"></i> Carregando feed...</div>
@@ -74,5 +125,13 @@
     <div class="feed-footer">
         <button type="button" id="feedCarregarMais" class="feed-btn ghost" onclick="Feed.carregarMais()"
             style="display:none;">Carregar mais</button>
+    </div>
+
+    <!-- Modal de perfil rápido -->
+    <div id="feedPerfilModal" class="feed-modal">
+        <div class="feed-modal-content">
+            <button class="feed-modal-close" onclick="Feed.fecharPerfil()">&times;</button>
+            <div id="feedPerfilBody" class="feed-perfil-body"></div>
+        </div>
     </div>
 </section>
