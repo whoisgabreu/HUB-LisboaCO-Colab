@@ -24,13 +24,24 @@ _ULTIMA_VERIFICACAO_ANIVERSARIO: Optional[date] = None
 
 
 def is_privilegiado(posicao: str, nivel_acesso: str) -> bool:
-    """Gerência, Sócio, Coordenador ou Admin podem criar eventos e fixar posts."""
+    """Gerência, Sócio, Coordenador ou Admin podem criar eventos."""
     import unicodedata
 
     if (nivel_acesso or "").strip() == "Admin":
         return True
     pos = unicodedata.normalize("NFC", (posicao or "").strip().lower())
     permitidas = {"gerência", "sócio", "coordenador"}
+    return pos in {unicodedata.normalize("NFC", p) for p in permitidas}
+
+
+def is_gestao_feed(posicao: str, nivel_acesso: str) -> bool:
+    """Gerência, Sócio ou Admin podem fixar/excluir posts de terceiros."""
+    import unicodedata
+
+    if (nivel_acesso or "").strip() == "Admin":
+        return True
+    pos = unicodedata.normalize("NFC", (posicao or "").strip().lower())
+    permitidas = {"gerência", "sócio"}
     return pos in {unicodedata.normalize("NFC", p) for p in permitidas}
 
 
@@ -345,42 +356,46 @@ class FeedService:
 
     # ── Fixação e remoção ─────────────────────────────────────────────────────
 
-    def fixar_post(self, post_id: int, dias: int) -> None:
+    def fixar_post(self, post_id: int, solicitante_email: str, gestao: bool, dias: int) -> None:
         post = self.db.get(FeedPost, post_id)
         if not post or post.deletado:
             raise ValueError("Post não encontrado.")
+        if post.autor_email != solicitante_email and not gestao:
+            raise PermissionError("Sem permissão para fixar este post.")
         dias = max(1, int(dias or 1))
         post.fixado = True
         post.fixado_ate = self._agora() + timedelta(days=dias)
         post.atualizado_em = self._agora()
         self.db.commit()
 
-    def desfixar_post(self, post_id: int) -> None:
+    def desfixar_post(self, post_id: int, solicitante_email: str, gestao: bool) -> None:
         post = self.db.get(FeedPost, post_id)
         if not post or post.deletado:
             raise ValueError("Post não encontrado.")
+        if post.autor_email != solicitante_email and not gestao:
+            raise PermissionError("Sem permissão para desfixar este post.")
         post.fixado = False
         post.fixado_ate = None
         post.atualizado_em = self._agora()
         self.db.commit()
 
-    def deletar_post(self, post_id: int, solicitante_email: str, privilegiado: bool) -> None:
+    def deletar_post(self, post_id: int, solicitante_email: str, gestao: bool) -> None:
         post = self.db.get(FeedPost, post_id)
         if not post or post.deletado:
             raise ValueError("Post não encontrado.")
-        if post.autor_email != solicitante_email and not privilegiado:
+        if post.autor_email != solicitante_email and not gestao:
             raise PermissionError("Sem permissão para remover este post.")
         post.deletado = True
         post.atualizado_em = self._agora()
         self.db.commit()
 
     def deletar_comentario(
-        self, comentario_id: int, solicitante_email: str, privilegiado: bool
+        self, comentario_id: int, solicitante_email: str, gestao: bool
     ) -> None:
         comentario = self.db.get(FeedComentario, comentario_id)
         if not comentario or comentario.deletado:
             raise ValueError("Comentário não encontrado.")
-        if comentario.autor_email != solicitante_email and not privilegiado:
+        if comentario.autor_email != solicitante_email and not gestao:
             raise PermissionError("Sem permissão para remover este comentário.")
         comentario.deletado = True
         self.db.commit()

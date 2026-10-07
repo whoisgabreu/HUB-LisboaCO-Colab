@@ -5,7 +5,7 @@ from datetime import datetime
 from flask import jsonify, request, session
 
 from database import Session
-from feed.service import FeedService, is_privilegiado
+from feed.service import FeedService, is_gestao_feed, is_privilegiado
 
 from . import bp
 
@@ -23,6 +23,10 @@ def _erro(e: Exception):
 
 def _privilegiado() -> bool:
     return is_privilegiado(session.get("posicao", ""), session.get("nivel_acesso", ""))
+
+
+def _gestao() -> bool:
+    return is_gestao_feed(session.get("posicao", ""), session.get("nivel_acesso", ""))
 
 
 def _parse_evento_data(raw):
@@ -82,7 +86,7 @@ def criar_evento():
 def deletar_post(post_id):
     with Session() as db:
         try:
-            FeedService(db).deletar_post(post_id, session.get("email"), _privilegiado())
+            FeedService(db).deletar_post(post_id, session.get("email"), _gestao())
             return jsonify({"ok": True})
         except Exception as e:  # noqa: BLE001
             return _erro(e)
@@ -137,7 +141,7 @@ def deletar_comentario(comentario_id):
     with Session() as db:
         try:
             FeedService(db).deletar_comentario(
-                comentario_id, session.get("email"), _privilegiado()
+                comentario_id, session.get("email"), _gestao()
             )
             return jsonify({"ok": True})
         except Exception as e:  # noqa: BLE001
@@ -149,12 +153,12 @@ def deletar_comentario(comentario_id):
 
 @bp.route("/posts/<int:post_id>/fixar", methods=["POST"])
 def fixar_post(post_id):
-    if not _privilegiado():
-        return jsonify({"erro": "Sem permissão para fixar posts."}), 403
     payload = request.get_json(silent=True) or {}
     with Session() as db:
         try:
-            FeedService(db).fixar_post(post_id, payload.get("dias", 7))
+            FeedService(db).fixar_post(
+                post_id, session.get("email"), _gestao(), payload.get("dias", 7)
+            )
             return jsonify({"ok": True})
         except Exception as e:  # noqa: BLE001
             return _erro(e)
@@ -162,11 +166,9 @@ def fixar_post(post_id):
 
 @bp.route("/posts/<int:post_id>/desfixar", methods=["POST"])
 def desfixar_post(post_id):
-    if not _privilegiado():
-        return jsonify({"erro": "Sem permissão para desfixar posts."}), 403
     with Session() as db:
         try:
-            FeedService(db).desfixar_post(post_id)
+            FeedService(db).desfixar_post(post_id, session.get("email"), _gestao())
             return jsonify({"ok": True})
         except Exception as e:  # noqa: BLE001
             return _erro(e)

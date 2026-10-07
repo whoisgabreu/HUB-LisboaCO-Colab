@@ -1,4 +1,5 @@
 {% set pode_gerenciar = session.nivel_acesso == 'Admin' or session.posicao in ['Gerência', 'Sócio', 'Coordenador'] %}
+{% set pode_gestao = session.nivel_acesso == 'Admin' or session.posicao in ['Gerência', 'Sócio'] %}
 <!-- ═══════════════════════════════════════════════════════════ -->
 <!-- Feed Social -->
 <!-- ═══════════════════════════════════════════════════════════ -->
@@ -8,7 +9,8 @@
     data-user-email="{{ session.email }}"
     data-user-nome="{{ session.nome }}"
     data-user-foto="{{ session.profile_picture or '' }}"
-    data-privilegiado="{{ 'true' if pode_gerenciar else 'false' }}">
+    data-privilegiado="{{ 'true' if pode_gerenciar else 'false' }}"
+    data-gestao="{{ 'true' if pode_gestao else 'false' }}">
 
     <div class="feed-header-row">
         <h3>Feed</h3>

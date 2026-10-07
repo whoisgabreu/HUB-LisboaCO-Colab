@@ -20,6 +20,7 @@
         nome: "",
         foto: "",
         privilegiado: false,
+        gestao: false,
         pagina: 1,
         carregando: false,
         temMais: false,
@@ -117,15 +118,15 @@
                 </div>`;
         }
 
-        const menuPriv = state.privilegiado
+        const podeGerenciarPost = state.gestao || post.autor_email === state.email;
+        const menuPriv = podeGerenciarPost
             ? `${pinAtivo
                 ? `<button class="feed-mini-btn" onclick="Feed.desfixar(${post.id})"><i class="fa-solid fa-thumbtack"></i> Desfixar</button>`
                 : `<button class="feed-mini-btn" onclick="Feed.fixar(${post.id})"><i class="fa-solid fa-thumbtack"></i> Fixar</button>`
             }`
             : "";
 
-        const podeExcluir = state.privilegiado || post.autor_email === state.email;
-        const botaoExcluir = podeExcluir
+        const botaoExcluir = podeGerenciarPost
             ? `<button class="feed-mini-btn danger" onclick="Feed.deletarPost(${post.id})"><i class="fa-solid fa-trash"></i></button>`
             : "";
 
@@ -320,7 +321,7 @@
     }
 
     function comentarioHtml(c, depth) {
-        const podeExcluir = state.privilegiado || c.autor_email === state.email;
+        const podeExcluir = state.gestao || c.autor_email === state.email;
         const respostas = (c.respostas || []).map((r) => comentarioHtml(r, depth + 1)).join("");
         return `
             <div class="feed-comentario" style="margin-left:${depth * 28}px">
@@ -536,6 +537,7 @@
         state.nome = root.dataset.userNome || "";
         state.foto = root.dataset.userFoto || "";
         state.privilegiado = root.dataset.privilegiado === "true";
+        state.gestao = root.dataset.gestao === "true";
         carregar(false);
         carregarWidgets();
     });
