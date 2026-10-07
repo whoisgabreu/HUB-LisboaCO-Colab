@@ -1650,6 +1650,13 @@ def home():
     return render_template("index.html", operational_data=operational_data, my_remuneracao=my_remuneracao)
 
 
+@app.route("/feed", methods=["GET"])
+@check_session
+def feed():
+    """Página dedicada do Feed Lisboa (rede social interna)."""
+    return render_template("feed.html")
+
+
 @app.template_filter('format_date')
 def format_date(date_str):
     if not date_str:

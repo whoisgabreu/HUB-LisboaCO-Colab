@@ -228,6 +228,7 @@
             await api("/api/feed/posts", { method: "POST", body: JSON.stringify({ conteudo }) });
             input.value = "";
             await carregar(false);
+            await carregarWidgets();
         } catch (e) {
             alert(e.message);
         }
@@ -261,6 +262,7 @@
             document.getElementById("eventoDias").value = "1";
             toggleEvento();
             await carregar(false);
+            await carregarWidgets();
         } catch (e) {
             alert(e.message);
         }
@@ -427,6 +429,83 @@
         }
     }
 
+    // ── Widgets da coluna direita ─────────────────────────────────────────────
+    function setWidget(id, html) {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = html;
+    }
+
+    function renderAniversariantes(itens) {
+        if (!itens.length) {
+            setWidget("widgetAniversariantes", `<div class="feed-widget-empty">Sem aniversários hoje.</div>`);
+            return;
+        }
+        setWidget("widgetAniversariantes", itens.map((i) => `
+            <div class="feed-widget-item">
+                <div class="feed-avatar">${avatarHtml(i.profile_picture, i.nome)}</div>
+                <div class="feed-widget-item-info">
+                    <div class="feed-widget-item-nome">${esc(i.nome)}</div>
+                    <div class="feed-widget-item-meta">${esc(i.funcao || "")} · ${i.idade} anos 🎂</div>
+                </div>
+            </div>`).join(""));
+    }
+
+    function renderEventosWidget(itens) {
+        if (!itens.length) {
+            setWidget("widgetEventos", `<div class="feed-widget-empty">Nenhum evento agendado.</div>`);
+            return;
+        }
+        setWidget("widgetEventos", itens.map((e) => `
+            <div class="feed-widget-post">
+                <div class="feed-widget-post-titulo">${esc(e.titulo || "Evento")}</div>
+                <div class="feed-widget-post-meta"><i class="fa-regular fa-clock"></i> ${esc(formatarData(e.evento_data))}${e.evento_local ? " · " + esc(e.evento_local) : ""}</div>
+            </div>`).join(""));
+    }
+
+    function renderEmAlta(itens) {
+        if (!itens.length) {
+            setWidget("widgetEmAlta", `<div class="feed-widget-empty">Sem publicações em alta.</div>`);
+            return;
+        }
+        setWidget("widgetEmAlta", itens.map((p) => {
+            const base = p.titulo || (p.conteudo || "").slice(0, 70) || "Publicação";
+            return `
+            <div class="feed-widget-post">
+                <div class="feed-widget-post-titulo">${esc(base)}</div>
+                <div class="feed-widget-post-meta">${esc(p.autor.nome)} · ${p.total_reacoes} reação(ões)</div>
+            </div>`;
+        }).join(""));
+    }
+
+    function renderRanking(itens) {
+        if (!itens.length) {
+            setWidget("widgetRanking", `<div class="feed-widget-empty">Sem participação nesta semana.</div>`);
+            return;
+        }
+        setWidget("widgetRanking", itens.map((u, idx) => `
+            <div class="feed-widget-item">
+                <span class="feed-widget-rank">${idx + 1}º</span>
+                <div class="feed-avatar">${avatarHtml(u.profile_picture, u.nome)}</div>
+                <div class="feed-widget-item-info">
+                    <div class="feed-widget-item-nome">${esc(u.nome)}</div>
+                    <div class="feed-widget-item-meta">${u.posts} post(s) · ${u.reacoes} reação(ões) · ${u.comentarios} comentário(s)</div>
+                </div>
+            </div>`).join(""));
+    }
+
+    async function carregarWidgets() {
+        if (!document.getElementById("widgetAniversariantes")) return;
+        try {
+            const data = await api("/api/feed/widgets");
+            renderAniversariantes(data.aniversariantes || []);
+            renderEventosWidget(data.proximos_eventos || []);
+            renderEmAlta(data.em_alta || []);
+            renderRanking(data.ranking || []);
+        } catch (e) {
+            console.error("Erro ao carregar widgets do feed:", e);
+        }
+    }
+
     document.addEventListener("click", () => {
         document.querySelectorAll(".feed-picker.aberto").forEach((el) => el.classList.remove("aberto"));
     });
@@ -445,6 +524,7 @@
         deletarPost,
         fixar,
         desfixar,
+        carregarWidgets,
         reload: () => carregar(false),
     };
 
@@ -457,5 +537,6 @@
         state.foto = root.dataset.userFoto || "";
         state.privilegiado = root.dataset.privilegiado === "true";
         carregar(false);
+        carregarWidgets();
     });
 })();
