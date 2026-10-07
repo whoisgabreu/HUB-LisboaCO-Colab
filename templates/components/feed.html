@@ -1,0 +1,76 @@
+{% set pode_gerenciar = session.nivel_acesso == 'Admin' or session.posicao in ['Gerência', 'Sócio', 'Coordenador'] %}
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- Feed Social -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<section
+    class="feed"
+    id="feedApp"
+    data-user-email="{{ session.email }}"
+    data-user-nome="{{ session.nome }}"
+    data-user-foto="{{ session.profile_picture or '' }}"
+    data-privilegiado="{{ 'true' if pode_gerenciar else 'false' }}">
+
+    <div class="feed-header-row">
+        <h3>Feed</h3>
+        <span class="feed-subtitle">Compartilhe novidades com o time</span>
+    </div>
+
+    <!-- Composer -->
+    <div class="feed-composer">
+        <div class="feed-avatar">
+            {% if session.profile_picture %}
+            <img src="/static/images/profile_pictures/{{ session.profile_picture }}" alt="{{ session.nome }}">
+            {% else %}
+            <i class="fa-solid fa-user-tie"></i>
+            {% endif %}
+        </div>
+        <div class="feed-composer-body">
+            <textarea id="feedTexto" rows="2"
+                placeholder="No que você está pensando, {{ session.nome.split(' ')[0] }}?"></textarea>
+            <div class="feed-composer-actions">
+                {% if pode_gerenciar %}
+                <button type="button" class="feed-btn ghost" onclick="Feed.toggleEvento()">
+                    <i class="fa-regular fa-calendar-plus"></i> Evento
+                </button>
+                {% endif %}
+                <button type="button" class="feed-btn primary" onclick="Feed.publicar()">
+                    <i class="fa-solid fa-paper-plane"></i> Publicar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Formulário de Evento (somente privilegiados) -->
+    {% if pode_gerenciar %}
+    <div class="feed-evento-form" id="feedEventoForm">
+        <h4><i class="fa-regular fa-calendar-plus"></i> Novo evento</h4>
+        <div class="feed-evento-grid">
+            <input type="text" id="eventoTitulo" placeholder="Título do evento *">
+            <input type="datetime-local" id="eventoData">
+            <input type="text" id="eventoLocal" placeholder="Local (opcional)">
+            <label class="feed-evento-dias">
+                Fixar por
+                <input type="number" id="eventoDias" value="1" min="1" max="365">
+                dias
+            </label>
+        </div>
+        <textarea id="eventoConteudo" rows="2" placeholder="Descrição (opcional)"></textarea>
+        <div class="feed-composer-actions">
+            <button type="button" class="feed-btn ghost" onclick="Feed.toggleEvento()">Cancelar</button>
+            <button type="button" class="feed-btn primary" onclick="Feed.publicarEvento()">
+                <i class="fa-solid fa-thumbtack"></i> Publicar e fixar
+            </button>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Lista de posts -->
+    <div id="feedList" class="feed-list">
+        <div class="feed-loading"><i class="fa-solid fa-spinner fa-spin"></i> Carregando feed...</div>
+    </div>
+
+    <div class="feed-footer">
+        <button type="button" id="feedCarregarMais" class="feed-btn ghost" onclick="Feed.carregarMais()"
+            style="display:none;">Carregar mais</button>
+    </div>
+</section>
