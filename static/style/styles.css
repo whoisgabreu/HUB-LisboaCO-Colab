@@ -123,7 +123,7 @@ body::-webkit-scrollbar-thumb:hover {
 /* MAIN CONTENT */
 .main-container {
     padding: 2rem;
-    max-width: 1600px;
+    max-width: none;
     margin: 0 auto;
     flex: 1;
     width: 100%;
