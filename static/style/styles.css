@@ -5804,3 +5804,46 @@ body.tema-claro .switch-slider {
     width: 100%;
     display: block;
 }
+
+/* ═══════════════════════════════════════════════════════════
+   Sidebar fixo (rail estilo Twitter) — apenas desktop.
+   No mobile (≤768px) o menu continua recolhível (drawer).
+   ═══════════════════════════════════════════════════════════ */
+@media (min-width: 769px) {
+    .sidebar {
+        transform: none;
+        visibility: visible;
+    }
+
+    .sidebar-nav > * {
+        opacity: 1;
+        transform: none;
+    }
+
+    .main-content {
+        margin-left: 260px !important;
+        width: auto !important;
+    }
+
+    .app-container {
+        margin-left: 260px;
+    }
+
+    .floating-burger {
+        display: none;
+    }
+
+    .nav-group-items {
+        max-height: none !important;
+        overflow: visible;
+    }
+
+    .nav-group-header {
+        cursor: default;
+        pointer-events: none;
+    }
+
+    .nav-group-header i.toggle-icon {
+        display: none;
+    }
+}
