@@ -5804,3 +5804,51 @@ body.tema-claro .switch-slider {
     width: 100%;
     display: block;
 }
+
+/* ═══════════════════════════════════════════════════════════
+   Widget de navegação flutuante (apenas desktop).
+   No mobile (≤768px) continua sendo o drawer recolhível.
+   As categorias (.nav-group) permanecem colapsáveis.
+   ═══════════════════════════════════════════════════════════ */
+@media (min-width: 769px) {
+    .sidebar {
+        top: calc(var(--header-height) + 1rem);
+        left: 1rem;
+        bottom: 1rem;
+        height: auto;
+        width: 250px;
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 14px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+        transform: none;
+        visibility: visible;
+        overflow: hidden; /* o scroll fica no .sidebar-nav */
+    }
+
+    .sidebar-nav {
+        padding: 0.75rem 0;
+    }
+
+    .sidebar-nav > * {
+        opacity: 1;
+        transform: none;
+    }
+
+    .sidebar-footer {
+        border-radius: 0 0 14px 14px;
+    }
+
+    .main-content {
+        margin-left: calc(250px + 2rem) !important;
+        width: auto !important;
+    }
+
+    .app-container {
+        margin-left: calc(250px + 2rem);
+    }
+
+    .floating-burger {
+        display: none;
+    }
+}
