@@ -5812,8 +5812,9 @@ body.tema-claro .switch-slider {
    ═══════════════════════════════════════════════════════════ */
 @media (min-width: 769px) {
     .sidebar {
+        --content-half: 800px; /* metade da largura de conteúdo padrão (1600) */
         top: calc(var(--header-height) + 1rem);
-        left: 1rem;
+        left: max(1rem, calc(50vw - var(--content-half) - 125px));
         bottom: 1rem;
         height: auto;
         width: 250px;
@@ -5850,5 +5851,13 @@ body.tema-claro .switch-slider {
 
     .floating-burger {
         display: none;
+    }
+
+    /* Páginas com conteúdo mais estreito: o widget acompanha a borda do conteúdo */
+    body:has(.feed-page) .sidebar {
+        --content-half: 560px; /* feed: max-width 1120 */
+    }
+    body:has(.feed-single) .sidebar {
+        --content-half: 360px; /* post único: max-width 720 */
     }
 }
