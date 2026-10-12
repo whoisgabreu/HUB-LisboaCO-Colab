@@ -20,6 +20,7 @@ from database import Session, engine, Base
 from models import (
     Investidor, Auth, Projeto,
     InvestidorProjeto, MetricaMensal, RemuneracaoCargo,
+    ProjetoContexto,
 
     OperacaoTarefa, OperacaoEntregaMensal, OperacaoPlanoMidia,
     OperacaoOtimizacao, OperacaoCheckin,
@@ -36,6 +37,8 @@ from services.automacao_service import AutomacaoService
 
 from dashboard_grupos.hub_integration import register as register_dashboard_grupos
 from feed.hub_integration import register as register_feed
+from chat.hub_integration import register as register_chat
+import permissions
 
 
 
@@ -51,6 +54,9 @@ register_dashboard_grupos(app)
 
 # Feed social (blueprint isolado, APIs em /api/feed)
 register_feed(app)
+
+# Chat interno (blueprint isolado, APIs em /api/chat)
+register_chat(app)
 
 
 @app.route("/favicon.ico")
@@ -124,6 +130,19 @@ def daily_feed_birthdays_job():
         print(f"Erro ao verificar aniversários do feed: {e}")
 
 
+@scheduler.task('cron', id='mrr_historico_daily', hour=0, minute=15)
+def daily_mrr_historico_job():
+    """Captura o snapshot mensal de MRR por projeto (upsert do mês corrente)."""
+    print(f"[{dt.now()}] Capturando snapshot de MRR histórico...")
+    try:
+        from services.mrr_historico_service import MrrHistoricoService
+        with Session() as db:
+            total = MrrHistoricoService(db).snapshot_atual()
+        print(f"Snapshot de MRR: {total} projeto(s) processado(s).")
+    except Exception as e:
+        print(f"Erro no snapshot de MRR histórico: {e}")
+
+
 def check_session(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
@@ -134,31 +153,18 @@ def check_session(func):
 
 
 def check_access(roles):
-    """Decorator para verificar cargo do usuário."""
+    """Decorator de acesso baseado em capacidades (v2).
+
+    Aceita a mesma lista de nomes de cargos/posições das rotas antigas, mas a
+    decisão usa as capacidades efetivas do usuário (união de cargo + posições).
+    Admin e gestão ampla têm bypass.
+    """
     def decorator(f):
         @wraps(f)
         def wrapper(*args, **kwargs):
-            user_role = session.get("funcao", "").strip()
-            user_posicao = session.get("posicao", "").strip()
-            
-            import unicodedata
-            # Se for Gerência, Sócio ou Coordenador via posição, concede acesso a quase tudo
-            _pos_norm = unicodedata.normalize('NFC', user_posicao.lower())
-            is_high_level = any(
-                unicodedata.normalize('NFC', r.lower()) == _pos_norm
-                for r in ["Gerência", "Sócio", "Coordenador"]
-            )
-            
-            # Verifica se o cargo solicitado está na lista ou se é Gerência/Sócio
-            # Normaliza NFC para evitar diferenças de composição Unicode (ex: á vs a+acento)
-            import unicodedata
-            _user_norm = unicodedata.normalize('NFC', user_role.lower())
-            if not is_high_level and not any(
-                unicodedata.normalize('NFC', role.lower()) == _user_norm
-                for role in roles
-            ):
-                print(f"[check_access] BLOQUEADO: user_role={user_role!r} user_posicao={user_posicao!r} roles={roles}")
-                return render_template("index.html", error="Acesso restrito.")
+            if not permissions.pode_por_roles(roles):
+                print(f"[check_access] BLOQUEADO: caps={sorted(permissions.capacidades())} roles={roles}")
+                return redirect(url_for("feed"))
             return f(*args, **kwargs)
         return wrapper
     return decorator
@@ -408,7 +414,7 @@ def _recalcular_mrr_por_entregas(db, record):
     """
     from decimal import Decimal
 
-    is_criativo = record.cargo in ("Designer", "WebDesigner", "Webdesigner")
+    is_criativo = record.cargo in ("Designer", "Web-Designer", "WebDesigner", "Webdesigner")
     entregas = record.entregas_criativos if is_criativo else record.entregas_operacao
     entregas = entregas or []
     entregas_map = {str(p.get("projeto_id")): p for p in entregas if p.get("projeto_id")}
@@ -590,7 +596,7 @@ def _infer_entregas_op_responsavel(db, email, pipefy_id, responsavel_hint=""):
         return hint
 
     investidor = db.query(Investidor).filter(Investidor.email.ilike(email)).first()
-    if investidor and investidor.funcao in ("Account", "Coordenador de CX"):
+    if investidor and investidor.funcao in ("Account", "Account Manager", "Gestor de Projeto", "Coordenador de CX"):
         return "account"
     return "gt"
 
@@ -785,7 +791,7 @@ def _sync_metrica_entregas_operacao(email, pipefy_id, mes, ano):
                 if vinculo.cientista:
                     hint = "cientista"
                 else:
-                    hint = "account" if investidor.funcao in ("Account", "Coordenador de CX") else "gt"
+                    hint = "account" if investidor.funcao in ("Account", "Account Manager", "Gestor de Projeto", "Coordenador de CX") else "gt"
                 
                 # Buscar nome do projeto
                 proj_name = vinculo.nome_projeto or ""
@@ -807,7 +813,7 @@ def _sync_metrica_entregas_operacao(email, pipefy_id, mes, ano):
                 if _vinculo.cientista:
                     _expected_resp = "cientista"
                 else:
-                    _expected_resp = "account" if investidor.funcao in ("Account", "Coordenador de CX") else "gt"
+                    _expected_resp = "account" if investidor.funcao in ("Account", "Account Manager", "Gestor de Projeto", "Coordenador de CX") else "gt"
                 _current_resp = entry.get("responsavel", "")
                 if _current_resp != _expected_resp:
                     _existing = {e.get("nome"): e.get("entregues", 0) for e in entry.get("entregas", [])}
@@ -1049,7 +1055,7 @@ def _sync_entregas_operacao_periodo_fast(email, mes, ano):
                     if vinculo.cientista:
                         responsavel = "cientista"
                     else:
-                        responsavel = "account" if investidor.funcao in ("Account", "Coordenador de CX") else "gt"
+                        responsavel = "account" if investidor.funcao in ("Account", "Account Manager", "Gestor de Projeto", "Coordenador de CX") else "gt"
                     proj_name = vinculo.nome_projeto or row["nome"] or f"Projeto {pid}"
                     entry = _build_entrega_op_entry(pid, proj_name, responsavel)
                     lista.append(entry)
@@ -1211,25 +1217,22 @@ def _agrupar_por_cliente(projetos_lista):
 
 
 def _buscar_projetos_db(model_class, email_investidor, squad_usuario, status=None):
-    """Busca projetos no banco com a lógica do n8n: Gerência vê tudo, outros veem só o seu squad."""
+    """Busca projetos no banco (escopo por capacidade de gestão / squads v2_)."""
     try:
         with Session() as db:
-            u_posicao = session.get("posicao")
-            
             # Se model_class for Projeto (unificado), adicionamos o filtro de status
             query = db.query(model_class)
             if model_class == Projeto and status:
                 query = query.filter_by(status=status)
-                
-            if squad_usuario == "Gerência" or u_posicao in ["Gerência", "Sócio"]:
+
+            if permissions.is_gestao_ampla():
                 projetos = query.all()
-            elif u_posicao == "Coordenador":
-                # Coordenador só vê dados da sua Squad; sem Squad, não vê nada
-                if not squad_usuario:
-                    return []
-                projetos = query.filter_by(squad_atribuida=squad_usuario).all()
             else:
-                projetos = query.filter_by(squad_atribuida=squad_usuario).all()
+                squad_ids = session.get("squad_ids", []) or []
+                ids = permissions.projeto_ids_das_squads(db, squad_ids)
+                if not ids:
+                    return []
+                projetos = query.filter(Projeto.pipefy_id.in_(ids)).all()
             return [_projeto_to_dict(p) for p in projetos]
     except SQLAlchemyError as e:
         print(f"Erro ao buscar projetos ({model_class.__tablename__}): {e}")
@@ -1316,6 +1319,7 @@ def login():
                     session["nivel_acesso"] = user.nivel_acesso
                     session["pode_editar_kanban"] = user.pode_editar_kanban
                     session["profile_picture"] = user.profile_picture
+                    permissions.aplicar_sessao(db, session, user)
 
                     if request.form.get("remember"):
                         session.permanent = True
@@ -1398,6 +1402,7 @@ def login_callback():
         session["nivel_acesso"] = user.nivel_acesso
         session["pode_editar_kanban"] = user.pode_editar_kanban
         session["profile_picture"] = user.profile_picture
+        permissions.aplicar_sessao(db, session, user)
         session.permanent = True
 
         db.commit()
@@ -1421,6 +1426,7 @@ def dev_login():
             session["nivel_acesso"] = user.nivel_acesso
             session["pode_editar_kanban"] = True
             session["profile_picture"] = user.profile_picture
+            permissions.aplicar_sessao(db, session, user)
             return redirect(url_for("view_kanban"))
         return "Dev user not found", 404
 
@@ -1468,6 +1474,9 @@ def logout():
 @app.route("/", methods=["GET"])
 @check_session
 def home():
+    """Antiga homepage: o feed é a nova página inicial."""
+    return redirect(url_for("feed"))
+    # Código da homepage antiga mantido (comentado) para fácil reversão.
     try:
         from services.currency import CurrencyService
         with Session() as db:
@@ -1657,6 +1666,20 @@ def feed():
     return render_template("feed.html")
 
 
+@app.route("/feed/post/<int:post_id>", methods=["GET"])
+@check_session
+def feed_post(post_id):
+    """Página única da postagem (permalink)."""
+    return render_template("feed_post.html", post_id=post_id)
+
+
+@app.route("/perfil", methods=["GET"])
+@check_session
+def perfil():
+    """Tela de perfil do usuário: postagens e itens salvos."""
+    return render_template("perfil.html")
+
+
 @app.template_filter('format_date')
 def format_date(date_str):
     if not date_str:
@@ -1672,21 +1695,13 @@ def hub_projetos():
     squad = session.get("squad", "")
     email = session.get("email", "")
 
-    # Busca squads disponíveis para o usuário (projetos ativos onde ele está no squad)
+    # Squads disponíveis (v2_)
     try:
         with Session() as db:
-            u_posicao = session.get("posicao")
-            if squad == "Gerência" or u_posicao in ["Gerência", "Sócio"]:
-                projetos_squad = db.query(Projeto).filter_by(status='Ativo').all()
-            elif u_posicao == "Coordenador":
-                # Coordenador só vê sua própria squad; se não tiver squad, não vê nada
-                if not squad:
-                    projetos_squad = []
-                else:
-                    projetos_squad = db.query(Projeto).filter_by(status='Ativo', squad_atribuida=squad).all()
+            if permissions.is_gestao_ampla():
+                squads = [s["nome"] for s in permissions.listar_squads(db)]
             else:
-                projetos_squad = db.query(Projeto).filter_by(status='Ativo', squad_atribuida=squad).all()
-            squads = list(set(p.squad_atribuida for p in projetos_squad if p.squad_atribuida))
+                squads = [s["nome"] for s in permissions.listar_squads(db, ids=session.get("squad_ids", []) or [])]
     except SQLAlchemyError as e:
         print(f"Erro ao buscar squads: {e}")
         squads = []
@@ -1768,15 +1783,14 @@ def hub_remuneracao():
 
 
             # 2. Busca métricas mais recentes agrupadas por investidor
-            u_posicao = session.get("posicao")
             u_squad = session.get("squad")
 
             query_metricas = db.query(MetricaMensal, Investidor).join(
                 Investidor, MetricaMensal.email_investidor == Investidor.email
             )
 
-            # Se for Coordenador, filtra apenas pela própria squad
-            if u_posicao == "Coordenador":
+            # Escopo por squad: apenas quando o usuário tem somente gestão de squad
+            if permissions.is_gestao_squad() and not permissions.is_gestao_ampla():
                 if not u_squad:
                     metricas_raw = []
                 else:
@@ -1889,34 +1903,56 @@ def api_get_foto_usuario(email):
 
 # ─── GERENCIAMENTO DE USUÁRIOS (ADMIN) ───────────────────────────────────────
 
+
+def _parse_data_iso(valor):
+    """Converte 'YYYY-MM-DD' em date; vazio/inválido -> None."""
+    if not valor:
+        return None
+    try:
+        return dt.strptime(str(valor)[:10], "%Y-%m-%d").date()
+    except (ValueError, TypeError):
+        return None
+
+
+def _so_digitos(valor, limite=None):
+    """Mantém apenas dígitos (para CPF/telefone); vazio -> None."""
+    if not valor:
+        return None
+    digitos = "".join(c for c in str(valor) if c.isdigit())
+    if not digitos:
+        return None
+    if limite:
+        digitos = digitos[:limite]
+    return digitos
+
+
 @app.route("/gerenciar-usuarios")
 @check_session
 def gerenciar_usuarios():
     # Apenas Admin acessa essa tela
     if session.get("nivel_acesso") != "Admin":
-        return render_template("index.html", error="Acesso restrito a administradores.")
+        return redirect(url_for("feed"))
     
     try:
         with Session() as db:
             # Buscar opções para os selects do modal
             from models import RemuneracaoCargo
-            cargos = db.query(RemuneracaoCargo.fixo_cargo).distinct().all()
             senioridades = db.query(RemuneracaoCargo.fixo_senioridade).distinct().all()
             niveis = db.query(RemuneracaoCargo.fixo_level).distinct().all()
-            
-            # Posições e Squads fixas ou do banco
-            posicoes = ["Operação", "Gerência", "Meio", "Sócio", "Coordenador"]
-            squads_db = db.query(Investidor.squad).filter(Investidor.squad != None).distinct().all()
-            squads = sorted(list(set([s[0] for s in squads_db if s[0]] + ["Gerência", "Strike Force", "Shark", "Tigers"])))
+
+            # Catálogos v2_
+            cargos = permissions.listar_catalogo(db, "v2_cargos")
+            posicoes = permissions.listar_catalogo(db, "v2_posicoes")
+            squads = permissions.listar_squads(db)
 
             return render_template(
                 "gerenciar-usuarios.html",
                 options={
-                    "cargos": [c[0] for c in cargos],
+                    "cargos": cargos,
                     "senioridades": [s[0] for s in senioridades],
                     "niveis": [n[0] for n in niveis],
                     "posicoes": posicoes,
-                    "squads": squads
+                    "squads": squads,
                 }
             )
     except Exception as e:
@@ -1933,20 +1969,32 @@ def api_get_usuarios():
     try:
         with Session() as db:
             usuarios = db.query(Investidor).order_by(Investidor.nome).all()
-            return jsonify([{
-                "id": u.id,
-                "nome": u.nome,
-                "email": u.email,
-                "funcao": u.funcao,
-                "senioridade": u.senioridade,
-                "nivel": u.nivel,
-                "squad": u.squad,
-                "posicao": u.posicao,
-                "nivel_acesso": u.nivel_acesso,
-                "ativo": u.ativo,
-                "pode_editar_kanban": u.pode_editar_kanban,
-                "profile_picture": u.profile_picture or ""
-            } for u in usuarios])
+            resultado = []
+            for u in usuarios:
+                ctx = permissions.carregar_contexto(db, u.id)
+                resultado.append({
+                    "id": u.id,
+                    "nome": u.nome,
+                    "email": u.email,
+                    "funcao": u.funcao,
+                    "senioridade": u.senioridade,
+                    "nivel": u.nivel,
+                    "squad": u.squad,
+                    "posicao": u.posicao,
+                    "nivel_acesso": u.nivel_acesso,
+                    "ativo": u.ativo,
+                    "pode_editar_kanban": u.pode_editar_kanban,
+                    "profile_picture": u.profile_picture or "",
+                    "data_nascimento": u.data_nascimento.isoformat() if u.data_nascimento else None,
+                    "telefone": u.telefone or "",
+                    "cpf": u.cpf or "",
+                    # v2_
+                    "cargo": ctx["cargo"],
+                    "posicoes": ctx["posicoes"],
+                    "squads": [{"id": s["id"], "nome": s["nome"]} for s in ctx["squads"]],
+                    "pode_gerenciar_feed": ctx.get("pode_gerenciar_feed", False),
+                })
+            return jsonify(resultado)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -1972,21 +2020,46 @@ def api_create_usuario():
             else:
                 new_id = data["id"]
 
+            dn = _parse_data_iso(data.get("data_nascimento"))
+            if dn and dn > dt.now().date():
+                return jsonify({"error": "Data de nascimento não pode ser no futuro."}), 400
+
+            # v2_: cargo, posições e squads
+            cargo = data.get("cargo") if data.get("cargo") is not None else data.get("funcao")
+            posicoes = data.get("posicoes") or ([data.get("posicao")] if data.get("posicao") else [])
+            squad_ids = data.get("squads") or []
+            squad_nome = None
+            if squad_ids:
+                squad_nome = db.execute(
+                    text(f"SELECT nome FROM {permissions.SCHEMA}.v2_squads WHERE id = ANY(:s) ORDER BY ordem LIMIT 1"),
+                    {"s": squad_ids},
+                ).scalar()
+            elif data.get("squad"):
+                squad_nome = data.get("squad")
+
             novo_user = Investidor(
                 id=new_id,
                 nome=data["nome"],
                 email=data["email"],
-                funcao=data.get("funcao"),
+                funcao=cargo,
                 senioridade=data.get("senioridade"),
                 nivel=data.get("nivel"),
-                squad=data.get("squad"),
-                posicao=data.get("posicao"),
+                squad=squad_nome,
+                posicao=(posicoes[0] if posicoes else None),
                 nivel_acesso=data.get("nivel_acesso", "Usuário"),
                 ativo=data.get("ativo", True),
                 pode_editar_kanban=data.get("pode_editar_kanban", False),
+                data_nascimento=dn,
+                telefone=_so_digitos(data.get("telefone")),
+                cpf=_so_digitos(data.get("cpf"), 11),
                 senha=generate_password_hash(data.get("senha", "v4company")) # Senha padrão se não enviada
             )
             db.add(novo_user)
+            db.flush()
+            permissions.definir_cargo(db, new_id, cargo)
+            permissions.definir_posicoes(db, new_id, posicoes)
+            permissions.definir_squads(db, new_id, squad_ids)
+            permissions.definir_flag_gerenciar_feed(db, new_id, data.get("pode_gerenciar_feed", False))
             db.commit()
             return jsonify({"status": "success", "message": "Usuário criado com sucesso!"})
     except Exception as e:
@@ -2007,15 +2080,45 @@ def api_update_usuario(email):
                 return jsonify({"error": "Usuário não encontrado."}), 404
 
             user.nome = data.get("nome", user.nome)
-            user.funcao = data.get("funcao", user.funcao)
             user.senioridade = data.get("senioridade", user.senioridade)
             user.nivel = data.get("nivel", user.nivel)
-            user.squad = data.get("squad", user.squad)
-            user.posicao = data.get("posicao", user.posicao)
             user.nivel_acesso = data.get("nivel_acesso", user.nivel_acesso)
             user.ativo = data.get("ativo", user.ativo)
             user.pode_editar_kanban = data.get("pode_editar_kanban", user.pode_editar_kanban)
-            
+
+            # v2_: cargo / posições / squads (com espelho na coluna legada p/ exibição)
+            if "cargo" in data or "funcao" in data:
+                cargo = data.get("cargo") if "cargo" in data else data.get("funcao")
+                user.funcao = cargo
+                permissions.definir_cargo(db, user.id, cargo)
+            if "posicoes" in data or "posicao" in data:
+                posicoes = data.get("posicoes") or ([data.get("posicao")] if data.get("posicao") else [])
+                user.posicao = posicoes[0] if posicoes else None
+                permissions.definir_posicoes(db, user.id, posicoes)
+            if "squads" in data or "squad" in data:
+                squad_ids = data.get("squads") or []
+                if squad_ids:
+                    nomes = db.execute(
+                        text(f"SELECT nome FROM {permissions.SCHEMA}.v2_squads WHERE id = ANY(:s) ORDER BY ordem"),
+                        {"s": squad_ids},
+                    ).scalars().all()
+                    user.squad = nomes[0] if nomes else None
+                else:
+                    user.squad = data.get("squad", None)
+                permissions.definir_squads(db, user.id, squad_ids)
+            if "pode_gerenciar_feed" in data:
+                permissions.definir_flag_gerenciar_feed(db, user.id, data.get("pode_gerenciar_feed"))
+
+            if "data_nascimento" in data:
+                dn = _parse_data_iso(data.get("data_nascimento"))
+                if dn and dn > dt.now().date():
+                    return jsonify({"error": "Data de nascimento não pode ser no futuro."}), 400
+                user.data_nascimento = dn
+            if "telefone" in data:
+                user.telefone = _so_digitos(data.get("telefone"))
+            if "cpf" in data:
+                user.cpf = _so_digitos(data.get("cpf"), 11)
+
             # Se vier senha nova, atualiza
             if data.get("senha"):
                 user.senha = generate_password_hash(data["senha"])
@@ -2045,6 +2148,333 @@ def api_reset_password():
             user.senha = generate_password_hash(nova_senha)
             db.commit()
             return jsonify({"status": "success", "message": f"Senha de {email} redefinida com sucesso!"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# ─── PERFIL DO USUÁRIO LOGADO (AUTOEDIÇÃO) ───────────────────────────────────
+
+@app.route("/api/perfil", methods=["GET"])
+@check_session
+def api_get_perfil():
+    """Retorna os dados editáveis do usuário logado."""
+    email = session.get("email")
+    try:
+        with Session() as db:
+            user = db.query(Investidor).filter_by(email=email).first()
+            if not user:
+                return jsonify({"error": "Usuário não encontrado."}), 404
+            return jsonify({
+                "nome": user.nome,
+                "email": user.email,
+                "data_nascimento": user.data_nascimento.isoformat() if user.data_nascimento else None,
+                "telefone": user.telefone or "",
+                "cpf": user.cpf or "",
+            })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/perfil", methods=["PUT", "POST"])
+@check_session
+def api_update_perfil():
+    """Atualiza data de nascimento / telefone / CPF do usuário logado."""
+    data = request.json or {}
+    email = session.get("email")
+    try:
+        with Session() as db:
+            user = db.query(Investidor).filter_by(email=email).first()
+            if not user:
+                return jsonify({"error": "Usuário não encontrado."}), 404
+
+            if "data_nascimento" in data:
+                valor = _parse_data_iso(data.get("data_nascimento"))
+                if valor and valor > dt.now().date():
+                    return jsonify({"error": "Data de nascimento não pode ser no futuro."}), 400
+                user.data_nascimento = valor
+            if "telefone" in data:
+                user.telefone = _so_digitos(data.get("telefone"))
+            if "cpf" in data:
+                user.cpf = _so_digitos(data.get("cpf"), 11)
+
+            db.commit()
+            return jsonify({"status": "success", "message": "Dados atualizados com sucesso!"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# ─── SQUADS (ADMIN, v2_) ─────────────────────────────────────────────────────
+
+@app.route("/squads")
+@check_session
+def squads_page():
+    if session.get("nivel_acesso") != "Admin":
+        return redirect(url_for("feed"))
+    with Session() as db:
+        squads = permissions.listar_squads(db, apenas_ativas=False)
+    return render_template("squads.html", squads=squads)
+
+
+@app.route("/api/admin/squads", methods=["GET"])
+@check_session
+def api_listar_squads():
+    if session.get("nivel_acesso") != "Admin":
+        return jsonify({"error": "Unauthorized"}), 403
+    try:
+        with Session() as db:
+            squads = permissions.listar_squads(db, apenas_ativas=False)
+        return jsonify(squads)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/admin/squads", methods=["POST"])
+@check_session
+def api_criar_squad():
+    if session.get("nivel_acesso") != "Admin":
+        return jsonify({"error": "Unauthorized"}), 403
+    data = request.json or {}
+    nome = (data.get("nome") or "").strip()
+    if not nome:
+        return jsonify({"error": "Informe o nome da squad."}), 400
+    try:
+        with Session() as db:
+            existe = db.execute(
+                text(f"SELECT 1 FROM {permissions.SCHEMA}.v2_squads WHERE lower(nome) = lower(:n)"),
+                {"n": nome},
+            ).first()
+            if existe:
+                return jsonify({"error": "Já existe uma squad com esse nome."}), 400
+            maxord = db.execute(text(f"SELECT COALESCE(MAX(ordem), -1) FROM {permissions.SCHEMA}.v2_squads")).scalar()
+            db.execute(
+                text(f"INSERT INTO {permissions.SCHEMA}.v2_squads (nome, ativo, ordem) VALUES (:n, TRUE, :o)"),
+                {"n": nome, "o": (maxord or 0) + 1},
+            )
+            db.commit()
+        return jsonify({"status": "success", "message": "Squad criada com sucesso!"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/admin/squads/<int:squad_id>", methods=["PUT"])
+@check_session
+def api_atualizar_squad(squad_id):
+    if session.get("nivel_acesso") != "Admin":
+        return jsonify({"error": "Unauthorized"}), 403
+    data = request.json or {}
+    try:
+        with Session() as db:
+            if "nome" in data:
+                nome = (data.get("nome") or "").strip()
+                if not nome:
+                    return jsonify({"error": "Nome inválido."}), 400
+                db.execute(
+                    text(f"UPDATE {permissions.SCHEMA}.v2_squads SET nome = :n WHERE id = :i"),
+                    {"n": nome, "i": squad_id},
+                )
+            if "ativo" in data:
+                db.execute(
+                    text(f"UPDATE {permissions.SCHEMA}.v2_squads SET ativo = :a WHERE id = :i"),
+                    {"a": bool(data.get("ativo")), "i": squad_id},
+                )
+            if "ordem" in data:
+                db.execute(
+                    text(f"UPDATE {permissions.SCHEMA}.v2_squads SET ordem = :o WHERE id = :i"),
+                    {"o": int(data.get("ordem") or 0), "i": squad_id},
+                )
+            db.commit()
+        return jsonify({"status": "success", "message": "Squad atualizada."})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# ─── MATRIZ DE CAPACIDADES (ADMIN, v2_) ──────────────────────────────────────
+
+@app.route("/capacidades")
+@check_session
+def capacidades_page():
+    if session.get("nivel_acesso") != "Admin":
+        return redirect(url_for("feed"))
+    with Session() as db:
+        posicoes = permissions.listar_catalogo(db, "v2_posicoes")
+        cargos = permissions.listar_catalogo(db, "v2_cargos")
+        capacidades = permissions.listar_catalogo(db, "v2_capacidades")
+        pos_caps = {}
+        for pos, cap in db.execute(
+            text(f"SELECT posicao, capacidade FROM {permissions.SCHEMA}.v2_posicao_capacidades")
+        ).all():
+            pos_caps.setdefault(pos, []).append(cap)
+        cargo_caps = {}
+        for cargo, cap in db.execute(
+            text(f"SELECT cargo, capacidade FROM {permissions.SCHEMA}.v2_cargo_capacidades")
+        ).all():
+            cargo_caps.setdefault(cargo, []).append(cap)
+    return render_template(
+        "capacidades.html",
+        posicoes=posicoes, cargos=cargos, capacidades=capacidades,
+        pos_caps=pos_caps, cargo_caps=cargo_caps,
+    )
+
+
+@app.route("/api/admin/capacidades", methods=["POST"])
+@check_session
+def api_salvar_capacidades():
+    if session.get("nivel_acesso") != "Admin":
+        return jsonify({"error": "Unauthorized"}), 403
+    data = request.json or {}
+    tipo = data.get("tipo")
+    alvo = data.get("alvo")
+    caps = data.get("capacidades", [])
+    if tipo not in ("posicao", "cargo") or not alvo:
+        return jsonify({"error": "Parâmetros inválidos."}), 400
+    tabela = "v2_posicao_capacidades" if tipo == "posicao" else "v2_cargo_capacidades"
+    coluna = "posicao" if tipo == "posicao" else "cargo"
+    try:
+        with Session() as db:
+            db.execute(
+                text(f"DELETE FROM {permissions.SCHEMA}.{tabela} WHERE {coluna} = :a"),
+                {"a": alvo},
+            )
+            for cap in caps:
+                db.execute(
+                    text(
+                        f"INSERT INTO {permissions.SCHEMA}.{tabela} ({coluna}, capacidade) VALUES (:a, :c) "
+                        "ON CONFLICT DO NOTHING"
+                    ),
+                    {"a": alvo, "c": cap},
+                )
+            db.commit()
+        return jsonify({"status": "success", "message": "Matriz atualizada."})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# ─── CONFIGURAÇÕES DO FEED (ADMIN, v2_) ──────────────────────────────────────
+
+FEED_SISTEMA_ICONES = [
+    "fa-robot", "fa-gears", "fa-bullhorn", "fa-mug-hot",
+    "fa-heart", "fa-cake-candles", "fa-brain", "fa-microchip",
+]
+
+
+@app.route("/feed-config")
+@check_session
+def feed_config_page():
+    if session.get("nivel_acesso") != "Admin":
+        return redirect(url_for("feed"))
+    with Session() as db:
+        nome = permissions.config_get(db, "feed_sistema_nome", "HUB (Sistema)")
+        icone = permissions.config_get(db, "feed_sistema_icone", "fa-robot")
+        foto = permissions.config_get(db, "feed_sistema_foto", None)
+    return render_template(
+        "feed_config.html",
+        sistema_nome=nome, sistema_icone=icone, sistema_foto=foto, icones=FEED_SISTEMA_ICONES,
+    )
+
+
+@app.route("/api/admin/feed-config", methods=["GET"])
+@check_session
+def api_get_feed_config():
+    if session.get("nivel_acesso") != "Admin":
+        return jsonify({"error": "Unauthorized"}), 403
+    try:
+        with Session() as db:
+            return jsonify({
+                "sistema_nome": permissions.config_get(db, "feed_sistema_nome", "HUB (Sistema)"),
+                "sistema_icone": permissions.config_get(db, "feed_sistema_icone", "fa-robot"),
+                "sistema_foto": permissions.config_get(db, "feed_sistema_foto", None),
+            })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/admin/feed-config/foto", methods=["POST"])
+@check_session
+def api_upload_feed_foto():
+    if session.get("nivel_acesso") != "Admin":
+        return jsonify({"error": "Unauthorized"}), 403
+    if "foto" not in request.files:
+        return jsonify({"error": "Nenhum arquivo enviado."}), 400
+    arquivo = request.files["foto"]
+    if not arquivo.filename:
+        return jsonify({"error": "Nome de arquivo vazio."}), 400
+
+    ext = (arquivo.filename.rsplit(".", 1)[-1] or "").lower()
+    if ext not in ("png", "jpg", "jpeg", "webp"):
+        return jsonify({"error": "Formato inválido (use PNG, JPG ou WEBP)."}), 400
+
+    # Tamanho (até 2MB)
+    arquivo.stream.seek(0, os.SEEK_END)
+    tamanho = arquivo.stream.tell()
+    arquivo.stream.seek(0)
+    if tamanho > 2 * 1024 * 1024:
+        return jsonify({"error": "A imagem deve ter no máximo 2MB."}), 400
+
+    try:
+        with Session() as db:
+            antiga = permissions.config_get(db, "feed_sistema_foto", None)
+            nome_arquivo = f"sistema_{int(dt.now().timestamp())}.{ext}"
+            caminho = os.path.join(app.config["UPLOAD_FOLDER"], nome_arquivo)
+            arquivo.save(caminho)
+            permissions.config_set(db, "feed_sistema_foto", nome_arquivo)
+            db.commit()
+
+        # Remove a foto anterior
+        if antiga:
+            try:
+                antigo_caminho = os.path.join(app.config["UPLOAD_FOLDER"], antiga)
+                if os.path.exists(antigo_caminho):
+                    os.remove(antigo_caminho)
+            except Exception:
+                pass
+
+        return jsonify({"status": "success", "arquivo": nome_arquivo,
+                        "url": f"/static/images/profile_pictures/{nome_arquivo}"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/admin/feed-config/foto", methods=["DELETE"])
+@check_session
+def api_delete_feed_foto():
+    if session.get("nivel_acesso") != "Admin":
+        return jsonify({"error": "Unauthorized"}), 403
+    try:
+        with Session() as db:
+            atual = permissions.config_get(db, "feed_sistema_foto", None)
+            permissions.config_set(db, "feed_sistema_foto", "")
+            db.commit()
+        if atual:
+            try:
+                caminho = os.path.join(app.config["UPLOAD_FOLDER"], atual)
+                if os.path.exists(caminho):
+                    os.remove(caminho)
+            except Exception:
+                pass
+        return jsonify({"status": "success"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/admin/feed-config", methods=["PUT"])
+@check_session
+def api_set_feed_config():
+    if session.get("nivel_acesso") != "Admin":
+        return jsonify({"error": "Unauthorized"}), 403
+    data = request.json or {}
+    nome = (data.get("sistema_nome") or "").strip()
+    icone = (data.get("sistema_icone") or "").strip()
+    if not nome:
+        return jsonify({"error": "Informe o nome do perfil do sistema."}), 400
+    if icone and icone not in FEED_SISTEMA_ICONES:
+        return jsonify({"error": "Ícone inválido."}), 400
+    try:
+        with Session() as db:
+            permissions.config_set(db, "feed_sistema_nome", nome)
+            if icone:
+                permissions.config_set(db, "feed_sistema_icone", icone)
+            db.commit()
+        return jsonify({"status": "success", "message": "Configurações do feed atualizadas."})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -2091,7 +2521,12 @@ def operacao():
     
     try:
         with Session() as db:
-            meus_projetos = OperacaoService.get_projetos_operacao(db, email, squad, posicao)
+            meus_projetos = OperacaoService.get_projetos_operacao(
+                db, email,
+                gestao_ampla=permissions.is_gestao_ampla(),
+                apenas_squad=permissions.apenas_gestao_squad(),
+                squad_ids=session.get("squad_ids", []) or [],
+            )
             if meus_projetos:
                 project_ids = [p["pipefy_id"] for p in meus_projetos if p.get("pipefy_id")]
                 if project_ids:
@@ -2125,28 +2560,41 @@ def criativa():
 
     try:
         with Session() as db:
+            from sqlalchemy import text as _sqltext
+            cargos_alvo = ["Designer", "Web-Designer", "Account Manager", "Gestor de Tráfego"]
+            ids_criativa = [
+                r[0] for r in db.execute(
+                    _sqltext(
+                        f"SELECT investidor_id FROM {permissions.SCHEMA}.v2_investidor_cargo "
+                        "WHERE cargo = ANY(:c)"
+                    ),
+                    {"c": cargos_alvo},
+                ).all()
+            ]
             query = db.query(Investidor).filter(
-                Investidor.funcao.ilike("Designer") |
-                Investidor.funcao.ilike("WebDesigner") |
-                Investidor.funcao.ilike("Account") |
-                Investidor.funcao.ilike("Gestor de Tráfego"),
-                Investidor.ativo == True
+                Investidor.ativo == True,
+                Investidor.id.in_(ids_criativa or [-1]),
             )
 
-            # Regras de visualização por Cargo/Squad
+            # Regras de visualização por capacidade/squad (v2)
             u_email = session.get("email")
-            u_posicao = session.get("posicao", "")
-            u_squad = session.get("squad", "")
-            u_acesso = session.get("nivel_acesso", "")
+            squad_ids_usuario = session.get("squad_ids", []) or []
 
-            if u_acesso == "Admin" or u_posicao in ["Gerência", "Sócio"]:
-                # Vê tudo sem filtros adicionais
+            if permissions.is_gestao_ampla():
                 pass
-            elif u_posicao == "Coordenador":
-                # Vê apenas membros da própria squad
-                query = query.filter(Investidor.squad == u_squad)
+            elif permissions.is_gestao_squad():
+                if not squad_ids_usuario:
+                    query = query.filter(Investidor.id == -1)
+                else:
+                    membros = db.execute(
+                        _sqltext(
+                            f"SELECT investidor_id FROM {permissions.SCHEMA}.v2_investidor_squads "
+                            "WHERE squad_id = ANY(:s)"
+                        ),
+                        {"s": squad_ids_usuario},
+                    ).all()
+                    query = query.filter(Investidor.id.in_([m[0] for m in membros] or [-1]))
             else:
-                # Vê apenas a si mesmo
                 query = query.filter(Investidor.email == u_email)
 
             designers = query.order_by(Investidor.squad, Investidor.nome).all()
@@ -2427,7 +2875,7 @@ def update_criativa_contratados():
     """
     user_posicao = session.get("posicao", "")
     user_nivel = session.get("nivel_acesso", "")
-    if user_posicao not in ("Gerência", "Sócio", "Coordenador") and user_nivel != "Admin":
+    if not permissions.is_gestao():
         return jsonify({"error": "Acesso restrito."}), 403
 
     data = request.json or {}
@@ -2446,7 +2894,7 @@ def update_criativa_contratados():
     try:
         with Session() as db:
             # Validação de Squad para Coordenador
-            if user_posicao == "Coordenador":
+            if permissions.apenas_gestao_squad():
                 u_squad = session.get("squad")
                 if not u_squad:
                     return jsonify({"error": "Coordenador sem Squad atribuída."}), 403
@@ -2501,7 +2949,7 @@ def update_criativa_entregues():
     user_email = session.get("email")
     user_posicao = session.get("posicao", "")
     user_nivel = session.get("nivel_acesso", "")
-    is_high_level = user_posicao in ("Gerência", "Sócio", "Coordenador") or user_nivel == "Admin"
+    is_high_level = permissions.is_gestao()
     if not is_high_level and user_email != email:
         return jsonify({"error": "Você só pode editar suas próprias entregas."}), 403
 
@@ -2512,7 +2960,7 @@ def update_criativa_entregues():
     try:
         with Session() as db:
             # Validação de Squad para Coordenador
-            if user_posicao == "Coordenador" and user_email != email:
+            if permissions.apenas_gestao_squad() and user_email != email:
                 u_squad = session.get("squad")
                 if not u_squad:
                     return jsonify({"error": "Coordenador sem Squad atribuída."}), 403
@@ -2565,7 +3013,7 @@ def update_criativa_link():
     user_email = session.get("email")
     user_posicao = session.get("posicao", "")
     user_nivel = session.get("nivel_acesso", "")
-    is_high_level = user_posicao in ("Gerência", "Sócio", "Coordenador") or user_nivel == "Admin"
+    is_high_level = permissions.is_gestao()
     if not is_high_level and user_email != email:
         return jsonify({"error": "Você só pode editar suas próprias entregas."}), 403
 
@@ -2773,7 +3221,7 @@ def get_entregas_operacao(email, mes, ano):
     user_email = session.get("email")
     user_posicao = session.get("posicao", "")
     user_nivel = session.get("nivel_acesso", "")
-    is_high_level = user_posicao in ("Gerência", "Sócio", "Coordenador") or user_nivel == "Admin"
+    is_high_level = permissions.is_gestao()
     if not is_high_level and user_email != email:
         return jsonify({"error": "Acesso restrito"}), 403
     try:
@@ -2858,7 +3306,7 @@ def update_entregas_operacao_entregues():
     user_email = session.get("email")
     user_posicao = session.get("posicao", "")
     user_nivel = session.get("nivel_acesso", "")
-    is_high_level = user_posicao in ("Gerência", "Sócio", "Coordenador") or user_nivel == "Admin"
+    is_high_level = permissions.is_gestao()
     if not is_high_level and user_email != email:
         return jsonify({"error": "Você só pode editar suas próprias entregas."}), 403
 
@@ -2885,7 +3333,7 @@ def update_entregas_operacao_entregues():
                     return jsonify({"error": "Investidor não encontrado."}), 404
                 
                 cargo_base = (investidor.funcao or "").strip()
-                expected = "gt" if cargo_base == "Gestor de Tráfego" else "account"
+                expected = "gt" if cargo_base in ("Gestor de Tráfego", "Desenvolvedor") else "account"
                 
                 if tipo_entrega.lower() != expected:
                     return jsonify({
@@ -2898,7 +3346,7 @@ def update_entregas_operacao_entregues():
             # ──────────────────────────────────────────────────────────────
 
             # Validação de Squad para Coordenador
-            if user_posicao == "Coordenador" and user_email != email:
+            if permissions.apenas_gestao_squad() and user_email != email:
                 u_squad = session.get("squad")
                 if not u_squad:
                     return jsonify({"error": "Coordenador sem Squad atribuída."}), 403
@@ -2946,7 +3394,7 @@ def update_entregas_operacao_links():
     user_email = session.get("email")
     user_posicao = session.get("posicao", "")
     user_nivel = session.get("nivel_acesso", "")
-    is_high_level = user_posicao in ("Gerência", "Sócio", "Coordenador") or user_nivel == "Admin"
+    is_high_level = permissions.is_gestao()
     if not is_high_level and user_email != email:
         return jsonify({"error": "Você só pode editar suas próprias entregas."}), 403
 
@@ -3018,12 +3466,12 @@ def get_op_deliveries_coord(email, mes, ano):
     """Retorna status das entregas mensais de um Account/GT para coordenadores."""
     posicao = session.get("posicao", "").strip()
     nivel   = session.get("nivel_acesso", "").strip()
-    if posicao not in ("Gerência", "Sócio", "Coordenador") and nivel != "Admin":
+    if not permissions.is_gestao():
         return jsonify({"error": "Acesso restrito"}), 403
     try:
         with Session() as db:
             # Validação de Squad para Coordenador
-            if posicao == "Coordenador":
+            if permissions.apenas_gestao_squad():
                 u_squad = session.get("squad")
                 if not u_squad:
                     return jsonify({"error": "Coordenador sem Squad atribuída."}), 403
@@ -3051,7 +3499,7 @@ def update_op_delivery_coord():
     """Permite coordenador marcar/desmarcar entrega manualmente."""
     posicao = session.get("posicao", "").strip()
     nivel   = session.get("nivel_acesso", "").strip()
-    if posicao not in ("Gerência", "Sócio", "Coordenador") and nivel != "Admin":
+    if not permissions.is_gestao():
         return jsonify({"error": "Acesso restrito"}), 403
     data = request.get_json()
     email         = data.get("email")
@@ -3065,7 +3513,7 @@ def update_op_delivery_coord():
     try:
         with Session() as db:
             # Validação de Squad para Coordenador
-            if posicao == "Coordenador":
+            if permissions.apenas_gestao_squad():
                 u_squad = session.get("squad")
                 if not u_squad:
                     return jsonify({"error": "Coordenador sem Squad atribuída."}), 403
@@ -4002,10 +4450,9 @@ def vincular_investidor():
     pipefy_id = data.get("pipefy_id_projeto")
     cientista = data.get("cientista", False)
 
-    user_posicao = session.get("posicao")
     user_squad = session.get("squad")
 
-    if user_posicao == "Coordenador":
+    if permissions.apenas_gestao_squad():
         if not user_squad:
             return jsonify({"error": "Coordenador sem Squad atribuída."}), 403
         
@@ -4083,7 +4530,7 @@ def update_projeto_local(pipefy_id):
                 return jsonify({"error": "Projeto não encontrado."}), 404
 
             # Validação de Squad para Coordenador
-            if user_posicao == "Coordenador":
+            if permissions.apenas_gestao_squad():
                 if not user_squad or projeto.squad_atribuida != user_squad:
                     return jsonify({"error": "Acesso restrito à sua Squad."}), 403
 
@@ -4133,7 +4580,14 @@ def update_projeto_local(pipefy_id):
             if "documento" in data: projeto.documento = data["documento"]
             if "fee" in data: projeto.fee = int(float(data["fee"] or 0))
             if "moeda" in data: projeto.moeda = data["moeda"]
-            if "squad_atribuida" in data: projeto.squad_atribuida = data["squad_atribuida"]
+            if "squad_atribuida" in data:
+                projeto.squad_atribuida = data["squad_atribuida"]
+                # v2_: mantém o vínculo por id (compat: coluna legada segue para exibição)
+                _sid = db.execute(
+                    text(f"SELECT id FROM {permissions.SCHEMA}.v2_squads WHERE nome = :n"),
+                    {"n": data["squad_atribuida"]},
+                ).scalar()
+                permissions.definir_squads_do_projeto(db, projeto.pipefy_id, [_sid] if _sid else [])
             if "produto_contratado" in data: projeto.produto_contratado = data["produto_contratado"]
             if "cohort" in data: projeto.cohort = data["cohort"]
             if "meta_account_id" in data: projeto.meta_account_id = data["meta_account_id"]
@@ -4320,7 +4774,15 @@ def update_projeto_local(pipefy_id):
             flag_modified(projeto, "extra")
 
             db.commit()
-            
+
+            # Captura automática do fee no histórico de MRR quando muda (fonte da verdade)
+            try:
+                if "fee" in data or "moeda" in data:
+                    from services.mrr_historico_service import MrrHistoricoService
+                    MrrHistoricoService(db).capturar_fee_atual(pipefy_id)
+            except Exception as e:
+                print(f"Erro na captura automática de fee: {e}")
+
             # Sincroniza a remuneração imediatamente para refletir as mudanças no histórico proporcional
             try:
                 ProjetoParticipacaoService.sincronizar_remuneracao(dt.now().month, dt.now().year)
@@ -4336,6 +4798,65 @@ def update_projeto_local(pipefy_id):
 
             return jsonify({"status": "success", "message": "Projeto e vínculos sincronizados com sucesso."})
 
+    except SQLAlchemyError as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/projetos/<int:pipefy_id>/contexto", methods=["GET"])
+@check_session
+def get_projeto_contexto(pipefy_id):
+    """Retorna o contexto mais recente do projeto (ou vazio)."""
+    try:
+        with Session() as db:
+            ctx = db.query(ProjetoContexto).filter_by(
+                projeto_pipefy_id=pipefy_id
+            ).order_by(ProjetoContexto.id.desc()).first()
+            return jsonify({"contexto": ctx.to_dict() if ctx else None})
+    except SQLAlchemyError as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/projetos/<int:pipefy_id>/contexto", methods=["PUT"])
+@check_session
+@check_access(["Gerência", "Sócio", "Coordenador"])
+def update_projeto_contexto(pipefy_id):
+    """Cria uma nova versão do contexto do projeto (histórico)."""
+    data = request.json or {}
+    try:
+        with Session() as db:
+            projeto = db.query(Projeto).filter_by(pipefy_id=pipefy_id).first()
+            if not projeto:
+                return jsonify({"error": "Projeto não encontrado."}), 404
+
+            # Escopo por squad (Coordenador)
+            if permissions.apenas_gestao_squad():
+                user_squad = session.get("squad")
+                if not user_squad or projeto.squad_atribuida != user_squad:
+                    return jsonify({"error": "Acesso restrito à sua Squad."}), 403
+
+            anterior = db.query(ProjetoContexto).filter_by(
+                projeto_pipefy_id=pipefy_id
+            ).order_by(ProjetoContexto.id.desc()).first()
+
+            cliente = (data.get("cliente") or projeto.nome or "").strip() or (projeto.nome or "—")
+            ctx = ProjetoContexto(
+                projeto_pipefy_id=pipefy_id,
+                cliente=cliente,
+                origem_contexto="hub",
+                motivo_atualizacao=(data.get("motivo_atualizacao") or None),
+                contexto_anterior_id=(anterior.id if anterior else None),
+            )
+            for campo in ProjetoContexto.CAMPOS:
+                if campo == "cliente":
+                    continue
+                if campo in data:
+                    valor = data.get(campo)
+                    setattr(ctx, campo, (valor if (valor is None or str(valor).strip()) else None))
+
+            db.add(ctx)
+            db.commit()
+            db.refresh(ctx)
+            return jsonify({"status": "success", "id": ctx.id, "contexto": ctx.to_dict()})
     except SQLAlchemyError as e:
         return jsonify({"error": str(e)}), 500
 
@@ -4363,6 +4884,50 @@ def api_listar_projetos():
     })
 
 
+@app.route("/api/projetos/por-cliente", methods=["GET"])
+@check_session
+def api_projetos_por_cliente():
+    """Retorna os projetos de um cliente (nome) para abrir o modal sob demanda."""
+    nome = (request.args.get("nome") or "").strip()
+    status = (request.args.get("status") or "").strip() or None
+    if not nome:
+        return jsonify({"error": "Informe o nome do cliente."}), 400
+    try:
+        with Session() as db:
+            q = db.query(Projeto).filter(Projeto.nome == nome)
+            if status:
+                q = q.filter(Projeto.status == status)
+            if not permissions.is_gestao_ampla():
+                squad_ids = session.get("squad_ids", []) or []
+                ids = permissions.projeto_ids_das_squads(db, squad_ids)
+                if not ids:
+                    return jsonify([])
+                q = q.filter(Projeto.pipefy_id.in_(ids))
+            projetos = sorted(q.all(), key=lambda p: p.pipefy_id or 0)
+            return jsonify([_projeto_to_dict(p) for p in projetos])
+    except SQLAlchemyError as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/projetos/<int:pipefy_id>", methods=["GET"])
+@check_session
+def get_projeto(pipefy_id):
+    """Retorna um projeto específico (com status), respeitando o escopo de squad."""
+    try:
+        with Session() as db:
+            if not permissions.is_gestao_ampla():
+                squad_ids = session.get("squad_ids", []) or []
+                ids = permissions.projeto_ids_das_squads(db, squad_ids)
+                if pipefy_id not in ids:
+                    return jsonify({"error": "Acesso restrito."}), 403
+            p = db.query(Projeto).filter(Projeto.pipefy_id == pipefy_id).first()
+            if not p:
+                return jsonify({"error": "Projeto não encontrado."}), 404
+            return jsonify({**_projeto_to_dict(p), "status": p.status})
+    except SQLAlchemyError as e:
+        return jsonify({"error": str(e)}), 500
+
+
 # ─── FATURAMENTO VARIÁVEL ──────────────────────────────────────────────────────
 # Rotas isoladas para CRUD do faturamento variável por projeto/mês/ano.
 # Não alteram modelos, serviços existentes nem schema do banco.
@@ -4381,14 +4946,23 @@ def get_faturamento_variavel(pipefy_id):
         return jsonify({"error": str(e)}), 500
 
 
+def _faturamento_permitido(pipefy_id):
+    """Gestão pode editar; Coordenador (gestão de squad) só na própria squad."""
+    if not permissions.apenas_gestao_squad():
+        return True
+    with Session() as db:
+        proj = db.query(Projeto).filter_by(pipefy_id=pipefy_id).first()
+    return bool(proj and proj.squad_atribuida == session.get("squad"))
+
+
 @app.route("/api/projetos/<int:pipefy_id>/faturamento-variavel", methods=["POST"])
 @check_session
+@check_access(["Gerência", "Sócio", "Coordenador"])
 def post_faturamento_variavel(pipefy_id):
     """Cria ou atualiza o registro de faturamento variável para um mês/ano.
-    Acesso restrito: somente usuários com permissão de edição de projetos."""
-    nivel = session.get("nivel_acesso", "Usuário")
-    if nivel == "Usuário":
-        return jsonify({"error": "Sem permissão para criar registros de faturamento variável."}), 403
+    Acesso restrito: gestão (Gerência/Sócio/Coordenador), com escopo de squad."""
+    if not _faturamento_permitido(pipefy_id):
+        return jsonify({"error": "Acesso restrito à sua Squad."}), 403
 
     data = request.json or {}
     mes = data.get("mes")
@@ -4426,12 +5000,12 @@ def post_faturamento_variavel(pipefy_id):
 
 @app.route("/api/projetos/<int:pipefy_id>/faturamento-variavel/<int:mes>/<int:ano>", methods=["PUT"])
 @check_session
+@check_access(["Gerência", "Sócio", "Coordenador"])
 def put_faturamento_variavel(pipefy_id, mes, ano):
     """Atualiza o registro de faturamento variável de um mês/ano específico.
     Delega ao POST (upsert idempotente)."""
-    nivel = session.get("nivel_acesso", "Usuário")
-    if nivel == "Usuário":
-        return jsonify({"error": "Sem permissão para editar registros de faturamento variável."}), 403
+    if not _faturamento_permitido(pipefy_id):
+        return jsonify({"error": "Acesso restrito à sua Squad."}), 403
 
     data = request.json or {}
     data["mes"] = mes
@@ -4468,11 +5042,11 @@ def put_faturamento_variavel(pipefy_id, mes, ano):
 
 @app.route("/api/projetos/<int:pipefy_id>/faturamento-variavel/<int:mes>/<int:ano>", methods=["DELETE"])
 @check_session
+@check_access(["Gerência", "Sócio", "Coordenador"])
 def delete_faturamento_variavel(pipefy_id, mes, ano):
     """Remove o registro de faturamento variável de um mês/ano específico."""
-    nivel = session.get("nivel_acesso", "Usuário")
-    if nivel == "Usuário":
-        return jsonify({"error": "Sem permissão para remover registros de faturamento variável."}), 403
+    if not _faturamento_permitido(pipefy_id):
+        return jsonify({"error": "Acesso restrito à sua Squad."}), 403
 
     try:
         from services.faturamento_variavel import deletar_registro, aplicar_faturamento_variavel
@@ -4515,6 +5089,8 @@ def api_kanban_config():
 @check_session
 def api_kanban_save_config():
     """Salva a configuração de um board."""
+    if not session.get("pode_editar_kanban") and not permissions.is_gestao_ampla():
+        return jsonify({"error": "Sem permissão para editar a configuração do board."}), 403
     data = request.json or {}
     slug = data.get("_slug", "fluxo-projetos")
     configuracao = data
@@ -4715,6 +5291,49 @@ def api_kanban_update_history(history_id):
             db.rollback()
             return jsonify({"error": str(e)}), 500
 
+def _render_feed_template(template, ctx):
+    """Substitui {var} pelo valor no contexto (vazio se ausente)."""
+    if not template:
+        return ""
+    out = template
+    for k, v in (ctx or {}).items():
+        out = out.replace("{" + k + "}", str(v if v is not None else ""))
+    return out
+
+
+def _publicar_kanban_feed(db, projeto, fase_entrada, fase_anterior, usuario_email):
+    """Publica no feed quando um card entra numa fase configurada ('Postar no feed')."""
+    if not projeto or not fase_entrada:
+        return
+    try:
+        if not fase_entrada.get("feed_auto"):
+            return
+        template = (fase_entrada.get("feed_template") or "").strip()
+        if not template:
+            return
+        ctx = {
+            "titulo": projeto.nome or "",
+            "cliente": projeto.nome or "",
+            "fase": fase_entrada.get("nome", ""),
+            "fase_anterior": (fase_anterior or {}).get("nome", "") if isinstance(fase_anterior, dict) else str(fase_anterior or ""),
+            "fee": projeto.fee if projeto.fee is not None else "",
+            "moeda": projeto.moeda or "",
+            "squad": projeto.squad_atribuida or "",
+            "responsavel": projeto.responsavel_projeto or "",
+            "documento": projeto.documento or "",
+            "produto": projeto.produto_contratado or "",
+            "data_inicio": projeto.data_de_inicio.isoformat() if projeto.data_de_inicio else "",
+            "usuario": session.get("nome", usuario_email or ""),
+        }
+        conteudo = _render_feed_template(template, ctx)
+        if not conteudo.strip():
+            return
+        from feed.service import FeedService
+        FeedService(db).criar_post("sistema", conteudo, dest_todos=True, squads=None)
+    except Exception as e:
+        print(f"[kanban→feed] Erro ao publicar: {e}")
+
+
 @app.route("/api/kanban/move", methods=["POST"])
 @check_session
 def api_kanban_move():
@@ -4750,6 +5369,8 @@ def api_kanban_move():
                 int(card_id), projeto.nome if projeto else "", project_date
             )
 
+            _publicar_kanban_feed(db, projeto, new_phase, old_phase, usuario_email)
+
             return jsonify({"status": "success"})
         except PhaseTransitionError as e:
             return jsonify({"error": str(e)}), 422
@@ -4782,6 +5403,7 @@ def api_kanban_create_card():
                 primeira_fase["id"], primeira_fase["nome"],
                 projeto.pipefy_id, projeto.nome, project_date
             )
+            _publicar_kanban_feed(db, projeto, primeira_fase, {}, usuario_email)
             return jsonify({"status": "success", "card_id": projeto.pipefy_id})
         except Exception as e:
             import traceback; traceback.print_exc()
@@ -4897,6 +5519,8 @@ def api_automacoes_list():
 @check_session
 def api_automacoes_create():
     """Cria uma nova automação."""
+    if not permissions.is_admin():
+        return jsonify({"error": "Acesso restrito."}), 403
     data = request.json or {}
     if not data.get("nome"):
         return jsonify({"error": "Nome é obrigatório."}), 400
@@ -4918,6 +5542,8 @@ def api_automacoes_create():
 @check_session
 def api_automacoes_update(automacao_id):
     """Atualiza uma automação."""
+    if not permissions.is_admin():
+        return jsonify({"error": "Acesso restrito."}), 403
     data = request.json or {}
     with Session() as db:
         service = AutomacaoService(db)
@@ -4934,6 +5560,8 @@ def api_automacoes_update(automacao_id):
 @check_session
 def api_automacoes_delete(automacao_id):
     """Exclui uma automação."""
+    if not permissions.is_admin():
+        return jsonify({"error": "Acesso restrito."}), 403
     with Session() as db:
         service = AutomacaoService(db)
         try:
@@ -4949,6 +5577,8 @@ def api_automacoes_delete(automacao_id):
 @check_session
 def api_automacoes_toggle(automacao_id):
     """Ativa/desativa uma automação."""
+    if not permissions.is_admin():
+        return jsonify({"error": "Acesso restrito."}), 403
     with Session() as db:
         service = AutomacaoService(db)
         try:
@@ -5024,92 +5654,265 @@ def _disparar_automacoes_card_movido(card_id, card_title, old_phase_id, old_phas
 @app.route("/api/ranking", methods=["GET"])
 @check_session
 def api_ranking():
-    """
-    Retorna os dados dos investidores e suas métricas para o painel de ranking.
-    Busca o registro mais recente (mês/ano atual ou anterior) de cada investidor.
-    """
+    """Ranking de pessoas: clientes ativos, MRR sob gestão e dias sem churn (dados vivos)."""
     try:
-        from sqlalchemy import func, desc, case
-        from datetime import datetime, date
-        now = datetime.now()
-        mes_atual = now.month
-        ano_atual = now.year
+        from collections import defaultdict
+        from datetime import date
+        from services.currency import CurrencyService
 
         with Session() as db:
-            # Busca todos os investidores ativos
-            investidores = db.query(Investidor).filter_by(ativo=True).all()
-            
-            # Busca as métricas do mês atual
-            metricas = db.query(MetricaMensal).filter_by(mes=mes_atual, ano=ano_atual).all()
-            
-            # Se não houver métricas para o mês atual, tenta o mês anterior
-            if not metricas:
-                mes_busca = 12 if mes_atual == 1 else mes_atual - 1
-                ano_busca = ano_atual - 1 if mes_atual == 1 else ano_atual
-                metricas = db.query(MetricaMensal).filter_by(mes=mes_busca, ano=ano_busca).all()
-            
-            metricas_map = {m.email_investidor: m for m in metricas}
+            projetos = {p.pipefy_id: p for p in db.query(Projeto).all()}
+            invs = {i.email: i for i in db.query(Investidor).filter_by(ativo=True).all()}
 
-            # Map de Churn e Projetos (Novo cálculo real)
-            from models import InvestidorProjeto
-            churn_data = db.query(
+            links = db.query(
                 InvestidorProjeto.email_investidor,
-                func.max(InvestidorProjeto.inactivated_at).label('last_churn'),
-                func.min(InvestidorProjeto.created_at).label('first_project'),
-                func.sum(case((InvestidorProjeto.active == True, 1), else_=0)).label('active_count')
-            ).group_by(InvestidorProjeto.email_investidor).all()
-            
-            churn_map = {c.email_investidor: (c.last_churn, c.first_project, int(c.active_count or 0)) for c in churn_data}
-            
-            ranking_list = []
-            for inv in investidores:
-                m = metricas_map.get(inv.email)
-                churn_info = churn_map.get(inv.email)
-                
-                # OBRIGATÓRIO: Ter pelo menos 1 projeto vinculado para aparecer no ranking
-                if not churn_info:
+                InvestidorProjeto.pipefy_id_projeto,
+                InvestidorProjeto.active,
+                InvestidorProjeto.inactivated_at,
+                InvestidorProjeto.created_at,
+            ).all()
+
+            rate = float(CurrencyService.get_usd_to_brl_rate())
+            by: dict = defaultdict(list)
+            for row in links:
+                by[row.email_investidor].append(row)
+
+            ranking = []
+            for email, rows in by.items():
+                inv = invs.get(email)
+                if not inv:
                     continue
-                # Lógica de Dias Sem Churn:
-                days_without_churn = 0
-                if churn_info:
-                    last_churn, first_project, active_projects = churn_info
-                    base_date = last_churn if last_churn else first_project
-                    if base_date:
-                        d_base = base_date if isinstance(base_date, date) else base_date.date() if hasattr(base_date, 'date') else None
-                        if d_base:
-                            delta = now.date() - d_base
-                            days_without_churn = max(0, delta.days)
-                
-                # Mapeamento de Senioridade e Level
-                raw_level = m.level if m else (inv.nivel or "L1")
-                seniority_display = f"{inv.senioridade or 'Investidor'} | {raw_level}"
+                active_count = 0
+                mrr = 0.0
+                last_churn = None
+                first = None
+                for r in rows:
+                    if r.active:
+                        active_count += 1
+                        p = projetos.get(r.pipefy_id_projeto)
+                        if p and p.fee is not None:
+                            fee = float(p.fee)
+                            if (p.moeda or "").strip().upper() == "USD":
+                                fee *= rate
+                            mrr += fee
+                    if r.inactivated_at and (last_churn is None or r.inactivated_at > last_churn):
+                        last_churn = r.inactivated_at
+                    if r.created_at and (first is None or r.created_at < first):
+                        first = r.created_at
 
-                # Formatação de MRR (carteira sob gestão — portfolio total)
-                mrr_val = float(m.fixo_mrr_projeto_total or 0) if m else 0.0
-                mrr_formatted = f"R$ {mrr_val:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
+                base_date = last_churn or first
+                days = 0
+                if base_date:
+                    b = base_date.date() if hasattr(base_date, "date") else base_date
+                    days = max(0, (date.today() - b).days)
 
-                ranking_list.append({
+                foto = None
+                if inv.profile_picture:
+                    foto = f"/static/images/profile_pictures/{inv.profile_picture}"
+
+                ranking.append({
                     "id": inv.id,
-                    "email": inv.email,
-                    "name": inv.nome,
-                    "role": inv.funcao or inv.posicao,
-                    "level": seniority_display,
-                    "level_raw": raw_level,
-                    "flag": m.flag if m else "white",
-                    "daysWithoutChurn": days_without_churn,
-                    "clientsCount": active_projects,
-                    "mrr": mrr_val,
-                    "mrr_formatted": mrr_formatted,
-                    "tenure": inv.senioridade,
-                    "photo": f"static/images/profile_pictures/{inv.profile_picture}" if inv.profile_picture else None,
-                    "highlights": m.motivo_flag.split(",") if m and m.motivo_flag else ["Investidor Ativo"]
+                    "name": inv.nome or email,
+                    "email": email,
+                    "role": inv.funcao or inv.posicao or "Colaborador",
+                    "seniority": inv.senioridade,
+                    "level": inv.nivel,
+                    "photo": foto,
+                    "clientsCount": active_count,
+                    "mrr": mrr,
+                    "mrr_formatted": f"R$ {mrr:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."),
+                    "daysWithoutChurn": days,
                 })
-            
-            return jsonify(ranking_list)
-            
+
+            ranking.sort(key=lambda x: (-x["clientsCount"], -x["mrr"]))
+            return jsonify(ranking)
     except Exception as e:
-        print(f"Erro no ranking API: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"error": str(e)}), 500
+
+
+@app.route("/hub-metricas")
+@check_session
+def hub_metricas():
+    """Dashboard histórico de MRR, churn, clientes e LTV (por projeto/mês)."""
+    try:
+        from services.mrr_historico_service import MrrHistoricoService
+        with Session() as db:
+            svc = MrrHistoricoService(db)
+            vazio = db.execute(
+                text(f"SELECT 1 FROM {permissions.SCHEMA}.projeto_mrr_historico LIMIT 1")
+            ).first() is None
+            if vazio:
+                try:
+                    svc.backfill()
+                except Exception as e:
+                    print(f"Backfill automático de MRR falhou: {e}")
+            resumo = svc.resumo()
+            serie = svc.serie_mensal()
+            ranking = svc.ltv_clientes(limite=200)
+            ranking_ativos = svc.ltv_clientes(limite=2000, somente_ativos=True)
+        return render_template(
+            "dashboard_mrr.html",
+            resumo=resumo, serie=serie, ranking=ranking, ranking_ativos=ranking_ativos,
+        )
+    except Exception as e:
+        import traceback
+        print(f"Erro no dashboard de MRR: {e}")
+        traceback.print_exc()
+        return render_template("dashboard_mrr.html", resumo={}, serie=[], ranking=[], ranking_ativos=[])
+
+
+@app.route("/admin/mrr-historico")
+@check_session
+def admin_mrr_historico():
+    """Página de edição do histórico de MRR (Admin + gestão ampla)."""
+    if not permissions.is_gestao_ampla():
+        return redirect(url_for("feed"))
+    return render_template("admin_mrr_historico.html")
+
+
+def _mrr_admin_ok():
+    return permissions.is_gestao_ampla()
+
+
+@app.route("/api/mrr/cliente/extrato", methods=["GET"])
+@check_session
+def api_mrr_cliente_extrato():
+    """Linha do tempo mensal de um projeto (usado no dashboard de métricas)."""
+    from services.mrr_historico_service import MrrHistoricoService
+    pid = request.args.get("projeto")
+    if not pid:
+        return jsonify({"error": "Informe o projeto."}), 400
+    try:
+        with Session() as db:
+            return jsonify(MrrHistoricoService(db).listar_linhas(int(pid)))
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+
+@app.route("/api/admin/mrr-historico/projetos", methods=["GET"])
+@check_session
+def api_mrr_admin_projetos():
+    if not _mrr_admin_ok():
+        return jsonify({"error": "Unauthorized"}), 403
+    from services.mrr_historico_service import MrrHistoricoService
+    with Session() as db:
+        return jsonify(MrrHistoricoService(db).listar_projetos(request.args.get("busca")))
+
+
+@app.route("/api/admin/mrr-historico/linhas", methods=["GET"])
+@check_session
+def api_mrr_admin_linhas():
+    if not _mrr_admin_ok():
+        return jsonify({"error": "Unauthorized"}), 403
+    from services.mrr_historico_service import MrrHistoricoService
+    pid = request.args.get("projeto")
+    if not pid:
+        return jsonify({"error": "Informe o projeto."}), 400
+    ano = request.args.get("ano")
+    mes = request.args.get("mes")
+    with Session() as db:
+        return jsonify(MrrHistoricoService(db).listar_linhas(
+            int(pid),
+            int(ano) if ano else None,
+            int(mes) if mes else None,
+            request.args.get("status"),
+            request.args.get("manual") == "1",
+        ))
+
+
+@app.route("/api/admin/mrr-historico/linha", methods=["PUT"])
+@check_session
+def api_mrr_admin_salvar_linha():
+    if not _mrr_admin_ok():
+        return jsonify({"error": "Unauthorized"}), 403
+    from services.mrr_historico_service import MrrHistoricoService
+    data = request.json or {}
+    try:
+        with Session() as db:
+            MrrHistoricoService(db).salvar_linha(
+                data.get("projeto_pipefy_id"), data.get("ano"), data.get("mes"), data, session.get("email")
+            )
+        return jsonify({"status": "success", "message": "Linha salva."})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+
+@app.route("/api/admin/mrr-historico/linha", methods=["DELETE"])
+@check_session
+def api_mrr_admin_excluir_linha():
+    if not _mrr_admin_ok():
+        return jsonify({"error": "Unauthorized"}), 403
+    from services.mrr_historico_service import MrrHistoricoService
+    try:
+        with Session() as db:
+            r = MrrHistoricoService(db).excluir_linha(
+                request.args.get("projeto"), request.args.get("ano"), request.args.get("mes")
+            )
+        return jsonify({"status": "success", **(r or {})})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+
+@app.route("/api/admin/mrr-historico/aplicar", methods=["POST"])
+@check_session
+def api_mrr_admin_aplicar():
+    if not _mrr_admin_ok():
+        return jsonify({"error": "Unauthorized"}), 403
+    from services.mrr_historico_service import MrrHistoricoService
+    data = request.json or {}
+    try:
+        with Session() as db:
+            r = MrrHistoricoService(db).aplicar_lote(
+                data.get("tipo"), data.get("params") or {}, session.get("email")
+            )
+        return jsonify({"status": "success", **(r or {})})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+
+@app.route("/api/admin/mrr-historico/inconsistencias", methods=["GET"])
+@check_session
+def api_mrr_admin_inconsistencias():
+    if not _mrr_admin_ok():
+        return jsonify({"error": "Unauthorized"}), 403
+    from services.mrr_historico_service import MrrHistoricoService
+    with Session() as db:
+        return jsonify(MrrHistoricoService(db).inconsistencias())
+
+
+@app.route("/api/admin/mrr-historico/exportar", methods=["GET"])
+@check_session
+def api_mrr_admin_exportar():
+    if not _mrr_admin_ok():
+        return jsonify({"error": "Unauthorized"}), 403
+    from flask import Response
+    from services.mrr_historico_service import MrrHistoricoService
+    with Session() as db:
+        conteudo = MrrHistoricoService(db).exportar_csv()
+    return Response(
+        conteudo, mimetype="text/csv",
+        headers={"Content-Disposition": "attachment; filename=mrr_historico.csv"},
+    )
+
+
+@app.route("/api/admin/mrr-historico/importar", methods=["POST"])
+@check_session
+def api_mrr_admin_importar():
+    if not _mrr_admin_ok():
+        return jsonify({"error": "Unauthorized"}), 403
+    from services.mrr_historico_service import MrrHistoricoService
+    if request.files.get("arquivo"):
+        conteudo = request.files["arquivo"].read().decode("utf-8", errors="ignore")
+    else:
+        conteudo = (request.json or {}).get("csv", "")
+    try:
+        with Session() as db:
+            n = MrrHistoricoService(db).importar_csv(conteudo, session.get("email"))
+        return jsonify({"status": "success", "importados": n})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
 
 
 @app.route("/hub-cs-cx")
@@ -5123,10 +5926,13 @@ def hub_cs_cx():
         from sqlalchemy import func
         from datetime import date, datetime
         from services.currency import CurrencyService
+        from services.mrr_historico_service import MrrHistoricoService
 
         with Session() as db:
             # 1. KPIs Gerais (Dashboard) - Sincronizado com a Home
             usd_rate = float(CurrencyService.get_usd_to_brl_rate())
+            mrr_svc = MrrHistoricoService(db)
+            ltv_geral = mrr_svc.somatorio_ltv()
             
             # 1. KPIs Gerais (Dashboard)
             projetos_todos = db.query(Projeto).filter(Projeto.status.in_(['Ativo', 'Onetime'])).all()
@@ -5165,11 +5971,7 @@ def hub_cs_cx():
 
             for p in ranking:
                 p.tempo_de_casa_meses_ranking = calculate_meses_to(p.data_de_inicio, today)
-                fee_p = float(p.fee or 0)
-                if str(p.moeda).strip().upper() == "USD":
-                    p.ltv_real = fee_p * usd_rate * p.tempo_de_casa_meses_ranking
-                else:
-                    p.ltv_real = fee_p * p.tempo_de_casa_meses_ranking
+                p.ltv_real = ltv_geral.get(p.pipefy_id, 0)
             
             if view == "detail" and client_id:
                 try: cid = int(client_id)
@@ -5197,25 +5999,17 @@ def hub_cs_cx():
 
                 # Cálculo Real de LTV Histórico por Semestre (Todos da tabela unificada para o mesmo cliente)
                 todos_historico = db.query(Projeto).filter(Projeto.nome == cliente.nome).all()
-                
+
                 labels_ltv = ["2024-S1", "2024-S2", "2025-S1"]
                 marcos = [date(2024, 6, 30), date(2024, 12, 31), today]
+                pipefy_ids = [p.pipefy_id for p in todos_historico]
+                ltv_por_marco = {m: mrr_svc.somatorio_ltv(ate=m) for m in marcos}
                 dados_ltv = []
-                
+
                 for marco in marcos:
-                    ltv_no_marco = 0
-                    for p in todos_historico:
-                        p_fim = p.data_fim if p.data_fim else today
-                        data_limite = min(marco, today, p_fim)
-                        
-                        meses_marco = calculate_meses_to(p.data_de_inicio, data_limite)
-                        fee_p = float(p.fee or 0)
-                        if str(p.moeda).strip().upper() == "USD":
-                            ltv_no_marco += fee_p * usd_rate * meses_marco
-                        else:
-                            ltv_no_marco += fee_p * meses_marco
+                    ltv_no_marco = sum(ltv_por_marco[marco].get(pid, 0) for pid in pipefy_ids)
                     dados_ltv.append(round(ltv_no_marco, 2))
-                
+
                 cliente.ltv_total = dados_ltv[-1]
                 cliente.projetos_ativos = projetos_cliente
 
@@ -5620,6 +6414,7 @@ def face_login_authenticate():
                 session["nivel_acesso"] = user.nivel_acesso
                 session["pode_editar_kanban"] = user.pode_editar_kanban
                 session["profile_picture"] = user.profile_picture
+                permissions.aplicar_sessao(db, session, user)
                 _log_face_auth(db, email, "LOGIN", "SUCCESS",
                                similarity=match_result["similarity"])
                 db.commit()
@@ -5696,6 +6491,7 @@ def face_login_capture_and_auth():
                 session["nivel_acesso"] = user.nivel_acesso
                 session["pode_editar_kanban"] = user.pode_editar_kanban
                 session["profile_picture"] = user.profile_picture
+                permissions.aplicar_sessao(db, session, user)
                 _log_face_auth(db, email, "LOGIN", "SUCCESS",
                                similarity=match_result["similarity"],
                                samples=len(frames))

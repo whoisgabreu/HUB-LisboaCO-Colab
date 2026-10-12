@@ -310,10 +310,11 @@
     {% include "components/header.html" %}
     {% include "components/sidebar.html" %}
 
-    {# Variáveis de permissão globais para o template #}
-    {% set pode_tudo = session.posicao in ["Gerência", "Sócio"] or session.funcao == "Cientista" %}
-    {% set is_gestor = session.funcao in ["Gestor de Tráfego", "Desenvolvedor"] %}
-    {% set is_account = session.funcao == "Account" %}
+    {# Variáveis de permissão globais para o template (v2: capacidades) #}
+    {% set caps = session.get('capacidades', []) or [] %}
+    {% set pode_tudo = ('gestao_ampla' in caps) or ('gestao_squad' in caps) or (session.nivel_acesso == 'Admin') %}
+    {% set is_gestor = ('operacao_gt' in caps) %}
+    {% set is_account = ('operacao_account' in caps) %}
     {% set pode_operar = pode_tudo or is_gestor or is_account %}
 
     <div class="app-container">

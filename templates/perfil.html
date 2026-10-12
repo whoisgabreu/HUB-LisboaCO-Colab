@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meu Perfil | HUB Lisboa</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="static/style/styles.css">
+    <link rel="stylesheet" href="static/style/tema-claro.css">
+    <link rel="stylesheet" href="static/style/feed.css">
+    <script src="static/js/app.js" defer></script>
+    <script src="static/js/feed.js" defer></script>
+    {% include "components/icon_title.html" %}
+</head>
+
+<body class="perfil-page">
+
+    {% include "components/header.html" %}
+
+    {% include "components/sidebar.html" %}
+
+    <div class="app-shell">
+        <div class="sidebar-overlay"></div>
+
+        <div class="main-content">
+            <main class="main-container">
+                {% set modo_perfil = session.email %}
+
+                <div class="perfil-cabecalho">
+                    {% if session.profile_picture %}
+                    <img class="perfil-avatar" src="/static/images/profile_pictures/{{ session.profile_picture }}" alt="{{ session.nome }}">
+                    {% else %}
+                    <i class="fa-solid fa-user-tie perfil-avatar-icone"></i>
+                    {% endif %}
+                    <div class="perfil-info">
+                        <div class="perfil-nome">{{ session.nome or 'Usuário' }}</div>
+                        <div class="perfil-cargo">{{ session.funcao or session.posicao or 'Colaborador' }}</div>
+                    </div>
+                </div>
+
+                <div class="perfil-abas">
+                    <button type="button" class="perfil-aba ativa" id="perfilAbaPosts" onclick="Feed.modoPerfil('posts')">
+                        <i class="fa-solid fa-newspaper"></i> Minhas postagens
+                    </button>
+                    <button type="button" class="perfil-aba" id="perfilAbaSalvos" onclick="Feed.modoPerfil('salvos')">
+                        <i class="fa-regular fa-bookmark"></i> Salvos
+                    </button>
+                </div>
+
+                {# Remuneração escondida por ora (reativar quando a remuneração for usada). #}
+
+                {% include "components/feed.html" %}
+            </main>
+        </div>
+    </div>
+
+    {% include "components/modal-configuracoes.html" %}
+    <script src="static/js/tema.js"></script>
+
+</body>
+
+</html>

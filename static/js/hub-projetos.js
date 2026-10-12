@@ -4,6 +4,43 @@ let currentProjectData = null;
 let currentHistorico = null;
 let isEditMode = false;
 let projectVinculosLocal = []; // ESTADO LOCAL DE VÍNCULOS
+const PROJETOS_CACHE = {}; // cache cliente→projetos (chave: `${tipo}::${nomeLower}`)
+const TIPO_STATUS = { ativo: 'Ativo', onetime: 'Onetime', onboarding: 'Onboarding', inativo: 'Inativo' };
+
+const FIELD_LABELS = {
+    nome: 'Nome', documento: 'Documento', fee: 'Fee', moeda: 'Moeda',
+    squad_atribuida: 'Squad', produto_contratado: 'Produto contratado',
+    data_de_inicio: 'Data de início', data_fim: 'Data fim', cohort: 'Cohort', step: 'Step',
+    meta_account_id: 'Meta account', google_account_id: 'Google account',
+    orcamento_midia_meta: 'Orçamento Meta', orcamento_midia_google: 'Orçamento Google',
+    fase_do_pipefy: 'Fase do Pipefy', informacoes_gerais: 'Informações gerais',
+    url_webhook_gchat: 'Webhook', ekyte_workspace: 'Ekyte workspace',
+    responsavel_projeto: 'Responsável', contrato_variavel: 'Contrato variável',
+    status: 'Status', pipefy_id: 'Pipefy ID', id: 'ID',
+    cliente: 'Cliente', localizacao_regiao_atuacao: 'Região de atuação',
+    segmento_nicho: 'Segmento / nicho', publico_alvo: 'Público-alvo',
+    objetivo_meta_principal: 'Objetivo / meta', contato_principal_decisor: 'Contato principal',
+    equipe_responsavel: 'Equipe responsável', outros_contatos_chave: 'Outros contatos-chave',
+    canais_midia_ativos: 'Canais de mídia', id_google: 'ID do Google', act_meta: 'ID da Meta (act)',
+    ids_rastreamento: 'IDs de rastreamento', tracking_crm: 'Ferramenta de tracking / CRM',
+    orcamento_midia_mensal: 'Orçamento mensal', benchmark_cpl_referencia: 'Benchmark / CPL',
+    estrategia_campanha_atual: 'Estratégia / campanha', tom_voz_posicionamento: 'Tom de voz / posicionamento',
+    must_donts_restricoes: "Must-dos / Don'ts e restrições",
+    o_que_funciona: 'O que funciona', o_que_nao_funciona: 'O que não funciona',
+    ticket_medio_financeiro: 'Ticket médio', forma_pagamento: 'Forma de pagamento',
+    relacionamento_alertas: 'Relacionamento / alertas',
+    pendencias_proximos_passos: 'Pendências / próximos passos',
+    link_drive_documentos: 'Link do Drive', motivo_atualizacao: 'Motivo da atualização',
+};
+
+function rotuloCampo(field) {
+    return FIELD_LABELS[field] || String(field || '').replace(/_/g, ' ');
+}
+
+function escHtml(s) {
+    return String(s === null || s === undefined ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
 
 /* ==============================
 UTILITÁRIOS DE MOEDA
@@ -168,10 +205,27 @@ document.addEventListener('DOMContentLoaded', populateSquadFilter);
 MODAL CLIENTE
 ================================ */
 
-function openClientModal(cardElement) {
-    const projetos = JSON.parse(cardElement.getAttribute('data-projetos'));
+async function openClientModal(cardElement) {
     const clienteNome = cardElement.querySelector('.project-title').textContent;
     const tipo = cardElement.getAttribute('data-tipo');
+    const chave = `${tipo}::${clienteNome.toLowerCase()}`;
+
+    let projetos = PROJETOS_CACHE[chave];
+    const nomeExato = cardElement.getAttribute('data-cliente-nome') || clienteNome;
+    if (!projetos) {
+        try {
+            const resp = await fetch(
+                `/api/projetos/por-cliente?nome=${encodeURIComponent(nomeExato)}&status=${encodeURIComponent(TIPO_STATUS[tipo] || '')}`
+            );
+            const data = await resp.json();
+            if (!resp.ok) throw new Error(data.error || 'Erro ao carregar projetos');
+            projetos = Array.isArray(data) ? data : [];
+            PROJETOS_CACHE[chave] = projetos;
+        } catch (e) {
+            if (window.HubModal) HubModal.alert('Erro ao carregar projetos: ' + e.message);
+            return;
+        }
+    }
 
     const formatarData = (dataISO) => {
         if (!dataISO) return '—';
@@ -186,28 +240,26 @@ function openClientModal(cardElement) {
     const projectsList = document.getElementById('projectsList');
     projectsList.innerHTML = '';
 
-    // 🔹 TOTAL DO FEE (em centavos)
-    let totalFee = 0;
-    let moeda = null;
-
+    // Totais por moeda
+    const totais = {};
     projetos.forEach(projeto => {
-        if (projeto.fee) {
-            totalFee += Number(projeto.fee);
-            moeda = projeto.moeda;
-        }
+        const m = (projeto.moeda || 'BRL').toUpperCase();
+        const fee = Number(projeto.fee || 0);
+        if (fee) totais[m] = (totais[m] || 0) + fee;
     });
+    const totaisHtml = Object.entries(totais)
+        .map(([m, v]) => formatCurrency(v, m))
+        .filter(Boolean)
+        .map(f => `<span class="project-total-item">${f}</span>`)
+        .join(' ');
 
-    const totalFeeFormatado = formatCurrency(totalFee, moeda);
-
-    // 🔹 Exibe o total
     const totalItem = document.createElement('div');
     totalItem.className = 'project-total-fee';
-    totalItem.innerHTML = `
-        <strong>Fee Total:</strong> ${totalFeeFormatado || '—'}
-    `;
+    totalItem.innerHTML = `<strong>Fees:</strong> ${totaisHtml || '—'}`;
     projectsList.appendChild(totalItem);
 
-    // 🔹 Lista projetos
+    // Lista projetos
+    const statusTxt = (t) => ({ ativo: 'Ativo', onetime: 'One-time', onboarding: 'Onboarding', inativo: 'Inativo' }[t] || '');
     projetos.forEach(projeto => {
         const feeFormatado = formatCurrency(projeto.fee, projeto.moeda);
 
@@ -215,12 +267,15 @@ function openClientModal(cardElement) {
         projectItem.className = 'project-list-item';
         projectItem.innerHTML = `
             <div class="project-item-info">
-                <h4>${projeto.produto_contratado || 'Sem nome'}</h4>
-                <p>
-                    Squad: ${projeto.squad_atribuida || 'N/A'} |
-                    Fee: ${feeFormatado || '—'} |
-                    Data Inicio: ${formatarData(projeto.data_de_inicio)}
-                </p>
+                <div class="project-item-head">
+                    <h4>${projeto.produto_contratado || 'Sem nome'}</h4>
+                    ${statusTxt(tipo) ? `<span class="project-badge badge-${tipo}">${statusTxt(tipo)}</span>` : ''}
+                </div>
+                <div class="project-meta-chips">
+                    <span class="project-meta-chip"><i class="fa-solid fa-sitemap"></i> ${projeto.squad_atribuida || 'N/A'}</span>
+                    <span class="project-meta-chip"><i class="fa-solid fa-money-bill-wave"></i> ${feeFormatado || '—'}</span>
+                    <span class="project-meta-chip"><i class="fa-regular fa-calendar"></i> Desde ${formatarData(projeto.data_de_inicio)}</span>
+                </div>
             </div>
             <button class="btn-view">
                 <i class="fa-solid fa-eye"></i> Ver Detalhes
@@ -253,8 +308,8 @@ function openProjectModal(projectData, tipoProjeto) {
     currentProjectData = projectData;
     currentHistorico = projectData.extra?.historico || [];
 
-    currentNotas = projectData.notas || {};
-    renderNotes();
+    switchProjectTab('dados');
+    carregarContextoProjeto(projectData.pipefy_id);
 
     isEditMode = false;
     setEditMode(false);
@@ -449,7 +504,6 @@ function backToClientModal() {
 function toggleEditMode() {
     isEditMode = !isEditMode;
     setEditMode(isEditMode);
-    renderNotes(); // 🔥 ESSENCIAL
     renderVinculos(); // 🔥 ESSENCIAL (Atualiza botões de remover)
 }
 
@@ -515,23 +569,22 @@ function openHistoryModal() {
             });
             
             const changes = Object.entries(item.alteracoes || {}).map(([field, values]) => {
-                // Formatar o nome do campo
-                const fieldName = field.replace(/_/g, ' ');
-                
+                const antes = values.antes ?? '';
+                const depois = values.depois ?? '';
                 return `
                     <div class="change-item">
-                        <div class="change-field">${fieldName}</div>
+                        <div class="change-field">${escHtml(rotuloCampo(field))}</div>
                         <div class="change-values">
-                            <div class="change-before">
-                                <!-- <strong>Antes:</strong><br> -->
-                                ${values.antes || '<em>vazio</em>'}
+                            <div class="change-box before">
+                                <span class="change-badge before">Antes</span>
+                                <div class="change-value">${escHtml(antes) || '<em>vazio</em>'}</div>
                             </div>
                             <div class="change-arrow">
                                 <i class="fa-solid fa-arrow-right"></i>
                             </div>
-                            <div class="change-after">
-                                <!-- <strong>Depois:</strong><br> -->
-                                ${values.depois || '<em>vazio</em>'}
+                            <div class="change-box after">
+                                <span class="change-badge after">Depois</span>
+                                <div class="change-value">${escHtml(depois) || '<em>vazio</em>'}</div>
                             </div>
                         </div>
                     </div>
@@ -547,7 +600,7 @@ function openHistoryModal() {
                         </div>
                         <div class="history-user">
                             <i class="fa-solid fa-user"></i>
-                            ${item.usuario}
+                            ${escHtml(item.usuario || 'Sistema')}
                         </div>
                     </div>
                     <div class="history-changes">
@@ -637,10 +690,10 @@ function atualizarCards(dados) {
                 ? new Date(primeiroProj.data_de_inicio).toLocaleDateString('pt-BR')
                 : 'N/A';
             
+            PROJETOS_CACHE[`${tipoProjeto}::${cliente.toLowerCase()}`] = projetos;
             return `
                 <div class="project-card" 
-                    data-cliente="${cliente.toLowerCase()}"
-                    data-projetos='${JSON.stringify(projetos)}'
+                    data-cliente="${cliente.toLowerCase()}" data-cliente-nome="${cliente}"
                     data-tipo="${tipoProjeto}"
                     data-squad="${(primeiroProj.squad_atribuida || '').toLowerCase()}"
                     onclick="openClientModal(this)">
@@ -704,8 +757,8 @@ async function updateProject(event) {
     // Coleta dados dos investidores vinculados do estado local
     data.investidores = projectVinculosLocal;
 
-    // Coletas notas do formulário
-    data.notas = collectNotesFromForm();
+    // Salva o contexto do projeto (histórico — v2_)
+    await salvarContextoProjeto(data.pipefy_id);
 
     try {
         // 1. Atualiza no HUB LOCAL (Backend Flask)
@@ -747,6 +800,7 @@ function toggleUserMenu(event) {
 document.addEventListener('click', function(event) {
     const dropdown = document.getElementById('userDropdown');
     const menuBtn = document.getElementById('userMenuBtn');
+    if (!dropdown || !menuBtn) return;
 
     if (dropdown.classList.contains('active') &&
         !dropdown.contains(event.target) &&
@@ -814,105 +868,59 @@ async function updatePassword(event) {
     }
 }
 
-let currentNotas = {};
-
 /* ==============================
-MODAL ADICIONAR NOTA
-================================ */
+CONTEXTO DO PROJETO (abas do modal)
+=============================== */
 
-function openAddNoteModal() {
-    if (!isEditMode) {
-        alert('Ative o modo de edição primeiro para adicionar notas');
-        return;
-    }
-    document.getElementById('addNoteModal').classList.add('active');
-    document.body.style.overflow = 'hidden';
+function switchProjectTab(tab) {
+    document.querySelectorAll('#projectModal .project-tab').forEach(b =>
+        b.classList.toggle('active', b.dataset.ptab === tab));
+    document.querySelectorAll('#projectModal .project-panel').forEach(p =>
+        p.classList.toggle('active', p.dataset.ppanel === tab));
 }
 
-function closeAddNoteModal() {
-    document.getElementById('addNoteModal').classList.remove('active');
-    document.getElementById('addNoteForm').reset();
+async function carregarContextoProjeto(pipefyId) {
+    if (!pipefyId) return;
+    try {
+        const resp = await fetch(`/api/projetos/${pipefyId}/contexto`);
+        const data = await resp.json();
+        const ctx = data.contexto || {};
+        document.querySelectorAll('#projectForm [data-ctx-field]').forEach(el => {
+            const valor = ctx[el.dataset.ctxField];
+            el.value = (valor === null || valor === undefined) ? '' : valor;
+        });
+        // Cliente padrão: nome do projeto
+        const cli = document.querySelector('#projectForm [data-ctx-field="cliente"]');
+        if (cli && !cli.value && currentProjectData) cli.value = currentProjectData.nome || '';
+    } catch (e) {
+        console.error('Erro ao carregar contexto do projeto:', e);
+    }
 }
 
-function addNote(event) {
-    event.preventDefault();
-    
-    const noteName = document.getElementById('note_name').value.trim();
-    
-    if (!noteName) {
-        alert('Digite um nome para a nota');
-        return;
-    }
-    
-    // Verificar se já existe uma nota com esse nome
-    if (currentNotas.hasOwnProperty(noteName)) {
-        alert('Já existe uma nota com este nome');
-        return;
-    }
-    
-    // Adicionar a nota
-    currentNotas[noteName] = '';
-    
-    // Renderizar notas
-    renderNotes();
-
-    closeAddNoteModal();
-}
-
-function renderNotes() {
-    const container = document.getElementById('notesContainer');
-    
-    if (Object.keys(currentNotas).length === 0) {
-        container.innerHTML = `
-            <div class="notes-empty">
-                <i class="fa-solid fa-note-sticky"></i>
-                <p>Nenhuma nota adicionada</p>
-                <small>Clique no botão "+" no header para adicionar notas</small>
-            </div>
-        `;
-        return;
-    }
-    
-    container.innerHTML = Object.entries(currentNotas).map(([name, value]) => `
-        <div class="note-item" data-note-name="${name}">
-            <div class="note-item-header">
-                <div class="note-item-title">
-                    <i class="fa-solid fa-note-sticky"></i> ${name}
-                </div>
-                <div class="note-item-actions">
-                    <button type="button" class="btn-note-action" onclick="removeNote('${name}')" title="Remover nota" ${!isEditMode ? 'disabled' : ''}>
-                        <i class="fa-solid fa-trash"></i>
-                    </button>
-                </div>
-            </div>
-            <textarea 
-                data-note-field="${name}"
-                placeholder="Digite suas anotações aqui..."
-                ${!isEditMode ? 'disabled' : ''}
-            >${value || ''}</textarea>
-        </div>
-    `).join('');
-}
-
-function removeNote(noteName) {
-    if (!confirm(`Deseja remover a nota "${noteName}"?`)) {
-        return;
-    }
-    
-    delete currentNotas[noteName];
-    renderNotes();
-}
-
-function collectNotesFromForm() {
-    const textareas = document.querySelectorAll('[data-note-field]');
-    const notes = {};
-    
-    textareas.forEach(textarea => {
-        const fieldName = textarea.getAttribute('data-note-field');
-        notes[fieldName] = textarea.value || '';
+function coletarContexto() {
+    const ctx = {};
+    document.querySelectorAll('#projectForm [data-ctx-field]').forEach(el => {
+        ctx[el.dataset.ctxField] = el.value;
     });
-    
-    return notes;
+    return ctx;
+}
+
+async function salvarContextoProjeto(pipefyId) {
+    if (!pipefyId) return;
+    const ctx = coletarContexto();
+    try {
+        const resp = await fetch(`/api/projetos/${pipefyId}/contexto`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(ctx)
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({}));
+            alert(`Erro ao salvar contexto: ${err.error || 'erro desconhecido'}`);
+        }
+    } catch (e) {
+        console.error('Erro ao salvar contexto:', e);
+    }
 }
 
 
@@ -1211,32 +1219,29 @@ function confirmarVinculo() {
     if (window.showToast) showToast('Vínculo atualizado localmente. Clique em "Salvar" para confirmar no banco.', 'info');
 }
 
-function removerVinculoLocal(email) {
-    if (!confirm(`Deseja remover o vínculo de ${email}?`)) return;
+async function removerVinculoLocal(email) {
+    if (!(await HubModal.confirm(`Deseja remover o vínculo de ${email}?`, { okLabel: "Remover", danger: true }))) return;
     projectVinculosLocal = projectVinculosLocal.filter(v => v.email !== email);
     renderVinculos();
 }
 
 // ── Abrir projeto diretamente via ?card_id= na URL ──
-document.addEventListener('DOMContentLoaded', function autoOpenCard() {
+document.addEventListener('DOMContentLoaded', async function autoOpenCard() {
     const params = new URLSearchParams(window.location.search);
     const cardId = params.get('card_id');
     if (!cardId) return;
 
     history.replaceState({}, '', '/hub-projetos');
 
-    const cards = document.querySelectorAll('.project-card');
-    for (const cardEl of cards) {
-        let projetos;
-        try {
-            projetos = JSON.parse(cardEl.getAttribute('data-projetos'));
-        } catch { continue; }
-        const projeto = projetos.find(p => String(p.pipefy_id) === cardId);
-        if (projeto) {
-            const tipo = cardEl.getAttribute('data-tipo') || 'ativo';
-            openClientModal(cardEl);
-            setTimeout(() => openProjectModal(projeto, tipo), 100);
-            return;
-        }
+    const tipoDeStatus = (s) =>
+        ({ Ativo: 'ativo', Onetime: 'onetime', Onboarding: 'onboarding', Inativo: 'inativo' }[s || ''] || 'ativo');
+
+    try {
+        const resp = await fetch(`/api/projetos/${encodeURIComponent(cardId)}`);
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data.error || 'Erro ao carregar o projeto');
+        openProjectModal(data, tipoDeStatus(data.status));
+    } catch (e) {
+        console.error('autoOpenCard:', e);
     }
 });

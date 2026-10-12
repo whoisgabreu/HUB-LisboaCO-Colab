@@ -66,7 +66,8 @@ def register(app):
 
         if "nome" not in session:
             return redirect(url_for("login"))
-        if not _permitido(session.get("posicao")):
+        import permissions
+        if not permissions.is_gestao():
             return render_template("index.html", error="Acesso restrito.")
 
     app.register_blueprint(bp)

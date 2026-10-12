@@ -6,7 +6,7 @@
 
 body.tema-claro {
     /* Variáveis Base */
-    --bg-main: #f8fafc;
+    --bg-main: #f1f5f9;
     --bg-hover: #ffffff;
     --card-bg: #ffffff;
     --modal-bg: #ffffff;
@@ -14,6 +14,7 @@ body.tema-claro {
     --text-muted: #64748b;
     --border-color: #e2e8f0;
     --accent-red: #d61616;
+    --card-shadow: 0px 5px 10px rgba(0, 0, 0, 0.3);
 
     /* Overrides adicionais para componentes específicos */
     color: var(--text-main);
@@ -35,7 +36,7 @@ body.tema-claro .nav-item.active {
 body.tema-claro .header {
     background-color: #ffffff;
     border-bottom: 1px solid #e5e7eb;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
 }
 
 body.tema-claro .logo {
@@ -56,8 +57,31 @@ body.tema-claro .remu-investor-card,
 body.tema-claro .remu-table-card {
     background-color: #ffffff !important;
     border: 1px solid #e2e8f0 !important;
-    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1) !important;
+    box-shadow: var(--card-shadow) !important;
     color: var(--text-main) !important;
+}
+
+/* Cards sem sombra: adiciona sombra leve para separar do fundo */
+body.tema-claro .feed-post,
+body.tema-claro .feed-widget,
+body.tema-claro .summary-card,
+body.tema-claro .users-card,
+body.tema-claro .admin-card,
+body.tema-claro .form-section,
+body.tema-claro .pad-card,
+body.tema-claro .cs-card,
+body.tema-claro .client-card,
+body.tema-claro .chart-card,
+body.tema-claro .designer-chart-card,
+body.tema-claro .fixed-link-card,
+body.tema-claro .security-card,
+body.tema-claro .login-panel,
+body.tema-claro .face-status-card,
+body.tema-claro .entregas-summary-panel,
+body.tema-claro .criativa-table-card,
+body.tema-claro .ref-card,
+body.tema-claro .remu-target-card {
+    box-shadow: var(--card-shadow) !important;
 }
 
 body.tema-claro .op-card-premium h3,

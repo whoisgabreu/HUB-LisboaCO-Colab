@@ -17,6 +17,7 @@
     document.addEventListener('DOMContentLoaded', function () {
         carregarConfiguracoes();
         configurarUploadFoto();
+        configurarPerfil();
     });
 
     /**
@@ -78,6 +79,76 @@
         document.querySelectorAll('.config-section').forEach(sec => sec.classList.remove('active'));
         const targetSection = document.getElementById('config-' + tabName);
         if (targetSection) targetSection.classList.add('active');
+
+        if (tabName === 'perfil') carregarDadosPerfil();
+    };
+
+    // =============================================
+    // 2b. PERFIL (nascimento / telefone / CPF)
+    // =============================================
+    function soDigitos(v) {
+        return (v || '').replace(/\D/g, '');
+    }
+
+    function mascaraTelefone(v) {
+        const d = soDigitos(v).slice(0, 11);
+        if (d.length <= 2) return d.length ? `(${d}` : '';
+        if (d.length <= 6) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
+        if (d.length <= 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
+        return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+    }
+
+    function mascaraCpf(v) {
+        const d = soDigitos(v).slice(0, 11);
+        if (d.length <= 3) return d;
+        if (d.length <= 6) return `${d.slice(0, 3)}.${d.slice(3)}`;
+        if (d.length <= 9) return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6)}`;
+        return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`;
+    }
+
+    function configurarPerfil() {
+        const tel = document.getElementById('perfilTelefone');
+        const cpf = document.getElementById('perfilCpf');
+        if (tel) tel.addEventListener('input', (e) => { e.target.value = mascaraTelefone(e.target.value); });
+        if (cpf) cpf.addEventListener('input', (e) => { e.target.value = mascaraCpf(e.target.value); });
+        carregarDadosPerfil();
+    }
+
+    async function carregarDadosPerfil() {
+        if (!document.getElementById('perfilDataNascimento')) return;
+        try {
+            const r = await fetch('/api/perfil');
+            if (!r.ok) return;
+            const d = await r.json();
+            document.getElementById('perfilDataNascimento').value = d.data_nascimento || '';
+            document.getElementById('perfilTelefone').value = mascaraTelefone(d.telefone || '');
+            document.getElementById('perfilCpf').value = mascaraCpf(d.cpf || '');
+        } catch (e) {
+            /* silencioso */
+        }
+    }
+
+    window.salvarDadosPerfil = async function () {
+        const payload = {
+            data_nascimento: document.getElementById('perfilDataNascimento').value || null,
+            telefone: document.getElementById('perfilTelefone').value,
+            cpf: document.getElementById('perfilCpf').value,
+        };
+        try {
+            const r = await fetch('/api/perfil', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+            const data = await r.json();
+            if (r.ok) {
+                showToast(data.message || 'Dados atualizados com sucesso!', 'sucesso');
+            } else {
+                showToast(data.error || 'Erro ao salvar dados.', 'erro');
+            }
+        } catch (e) {
+            showToast('Erro na requisição.', 'erro');
+        }
     };
 
     // =============================================

@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="static/style/styles.css">
+    <link rel="stylesheet" href="static/style/tema-claro.css">
+    <script src="static/js/app.js" defer></script>
+    <style>
+        .admin-wrap { max-width: 900px; margin-top: 1.5rem; }
+        .admin-card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; }
+        .admin-table { width: 100%; border-collapse: collapse; }
+        .admin-table th { text-align: left; padding: 12px; border-bottom: 1px solid var(--border-color); color: var(--text-muted); font-size: .8rem; text-transform: uppercase; }
+        .admin-table td { padding: 12px; border-bottom: 1px solid var(--border-color); }
+        .pill { font-size: .7rem; font-weight: 600; padding: 3px 10px; border-radius: 20px; }
+        .pill.on { background: rgba(46,204,113,.15); color: #2ecc71; }
+        .pill.off { background: rgba(149,165,166,.2); color: #95a5a6; }
+        .row-actions { display: flex; gap: 8px; }
+        .mini-btn { background: transparent; border: 1px solid var(--border-color); color: var(--text-main); border-radius: 8px; padding: 6px 10px; cursor: pointer; font-family: inherit; font-size: .8rem; }
+        .mini-btn:hover { border-color: var(--accent-red); color: var(--accent-red); }
+        .page-head { display: flex; justify-content: space-between; align-items: center; }
+    </style>
+    {% include "components/icon_title.html" %}
+</head>
+
+<body>
+    {% include "components/header.html" %}
+    {% include "components/sidebar.html" %}
+
+    <div class="app-shell">
+        <div class="sidebar-overlay"></div>
+        <div class="main-content">
+            <main class="main-container">
+                <section class="welcome-section">
+                    <div class="page-head">
+                        <div>
+                            <h2>Squads</h2>
+                            <p>Crie, renomeie e inative squads. Os vínculos de pessoas e projetos são por ID, então rebrand não quebra nada.</p>
+                        </div>
+                        <button class="btn-primary" onclick="abrirNovaSquad()"><i class="fas fa-plus"></i> Nova Squad</button>
+                    </div>
+                </section>
+
+                <div class="admin-wrap admin-card">
+                    <table class="admin-table">
+                        <thead>
+                            <tr><th>#</th><th>Nome</th><th>Status</th><th>Ações</th></tr>
+                        </thead>
+                        <tbody id="squadsBody"></tbody>
+                    </table>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    {% include "components/modal-configuracoes.html" %}
+    <script src="static/js/tema.js"></script>
+    <script>
+        let squads = [];
+
+        async function carregar() {
+            const r = await fetch('/api/admin/squads');
+            squads = await r.json();
+            render();
+        }
+
+        function render() {
+            const tb = document.getElementById('squadsBody');
+            if (!squads.length) { tb.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:1.5rem;">Nenhuma squad.</td></tr>'; return; }
+            tb.innerHTML = squads.map(s => `
+                <tr>
+                    <td>${s.id}</td>
+                    <td>${s.nome}</td>
+                    <td><span class="pill ${s.ativo ? 'on' : 'off'}">${s.ativo ? 'Ativa' : 'Inativa'}</span></td>
+                    <td><div class="row-actions">
+                        <button class="mini-btn" onclick="renomear(${s.id})"><i class="fas fa-pen"></i> Renomear</button>
+                        <button class="mini-btn" onclick="alternar(${s.id}, ${!s.ativo})">${s.ativo ? '<i class="fas fa-eye-slash"></i> Inativar' : '<i class="fas fa-eye"></i> Reativar'}</button>
+                    </div></td>
+                </tr>`).join('');
+        }
+
+        async function abrirNovaSquad() {
+            const nome = await HubModal.prompt('Nome da nova squad:');
+            if (!nome) return;
+            const r = await fetch('/api/admin/squads', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nome }) });
+            const d = await r.json();
+            if (r.ok) { carregar(); } else { alert(d.error); }
+        }
+
+        async function renomear(id) {
+            const atual = (squads.find(x => x.id === id) || {}).nome || '';
+            const nome = await HubModal.prompt('Novo nome da squad:', { defaultValue: atual });
+            if (!nome || nome === atual) return;
+            const r = await fetch(`/api/admin/squads/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nome }) });
+            const d = await r.json();
+            if (r.ok) { carregar(); } else { alert(d.error); }
+        }
+
+        async function alternar(id, ativo) {
+            const r = await fetch(`/api/admin/squads/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ativo }) });
+            const d = await r.json();
+            if (r.ok) { carregar(); } else { alert(d.error); }
+        }
+
+        carregar();
+    </script>
+</body>
+
+</html>

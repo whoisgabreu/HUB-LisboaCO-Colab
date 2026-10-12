@@ -68,6 +68,8 @@ function initSidebar() {
             const icon = floatingBurger.querySelector('i');
             if (icon) icon.className = 'fas fa-times';
         }
+        try { localStorage.setItem('hub_sidebar_open', '1'); } catch (e) { /* ignore */ }
+        notifyResize();
     };
 
     const closeSidebar = () => {
@@ -78,6 +80,13 @@ function initSidebar() {
             const icon = floatingBurger.querySelector('i');
             if (icon) icon.className = 'fas fa-bars';
         }
+        try { localStorage.setItem('hub_sidebar_open', '0'); } catch (e) { /* ignore */ }
+        notifyResize();
+    };
+
+    // Re-render adaptações de layout (ex.: Chart.js) no fim da transição de margem
+    const notifyResize = () => {
+        setTimeout(() => window.dispatchEvent(new Event('resize')), 320);
     };
 
     if (floatingBurger) floatingBurger.addEventListener('click', toggleSidebar);
@@ -90,6 +99,13 @@ function initSidebar() {
             closeSidebar();
         }
     });
+
+    // Restaura o estado persistido do menu (apenas desktop)
+    try {
+        if (localStorage.getItem('hub_sidebar_open') === '1' && window.matchMedia('(min-width: 769px)').matches) {
+            openSidebar();
+        }
+    } catch (e) { /* ignore */ }
 }
 
 /* initSidebarCollapse removido */

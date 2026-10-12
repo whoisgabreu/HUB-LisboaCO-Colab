@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editar Histórico de MRR | HUB Lisboa</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style/styles.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style/tema-claro.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style/dashboard_mrr.css') }}">
+    <style>
+        .page-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+        .head-actions { display: flex; gap: .5rem; flex-wrap: wrap; }
+        .mini-btn { background: transparent; border: 1px solid var(--border-color); color: var(--text-main); border-radius: 8px; padding: 7px 12px; cursor: pointer; font-family: inherit; font-size: .82rem; display: inline-flex; align-items: center; gap: .4rem; }
+        .mini-btn:hover { border-color: var(--accent-red); color: var(--accent-red); }
+        .mini-btn.primary { background: var(--accent-red); color: #fff; border-color: var(--accent-red); }
+        .tabs { display: flex; gap: .5rem; margin-bottom: 1rem; }
+        .tab { background: transparent; border: 1px solid var(--border-color); color: var(--text-muted); border-radius: 8px; padding: 8px 14px; cursor: pointer; font-family: inherit; font-size: .85rem; }
+        .tab.active { background: var(--bg-hover); color: var(--text-main); border-color: var(--accent-red); }
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+        .admin-grid { display: grid; grid-template-columns: 320px 1fr; gap: 1.25rem; align-items: start; }
+        .admin-card { background: var(--bg-hover); border: 1px solid var(--border-color); border-radius: 12px; padding: 1rem; }
+        .proj-list { max-height: 70vh; overflow-y: auto; margin-top: .75rem; }
+        .proj-item { padding: .6rem .7rem; border-radius: 8px; cursor: pointer; border: 1px solid transparent; font-size: .85rem; }
+        .proj-item:hover { background: rgba(148,163,184,.08); }
+        .proj-item.sel { border-color: var(--accent-red); background: rgba(214,22,22,.06); }
+        .proj-item small { display: block; color: var(--text-muted); font-size: .72rem; }
+        .admin-table { width: 100%; border-collapse: collapse; }
+        .admin-table th { text-align: left; padding: .6rem .5rem; border-bottom: 1px solid var(--border-color); color: var(--text-muted); font-size: .72rem; text-transform: uppercase; }
+        .admin-table td { padding: .5rem; border-bottom: 1px solid var(--border-color); font-size: .82rem; }
+        .admin-table tr.manual td { background: rgba(239,159,39,.08); }
+        .bulk { display: flex; flex-wrap: wrap; gap: .5rem; align-items: flex-end; padding: .75rem; border: 1px dashed var(--border-color); border-radius: 10px; margin-bottom: 1rem; }
+        .bulk .field { display: flex; flex-direction: column; gap: .2rem; }
+        .bulk label { font-size: .68rem; color: var(--text-muted); text-transform: uppercase; }
+        .bulk input, .bulk select { background: var(--bg-main); border: 1px solid var(--border-color); color: var(--text-main); border-radius: 7px; padding: 5px 8px; font-family: inherit; font-size: .8rem; }
+        .pill { font-size: .68rem; font-weight: 600; padding: 2px 8px; border-radius: 20px; background: rgba(148,163,184,.2); color: var(--text-muted); }
+        .empty { color: var(--text-muted); text-align: center; padding: 3rem 1rem; }
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: none; align-items: center; justify-content: center; z-index: 9999; }
+        .modal-overlay.open { display: flex; }
+        .modal-box { background: var(--bg-hover); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.25rem; width: 460px; max-width: 92vw; max-height: 90vh; overflow-y: auto; }
+        .modal-box h3 { margin: 0 0 1rem; }
+        .form-row { display: flex; gap: .5rem; margin-bottom: .6rem; }
+        .form-row > div { flex: 1; display: flex; flex-direction: column; gap: .2rem; }
+        .form-row label { font-size: .7rem; color: var(--text-muted); }
+        .form-row input, .form-row select { background: var(--bg-main); border: 1px solid var(--border-color); color: var(--text-main); border-radius: 7px; padding: 6px 8px; font-family: inherit; font-size: .82rem; }
+        .tipo-tag { font-size: .68rem; padding: 2px 7px; border-radius: 6px; font-weight: 600; }
+        .tipo-lacuna { background: rgba(239,159,39,.15); color: #EF9F27; }
+        .tipo-fee_zero { background: rgba(226,75,74,.15); color: #E24B4A; }
+        .tipo-sem_historico { background: rgba(55,138,221,.15); color: #378ADD; }
+        .tipo-churn_orfao { background: rgba(155,28,28,.15); color: #9B1C1C; }
+        @media (max-width: 900px) { .admin-grid { grid-template-columns: 1fr; } }
+    </style>
+    {% include "components/icon_title.html" %}
+</head>
+
+<body>
+    {% include "components/header.html" %}
+    {% include "components/sidebar.html" %}
+
+    <div class="app-shell">
+        <div class="sidebar-overlay"></div>
+        <div class="main-content">
+            <main class="main-container">
+                <section class="welcome-section">
+                    <div class="page-head">
+                        <div>
+                            <h2>Editar Histórico de MRR</h2>
+                            <p>Corrija valores, status e datas. Linhas editadas ficam marcadas como <strong>manual</strong> e
+                                não são sobrescritas pelo job diário.</p>
+                        </div>
+                        <div class="head-actions">
+                            <button class="mini-btn" onclick="exportarCSV()"><i class="fas fa-download"></i> Exportar CSV</button>
+                            <label class="mini-btn" style="cursor:pointer;"><i class="fas fa-upload"></i> Importar CSV
+                                <input type="file" id="csvFile" accept=".csv" hidden onchange="importarCSV(this)"></label>
+                        </div>
+                    </div>
+                    <div class="tabs">
+                        <button class="tab active" data-tab="editor" onclick="trocarAba('editor')"><i class="fas fa-pen"></i> Editor</button>
+                        <button class="tab" data-tab="incons" onclick="trocarAba('incons')"><i class="fas fa-triangle-exclamation"></i> Inconsistências <span id="inconsCount" class="pill">0</span></button>
+                    </div>
+                </section>
+
+                <div id="tab-editor" class="tab-panel active">
+                    <div class="admin-grid">
+                        <div class="admin-card">
+                            <input id="busca" class="mrr-search" style="width:100%;" placeholder="Buscar projeto..." oninput="carregarProjetos()">
+                            <div class="proj-list" id="projList"></div>
+                        </div>
+                        <div class="admin-card">
+                            <div id="editorEmpty" class="empty">Selecione um projeto à esquerda para editar o histórico.</div>
+                            <div id="editorContent" hidden>
+                                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem;flex-wrap:wrap;gap:.5rem;">
+                                    <h3 id="projTitle" style="margin:0;"></h3>
+                                    <button class="mini-btn" onclick="reimportar()"><i class="fas fa-rotate"></i> Reimportar do projeto</button>
+                                </div>
+
+                                <div class="bulk">
+                                    <div class="field">
+                                        <label>Ação</label>
+                                        <select id="bulkAcao" onchange="ajustarBulk()">
+                                            <option value="fee">Definir fee no período</option>
+                                            <option value="status">Definir status no período</option>
+                                            <option value="churn">Marcar churn</option>
+                                            <option value="preencher">Preencher lacunas</option>
+                                            <option value="excluir">Excluir período</option>
+                                            <option value="resetar">Voltar ao automático</option>
+                                        </select>
+                                    </div>
+                                    <div class="field"><label>De mês</label><select id="bMesIni"></select></div>
+                                    <div class="field"><label>Ano</label><input id="bAnoIni" type="number" value="2026" style="width:80px;"></div>
+                                    <div class="field"><label>Até mês</label><select id="bMesFim"></select></div>
+                                    <div class="field"><label>Ano</label><input id="bAnoFim" type="number" value="2026" style="width:80px;"></div>
+                                    <div class="field" id="fldFee"><label>Fee</label><input id="bFee" type="text" style="width:90px;"></div>
+                                    <div class="field" id="fldMoeda"><label>Moeda</label><select id="bMoeda"><option>BRL</option><option>USD</option></select></div>
+                                    <div class="field" id="fldStatus"><label>Status</label><select id="bStatus"><option>Ativo</option><option>Inativo</option><option>Onetime</option><option>Onboarding</option></select></div>
+                                    <button class="mini-btn primary" onclick="aplicarLote()"><i class="fas fa-check"></i> Aplicar</button>
+                                    <button class="mini-btn" onclick="aplicarFeePartir()" title="Define o novo fee do mês 'De' informado até hoje (downsell/upsell)"><i class="fas fa-forward"></i> Fee a partir daqui</button>
+                                </div>
+
+                                <div style="overflow-x:auto;">
+                                    <table class="admin-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Mês</th><th>Fee</th><th>Moeda</th><th>Fee (R$)</th>
+                                                <th>Status</th><th>Manual</th><th>Obs.</th><th>Ações</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="linhasBody"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="tab-incons" class="tab-panel">
+                    <div class="admin-card">
+                        <div style="overflow-x:auto;">
+                            <table class="admin-table">
+                                <thead>
+                                    <tr><th>Tipo</th><th>Projeto</th><th>Referência</th><th>Detalhe</th><th>Ações</th></tr>
+                                </thead>
+                                <tbody id="inconsBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="editModal">
+        <div class="modal-box">
+            <h3 id="modalTitle">Editar linha</h3>
+            <div class="form-row">
+                <div><label>Fee</label><input id="mFee" type="text"></div>
+                <div><label>Moeda</label><select id="mMoeda"><option>BRL</option><option>USD</option></select></div>
+            </div>
+            <div class="form-row">
+                <div><label>Cotação USD</label><input id="mCotacao" type="text"></div>
+                <div><label>Fee (R$)</label><input id="mFeeBrl" type="text"></div>
+            </div>
+            <div class="form-row">
+                <div><label>Status</label><select id="mStatus"><option>Ativo</option><option>Inativo</option><option>Onetime</option><option>Onboarding</option></select></div>
+                <div><label>Nome do projeto</label><input id="mNome" type="text"></div>
+            </div>
+            <div class="form-row">
+                <div><label>Observação</label><input id="mObs" type="text"></div>
+            </div>
+            <div style="display:flex;justify-content:flex-end;gap:.5rem;margin-top:1rem;">
+                <button class="mini-btn" onclick="fecharModal()">Cancelar</button>
+                <button class="mini-btn primary" onclick="salvarLinha()"><i class="fas fa-save"></i> Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    {% include "components/modal-configuracoes.html" %}
+    <script src="{{ url_for('static', filename='js/app.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/admin_mrr_historico.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/tema.js') }}"></script>
+</body>
+
+</html>

@@ -2,7 +2,7 @@ import random
 from datetime import datetime, date, timedelta
 from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
-from sqlalchemy import select, update, insert
+from sqlalchemy import select, update, insert, text
 from models import Projeto, KanbanConfig, KanbanHistorico, InvestidorProjeto
 
 class PhaseTransitionError(Exception):
@@ -376,6 +376,7 @@ class KanbanService:
 
     def _apply_column_mappings(self, projeto: Projeto, config: Dict[str, Any], dados: Dict[str, Any]):
         """Aplica os valores do Kanban às colunas reais da tabela projetos baseado no config."""
+        squad_tocada = False
         for fase in config.get('fases', []):
             for campo in fase.get('campos', []):
                 coluna = campo.get('mapeamento_coluna')
@@ -401,11 +402,24 @@ class KanbanService:
                                     setattr(projeto, coluna, float(val))
                             else:
                                 setattr(projeto, coluna, val)
-                            
+                                if coluna == 'squad_atribuida':
+                                    squad_tocada = True
+
                             # Mantém o JSONB sincronizado com o valor real para evitar divergência
                             projeto.kanban_dados[campo['id']] = val
                         except Exception as e:
                             print(f"Erro ao mapear coluna {coluna}: {e}")
+        # v2_: espelha squad_atribuida -> v2_projeto_squads (por id)
+        if squad_tocada:
+            try:
+                import permissions
+                sid = self.db.execute(
+                    text(f"SELECT id FROM {permissions.SCHEMA}.v2_squads WHERE nome = :n"),
+                    {"n": projeto.squad_atribuida},
+                ).scalar()
+                permissions.definir_squads_do_projeto(self.db, projeto.pipefy_id, [sid] if sid else [])
+            except Exception as e:
+                print(f"[kanban] erro ao espelhar squad v2: {e}")
         # Importante: Marcar como modificado para o SQLAlchemy detectar mudança profunda no dict JSONB
         from sqlalchemy.orm.attributes import flag_modified
         flag_modified(projeto, "kanban_dados")

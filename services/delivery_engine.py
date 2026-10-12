@@ -16,6 +16,7 @@ Isolamento garantido por: email + client_id + role + delivery_type + month + yea
 from datetime import datetime
 from decimal import Decimal
 from sqlalchemy import extract
+import permissions
 
 from database import Session
 from models import (
@@ -186,14 +187,15 @@ def process_deliveries(email: str, pipefy_id: int, mes: int, ano: int):
             print(f"DEBUG: User {email} not found in Investidor table")
             return {"status": "error", "reason": "usuario_nao_encontrado"}
 
-        role = investidor.funcao
+        role = permissions.cargo_do_investidor(db, investidor.id)
         print(f"DEBUG: User role: {role}")
-        
-        # Mapeamento expandido para testes
+
+        # Mapeamento v2_ -> papel de entregas
         role_map = {
-            "Account": "Account",
+            "Account Manager": "Account",
+            "Gestor de Projeto": "Account",
             "Gestor de Tráfego": "Gestor de Tráfego",
-            "Desenvolvedor": "Gestor de Tráfego" # Para testes do Gabriel
+            "Desenvolvedor": "Gestor de Tráfego",
         }
         active_role = role_map.get(role, role)
         delivery_types = DELIVERY_TYPES.get(active_role, [])

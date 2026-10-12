@@ -30,13 +30,52 @@
                     <div class="welcome-header">
                         <div>
                             <h2>Gerenciamento de Usuários</h2>
-                            <p>Administre as contas e acessos dos investidores da empresa.</p>
+                            <p>Administre as contas, cargos, posições e squads dos investidores.</p>
                         </div>
                         <button class="btn-primary" onclick="openNewUserModal()">
                             <i class="fas fa-user-plus"></i> Novo Usuário
                         </button>
                     </div>
                 </section>
+
+                <!-- CARTOES-RESUMO -->
+                <div class="admin-summary">
+                    <div class="summary-card">
+                        <div class="summary-icon total"><i class="fas fa-users"></i></div>
+                        <div class="summary-info">
+                            <span class="summary-value" id="sum-total">0</span>
+                            <span class="summary-label">Total</span>
+                        </div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="summary-icon active"><i class="fas fa-user-check"></i></div>
+                        <div class="summary-info">
+                            <span class="summary-value" id="sum-ativos">0</span>
+                            <span class="summary-label">Ativos</span>
+                        </div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="summary-icon inactive"><i class="fas fa-user-slash"></i></div>
+                        <div class="summary-info">
+                            <span class="summary-value" id="sum-inativos">0</span>
+                            <span class="summary-label">Inativos</span>
+                        </div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="summary-icon admin"><i class="fas fa-user-shield"></i></div>
+                        <div class="summary-info">
+                            <span class="summary-value" id="sum-admins">0</span>
+                            <span class="summary-label">Admins</span>
+                        </div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="summary-icon birthday"><i class="fas fa-cake-candles"></i></div>
+                        <div class="summary-info">
+                            <span class="summary-value" id="sum-aniversariantes">0</span>
+                            <span class="summary-label">Aniversariantes do mês</span>
+                        </div>
+                    </div>
+                </div>
 
                 <!-- ABAS: ATIVOS / INATIVOS -->
                 <div class="user-tab-nav">
@@ -64,7 +103,7 @@
                             <select id="squadFilter" onchange="filterUsers()">
                                 <option value="">Todas as Squads</option>
                                 {% for squad in options.squads %}
-                                <option value="{{ squad|lower }}">{{ squad }}</option>
+                                <option value="{{ squad.id }}">{{ squad.nome }}</option>
                                 {% endfor %}
                             </select>
                         </div>
@@ -74,10 +113,14 @@
                             <select id="posicaoFilter" onchange="filterUsers()">
                                 <option value="">Todas as Posições</option>
                                 {% for pos in options.posicoes %}
-                                <option value="{{ pos|lower }}">{{ pos }}</option>
+                                <option value="{{ pos }}">{{ pos }}</option>
                                 {% endfor %}
                             </select>
                         </div>
+
+                        <button type="button" id="birthdayFilter" class="filter-toggle" onclick="toggleBirthdayFilter()">
+                            <i class="fas fa-cake-candles"></i> Aniversariantes do mês
+                        </button>
                     </div>
                 </div>
 
@@ -88,8 +131,9 @@
                             <thead>
                                 <tr>
                                     <th>Usuário</th>
-                                    <th>Cargo / Squad</th>
-                                    <th>Posição</th>
+                                    <th>Cargo</th>
+                                    <th>Posições</th>
+                                    <th>Squads</th>
                                     <th>Acesso</th>
                                     <th>Status</th>
                                     <th>Ações</th>
@@ -113,123 +157,168 @@
                 <button class="remu-modal-close" onclick="closeUserModal()">&times;</button>
             </div>
             <div class="remu-modal-body">
-                <form id="userForm" class="admin-form">
+                <form id="userForm" class="admin-form" novalidate>
                     <input type="hidden" id="originalEmail">
-                    
-                    <!-- SEÇÃO: DADOS PESSOAIS -->
-                    <div class="form-section">
-                        <div class="section-header">
-                            <i class="fas fa-user"></i>
-                            <h4>Dados Pessoais</h4>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Nome Completo</label>
-                                <input type="text" id="userName" required placeholder="Ex: João Silva">
+
+                    <!-- ABAS DO FORMULÁRIO -->
+                    <div class="admin-form-tabs">
+                        <button type="button" class="admin-form-tab active" data-tab="dados"
+                            onclick="switchUserFormTab('dados')">
+                            <i class="fas fa-user"></i> Dados Pessoais
+                        </button>
+                        <button type="button" class="admin-form-tab" data-tab="cargo"
+                            onclick="switchUserFormTab('cargo')">
+                            <i class="fas fa-briefcase"></i> Cargo e Função
+                        </button>
+                        <button type="button" class="admin-form-tab" data-tab="areas"
+                            onclick="switchUserFormTab('areas')">
+                            <i class="fas fa-layer-group"></i> Posições & Squads
+                        </button>
+                        <button type="button" class="admin-form-tab" data-tab="acesso"
+                            onclick="switchUserFormTab('acesso')">
+                            <i class="fas fa-shield-alt"></i> Acesso e Status
+                        </button>
+                    </div>
+
+                    <!-- PAINEL: DADOS PESSOAIS -->
+                    <div class="admin-form-panel active" data-panel="dados">
+                        <div class="form-section">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Nome Completo *</label>
+                                    <input type="text" id="userName" required placeholder="Ex: João Silva">
+                                </div>
+                                <div class="form-group">
+                                    <label>E-mail *</label>
+                                    <input type="email" id="userEmail" required placeholder="usuario@v4company.com">
+                                </div>
                             </div>
-                            <div class="form-group">
-                                <label>E-mail</label>
-                                <input type="email" id="userEmail" required placeholder="usuario@v4company.com">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Data de Nascimento</label>
+                                    <input type="date" id="userDataNascimento">
+                                </div>
+                                <div class="form-group">
+                                    <label>Telefone</label>
+                                    <input type="text" id="userTelefone" maxlength="15" placeholder="(00) 00000-0000">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>CPF</label>
+                                    <input type="text" id="userCpf" maxlength="14" placeholder="000.000.000-00">
+                                </div>
+                                <div class="form-group" id="passwordGroup">
+                                    <label>Senha Inicial</label>
+                                    <input type="password" id="userPassword" placeholder="Padrão: v4company">
+                                </div>
                             </div>
                         </div>
-                        <div class="form-row" id="passwordGroup">
+                    </div>
+
+                    <!-- PAINEL: CARGO E FUNÇÃO -->
+                    <div class="admin-form-panel" data-panel="cargo">
+                        <div class="form-section">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Cargo/Função</label>
+                                    <select id="userFuncao">
+                                        <option value="">Selecione...</option>
+                                        {% for cargo in options.cargos %}
+                                        <option value="{{ cargo }}">{{ cargo }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Senioridade</label>
+                                    <select id="userSenioridade">
+                                        <option value="">Selecione...</option>
+                                        {% for sen in options.senioridades %}
+                                        <option value="{{ sen }}">{{ sen }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Nível</label>
+                                    <select id="userNivel">
+                                        <option value="">Selecione...</option>
+                                        {% for niv in options.niveis %}
+                                        <option value="{{ niv }}">{{ niv }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- PAINEL: POSIÇÕES & SQUADS -->
+                    <div class="admin-form-panel" data-panel="areas">
+                        <div class="form-section">
                             <div class="form-group full-width">
-                                <label>Senha Inicial</label>
-                                <input type="password" id="userPassword" placeholder="Deixe em branco para 'v4company'">
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- SEÇÃO: CARGO E FUNÇÃO -->
-                    <div class="form-section">
-                        <div class="section-header">
-                            <i class="fas fa-briefcase"></i>
-                            <h4>Cargo e Função</h4>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Cargo/Função</label>
-                                <select id="userFuncao">
-                                    <option value="">Selecione...</option>
-                                    {% for cargo in options.cargos %}
-                                    <option value="{{ cargo }}">{{ cargo }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label>Senioridade</label>
-                                <select id="userSenioridade">
-                                    <option value="">Selecione...</option>
-                                    {% for sen in options.senioridades %}
-                                    <option value="{{ sen }}">{{ sen }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Nível</label>
-                                <select id="userNivel">
-                                    <option value="">Selecione...</option>
-                                    {% for niv in options.niveis %}
-                                    <option value="{{ niv }}">{{ niv }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label>Squad</label>
-                                <select id="userSquad" required>
-                                    <option value="">Selecione...</option>
-                                    {% for squad in options.squads %}
-                                    <option value="{{ squad }}">{{ squad }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- SEÇÃO: ACESSO E STATUS -->
-                    <div class="form-section highlight">
-                        <div class="section-header">
-                            <i class="fas fa-shield-alt"></i>
-                            <h4>Acesso e Status</h4>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Posição</label>
-                                <select id="userPosicao" required>
-                                    <option value="">Selecione...</option>
+                                <label>Posições (pode ter várias)</label>
+                                <div class="badge-select" id="userPosicoes">
                                     {% for pos in options.posicoes %}
-                                    <option value="{{ pos }}">{{ pos }}</option>
+                                    <label class="badge-chip">
+                                        <input type="checkbox" value="{{ pos }}"> <span>{{ pos }}</span>
+                                    </label>
                                     {% endfor %}
-                                </select>
+                                </div>
                             </div>
-                            <div class="form-group">
-                                <label>Perfil de Acesso</label>
-                                <select id="userNivelAcesso" required>
-                                    <option value="Usuário">Usuário</option>
-                                    <option value="Admin">Admin</option>
-                                </select>
+                            <div class="form-group full-width">
+                                <label>Squads (caso à parte: mais de uma quando necessário)</label>
+                                <div class="badge-select" id="userSquads">
+                                    {% for squad in options.squads %}
+                                    <label class="badge-chip">
+                                        <input type="checkbox" value="{{ squad.id }}"> <span>{{ squad.nome }}</span>
+                                    </label>
+                                    {% endfor %}
+                                </div>
                             </div>
                         </div>
-                        <div class="form-row">
-                            <div class="form-group full-width">
-                                <label>Status da Conta</label>
-                                <select id="userAtivo">
-                                    <option value="true">Ativo - Usuário pode acessar o sistema</option>
-                                    <option value="false">Inativo - Acesso bloqueado</option>
-                                </select>
+                    </div>
+
+                    <!-- PAINEL: ACESSO E STATUS -->
+                    <div class="admin-form-panel" data-panel="acesso">
+                        <div class="form-section highlight">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Perfil de Acesso *</label>
+                                    <select id="userNivelAcesso" required>
+                                        <option value="Usuário">Usuário</option>
+                                        <option value="Admin">Admin</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Status da Conta</label>
+                                    <select id="userAtivo">
+                                        <option value="true">Ativo - Usuário pode acessar o sistema</option>
+                                        <option value="false">Inativo - Acesso bloqueado</option>
+                                    </select>
+                                </div>
                             </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group full-width">
-                                <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; background: rgba(255,255,255,0.03); padding: 12px; border-radius: 8px; border: 1px solid var(--border-color);">
-                                    <input type="checkbox" id="userPodeEditarKanban" style="width: 20px; height: 20px; cursor: pointer;">
-                                    <span style="font-weight: 500;">Permitir que este usuário edite o Kanban</span>
-                                </label>
-                                <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 5px; margin-left: 30px;">
-                                    Habilita a criação, movimentação e edição de cards no módulo de Kanban.
-                                </p>
+                            <div class="form-row">
+                                <div class="form-group full-width">
+                                    <label class="kanban-perm">
+                                        <input type="checkbox" id="userPodeEditarKanban">
+                                        <span>
+                                            <strong>Permitir edição do Kanban</strong>
+                                            <small>Habilita criação, movimentação e edição de cards no Kanban.</small>
+                                        </span>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group full-width">
+                                    <label class="kanban-perm">
+                                        <input type="checkbox" id="userPodeGerenciarFeed">
+                                        <span>
+                                            <strong>Permitir gerenciar o Feed</strong>
+                                            <small>Permite criar eventos e fixar/desfixar publicações no Feed Lisboa.</small>
+                                        </span>
+                                    </label>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -285,8 +374,7 @@
             userAccessLevel: "{{ session.nivel_acesso }}",
             userToken: "{{session.token}}"
         };
-        // Cargo do usuário injetado para o delivery engine do frontend
-        window.__USER_ROLE__ = "{{ session.funcao }}";
+        window.__USER_ROLE__ = "{{ session.cargo }}";
     </script>
     {% include "components/modal-configuracoes.html" %}
     <script src="static/js/tema.js"></script>

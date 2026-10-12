@@ -4,6 +4,7 @@ Novas tabelas em ``plataforma_geral``. Não alteram os models existentes.
 """
 
 from sqlalchemy import (
+    ARRAY,
     Boolean,
     Column,
     DateTime,
@@ -38,6 +39,9 @@ class FeedPost(Base):
     deletado = Column(Boolean, nullable=False, default=False)
     # todos | squad | gestao
     visibilidade = Column(String(20), nullable=False, default="todos")
+    # Canais de envio (v2): público + squads de destino
+    dest_todos = Column(Boolean, nullable=False, default=False)
+    squads_destino = Column(ARRAY(Integer), nullable=False, default=list)
     original_post_id = Column(Integer)
     enquete = Column(JSONB)
     editado = Column(Boolean, nullable=False, default=False)

@@ -17,7 +17,8 @@ const shortcuts = [
     { label: "Cockpit", icon: "fas fa-tachometer-alt", url: "/cockpit" },
     { label: "Painel de Ranking", icon: "fas fa-trophy", url: "/painel-ranking" },
     { label: "Painel de Atribuição", icon: "fas fa-tasks", url: "/painel-atribuicao" },
-    { label: "Hub de CS/CX", icon: "fas fa-users", url: "/hub-cs-cx" }
+    { label: "Hub de CS/CX", icon: "fas fa-users", url: "/hub-cs-cx" },
+    { label: "Métricas & Evolução", icon: "fas fa-chart-line", url: "/hub-metricas" }
 ];
 
 

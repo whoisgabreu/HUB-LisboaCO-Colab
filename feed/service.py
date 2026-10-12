@@ -11,10 +11,13 @@ from datetime import datetime, date, time, timedelta
 from typing import Any, Dict, List, Optional
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import and_, case, false, func, not_, or_, select
+from sqlalchemy import ARRAY, Integer, and_, case, cast, false, func, not_, or_, select, text
 from sqlalchemy.orm import Session
 
 from models import Investidor, InvestidorProjeto
+from permissions import SCHEMA, squad_ids_do_investidor, config_get
+
+AUTOR_SISTEMA = "sistema"
 from feed.models import (
     FeedComentario,
     FeedComentarioReacao,
@@ -30,11 +33,14 @@ from feed.models import (
 TZ = ZoneInfo("America/Sao_Paulo")
 
 REACOES_VALIDAS = ["like", "love", "haha", "wow", "sad", "angry"]
-VISIBILIDADES_VALIDAS = ["todos", "squad", "gestao"]
 TIPOS_VALIDOS = ["post", "evento", "aniversario", "enquete", "repost"]
 
 _URL_RE = re.compile(r"(https?://[^\s<]+)")
 _MENCAO_RE = re.compile(r"@([A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,})")
+_YT_RE = re.compile(
+    r"(https?://(?:www\.)?(?:youtube\.com/(?:watch\?v=|shorts/|embed/)|youtu\.be/)"
+    r"([A-Za-z0-9_-]{11}))"
+)
 
 # Cache em memória: evita reexecutar a checagem de aniversários várias
 # vezes no mesmo dia (a task do scheduler também dispara a verificação).
@@ -93,6 +99,29 @@ class FeedService:
             "funcao": inv.funcao or inv.posicao,
         }
 
+    def _sistema_dict(self) -> Dict[str, Any]:
+        """Perfil interno do sistema (nome/ícone/foto configuráveis em v2_config)."""
+        if getattr(self, "_sis_cache", None) is None:
+            nome = config_get(self.db, "feed_sistema_nome", "HUB (Sistema)")
+            icone = config_get(self.db, "feed_sistema_icone", "fa-robot")
+            foto = config_get(self.db, "feed_sistema_foto", None)
+            self._sis_cache = {
+                "nome": nome or "HUB (Sistema)",
+                "profile_picture": foto or None,
+                "funcao": "Publicação automática",
+                "sistema": True,
+                "icone": icone or "fa-robot",
+            }
+        return self._sis_cache
+
+    def _autor_obj(self, email: Optional[str], autores: Dict[str, Investidor]) -> Dict[str, Any]:
+        """Resolve o autor: perfil do sistema para posts automáticos, senão o usuário."""
+        if email == AUTOR_SISTEMA:
+            return self._sistema_dict()
+        d = dict(self._autor_dict(autores.get(email)))
+        d["sistema"] = False
+        return d
+
     @staticmethod
     def _primeiro_nome(nome: str) -> str:
         return (nome or "Usuário").split(" ")[0]
@@ -111,7 +140,31 @@ class FeedService:
             return f'<span class="feed-mention">@{html_lib.escape(nome)}</span>'
 
         out = _MENCAO_RE.sub(_sub, out)
-        return out.replace("\n", "<br>")
+        out = out.replace("\n", "<br>")
+        out += self._render_youtube(texto)
+        return out
+
+    @staticmethod
+    def _render_youtube(texto: str) -> str:
+        """Anexa a thumbnail oficial do YouTube para cada vídeo único citado."""
+        if not texto:
+            return ""
+        vistos = set()
+        blocos = []
+        for m in _YT_RE.finditer(texto):
+            url, vid = m.group(1), m.group(2)
+            if vid in vistos:
+                continue
+            vistos.add(vid)
+            blocos.append(
+                f'<a class="feed-yt-thumb" href="{html_lib.escape(url)}" '
+                f'target="_blank" rel="noopener">'
+                f'<img src="https://img.youtube.com/vi/{vid}/hqdefault.jpg" '
+                f'alt="Vídeo do YouTube" loading="lazy">'
+                f'<span class="feed-yt-play"><i class="fa-brands fa-youtube"></i></span>'
+                f"</a>"
+            )
+        return "".join(blocos)
 
     @staticmethod
     def _emails_mencionados(texto: str) -> List[str]:
@@ -119,30 +172,35 @@ class FeedService:
             return []
         return list({m.group(1) for m in _MENCAO_RE.finditer(texto)})
 
-    def _squad_emails(self, squad: str) -> List[str]:
-        if not squad:
-            return []
-        rows = self.db.execute(
-            select(Investidor.email).where(Investidor.squad == squad)
-        ).scalars().all()
-        return [e for e in rows if e]
+    def _squads_do_autor(self, autor_email: str) -> set:
+        """Ids das squads às quais o autor pertence (v2_)."""
+        uid = self.db.execute(
+            select(Investidor.id).where(Investidor.email == autor_email)
+        ).scalar()
+        if not uid:
+            return set()
+        return set(squad_ids_do_investidor(self.db, uid))
 
-    def _visibilidade_clause(self, usuario_email: str, gestao: bool, squad: str):
+    def _sanitizar_destinos(self, autor_email: str, dest_todos: bool, squads) -> tuple:
+        """Normaliza os canais: squads só do próprio autor; se nada marcado, vira Todos."""
+        permitidas = self._squads_do_autor(autor_email)
+        ids = sorted({int(s) for s in (squads or []) if str(s).strip().isdigit()} & permitidas)
+        todos = bool(dest_todos)
+        if not todos and not ids:
+            todos = True
+        return todos, ids
+
+    def _visibilidade_clause(self, usuario_email: str, gestao: bool, squad_ids):
         """Retorna condição SQL de visibilidade ou None (gestão vê tudo)."""
         if gestao:
             return None
         branches = [
-            FeedPost.visibilidade == "todos",
+            FeedPost.dest_todos.is_(True),
             FeedPost.autor_email == usuario_email,
         ]
-        emails = self._squad_emails(squad)
-        if emails:
-            branches.append(
-                and_(
-                    FeedPost.visibilidade == "squad",
-                    FeedPost.autor_email.in_(emails),
-                )
-            )
+        ids = [int(s) for s in (squad_ids or []) if str(s).strip().isdigit()]
+        if ids:
+            branches.append(FeedPost.squads_destino.op("&&")(cast(ids, ARRAY(Integer))))
         return or_(*branches)
 
     def _post_base(self) -> Any:
@@ -169,7 +227,7 @@ class FeedService:
         self,
         usuario_email: str,
         gestao: bool,
-        squad: str,
+        squad_ids,
         q: Optional[str] = None,
         tipo: Optional[str] = None,
         autor: Optional[str] = None,
@@ -178,7 +236,7 @@ class FeedService:
         conds: List[Any] = [FeedPost.deletado.is_(False)]
         if not gestao:
             conds.append(FeedPost.oculto.is_(False))
-        vis = self._visibilidade_clause(usuario_email, gestao, squad)
+        vis = self._visibilidade_clause(usuario_email, gestao, squad_ids)
         if vis is not None:
             conds.append(vis)
         if q:
@@ -209,14 +267,12 @@ class FeedService:
         tipo: Optional[str] = None,
         autor: Optional[str] = None,
         salvos: bool = False,
-        posicao: str = "",
-        nivel_acesso: str = "",
-        squad: str = "",
+        gestao: bool = False,
+        squad_ids=None,
     ) -> Dict[str, Any]:
         self.verificar_aniversarios()
 
-        gestao = is_gestao_feed(posicao, nivel_acesso)
-        conds = self._condicoes_base(usuario_email, gestao, squad, q, tipo, autor, salvos)
+        conds = self._condicoes_base(usuario_email, gestao, squad_ids, q, tipo, autor, salvos)
 
         posts: List[FeedPost] = []
         proximo_cursor = None
@@ -266,7 +322,7 @@ class FeedService:
         posts.extend(stream)
 
         return {
-            "posts": self._serializar(posts, usuario_email),
+            "posts": self._serializar(posts, usuario_email, gestao=gestao),
             "tem_mais": tem_mais,
             "proximo_cursor": proximo_cursor,
         }
@@ -275,12 +331,10 @@ class FeedService:
         self,
         desde_iso: str,
         usuario_email: str,
-        posicao: str = "",
-        nivel_acesso: str = "",
-        squad: str = "",
+        gestao: bool = False,
+        squad_ids=None,
     ) -> Dict[str, Any]:
-        gestao = is_gestao_feed(posicao, nivel_acesso)
-        conds = self._condicoes_base(usuario_email, gestao, squad)
+        conds = self._condicoes_base(usuario_email, gestao, squad_ids)
         if desde_iso:
             try:
                 conds.append(FeedPost.criado_em > datetime.fromisoformat(desde_iso.replace("Z", "")))
@@ -291,8 +345,44 @@ class FeedService:
         ).scalar()
         return {"total": int(total or 0)}
 
+    def obter_post(
+        self,
+        post_id: int,
+        usuario_email: str,
+        gestao: bool = False,
+        squad_ids=None,
+    ) -> Optional[Dict[str, Any]]:
+        """Retorna um post específico respeitando as regras de visibilidade."""
+        conds = self._condicoes_base(usuario_email, gestao, squad_ids)
+        conds.append(FeedPost.id == post_id)
+        post = self.db.execute(select(FeedPost).where(*conds)).scalar_one_or_none()
+        if not post:
+            return None
+        return self._serializar([post], usuario_email, gestao=gestao)[0]
+
+    def _enquete_votantes(self, post_ids: List[int]) -> Dict[int, Dict[int, List[Dict[str, Any]]]]:
+        """Por enquete e opção, a lista de quem votou (email, nome, foto)."""
+        if not post_ids:
+            return {}
+        linhas = self.db.execute(
+            select(FeedEnqueteVoto.post_id, FeedEnqueteVoto.opcao_index, FeedEnqueteVoto.usuario_email).where(
+                FeedEnqueteVoto.post_id.in_(post_ids)
+            )
+        ).all()
+        autores = self._autores([r.usuario_email for r in linhas])
+        mapa: Dict[int, Dict[int, List[Dict[str, Any]]]] = {}
+        for pid, opcao, email in linhas:
+            inv = autores.get(email)
+            d = self._autor_dict(inv)
+            mapa.setdefault(pid, {}).setdefault(opcao, []).append({
+                "email": email,
+                "nome": d["nome"],
+                "profile_picture": d["profile_picture"],
+            })
+        return mapa
+
     def _serializar(
-        self, posts: List[FeedPost], usuario_email: str
+        self, posts: List[FeedPost], usuario_email: str, gestao: bool = False
     ) -> List[Dict[str, Any]]:
         if not posts:
             return []
@@ -352,6 +442,8 @@ class FeedService:
             ).all():
                 meu_voto[post_id] = opcao
 
+        enquete_votantes = self._enquete_votantes(enquete_ids) if enquete_ids else {}
+
         # reposts -> posts originais
         orig_ids = [p.original_post_id for p in posts if p.original_post_id]
         originais = {}
@@ -371,6 +463,19 @@ class FeedService:
             + [o.autor_email for o in originais.values()]
         )
 
+        # Nomes das squads de destino (para exibição dos canais)
+        squad_ids_all = set()
+        for p in posts:
+            for s in (p.squads_destino or []):
+                squad_ids_all.add(int(s))
+        squad_nomes: Dict[int, str] = {}
+        if squad_ids_all:
+            for sid, nome in self.db.execute(
+                text(f"SELECT id, nome FROM {SCHEMA}.v2_squads WHERE id = ANY(:ids)"),
+                {"ids": list(squad_ids_all)},
+            ).all():
+                squad_nomes[sid] = nome
+
         resultado = []
         for p in posts:
             contagem = reacoes_map.get(p.id, {})
@@ -378,9 +483,16 @@ class FeedService:
             if p.tipo == "enquete" and isinstance(p.enquete, dict):
                 opcoes = p.enquete.get("opcoes", [])
                 votos = votos_map.get(p.id, {})
+                incluir_votantes = gestao or p.autor_email == usuario_email
                 enquete = {
                     "opcoes": [
-                        {"texto": o, "votos": votos.get(i, 0)} for i, o in enumerate(opcoes)
+                        {
+                            "texto": o,
+                            "votos": votos.get(i, 0),
+                            "votantes": enquete_votantes.get(p.id, {}).get(i, [])
+                            if incluir_votantes else [],
+                        }
+                        for i, o in enumerate(opcoes)
                     ],
                     "total": sum(votos.values()),
                     "minha_opcao": meu_voto.get(p.id),
@@ -397,11 +509,11 @@ class FeedService:
                     "conteudo_html": self._render_conteudo(o.conteudo, autores),
                     "criado_em": o.criado_em.isoformat() if o.criado_em else None,
                     "autor_email": o.autor_email,
-                    "autor": self._autor_dict(autores.get(o.autor_email)),
+                    "autor": self._autor_obj(o.autor_email, autores),
                     "deletado": bool(o.deletado),
                 }
 
-            autor = self._autor_dict(autores.get(p.autor_email))
+            autor = self._autor_obj(p.autor_email, autores)
             resultado.append(
                 {
                     "id": p.id,
@@ -417,7 +529,12 @@ class FeedService:
                     "editado": bool(p.editado),
                     "total_edicoes": p.total_edicoes or 0,
                     "editado_em": p.editado_em.isoformat() if p.editado_em else None,
-                    "visibilidade": p.visibilidade or "todos",
+                    "visibilidade": "todos" if p.dest_todos else "squads",
+                    "dest_todos": bool(p.dest_todos),
+                    "squads_destino": [
+                        {"id": int(s), "nome": squad_nomes.get(int(s), str(s))}
+                        for s in (p.squads_destino or [])
+                    ],
                     "oculto": bool(p.oculto),
                     "autor_email": p.autor_email,
                     "autor": autor,
@@ -435,19 +552,19 @@ class FeedService:
     # ── Criação ───────────────────────────────────────────────────────────────
 
     def criar_post(
-        self, autor_email: str, conteudo: str, visibilidade: str = "todos"
+        self, autor_email: str, conteudo: str, dest_todos: bool = True, squads=None
     ) -> Dict[str, Any]:
         conteudo = (conteudo or "").strip()
         if not conteudo:
             raise ValueError("O conteúdo do post não pode ser vazio.")
-        if visibilidade not in VISIBILIDADES_VALIDAS:
-            visibilidade = "todos"
+        dest_todos, squads = self._sanitizar_destinos(autor_email, dest_todos, squads)
 
         post = FeedPost(
             autor_email=autor_email,
             tipo="post",
             conteudo=conteudo,
-            visibilidade=visibilidade,
+            dest_todos=dest_todos,
+            squads_destino=squads,
             criado_em=self._agora(),
         )
         self.db.add(post)
@@ -465,13 +582,13 @@ class FeedService:
         evento_data: Optional[datetime],
         evento_local: Optional[str],
         dias_fixado: int,
-        visibilidade: str = "todos",
+        dest_todos: bool = True,
+        squads=None,
     ) -> Dict[str, Any]:
         titulo = (titulo or "").strip()
         if not titulo:
             raise ValueError("O evento precisa de um título.")
-        if visibilidade not in VISIBILIDADES_VALIDAS:
-            visibilidade = "todos"
+        dest_todos, squads = self._sanitizar_destinos(autor_email, dest_todos, squads)
 
         agora = self._agora()
         dias = max(1, int(dias_fixado or 1))
@@ -484,7 +601,8 @@ class FeedService:
             evento_local=(evento_local or "").strip() or None,
             fixado=True,
             fixado_ate=agora + timedelta(days=dias),
-            visibilidade=visibilidade,
+            dest_todos=dest_todos,
+            squads_destino=squads,
             criado_em=agora,
         )
         self.db.add(post)
@@ -497,7 +615,8 @@ class FeedService:
         autor_email: str,
         pergunta: str,
         opcoes: List[str],
-        visibilidade: str = "todos",
+        dest_todos: bool = True,
+        squads=None,
     ) -> Dict[str, Any]:
         pergunta = (pergunta or "").strip()
         opcoes = [str(o).strip() for o in (opcoes or []) if str(o).strip()]
@@ -507,15 +626,15 @@ class FeedService:
             raise ValueError("A enquete precisa de pelo menos 2 opções.")
         if len(opcoes) > 6:
             raise ValueError("Máximo de 6 opções por enquete.")
-        if visibilidade not in VISIBILIDADES_VALIDAS:
-            visibilidade = "todos"
+        dest_todos, squads = self._sanitizar_destinos(autor_email, dest_todos, squads)
 
         post = FeedPost(
             autor_email=autor_email,
             tipo="enquete",
             conteudo=pergunta,
             enquete={"opcoes": opcoes},
-            visibilidade=visibilidade,
+            dest_todos=dest_todos,
+            squads_destino=squads,
             criado_em=self._agora(),
         )
         self.db.add(post)
@@ -526,19 +645,20 @@ class FeedService:
         return self._serializar([post], autor_email)[0]
 
     def repostar(
-        self, post_id: int, autor_email: str, comentario: str = None, visibilidade: str = "todos"
+        self, post_id: int, autor_email: str, comentario: str = None,
+        dest_todos: bool = True, squads=None,
     ) -> Dict[str, Any]:
         original = self.db.get(FeedPost, post_id)
         if not original or original.deletado:
             raise ValueError("Post não encontrado.")
-        if visibilidade not in VISIBILIDADES_VALIDAS:
-            visibilidade = "todos"
+        dest_todos, squads = self._sanitizar_destinos(autor_email, dest_todos, squads)
         post = FeedPost(
             autor_email=autor_email,
             tipo="repost",
             conteudo=(comentario or "").strip() or None,
             original_post_id=post_id,
-            visibilidade=visibilidade,
+            dest_todos=dest_todos,
+            squads_destino=squads,
             criado_em=self._agora(),
         )
         self.db.add(post)
@@ -675,7 +795,7 @@ class FeedService:
                 "deletado": bool(c.deletado),
                 "criado_em": c.criado_em.isoformat() if c.criado_em else None,
                 "autor_email": c.autor_email,
-                "autor": self._autor_dict(autores.get(c.autor_email)),
+                "autor": self._autor_obj(c.autor_email, autores),
                 "reacoes": contagem,
                 "total_reacoes": sum(contagem.values()),
                 "minha_reacao": minhas.get(c.id),
@@ -739,7 +859,7 @@ class FeedService:
             "deletado": False,
             "criado_em": comentario.criado_em.isoformat() if comentario.criado_em else None,
             "autor_email": autor_email,
-            "autor": self._autor_dict(autores.get(autor_email)),
+            "autor": self._autor_obj(autor_email, autores),
             "reacoes": {},
             "total_reacoes": 0,
             "minha_reacao": None,
@@ -791,7 +911,7 @@ class FeedService:
 
     # ── Enquetes ──────────────────────────────────────────────────────────────
 
-    def votar_enquete(self, post_id: int, usuario_email: str, opcao_index: int) -> Dict[str, Any]:
+    def votar_enquete(self, post_id: int, usuario_email: str, opcao_index: int, gestao: bool = False) -> Dict[str, Any]:
         post = self.db.get(FeedPost, post_id)
         if not post or post.deletado or post.tipo != "enquete" or not isinstance(post.enquete, dict):
             raise ValueError("Enquete não encontrada.")
@@ -834,8 +954,17 @@ class FeedService:
                 FeedEnqueteVoto.usuario_email == usuario_email,
             )
         ).scalar_one_or_none()
+        incluir_votantes = gestao or post.autor_email == usuario_email
+        votantes_map = self._enquete_votantes([post_id]).get(post_id, {}) if incluir_votantes else {}
         return {
-            "opcoes": [{"texto": o, "votos": votos.get(i, 0)} for i, o in enumerate(opcoes)],
+            "opcoes": [
+                {
+                    "texto": o,
+                    "votos": votos.get(i, 0),
+                    "votantes": votantes_map.get(i, []) if incluir_votantes else [],
+                }
+                for i, o in enumerate(opcoes)
+            ],
             "total": sum(votos.values()),
             "minha_opcao": meu,
         }
@@ -1059,7 +1188,7 @@ class FeedService:
                 "lida": bool(n.lida),
                 "criado_em": n.criado_em.isoformat() if n.criado_em else None,
                 "ator_email": n.ator_email,
-                "autor": self._autor_dict(autores.get(n.ator_email)),
+                "autor": self._autor_obj(n.ator_email, autores),
             }
             for n in rows
         ]
@@ -1093,7 +1222,9 @@ class FeedService:
 
     # ── Widgets ───────────────────────────────────────────────────────────────
 
-    def aniversariantes_do_dia(self) -> List[Dict[str, Any]]:
+    def aniversariantes_do_mes(self) -> List[Dict[str, Any]]:
+        """Aniversariantes ativos do mês atual, apenas os que ainda vão acontecer
+        (do dia de hoje até o fim do mês). Hoje vem primeiro, depois ordem crescente."""
         hoje = self._agora().date()
         rows = self.db.execute(
             select(Investidor)
@@ -1101,20 +1232,26 @@ class FeedService:
                 Investidor.data_nascimento.isnot(None),
                 Investidor.ativo.is_(True),
                 func.extract("month", Investidor.data_nascimento) == hoje.month,
-                func.extract("day", Investidor.data_nascimento) == hoje.day,
+                func.extract("day", Investidor.data_nascimento) >= hoje.day,
             )
-            .order_by(Investidor.nome.asc())
+            .order_by(func.extract("day", Investidor.data_nascimento).asc(), Investidor.nome.asc())
         ).scalars().all()
-        return [
-            {
+        itens = []
+        for i in rows:
+            dia = i.data_nascimento.day
+            itens.append({
                 "email": i.email,
                 "nome": i.nome,
                 "profile_picture": i.profile_picture,
                 "funcao": i.funcao or i.posicao,
+                "dia": dia,
+                "data_ddmm": f"{dia:02d}/{i.data_nascimento.month:02d}",
                 "idade": hoje.year - i.data_nascimento.year,
-            }
-            for i in rows
-        ]
+                "eh_hoje": dia == hoje.day,
+            })
+        # Hoje primeiro, depois crescente (empate por nome)
+        itens.sort(key=lambda x: (not x["eh_hoje"], x["dia"], x["nome"] or ""))
+        return itens
 
     def proximos_eventos(self, limite: int = 5) -> List[Dict[str, Any]]:
         agora = self._agora()
@@ -1136,7 +1273,7 @@ class FeedService:
                 "titulo": p.titulo,
                 "evento_data": p.evento_data.isoformat() if p.evento_data else None,
                 "evento_local": p.evento_local,
-                "autor": self._autor_dict(autores.get(p.autor_email)),
+                "autor": self._autor_obj(p.autor_email, autores),
             }
             for p in rows
         ]
@@ -1160,7 +1297,7 @@ class FeedService:
                 "conteudo": (p.conteudo or "")[:120],
                 "total_reacoes": total,
                 "criado_em": p.criado_em.isoformat() if p.criado_em else None,
-                "autor": self._autor_dict(autores.get(p.autor_email)),
+                "autor": self._autor_obj(p.autor_email, autores),
             }
             for p, total in rows
         ]
@@ -1175,6 +1312,7 @@ class FeedService:
                     FeedPost.deletado.is_(False),
                     FeedPost.criado_em >= desde,
                     FeedPost.autor_email.isnot(None),
+                    FeedPost.autor_email != AUTOR_SISTEMA,
                 )
                 .group_by(FeedPost.autor_email)
             ).all()
@@ -1255,22 +1393,24 @@ class FeedService:
 
             idade = hoje.year - inv.data_nascimento.year
             primeiro_nome = (inv.nome or "Colega").split(" ")[0]
-            nome_completo = inv.nome or "Um colega"
             conteudo = (
-                f"🎉 Hoje é aniversário de {nome_completo}! "
+                f"🎉 Hoje é aniversário de @{inv.email}! "
                 f"{primeiro_nome} completa {idade} anos. Parabéns! 🎂"
             )
 
-            self.db.add(
-                FeedPost(
-                    autor_email=inv.email,
-                    tipo="aniversario",
-                    conteudo=conteudo,
-                    fixado=True,
-                    fixado_ate=hoje_fim,
-                    criado_em=self._agora(),
-                )
+            post = FeedPost(
+                autor_email=AUTOR_SISTEMA,
+                tipo="aniversario",
+                conteudo=conteudo,
+                fixado=True,
+                fixado_ate=hoje_fim,
+                dest_todos=True,
+                squads_destino=[],
+                criado_em=self._agora(),
             )
+            self.db.add(post)
+            self.db.flush()
+            self._notificar_mencoes(conteudo, AUTOR_SISTEMA, post.id)
             criados += 1
 
         if criados:

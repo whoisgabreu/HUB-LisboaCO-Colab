@@ -1,5 +1,5 @@
 :root {
-    --header-height: 82px;
+    --header-height: 56px;
     --bg-main: #000000;
     --bg-hover: #17171b;
     --card-bg: #1e1e24;
@@ -8,6 +8,17 @@
     --text-muted: #a0a0a0;
     --border-color: rgba(255, 255, 255, 0.1);
     --accent-red: #d61616;
+    --card-shadow: 0px 5px 10px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+/* ═══ Efeito "flutuar": sombra em superfícies (cards/painéis/widgets/seções/composers) ═══
+   Vale nos dois temas (a cor vem de --card-shadow). Seletor em linha única (sem espaços
+   entre as partes, senão vira combinador de descendência). Envolvido em :where() externo
+   para especificidade 0. SEM !important para preservar brilhos de hover.
+   Obs.: -box/-form foram removidos da heurística (pegavam wrappers de input sem raio,
+   gerando sombra quadrada). As superfícies reais desses tipos entram explicitamente. */
+:where(:where([class$="-card"], [class$="-panel"], [class$="-widget"], [class$="-section"], [class$="-composer"], [class$="-tile"], [class$="-kpi"], [class$="-chart"], [class$="-stat"], .card, .feed-post, .empty-state, .feed-evento-box, .feed-repost-box, .entregas-chart-box, .feed-evento-form, .perf-box, .feed-mencao-box, .chat-mencao-box, .remu-comparison-box):not(.main-container):not(.main-content):not(.app-shell):not(.app-container):not(.feed-rail):not(.welcome-section):not(.admin-form):not(.admin-form-panel):not(.chat-panel):not(.vinculados-section):not([class*="-header"]):not([class*="-body"]):not([class*="-info"]):not([class*="-actions"]):not([class*="-title"]):not([class*="-label"]):not([class*="-value"]):not([class*="-meta"]):not([class*="-icon"]):not([class*="-footer"]):not([class*="-item"])) {
+    box-shadow: var(--card-shadow);
 }
 
 
@@ -47,31 +58,35 @@ body::-webkit-scrollbar-thumb:hover {
 .header {
     position: sticky;
     z-index: 1001;
-    top: 0;
+    top: 0.5rem;
     height: var(--header-height);
     background-color: var(--bg-hover);
-    padding: 1rem 2rem;
+    padding: 0.45rem 1rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
     border-bottom: 1px solid var(--border-color);
-    box-shadow: 0 4px 15px rgba(255, 0, 0, 0.1);
+    border-radius: 20px;
+    box-shadow: 10px 10px 10px rgba(0, 0, 0, 0.3);
+    margin-top: 0.5rem;
+    margin-left: 1rem;
+    margin-right: 1rem;
 }
 
 .header-left {
     display: flex;
     align-items: center;
     gap: 1rem;
-    padding-left: 1.5rem
+    padding-left: 3.5rem
 }
 
 .logo {
-    height: 50px;
-    width: 50px;
+    height: 36px;
+    width: 36px;
 }
 
 .header-title h1 {
-    font-size: 1.5rem;
+    font-size: 1.05rem;
     color: var(--text-main);
 }
 
@@ -966,8 +981,6 @@ body.tema-claro .entrega-kpi-value {
 .modal-body {
     padding: 2rem;
     max-height: calc(85vh - 180px);
-
-    box-shadow: inset 0px 5px 10px rgb(0 0 0 / 50%)
 }
 
 /* LISTA DE PROJETOS NO MODAL DO CLIENTE */
@@ -2123,14 +2136,16 @@ option {
 
 /* Persistent Toggle Burger */
 .floating-burger {
-    position: fixed;
-    left: 0.5rem;
-    top: calc(var(--header-height) / 2);
+    position: absolute;
+    left: 0.4rem;
+    top: 50%;
     transform: translateY(-50%);
     z-index: 2000;
     background: transparent;
     color: var(--text-main);
     border: none;
+    border-radius: 50%;
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.15);
     width: 45px;
     height: 45px;
     cursor: pointer;
@@ -2450,39 +2465,27 @@ option {
 }
 
 @media (max-width: 768px) {
-    .burger-menu {
-        display: block;
-    }
-
     .sidebar {
         position: fixed;
-        left: 0;
-        top: 0;
-        height: 100vh;
-        width: 260px !important;
-        transform: translateX(-100%);
+        left: 1rem;
+        top: calc(var(--header-height) + 0.75rem);
+        bottom: 1rem;
+        height: auto;
+        width: 250px !important;
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 14px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+        overflow: hidden;
+        transform: translateX(-110%);
     }
 
     .sidebar.open {
         transform: translateX(0);
     }
 
-    /* Overlay global */
-    .sidebar-overlay {
-        position: fixed;
-        inset: 0;
-        top: var(--header-height);
-        background: rgba(0, 0, 0, 0.4);
-        backdrop-filter: blur(4px);
-        z-index: 998;
-        opacity: 0;
-        visibility: hidden;
-        transition: all 0.4s ease;
-    }
-
-    .sidebar-overlay.active {
-        opacity: 1;
-        visibility: visible;
+    .sidebar-footer {
+        border-radius: 0 0 14px 14px;
     }
 
     .main-content {
@@ -5806,13 +5809,12 @@ body.tema-claro .switch-slider {
 }
 
 /* ═══════════════════════════════════════════════════════════
-   Widget de navegação flutuante (apenas desktop).
-   No mobile (≤768px) continua sendo o drawer recolhível.
-   As categorias (.nav-group) permanecem colapsáveis.
+   Menu lateral escondido + botão flutuante (desktop ≥769px).
+   Abre como card deslizante com margens; sem overlay.
    ═══════════════════════════════════════════════════════════ */
 @media (min-width: 769px) {
     .sidebar {
-        top: calc(var(--header-height) + 1rem);
+        top: calc(var(--header-height) + 0.75rem);
         left: 1rem;
         bottom: 1rem;
         height: auto;
@@ -5821,9 +5823,12 @@ body.tema-claro .switch-slider {
         border: 1px solid var(--border-color);
         border-radius: 14px;
         box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
-        transform: none;
-        visibility: visible;
         overflow: hidden; /* o scroll fica no .sidebar-nav */
+    }
+
+    .sidebar.open {
+        transform: translateX(0);
+        visibility: visible;
     }
 
     .sidebar-nav {
@@ -5840,15 +5845,30 @@ body.tema-claro .switch-slider {
     }
 
     .main-content {
-        margin-left: calc(250px + 2rem) !important;
+        margin-left: 0 !important;
         width: auto !important;
     }
 
     .app-container {
-        margin-left: calc(250px + 2rem);
+        margin-left: 0;
     }
 
     .floating-burger {
-        display: none;
+        display: flex;
+    }
+
+    /* Ao abrir o menu, o conteúdo "arrasta" para a direita e adapta a largura */
+    .main-content,
+    .app-container {
+        transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    body.sidebar-open .main-content {
+        margin-left: calc(250px + 2rem) !important;
+        width: auto !important;
+    }
+
+    body.sidebar-open .app-container {
+        margin-left: calc(250px + 2rem);
     }
 }

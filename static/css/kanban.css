@@ -2857,3 +2857,72 @@ body.kanban-page .main-content {
 .clone-dialog-actions .btn-secondary:hover {
     background: rgba(255,255,255,0.05);
 }
+
+/* ---- Postar no feed: chips arrastáveis ---- */
+.phase-feed-palette {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 8px 0 10px;
+}
+
+.var-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: rgba(214, 22, 22, 0.12);
+    border: 1px solid rgba(214, 22, 22, 0.45);
+    color: #e88;
+    font-size: 0.72rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    line-height: 1.4;
+    user-select: none;
+    white-space: nowrap;
+}
+
+.palette-chip {
+    cursor: grab;
+}
+.palette-chip:active {
+    cursor: grabbing;
+}
+.palette-chip:hover {
+    background: rgba(214, 22, 22, 0.22);
+}
+
+.phase-feed-editor {
+    border: 1px solid var(--card-border);
+    border-radius: 10px;
+    padding: 10px 12px;
+    min-height: 72px;
+    line-height: 2;
+    background: rgba(0, 0, 0, 0.2);
+    outline: none;
+    cursor: text;
+    word-break: break-word;
+    white-space: pre-wrap;
+}
+.phase-feed-editor:empty::before {
+    content: attr(data-placeholder);
+    color: var(--text-muted);
+    pointer-events: none;
+}
+.phase-feed-editor.drag-over {
+    border-color: var(--kanban-accent);
+    box-shadow: 0 0 0 2px rgba(214, 22, 22, 0.25);
+}
+.phase-feed-editor .var-chip {
+    margin: 2px 2px;
+    vertical-align: middle;
+}
+
+body.tema-claro .phase-feed-editor {
+    background: #fff;
+    border-color: #e2e2e2;
+}
+body.tema-claro .var-chip {
+    background: rgba(214, 22, 22, 0.08);
+    border-color: rgba(214, 22, 22, 0.35);
+    color: #b91c1c;
+}

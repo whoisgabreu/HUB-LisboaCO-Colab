@@ -43,13 +43,7 @@
                 <p>Em breve você terá acesso a todas as ferramentas de gestão de projetos aqui.</p>
             </div> -->
 
-            <!-- TESTE -->
             <!-- CONTEÚDO PRINCIPAL -->
-            <div class="main-container">
-                <div class="welcome-section">
-                    <h2>Bem-vindo, {{ session.nome.split()[0] }}! <i class="fa-solid fa-hand-wave" style="color: #d61616;"></i></h2>
-                    <p>Gerencie seus clientes e projetos de forma centralizada</p>
-                </div>
 
                 <!-- TABS DE NAVEGAÇÃO -->
                 <div class="tabs-container">
@@ -79,7 +73,7 @@
                 <div class="filters">
                     <div class="search-box">
                         <i class="fa-solid fa-magnifying-glass"></i>
-                        {% if session.squad == "Gerência" %}
+                        {% if ('gestao_ampla' in (session.get('capacidades', []) or [])) or (session.nivel_acesso == 'Admin') %}
                         <input type="text" name="busca" value="" autocomplete="off" autocorrect="off"
                             autocapitalize="off" spellcheck="false" id="searchInput"
                             placeholder="Buscar por cliente ou squad..." onkeyup="filterClients(this)">
@@ -105,13 +99,14 @@
                         <div class="projects-grid">
                             {% if clientes_ativos %}
                             {% for cliente_nome, projetos in clientes_ativos.items() %}
-                            <div class="project-card" data-cliente="{{ cliente_nome|lower }}"
-                                data-projetos='{{ projetos|tojson|safe }}' data-tipo="ativo"
+                            <div class="project-card" data-cliente="{{ cliente_nome|lower }}" data-cliente-nome="{{ cliente_nome }}"
+                                data-tipo="ativo"
                                 data-squad="{{ projetos[0].squad_atribuida|lower if projetos[0].squad_atribuida else '' }}" onclick="openClientModal(this)">
                                 <div class="project-header">
                                     <div class="project-icon">
                                         <i class="fa-solid fa-building"></i>
                                     </div>
+                                    <span class="project-status status-ativo">{{ projetos|length }} projeto(s)</span>
                                 </div>
                                 <h3 class="project-title">{{ cliente_nome|title }}</h3>
                                 <p class="project-description">
@@ -144,14 +139,15 @@
                         <div class="projects-grid">
                             {% if clientes_onetime %}
                             {% for cliente_nome, projetos in clientes_onetime.items() %}
-                            <div class="project-card" data-cliente="{{ cliente_nome|lower }}"
-                                data-projetos='{{ projetos|tojson|safe }}' data-tipo="onetime"
+                            <div class="project-card" data-cliente="{{ cliente_nome|lower }}" data-cliente-nome="{{ cliente_nome }}"
+                                data-tipo="onetime"
                                 data-squad="{{ projetos[0].squad_atribuida|lower if projetos[0].squad_atribuida else '' }}"
                                 onclick="openClientModal(this)">
                                 <div class="project-header">
                                     <div class="project-icon">
                                         <i class="fa-solid fa-building"></i>
                                     </div>
+                                    <span class="project-status status-onetime">{{ projetos|length }} projeto(s)</span>
                                 </div>
                                 <h3 class="project-title">{{ cliente_nome|title }}</h3>
                                 <p class="project-description">
@@ -183,14 +179,15 @@
                         <div class="projects-grid">
                             {% if clientes_onboarding %}
                             {% for cliente_nome, projetos in clientes_onboarding.items() %}
-                            <div class="project-card" data-cliente="{{ cliente_nome|lower }}"
-                                data-projetos='{{ projetos|tojson|safe }}' data-tipo="onboarding"
+                            <div class="project-card" data-cliente="{{ cliente_nome|lower }}" data-cliente-nome="{{ cliente_nome }}"
+                                data-tipo="onboarding"
                                 data-squad="{{ projetos[0].squad_atribuida|lower if projetos[0].squad_atribuida else '' }}"
                                 onclick="openClientModal(this)">
                                 <div class="project-header">
                                     <div class="project-icon">
                                         <i class="fa-solid fa-building"></i>
                                     </div>
+                                    <span class="project-status status-onboarding">{{ projetos|length }} projeto(s)</span>
                                 </div>
                                 <h3 class="project-title">{{ cliente_nome|title }}</h3>
                                 <p class="project-description">
@@ -222,14 +219,15 @@
                         <div class="projects-grid">
                             {% if clientes_inativos %}
                             {% for cliente_nome, projetos in clientes_inativos.items() %}
-                            <div class="project-card" data-cliente="{{ cliente_nome|lower }}"
-                                data-projetos='{{ projetos|tojson|safe }}' data-tipo="inativo"
+                            <div class="project-card" data-cliente="{{ cliente_nome|lower }}" data-cliente-nome="{{ cliente_nome }}"
+                                data-tipo="inativo"
                                 data-squad="{{ projetos[0].squad_atribuida|lower if projetos[0].squad_atribuida else '' }}"
                                 onclick="openClientModal(this)">
                                 <div class="project-header">
                                     <div class="project-icon inactive">
                                         <i class="fa-solid fa-building"></i>
                                     </div>
+                                    <span class="project-status status-inativo">{{ projetos|length }} projeto(s)</span>
                                 </div>
                                 <h3 class="project-title">{{ cliente_nome|title }}</h3>
                                 <p class="project-description">
@@ -256,11 +254,10 @@
                         </div>
                     </div>
                 </div>
-            </div>
 
             <!-- MODAL DE LISTA DE PROJETOS DO CLIENTE -->
             <div id="clientModal" class="modal">
-                <div class="modal-content">
+                <div class="modal-content modal-lg">
                     <div class="modal-header">
                         <h2 id="clientModalTitle">Projetos do Cliente</h2>
                         <button class="close-btn" onclick="closeClientModal()">
@@ -283,9 +280,6 @@
                         </button>
                         <h2 id="projectModalTitle">Detalhes do Projeto</h2>
                         <div class="header-actions">
-                            <button class="add-note-btn" onclick="openAddNoteModal()" title="Adicionar Nota">
-                                <i class="fa-solid fa-note-sticky"></i>
-                            </button>
                             <button class="history-btn" id="historyBtn" onclick="openHistoryModal()"
                                 title="Ver Histórico">
                                 <i class="fa-solid fa-clock-rotate-left"></i>
@@ -301,185 +295,307 @@
 
                     <form id="projectForm" onsubmit="updateProject(event)">
                         <div class="modal-body">
-                            <div class="form-grid">
-                                <!-- SEÇÃO DE INVESTIDORES VINCULADOS (AGORA NO TOPO) -->
-                                <div class="form-group full-width vinculados-section" id="vinculosSection">
-                                    <div class="vinculos-header">
-                                        <label><i class="fa-solid fa-users"></i> Investidores Vinculados</label>
-                                        <div class="vinculos-actions" id="vinculosActions" style="display: none;">
-                                            <button type="button" class="btn-add-vinculo-v2" onclick="openInvestidorVinculoModal(null, 'add')" title="Vincular Novo Investidor">
-                                                <i class="fa-solid fa-plus"></i>
-                                            </button>
+                            <div class="project-tabs">
+                                <button type="button" class="project-tab active" data-ptab="dados" onclick="switchProjectTab('dados')"><i class="fa-solid fa-circle-info"></i> Dados do Projeto</button>
+                                <button type="button" class="project-tab" data-ptab="ctx-geral" onclick="switchProjectTab('ctx-geral')">Visão Geral</button>
+                                <button type="button" class="project-tab" data-ptab="ctx-contatos" onclick="switchProjectTab('ctx-contatos')">Equipe &amp; Contatos</button>
+                                <button type="button" class="project-tab" data-ptab="ctx-midia" onclick="switchProjectTab('ctx-midia')">Mídia &amp; Performance</button>
+                                <button type="button" class="project-tab" data-ptab="ctx-estrategia" onclick="switchProjectTab('ctx-estrategia')">Estratégia &amp; Marca</button>
+                                <button type="button" class="project-tab" data-ptab="ctx-financeiro" onclick="switchProjectTab('ctx-financeiro')">Comercial &amp; Financeiro</button>
+                            </div>
+
+                            <div class="project-panel active" data-ppanel="dados">
+                                <div class="form-grid">
+                                    <!-- SEÇÃO DE INVESTIDORES VINCULADOS -->
+                                    <div class="form-group full-width vinculados-section" id="vinculosSection">
+                                        <div class="vinculos-header">
+                                            <label><i class="fa-solid fa-users"></i> Investidores Vinculados</label>
+                                            <div class="vinculos-actions" id="vinculosActions" style="display: none;">
+                                                <button type="button" class="btn-add-vinculo-v2" onclick="openInvestidorVinculoModal(null, 'add')" title="Vincular Novo Investidor">
+                                                    <i class="fa-solid fa-plus"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div id="vinculosContainer" class="vinculos-container-v2">
+                                            <!-- Vinculos serão adicionados aqui dinamicamente -->
                                         </div>
                                     </div>
-                                    <div id="vinculosContainer" class="vinculos-container-v2">
-                                        <!-- Vinculos serão adicionados aqui dinamicamente -->
+
+                                    <div class="proj-section-title">Identificação</div>
+
+                                    <!-- RESPONSÁVEL PELO PROJETO (GESTOR) -->
+                                    <div class="form-group full-width">
+                                        <label><i class="fa-solid fa-user-tie" style="margin-right: 6px;"></i>Responsável pelo Projeto (Gestor)</label>
+                                        <select name="responsavel_projeto" id="modal_responsavel_projeto" class="form-input">
+                                            <option value="">Selecione o responsável...</option>
+                                        </select>
                                     </div>
-                                </div>
-                                
-                                <!-- CAMPO: CONTRATO VARIÁVEL (AGORA NO TOPO) -->
-                                <div class="form-group full-width">
-                                    <label><i class="fa-solid fa-percent" style="margin-right: 6px;"></i>Contrato Variável</label>
-                                    <div class="contrato-variavel-toggle">
-                                        <label class="premium-switch">
-                                            <input type="checkbox" id="modal_contrato_variavel" name="contrato_variavel" disabled>
-                                            <span class="switch-slider"></span>
-                                        </label>
-                                        <span class="contrato-variavel-label" id="contrato_variavel_label">
-                                            Faturamento variável inativo
-                                        </span>
-                                    </div>
-                                    <small class="help-text" style="margin-top: 4px; display: block;">
-                                        Quando ativo, habilita a aba "Faturamento Variável" na tela de Operação deste projeto.
-                                    </small>
-                                </div>
-
-                                <!-- CAMPO: RESPONSÁVEL PELO PROJETO (GESTOR) -->
-                                <div class="form-group full-width">
-                                    <label><i class="fa-solid fa-user-tie" style="margin-right: 6px;"></i>Responsável pelo Projeto (Gestor)</label>
-                                    <select name="responsavel_projeto" id="modal_responsavel_projeto" class="form-input">
-                                        <option value="">Selecione o responsável...</option>
-                                    </select>
-                                </div>
-                                <div class="form-group">
-                                    <label>Nome do Projeto</label>
-                                    <input type="text" name="nome" id="modal_nome" required disabled>
-                                </div>
-
-                                <!-- TESTE STEP -->
-                                <div class="form-group">
-                                    <label>Step</label>
-                                    <select name="step" id="modal_step" disabled>
-                                        <option value="">Selecione...</option>
-                                        <option value="Saber">Saber</option>
-                                        <option value="Ter">Ter</option>
-                                        <option value="Executar">Executar</option>
-                                        <option value="Potencializar">Potencializar</option>
-                                    </select>
-                                </div>
-                                <!-- TESTE STEP -->
-
-                                <div class="input-with-icon">
                                     <div class="form-group">
-                                        <label>Pipefy ID</label>
-                                        <input type="text" name="pipefy_id" id="modal_pipefy_id" disabled>
-                                        <div id="pipefyButton" title="Abrir no Pipefy"><i class="fa-solid fa-link"></i>
+                                        <label>Nome do Projeto</label>
+                                        <input type="text" name="nome" id="modal_nome" required disabled>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Documento</label>
+                                        <input type="text" name="documento" id="modal_documento" disabled>
+                                    </div>
+                                    <div class="input-with-icon">
+                                        <div class="form-group">
+                                            <label>Pipefy ID</label>
+                                            <input type="text" name="pipefy_id" id="modal_pipefy_id" disabled>
+                                            <div id="pipefyButton" title="Abrir no Pipefy"><i class="fa-solid fa-link"></i>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-
-                                <div class="form-group">
-                                    <label>Documento</label>
-                                    <input type="text" name="documento" id="modal_documento" disabled>
-                                </div>
-
-                                <div class="form-group">
-                                    <label>Fee</label>
-                                    <input type="text" name="fee" id="modal_fee" disabled>
-                                </div>
-
-                                <div class="form-group">
-                                    <label>Moeda</label>
-                                    <select name="moeda" id="modal_moeda" disabled>
-                                        <option value="BRL">BRL</option>
-                                        <option value="USD">USD</option>
-                                        <option value="EUR">EUR</option>
-                                    </select>
-                                </div>
-
-                                <div class="form-group">
-                                    <label>Squad Atribuída</label>
-                                    <select name="squad_atribuida" id="modal_squad" disabled>
-                                        {% for squad in squads %}
-                                        <option value='{{ squad }}'>{{ squad }}</option>
-                                        {% endfor %}
-                                    </select>
-                                </div>
-                                <!-- ✅ REMOVIDO O </div> EXCEDENTE AQUI -->
-
-                                <div class="form-group">
-                                    <label>Produto Contratado</label>
-                                    <input type="text" name="produto_contratado" id="modal_produto" disabled>
-                                </div>
-
-                                <div class="form-group">
-                                    <label>Data de Início</label>
-                                    <input type="date" name="data_de_inicio" id="modal_data_inicio" disabled>
-                                </div>
-
-                                <div class="form-group">
-                                    <label>Data Fim</label>
-                                    <input type="date" name="data_fim" id="modal_data_fim" disabled>
-                                </div>
-
-                                <div class="form-group">
-                                    <label>Cohort</label>
-                                    <!-- <input type="text" name="cohort" id="modal_cohort" disabled> -->
-                                    <select name="cohort" id="modal_cohort" disabled>
-                                        <option value="PDV - Ponto de Venda">PDV - Ponto de Venda</option>
-                                        <option value="E-Commerce">E-Commerce</option>
-                                        <option value="Inside Sales">Inside Sales</option>
-                                        <option value="Info Produto">Info Produto</option>
-                                    </select>
-
-                                </div>
-
-                                <div class="form-group">
-                                    <label>Meta Account ID</label>
-                                    <input type="text" name="meta_account_id" id="modal_meta_account" disabled>
-                                </div>
-
-                                <div class="form-group">
-                                    <label>Google Account ID</label>
-                                    <input type="text" name="google_account_id" id="modal_google_account" disabled>
-                                </div>
-
-                                <div class="form-group">
-                                    <label>Orçamento de Mídia - Meta</label>
-                                    <input type="text" name="orcamento_midia_meta" id="modal_orcamento_midia_meta"
-                                        disabled>
-                                </div>
-
-                                <div class="form-group">
-                                    <label>Orçamento de Mídia - Google</label>
-                                    <input type="text" name="orcamento_midia_google" id="modal_orcamento_midia_google"
-                                        disabled>
-                                </div>
-
-                                <div class="form-group full-width">
-                                    <label>Fase do Pipefy</label>
-                                    <input type="text" name="fase_do_pipefy" id="modal_fase_pipefy" disabled>
-                                </div>
-
-                                <div class="form-group full-width">
-                                    <label>URL Webhook GChat</label>
-                                    <input type="url" name="url_webhook_gchat" id="modal_webhook_url" disabled>
-                                </div>
-
-                                <div class="form-group full-width">
-                                    <label>Ekyte Workspace</label>
-                                    <input type="text" name="ekyte_workspace" id="modal_ekyte_workspace" disabled>
-                                </div>
-
-                                <!-- TESTE DETALHES -->
-                                <div class="form-group full-width">
-                                    <label>Informações Gerais do Projeto</label>
-                                    <textarea name="informacoes_gerais" id="modal_informacoes" rows="6"
-                                        disabled></textarea>
-                                </div>
-
-
-                                <!-- SEÇÃO DE NOTAS CUSTOMIZADAS -->
-                                <div class="form-group full-width notes-section" id="notesSection">
-                                    <div class="notes-header">
-                                        <label><i class="fa-solid fa-note-sticky"></i> Notas e Anotações</label>
+                                    <div class="form-group">
+                                        <label>Step</label>
+                                        <select name="step" id="modal_step" disabled>
+                                            <option value="">Selecione...</option>
+                                            <option value="Saber">Saber</option>
+                                            <option value="Ter">Ter</option>
+                                            <option value="Executar">Executar</option>
+                                            <option value="Potencializar">Potencializar</option>
+                                        </select>
                                     </div>
-                                    <div id="notesContainer" class="notes-container">
-                                        <!-- Notas serão adicionadas aqui dinamicamente -->
+                                    <div class="form-group">
+                                        <label>Squad Atribuída</label>
+                                        <select name="squad_atribuida" id="modal_squad" disabled>
+                                            {% for squad in squads %}
+                                            <option value='{{ squad }}'>{{ squad }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Produto Contratado</label>
+                                        <input type="text" name="produto_contratado" id="modal_produto" disabled>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Cohort</label>
+                                        <select name="cohort" id="modal_cohort" disabled>
+                                            <option value="PDV - Ponto de Venda">PDV - Ponto de Venda</option>
+                                            <option value="E-Commerce">E-Commerce</option>
+                                            <option value="Inside Sales">Inside Sales</option>
+                                            <option value="Info Produto">Info Produto</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="proj-section-title">Valor</div>
+
+                                    <div class="form-group">
+                                        <label>Fee</label>
+                                        <input type="text" name="fee" id="modal_fee" disabled>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Moeda</label>
+                                        <select name="moeda" id="modal_moeda" disabled>
+                                            <option value="BRL">BRL</option>
+                                            <option value="USD">USD</option>
+                                            <option value="EUR">EUR</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group full-width">
+                                        <label><i class="fa-solid fa-percent" style="margin-right: 6px;"></i>Contrato Variável</label>
+                                        <div class="contrato-variavel-toggle">
+                                            <label class="premium-switch">
+                                                <input type="checkbox" id="modal_contrato_variavel" name="contrato_variavel" disabled>
+                                                <span class="switch-slider"></span>
+                                            </label>
+                                            <span class="contrato-variavel-label" id="contrato_variavel_label">
+                                                Faturamento variável inativo
+                                            </span>
+                                        </div>
+                                        <small class="help-text" style="margin-top: 4px; display: block;">
+                                            Quando ativo, habilita a aba "Faturamento Variável" na tela de Operação deste projeto.
+                                        </small>
+                                    </div>
+
+                                    <div class="proj-section-title">Datas</div>
+
+                                    <div class="form-group">
+                                        <label>Data de Início</label>
+                                        <input type="date" name="data_de_inicio" id="modal_data_inicio" disabled>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Data Fim</label>
+                                        <input type="date" name="data_fim" id="modal_data_fim" disabled>
+                                    </div>
+
+                                    <div class="proj-section-title">Tracking & Mídia</div>
+
+                                    <div class="form-group">
+                                        <label>Meta Account ID</label>
+                                        <input type="text" name="meta_account_id" id="modal_meta_account" disabled>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Google Account ID</label>
+                                        <input type="text" name="google_account_id" id="modal_google_account" disabled>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Orçamento de Mídia - Meta</label>
+                                        <input type="text" name="orcamento_midia_meta" id="modal_orcamento_midia_meta"
+                                            disabled>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Orçamento de Mídia - Google</label>
+                                        <input type="text" name="orcamento_midia_google" id="modal_orcamento_midia_google"
+                                            disabled>
+                                    </div>
+                                    <div class="form-group full-width">
+                                        <label>Fase do Pipefy</label>
+                                        <input type="text" name="fase_do_pipefy" id="modal_fase_pipefy" disabled>
+                                    </div>
+
+                                    <div class="proj-section-title">Anotações</div>
+
+                                    <div class="form-group full-width">
+                                        <label>Informações Gerais do Projeto</label>
+                                        <textarea name="informacoes_gerais" id="modal_informacoes" rows="6"
+                                            disabled></textarea>
+                                    </div>
+                                    <div class="form-group full-width">
+                                        <label>URL Webhook GChat</label>
+                                        <input type="url" name="url_webhook_gchat" id="modal_webhook_url" disabled>
+                                    </div>
+                                    <div class="form-group full-width">
+                                        <label>Ekyte Workspace</label>
+                                        <input type="text" name="ekyte_workspace" id="modal_ekyte_workspace" disabled>
                                     </div>
                                 </div>
+                            </div>
 
+                            <!-- PAINEL: CONTEXTO — GERAL -->
+                            <div class="project-panel" data-ppanel="ctx-geral">
+                                <div class="ctx-grid">
+                                    <div class="form-group">
+                                        <label>Cliente</label>
+                                        <input type="text" data-ctx-field="cliente" disabled>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Localização / Região de Atuação</label>
+                                        <input type="text" data-ctx-field="localizacao_regiao_atuacao" disabled>
+                                    </div>
+                                    <div class="form-group full-width">
+                                        <label>Segmento / Nicho</label>
+                                        <textarea rows="2" data-ctx-field="segmento_nicho" disabled></textarea>
+                                    </div>
+                                    <div class="form-group full-width">
+                                        <label>Público-alvo</label>
+                                        <textarea rows="3" data-ctx-field="publico_alvo" disabled></textarea>
+                                    </div>
+                                    <div class="form-group full-width">
+                                        <label>Objetivo / Meta principal</label>
+                                        <textarea rows="3" data-ctx-field="objetivo_meta_principal" disabled></textarea>
+                                    </div>
+                                </div>
+                            </div>
 
+                            <!-- PAINEL: CONTEXTO — CONTATOS & EQUIPE -->
+                            <div class="project-panel" data-ppanel="ctx-contatos">
+                                <div class="ctx-grid">
+                                    <div class="form-group">
+                                        <label>Contato principal / Decisor</label>
+                                        <input type="text" data-ctx-field="contato_principal_decisor" disabled>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Equipe responsável (interna)</label>
+                                        <textarea rows="2" data-ctx-field="equipe_responsavel" disabled></textarea>
+                                    </div>
+                                    <div class="form-group full-width">
+                                        <label>Outros contatos-chave</label>
+                                        <textarea rows="3" data-ctx-field="outros_contatos_chave" disabled></textarea>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- PAINEL: CONTEXTO — MÍDIA & TRACKING -->
+                            <div class="project-panel" data-ppanel="ctx-midia">
+                                <div class="ctx-grid">
+                                    <div class="form-group full-width">
+                                        <label>Canais de mídia ativos</label>
+                                        <textarea rows="2" data-ctx-field="canais_midia_ativos" disabled></textarea>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>ID da conta Google (Ads)</label>
+                                        <input type="text" data-ctx-field="id_google" disabled>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>ID da conta Meta (act)</label>
+                                        <input type="text" data-ctx-field="act_meta" disabled>
+                                    </div>
+                                    <div class="form-group full-width">
+                                        <label>IDs de rastreamento (GA4/Meta/etc.)</label>
+                                        <textarea rows="2" data-ctx-field="ids_rastreamento" disabled></textarea>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Ferramenta de tracking / CRM</label>
+                                        <textarea rows="2" data-ctx-field="tracking_crm" disabled></textarea>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Orçamento mensal de mídia</label>
+                                        <input type="text" data-ctx-field="orcamento_midia_mensal" disabled>
+                                    </div>
+                                    <div class="form-group full-width">
+                                        <label>Benchmark / CPL (custo por lead) de referência</label>
+                                        <input type="text" data-ctx-field="benchmark_cpl_referencia" disabled>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- PAINEL: CONTEXTO — ESTRATÉGIA & MARCA -->
+                            <div class="project-panel" data-ppanel="ctx-estrategia">
+                                <div class="ctx-grid">
+                                    <div class="form-group full-width">
+                                        <label>Estratégia / campanha atual</label>
+                                        <textarea rows="3" data-ctx-field="estrategia_campanha_atual" disabled></textarea>
+                                    </div>
+                                    <div class="form-group full-width">
+                                        <label>Tom de voz / posicionamento</label>
+                                        <textarea rows="2" data-ctx-field="tom_voz_posicionamento" disabled></textarea>
+                                    </div>
+                                    <div class="form-group full-width">
+                                        <label>Must-dos / Don'ts e restrições</label>
+                                        <textarea rows="3" data-ctx-field="must_donts_restricoes" disabled></textarea>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>O que funciona</label>
+                                        <textarea rows="3" data-ctx-field="o_que_funciona" disabled></textarea>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>O que não funciona</label>
+                                        <textarea rows="3" data-ctx-field="o_que_nao_funciona" disabled></textarea>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- PAINEL: CONTEXTO — FINANCEIRO & RELACIONAMENTO -->
+                            <div class="project-panel" data-ppanel="ctx-financeiro">
+                                <div class="ctx-grid">
+                                    <div class="form-group">
+                                        <label>Ticket médio</label>
+                                        <input type="text" data-ctx-field="ticket_medio_financeiro" disabled>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Forma de pagamento</label>
+                                        <input type="text" data-ctx-field="forma_pagamento" disabled>
+                                    </div>
+                                    <div class="form-group full-width">
+                                        <label>Relacionamento / Alertas</label>
+                                        <textarea rows="3" data-ctx-field="relacionamento_alertas" disabled></textarea>
+                                    </div>
+                                    <div class="form-group full-width">
+                                        <label>Pendências / Próximos passos</label>
+                                        <textarea rows="3" data-ctx-field="pendencias_proximos_passos" disabled></textarea>
+                                    </div>
+                                    <div class="form-group full-width">
+                                        <label>Link do Drive (documentos)</label>
+                                        <input type="url" data-ctx-field="link_drive_documentos" disabled>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-group full-width" style="margin-top: 10px;">
+                                <label>Motivo da atualização (opcional)</label>
+                                <input type="text" data-ctx-field="motivo_atualizacao" disabled
+                                    placeholder="Ex: Reunião de kickoff ajustou o público-alvo">
                             </div>
                         </div>
 
@@ -635,37 +751,7 @@
             </div>
 
 
-            <!-- MODAL DE ADICIONAR NOTA -->
-            <div id="addNoteModal" class="modal">
-                <div class="modal-content modal-small">
-                    <div class="modal-header">
-                        <h2>Nova Nota</h2>
-                        <button class="close-btn" onclick="closeAddNoteModal()">
-                            <i class="fa-solid fa-xmark"></i>
-                        </button>
-                    </div>
-
-                    <form id="addNoteForm" onsubmit="addNote(event)">
-                        <div class="modal-body">
-                            <div class="form-grid-single">
-                                <div class="form-group">
-                                    <label>Nome da Nota *</label>
-                                    <input type="text" id="note_name" required placeholder="Ex: Análise de Mercado">
-                                    <small>Este será o título do campo de anotação</small>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="modal-footer">
-                            <button type="button" class="btn-secondary" onclick="closeAddNoteModal()">Cancelar</button>
-                            <button type="submit" class="btn-primary">
-                                <i class="fa-solid fa-plus"></i> Adicionar Nota
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-            <!-- FIM TESTE -->
+            <!-- (Seção de Notas removida — substituída pelas abas de Contexto no modal do projeto) -->
 
 
         </main>

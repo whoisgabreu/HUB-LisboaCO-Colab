@@ -75,6 +75,72 @@ class Projeto(Base):
     responsavel_projeto = Column(String(50)) # E-mail do Gestor de Projeto
     kanban_dados = Column(JSONB) # Dados dinâmicos do Kanban
 
+
+class ProjetoContexto(Base):
+    """Tabela: plataforma_geral.projetos_contexto
+
+    Contexto de projeto (snapshot versionado). Cada salvamento cria uma nova
+    linha, ligada à anterior via ``contexto_anterior_id``.
+    """
+    __tablename__ = "projetos_contexto"
+    __table_args__ = {"schema": "plataforma_geral"}
+
+    id = Column(Integer, primary_key=True)
+    projeto_pipefy_id = Column(Integer, nullable=False)
+    cliente = Column(Text, nullable=False)
+
+    segmento_nicho = Column(Text)
+    localizacao_regiao_atuacao = Column(Text)
+    contato_principal_decisor = Column(Text)
+    outros_contatos_chave = Column(Text)
+    equipe_responsavel = Column(Text)
+    canais_midia_ativos = Column(Text)
+    id_google = Column(Text)
+    act_meta = Column(Text)
+    ids_rastreamento = Column(Text)
+    orcamento_midia_mensal = Column(Text)
+    objetivo_meta_principal = Column(Text)
+    ticket_medio_financeiro = Column(Text)
+    publico_alvo = Column(Text)
+    estrategia_campanha_atual = Column(Text)
+    tom_voz_posicionamento = Column(Text)
+    must_donts_restricoes = Column(Text)
+    benchmark_cpl_referencia = Column(Text)
+    tracking_crm = Column(Text)
+    o_que_funciona = Column(Text)
+    o_que_nao_funciona = Column(Text)
+    forma_pagamento = Column(Text)
+    relacionamento_alertas = Column(Text)
+    pendencias_proximos_passos = Column(Text)
+    link_drive_documentos = Column(Text)
+
+    data_contexto = Column(DateTime, server_default=FetchedValue())
+    origem_contexto = Column(Text)
+    motivo_atualizacao = Column(Text)
+    contexto_anterior_id = Column(Integer)
+    created_at = Column(DateTime, server_default=FetchedValue())
+
+    CAMPOS = [
+        "cliente", "segmento_nicho", "localizacao_regiao_atuacao",
+        "contato_principal_decisor", "outros_contatos_chave", "equipe_responsavel",
+        "canais_midia_ativos", "id_google", "act_meta", "ids_rastreamento",
+        "orcamento_midia_mensal", "objetivo_meta_principal", "ticket_medio_financeiro",
+        "publico_alvo", "estrategia_campanha_atual", "tom_voz_posicionamento",
+        "must_donts_restricoes", "benchmark_cpl_referencia", "tracking_crm",
+        "o_que_funciona", "o_que_nao_funciona", "forma_pagamento",
+        "relacionamento_alertas", "pendencias_proximos_passos", "link_drive_documentos",
+    ]
+
+    def to_dict(self):
+        d = {c: getattr(self, c) for c in self.CAMPOS}
+        d["id"] = self.id
+        d["projeto_pipefy_id"] = self.projeto_pipefy_id
+        d["data_contexto"] = self.data_contexto.isoformat() if self.data_contexto else None
+        d["origem_contexto"] = self.origem_contexto
+        d["motivo_atualizacao"] = self.motivo_atualizacao
+        d["contexto_anterior_id"] = self.contexto_anterior_id
+        return d
+
 class RemuneracaoCargo(Base):
     """Tabela: plataforma_geral.remuneracao_cargos"""
     __tablename__ = "remuneracao_cargos"
@@ -428,6 +494,39 @@ class FaceAuthLog(Base):
     user_agent = Column(String(500), nullable=True)
     error_message = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.now)
+
+
+class ProjetoMrrHistorico(Base):
+    """Tabela: plataforma_geral.projeto_mrr_historico
+
+    Snapshot mensal do valor (fee) de cada projeto. Fonte de verdade para a
+    evolução histórica de MRR, churn, nº de clientes e LTV. Populada pelo
+    MrrHistoricoService (novo e isolado) e pelo backfill aproximado.
+    """
+    __tablename__ = "projeto_mrr_historico"
+    __table_args__ = (
+        UniqueConstraint("projeto_pipefy_id", "ano", "mes", name="uq_mrr_hist_proj_ano_mes"),
+        {"schema": "plataforma_geral"},
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    projeto_pipefy_id = Column(Integer, nullable=False)
+    nome_projeto = Column(String(250))
+    ano = Column(Integer, nullable=False)
+    mes = Column(Integer, nullable=False)
+    fee = Column(DECIMAL(15, 2))
+    moeda = Column(String(6))
+    cotacao_usd = Column(DECIMAL(10, 4))
+    fee_brl = Column(DECIMAL(15, 2))
+    status = Column(String(50))
+    squad_atribuida = Column(String(20))
+    data_inicio = Column(Date)
+    data_fim = Column(Date)
+    created_at = Column(DateTime, server_default=FetchedValue())
+    manual = Column(Boolean, nullable=False, server_default=text("false"))
+    editado_em = Column(DateTime)
+    editado_por = Column(String(255))
+    observacao = Column(Text)
 
 
 # Tabela 'operacao' acessada via SQL puro em OperacaoSnapshotService

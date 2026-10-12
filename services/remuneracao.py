@@ -7,6 +7,7 @@ from models import (
 from decimal import Decimal
 from datetime import datetime, date
 import json
+import permissions
 
 def calcular_metricas_mensais(mes, ano):
     """
@@ -23,12 +24,18 @@ def calcular_metricas_mensais(mes, ano):
             WHERE m.email_investidor = i.email
         """))
 
-        # 1. Buscar Investidores (exceto Gerência via posição e apenas ATIVOS para cálculo)
-        # REGRA: Apenas investidores com 'funcao' preenchida são considerados no cálculo.
+        # 1. Buscar Investidores (apenas ativos e com cargo definido no v2_)
+        ids_com_cargo = [
+            r[0] for r in db.execute(
+                text(
+                    f"SELECT investidor_id FROM {permissions.SCHEMA}.v2_investidor_cargo "
+                    "WHERE cargo IS NOT NULL AND cargo <> ''"
+                )
+            ).all()
+        ]
         investidores = db.query(Investidor).filter(
             Investidor.ativo == True,
-            Investidor.funcao != None,
-            Investidor.funcao != ""
+            Investidor.id.in_(ids_com_cargo or [-1]),
         ).all()
 
         # 2. Indexar Cargos para limites
@@ -42,6 +49,10 @@ def calcular_metricas_mensais(mes, ano):
         mes_atual_str = f"{ano}-{mes:02d}"
 
         def _processar_investidor(inv):
+            # Cargo no v2_ (novo) e alias para os parâmetros de remuneração legados
+            cargo = permissions.cargo_do_investidor(db, inv.id)
+            cargo_rem = permissions.cargo_remuneracao(cargo)
+
             # 0. Carregar a métrica primeiro para poder acessar o historico_projetos
             metrica = db.query(MetricaMensal).filter(
                 MetricaMensal.email_investidor == inv.email,
@@ -134,8 +145,8 @@ def calcular_metricas_mensais(mes, ano):
 
             # Buscar limites do cargo
             cargo_config = None
-            if inv.funcao and inv.senioridade and inv.nivel:
-                cargo_config = cargos_index.get((inv.funcao, inv.senioridade, inv.nivel))
+            if cargo_rem and inv.senioridade and inv.nivel:
+                cargo_config = cargos_index.get((cargo_rem, inv.senioridade, inv.nivel))
             
             flag = "YELLOW"
             motivo_flag = ""
@@ -169,7 +180,7 @@ def calcular_metricas_mensais(mes, ano):
                         motivos.append(f"MRR Portfolio ({float(mrr_portfolio_total):.2f}) abaixo do mínimo ({float(mrr_min):.2f})")
                     motivo_flag = " | ".join(motivos) if motivos else "Abaixo do MRR mínimo"
             else:
-                if inv.posicao == "Sócio" and not inv.funcao:
+                if inv.posicao == "Sócio" and not cargo:
                     flag = "GREEN"
                     motivo_flag = "Sócio sem cargo operacional"
                 else:
@@ -223,7 +234,7 @@ def calcular_metricas_mensais(mes, ano):
 
             # Preencher campos
             metrica.detalhes = {"produtos": detalhes}
-            metrica.cargo = inv.funcao
+            metrica.cargo = cargo
             metrica.senioridade = inv.senioridade
             metrica.level = inv.nivel
             metrica.flag = flag
@@ -236,7 +247,7 @@ def calcular_metricas_mensais(mes, ano):
             metrica.fixo_mrr_projeto_total = mrr_portfolio_total
             
             # Calcula MRR entregue POR PROJETO: fee_projeto × progresso_projeto
-            is_criativo = metrica.cargo in ("Designer", "WebDesigner", "Webdesigner")
+            is_criativo = metrica.cargo in ("Designer", "Web-Designer", "WebDesigner", "Webdesigner")
             entregas = metrica.entregas_criativos if is_criativo else metrica.entregas_operacao
             entregas = entregas or []
             

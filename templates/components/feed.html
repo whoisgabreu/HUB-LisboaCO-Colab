@@ -1,5 +1,8 @@
-{% set pode_gerenciar = session.nivel_acesso == 'Admin' or session.posicao in ['Gerência', 'Sócio', 'Coordenador'] %}
-{% set pode_gestao = session.nivel_acesso == 'Admin' or session.posicao in ['Gerência', 'Sócio'] %}
+{% set caps = session.get('capacidades', []) or [] %}
+{% set flag_feed = session.get('pode_gerenciar_feed') %}
+{% set pode_gerenciar = flag_feed %}
+{% set pode_gestao = ('gestao_ampla' in caps) or (session.nivel_acesso == 'Admin') %}
+{% set pode_fixar = flag_feed %}
 <!-- ═══════════════════════════════════════════════════════════ -->
 <!-- Feed Social -->
 <!-- ═══════════════════════════════════════════════════════════ -->
@@ -10,12 +13,9 @@
     data-user-nome="{{ session.nome }}"
     data-user-foto="{{ session.profile_picture or '' }}"
     data-privilegiado="{{ 'true' if pode_gerenciar else 'false' }}"
-    data-gestao="{{ 'true' if pode_gestao else 'false' }}">
-
-    <div class="feed-header-row">
-        <h3>Feed</h3>
-        <span class="feed-subtitle">Compartilhe novidades com o time</span>
-    </div>
+    data-pode-fixar="{{ 'true' if pode_fixar else 'false' }}"
+    data-gestao="{{ 'true' if pode_gestao else 'false' }}"
+    data-autor="{{ modo_perfil or '' }}">
 
     <!-- Composer -->
     <div class="feed-composer">
@@ -56,11 +56,25 @@
                         <span id="feedCharCount" class="feed-char">0/3000</span>
                     </div>
                     <div class="feed-composer-right">
-                        <select id="feedVisibilidade" class="feed-select" title="Visibilidade">
-                            <option value="todos">Todos</option>
-                            <option value="squad">Minha squad</option>
-                            <option value="gestao">Gerência</option>
-                        </select>
+                        <div class="feed-canais" id="feedCanais">
+                            <button type="button" class="feed-canais-toggle" onclick="Feed.toggleCanais(event)" title="Canais de envio">
+                                <i class="fa-solid fa-users-viewfinder"></i> <span id="feedCanaisLabel">Todos</span>
+                            </button>
+                            <div class="feed-canais-panel" id="feedCanaisPanel">
+                                {% set minhas_squads = session.get('squads', []) or [] %}
+                                <label class="feed-canal-item">
+                                    <input type="checkbox" id="feedDestTodos" checked onchange="Feed.atualizarCanais()"> <span>Todos</span>
+                                </label>
+                                {% for s in minhas_squads %}
+                                <label class="feed-canal-item">
+                                    <input type="checkbox" class="feed-canal-squad" value="{{ s.id }}" onchange="Feed.atualizarCanais()"> <span>{{ s.nome }}</span>
+                                </label>
+                                {% endfor %}
+                                {% if not minhas_squads %}
+                                <div class="feed-canais-vazio">Você não está em nenhuma squad.</div>
+                                {% endif %}
+                            </div>
+                        </div>
                         <button type="button" class="feed-btn primary" onclick="Feed.publicar()">
                             <i class="fa-solid fa-paper-plane"></i> Publicar
                         </button>

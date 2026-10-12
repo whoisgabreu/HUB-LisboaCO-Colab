@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Métricas & Evolução | HUB Lisboa</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="static/style/styles.css">
+    <link rel="stylesheet" href="static/style/tema-claro.css">
+    <link rel="stylesheet" href="static/style/dashboard_mrr.css">
+    {% include "components/icon_title.html" %}
+</head>
+
+<body>
+    {% include "components/header.html" %}
+    {% include "components/sidebar.html" %}
+
+    <div class="app-container">
+        <div class="sidebar-overlay"></div>
+        <main class="main-container">
+            <header class="mrr-page-header">
+                <div>
+                    <h2>Métricas &amp; Evolução</h2>
+                    <p class="mrr-subtitle">Acompanhamento mensal de MRR, churn, clientes e LTV por projeto.</p>
+                </div>
+                <div class="mrr-filter">
+                    <label for="mrrPeriodo">Período</label>
+                    <select id="mrrPeriodo">
+                        <option value="12">Últimos 12 meses</option>
+                        <option value="24" selected>Últimos 24 meses</option>
+                        <option value="36">Últimos 36 meses</option>
+                        <option value="0">Tudo</option>
+                    </select>
+                    {% set _caps = session.get('capacidades', []) or [] %}
+                    {% if ('gestao_ampla' in _caps) or (session.nivel_acesso == 'Admin') %}
+                    <a href="/admin/mrr-historico" class="mrr-admin-link"><i class="fas fa-pen"></i> Editar histórico</a>
+                    {% endif %}
+                </div>
+            </header>
+
+            {% if not serie %}
+            <div class="mrr-empty">
+                <i class="fas fa-database"></i>
+                <p>Nenhum histórico disponível ainda. O snapshot do mês atual será capturado automaticamente.</p>
+            </div>
+            {% else %}
+
+            <div class="mrr-grid mrr-grid-kpis">
+                <div class="mrr-card">
+                    <div class="kpi-label">MRR Atual</div>
+                    <div class="kpis-main"><span class="kpi-value" id="kpiMrr">—</span></div>
+                    <div class="kpi-subtext" id="kpiMrrRef">—</div>
+                </div>
+                <div class="mrr-card">
+                    <div class="kpi-label">Variação MRR (mês)</div>
+                    <div class="kpis-main">
+                        <span class="kpi-value" id="kpiDelta">—</span>
+                        <span class="kpi-variation" id="kpiDeltaPct"></span>
+                    </div>
+                    <div class="kpi-subtext">Comparado ao mês anterior</div>
+                </div>
+                <div class="mrr-card">
+                    <div class="kpi-label">Churn (mês)</div>
+                    <div class="kpis-main"><span class="kpi-value" id="kpiChurn">—</span></div>
+                    <div class="kpi-subtext" id="kpiChurnSub">—</div>
+                </div>
+                <div class="mrr-card">
+                    <div class="kpi-label">Churn %</div>
+                    <div class="kpis-main"><span class="kpi-value" id="kpiChurnPct">—</span></div>
+                    <div class="kpi-subtext">Sobre o MRR do mês anterior</div>
+                </div>
+                <div class="mrr-card">
+                    <div class="kpi-label">Clientes Ativos</div>
+                    <div class="kpis-main"><span class="kpi-value" id="kpiClientes">—</span></div>
+                    <div class="kpi-subtext">No mês de referência</div>
+                </div>
+                <div class="mrr-card">
+                    <div class="kpi-label">LTV Médio</div>
+                    <div class="kpis-main"><span class="kpi-value" id="kpiLtvMedio">—</span></div>
+                    <div class="kpi-subtext">Receita recorrente acumulada / cliente</div>
+                </div>
+            </div>
+
+            <div class="mrr-grid mrr-grid-charts">
+                <div class="mrr-card chart-card">
+                    <div class="chart-title">Evolução do MRR</div>
+                    <canvas id="mrrChart"></canvas>
+                </div>
+                <div class="mrr-card chart-card">
+                    <div class="chart-title">Churn (R$ e %)</div>
+                    <canvas id="churnChart"></canvas>
+                </div>
+                <div class="mrr-card chart-card">
+                    <div class="chart-title">Clientes Ativos</div>
+                    <canvas id="clientesChart"></canvas>
+                </div>
+                <div class="mrr-card chart-card">
+                    <div class="chart-title">Top LTV por Cliente</div>
+                    <canvas id="ltvChart"></canvas>
+                </div>
+            </div>
+
+            <div class="mrr-card">
+                <div class="mrr-table-head">
+                    <div class="chart-title" style="margin:0;">LTV por Cliente · Ativos</div>
+                    <input type="text" id="mrrBusca" class="mrr-search" placeholder="Pesquisar cliente...">
+                </div>
+                <div class="mrr-table-wrap">
+                    <table class="mrr-table">
+                        <thead>
+                            <tr>
+                                <th>Cliente</th>
+                                <th>LTV (recorrente)</th>
+                                <th>Meses ativo</th>
+                                <th>MRR atual</th>
+                                <th>Status</th>
+                                <th>Início</th>
+                            </tr>
+                        </thead>
+                        <tbody id="mrrTabela"></tbody>
+                    </table>
+                </div>
+                <div class="mrr-pag" id="mrrPaginacao"></div>
+            </div>
+
+            {% endif %}
+        </main>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+    <script src="static/js/app.js" defer></script>
+    <script>
+        window.MRR_DATA = {
+            resumo: {{ resumo | tojson }},
+            serie: {{ serie | tojson }},
+            ranking: {{ ranking | tojson }},
+            ranking_ativos: {{ ranking_ativos | tojson }}
+        };
+    </script>
+    <script src="static/js/dashboard_mrr.js" defer></script>
+    {% include "components/modal-configuracoes.html" %}
+    <script src="static/js/tema.js"></script>
+</body>
+
+</html>

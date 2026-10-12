@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style/styles.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style/tema-claro.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style/feed.css') }}">
+    <script src="{{ url_for('static', filename='js/app.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/feed.js') }}" defer></script>
+    {% include "components/icon_title.html" %}
+</head>
+
+<body>
+
+    {% include "components/header.html" %}
+    {% include "components/sidebar.html" %}
+
+    {% set caps = session.get('capacidades', []) or [] %}
+    {% set flag_feed = session.get('pode_gerenciar_feed') %}
+    {% set pode_gerenciar = flag_feed %}
+    {% set pode_gestao = ('gestao_ampla' in caps) or (session.nivel_acesso == 'Admin') %}
+    {% set pode_fixar = flag_feed %}
+
+    <div class="app-shell">
+        <div class="sidebar-overlay"></div>
+
+        <div class="main-content">
+            <main class="main-container feed-page feed-single">
+                <section class="feed" id="feedApp"
+                    data-single="true"
+                    data-post-id="{{ post_id }}"
+                    data-user-email="{{ session.email }}"
+                    data-user-nome="{{ session.nome }}"
+                    data-user-foto="{{ session.profile_picture or '' }}"
+                    data-privilegiado="{{ 'true' if pode_gerenciar else 'false' }}"
+                    data-pode-fixar="{{ 'true' if pode_fixar else 'false' }}"
+                    data-gestao="{{ 'true' if pode_gestao else 'false' }}">
+
+                    <div class="feed-header-row">
+                        <a href="/feed" class="feed-back-link"><i class="fa-solid fa-arrow-left"></i> Voltar ao feed</a>
+                    </div>
+
+                    <div id="feedList" class="feed-list">
+                        <div class="feed-loading"><i class="fa-solid fa-spinner fa-spin"></i> Carregando publicação...
+                        </div>
+                    </div>
+
+                    <!-- Modal de perfil rápido -->
+                    <div id="feedPerfilModal" class="feed-modal">
+                        <div class="feed-modal-content">
+                            <button class="feed-modal-close" onclick="Feed.fecharPerfil()">&times;</button>
+                            <div id="feedPerfilBody" class="feed-perfil-body"></div>
+                        </div>
+                    </div>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    {% include "components/modal-configuracoes.html" %}
+    <script src="{{ url_for('static', filename='js/tema.js') }}"></script>
+
+</body>
+
+</html>

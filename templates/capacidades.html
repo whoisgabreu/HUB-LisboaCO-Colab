@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="static/style/styles.css">
+    <link rel="stylesheet" href="static/style/tema-claro.css">
+    <script src="static/js/app.js" defer></script>
+    <style>
+        .admin-wrap { margin-top: 1.5rem; }
+        .admin-card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+        .admin-card h3 { margin: 0 0 4px; }
+        .admin-card p.hint { color: var(--text-muted); font-size: .8rem; margin: 0 0 14px; }
+        .matrix { width: 100%; border-collapse: collapse; }
+        .matrix th, .matrix td { padding: 8px 10px; border-bottom: 1px solid var(--border-color); font-size: .82rem; text-align: center; }
+        .matrix th:first-child, .matrix td:first-child { text-align: left; font-weight: 600; }
+        .matrix input[type=checkbox] { width: 16px; height: 16px; cursor: pointer; }
+        .matrix th .cap-label { display: inline-block; line-height: 1.15; }
+        .matrix th.gestao { color: #ff7979; }
+        .matrix th.operacao { color: #3b82f6; }
+        .matrix th.outros { color: #2ecc71; }
+        .legend { display: flex; flex-wrap: wrap; gap: 10px 18px; margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--border-color); }
+        .legend-item { display: flex; align-items: flex-start; gap: 8px; max-width: 320px; }
+        .legend-dot { width: 10px; height: 10px; border-radius: 50%; margin-top: 4px; flex-shrink: 0; }
+        .legend-dot.gestao { background: #ff7979; }
+        .legend-dot.operacao { background: #3b82f6; }
+        .legend-dot.outros { background: #2ecc71; }
+        .legend-item b { font-size: .8rem; }
+        .legend-item small { display: block; color: var(--text-muted); font-size: .74rem; line-height: 1.3; }
+        .mini-btn { background: transparent; border: 1px solid var(--border-color); color: var(--text-main); border-radius: 8px; padding: 5px 10px; cursor: pointer; font-family: inherit; font-size: .78rem; }
+        .mini-btn:hover { border-color: var(--accent-red); color: var(--accent-red); }
+        .info-banner { background: rgba(59,130,246,.08); border: 1px solid rgba(59,130,246,.25); border-radius: 10px; padding: 12px 14px; font-size: .84rem; color: var(--text-main); margin-top: 10px; }
+    </style>
+    {% include "components/icon_title.html" %}
+</head>
+
+<body>
+    {% include "components/header.html" %}
+    {% include "components/sidebar.html" %}
+
+    <div class="app-shell">
+        <div class="sidebar-overlay"></div>
+        <div class="main-content">
+            <main class="main-container">
+                <section class="welcome-section">
+                    <h2>Acessos por Posição e Cargo</h2>
+                    <p>Defina o que cada posição e cada cargo concede de acesso.</p>
+                    <div class="info-banner">
+                        <i class="fas fa-circle-info" style="color:#3b82f6"></i>
+                        O acesso final de um usuário é a <strong>união</strong> das capacidades concedidas pelas suas
+                        <strong>posições</strong> e pelo seu <strong>cargo</strong>. O <strong>Perfil de Acesso</strong> (Admin)
+                        é configurado no cadastro do usuário e não por esta matriz.
+                    </div>
+                </section>
+
+                <div class="admin-wrap">
+                    <div class="admin-card">
+                        <h3>O que cada Posição concede</h3>
+                        <p class="hint">Ex.: Gestão total libera tudo; Gestão da squad limita à(s) squad(s) da pessoa.</p>
+                        <div style="overflow-x:auto;">
+                            <table class="matrix" id="tabelaPosicoes"></table>
+                        </div>
+                        <div class="legend" id="legendaPosicoes"></div>
+                    </div>
+
+                    <div class="admin-card">
+                        <h3>O que cada Cargo concede</h3>
+                        <p class="hint">Ex.: Account Manager libera Operação (Contas); Designer libera Entregas criativas.</p>
+                        <div style="overflow-x:auto;">
+                            <table class="matrix" id="tabelaCargos"></table>
+                        </div>
+                        <div class="legend" id="legendaCargos"></div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    {% include "components/modal-configuracoes.html" %}
+    <script src="static/js/tema.js"></script>
+    <script>
+        // Rótulos e explicações amigáveis por capacidade
+        const CAP_META = {
+            gestao_ampla:    { label: 'Gestão total',       grupo: 'gestao',   desc: 'Vê e gerencia tudo, sem escopo.' },
+            gestao_squad:    { label: 'Gestão da squad',    grupo: 'gestao',   desc: 'Gerencia apenas a(s) sua(s) squad(s).' },
+            operacao_account:{ label: 'Operação · Contas',  grupo: 'operacao', desc: 'Acesso à operação no perfil de Contas (Account).' },
+            operacao_gt:     { label: 'Operação · Tráfego', grupo: 'operacao', desc: 'Acesso à operação no perfil de Gestor de Tráfego.' },
+            criativa:        { label: 'Entregas criativas', grupo: 'outros',   desc: 'Acesso ao módulo de entregas criativas (Designer/Web-Designer).' },
+            cs_cx:           { label: 'CS / CX',            grupo: 'outros',   desc: 'Acesso ao módulo de Customer Success / CX.' },
+            tech:            { label: 'Tecnologia',         grupo: 'outros',   desc: 'Identifica a área de tecnologia.' },
+            people:          { label: 'People / RH',        grupo: 'outros',   desc: 'Identifica a área de People / RH.' },
+        };
+        const GRUPO_ORDEM = ['gestao', 'operacao', 'outros'];
+        const ORDEM_CAP = ['gestao_ampla', 'gestao_squad', 'operacao_account', 'operacao_gt', 'criativa', 'cs_cx', 'tech', 'people'];
+        const OCULTAS = ['admin'];
+
+        const CAPS_RAW = {{ capacidades | tojson }};
+        const POS = {{ posicoes | tojson }};
+        const CARGOS = {{ cargos | tojson }};
+        const POS_CAPS = {{ pos_caps | tojson }};
+        const CARGO_CAPS = {{ cargo_caps | tojson }};
+
+        // Exclui capacidades ocultas e ordena por grupo
+        const CAPS = CAPS_RAW
+            .filter(c => !OCULTAS.includes(c))
+            .sort((a, b) => {
+                const ia = ORDEM_CAP.indexOf(a), ib = ORDEM_CAP.indexOf(b);
+                return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+            });
+
+        function meta(codigo) {
+            return CAP_META[codigo] || { label: codigo, grupo: 'outros', desc: '' };
+        }
+
+        function render(tabelaId, legendaId, alvos, mapa, tipo) {
+            const el = document.getElementById(tabelaId);
+            const primeiraCol = tipo === 'posicao' ? 'Posição' : 'Cargo';
+            let html = '<thead><tr><th>' + primeiraCol + '</th>'
+                + CAPS.map(c => {
+                    const m = meta(c);
+                    return `<th class="${m.grupo}" title="${m.desc}"><span class="cap-label">${m.label}</span></th>`;
+                }).join('')
+                + '<th></th></tr></thead><tbody>';
+
+            alvos.forEach(a => {
+                const marcadas = mapa[a] || [];
+                html += `<tr data-alvo="${a}" data-tipo="${tipo}"><td>${a}</td>`
+                    + CAPS.map(c => `<td title="${meta(c).desc}"><input type="checkbox" value="${c}" ${marcadas.includes(c) ? 'checked' : ''}></td>`).join('')
+                    + `<td><button class="mini-btn" onclick="salvarLinha(this)">Salvar</button></td></tr>`;
+            });
+            el.innerHTML = html + '</tbody>';
+
+            // Legenda
+            const legenda = document.getElementById(legendaId);
+            legenda.innerHTML = CAPS.map(c => {
+                const m = meta(c);
+                return `<div class="legend-item"><span class="legend-dot ${m.grupo}"></span><span><b>${m.label}</b><small>${m.desc}</small></span></div>`;
+            }).join('');
+        }
+
+        async function salvarLinha(btn) {
+            const tr = btn.closest('tr');
+            const alvo = tr.dataset.alvo;
+            const tipo = tr.dataset.tipo;
+            const capacidades = [...tr.querySelectorAll('input[type=checkbox]:checked')].map(i => i.value);
+            const r = await fetch('/api/admin/capacidades', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ tipo, alvo, capacidades })
+            });
+            const d = await r.json();
+            alert(r.ok ? 'Acessos atualizados.' : (d.error || 'Erro'));
+        }
+
+        render('tabelaPosicoes', 'legendaPosicoes', POS, POS_CAPS, 'posicao');
+        render('tabelaCargos', 'legendaCargos', CARGOS, CARGO_CAPS, 'cargo');
+    </script>
+</body>
+
+</html>

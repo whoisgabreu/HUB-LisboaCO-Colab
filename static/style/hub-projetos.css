@@ -30,41 +30,6 @@ body::-webkit-scrollbar-thumb:hover {
     background: #ff3333;
 }
 
-/* HEADER */
-.header {
-    position: sticky;
-    z-index: 2000;
-    top: 0;
-    background-color: #17171b;
-    padding: 1rem 2rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px solid rgba(255, 0, 0, 0.2);
-    box-shadow: 0 4px 15px rgba(255, 0, 0, 0.1);
-}
-
-.header-left {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-}
-
-.logo {
-    height: 50px;
-    width: 50px;
-}
-
-.header-title h1 {
-    font-size: 1.5rem;
-    color: #ffffff;
-}
-
-.header-subtitle {
-    font-size: 0.75rem;
-    color: #a0a0a0;
-}
-
 .user-info {
     display: flex;
     align-items: center;
@@ -104,29 +69,6 @@ body::-webkit-scrollbar-thumb:hover {
 .logout-btn:hover {
     background-color: #911414;
     box-shadow: 0 0 10px rgba(255, 0, 0, 0.5);
-}
-
-/* MAIN CONTENT */
-.main-container {
-    padding: 2rem;
-    max-width: none;
-    margin: 0 auto;
-    flex: 1;
-    width: 100%;
-}
-
-.welcome-section {
-    margin-bottom: 2rem;
-}
-
-.welcome-section h2 {
-    font-size: 1.8rem;
-    margin-bottom: 0.5rem;
-}
-
-.welcome-section p {
-    color: #a0a0a0;
-    font-size: 0.95rem;
 }
 
 /* TABS */
@@ -685,7 +627,6 @@ body.tema-claro .slides-wrapper .project-card .project-meta {
     padding: 2rem;
     max-height: calc(85vh - 180px);
     overflow-y: auto;
-    box-shadow: inset 0px 5px 10px rgb(0 0 0 / 50%)
 }
 
 .modal-body::-webkit-scrollbar {
@@ -1380,13 +1321,6 @@ option {
 
 /* RESPONSIVE */
 @media (max-width: 768px) {
-    .header {
-        position: sticky;
-        flex-direction: row;
-        gap: 1rem;
-        justify-content: space-between;
-    }
-
     .user-info {
         border: none;
         background: none;
@@ -1981,3 +1915,235 @@ ESTILOS VÍNCULOS V2
     background: #911414;
     transform: scale(1.05);
 }
+/* ═══ Abas do modal do projeto (Dados + Contexto) ═══ */
+#projectModal .project-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+    margin-bottom: 16px;
+}
+
+#projectModal .project-tab {
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--text-muted, #a0a0a0);
+    padding: 8px 14px;
+    font-family: inherit;
+    font-size: 0.85rem;
+    cursor: pointer;
+    margin-bottom: -1px;
+    transition: color 0.15s, border-color 0.15s;
+}
+
+#projectModal .project-tab:hover { color: var(--text-main, #fff); }
+
+#projectModal .project-tab.active {
+    color: #D61616;
+    border-bottom-color: #D61616;
+    font-weight: 600;
+}
+
+#projectModal .project-panel { display: none; }
+#projectModal .project-panel.active { display: block; }
+
+/* ═══ Layout dos campos de Contexto (abas do modal do projeto) ═══ */
+#projectModal .ctx-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    align-items: start;
+}
+
+#projectModal .ctx-grid textarea { min-height: 84px; }
+
+@media (max-width: 700px) {
+    #projectModal .ctx-grid { grid-template-columns: 1fr; }
+}
+
+/* Seções do modal "Dados do Projeto" */
+.proj-section-title {
+    grid-column: 1 / -1;
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 0.4rem;
+    margin: 0.9rem 0 0.4rem;
+}
+
+/* Lista de projetos do modal do cliente */
+.project-item-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+.project-item-head h4 { margin: 0; }
+.project-badge {
+    font-size: 0.68rem;
+    font-weight: 600;
+    padding: 3px 9px;
+    border-radius: 20px;
+    white-space: nowrap;
+}
+.badge-ativo { background: rgba(39, 174, 96, 0.15); color: #27ae60; }
+.badge-onetime { background: rgba(52, 152, 219, 0.15); color: #3498db; }
+.badge-onboarding { background: rgba(241, 196, 15, 0.15); color: #d4ac0d; }
+.badge-inativo { background: rgba(148, 163, 184, 0.18); color: var(--text-muted); }
+.project-total-item {
+    background: var(--bg-main, #222222);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 0.2rem 0.6rem;
+    font-size: 0.8rem;
+    display: inline-block;
+    margin: 0 0.15rem;
+}
+
+/* ═══ Histórico do projeto — linha do tempo (variáveis de tema) ═══ */
+.history-timeline {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    padding-left: 1.4rem;
+}
+.history-timeline::before {
+    content: "";
+    position: absolute;
+    left: 5px;
+    top: 8px;
+    bottom: 8px;
+    width: 2px;
+    background: var(--border-color);
+}
+.history-card {
+    position: relative;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    transition: border-color 0.2s;
+}
+.history-card::before {
+    content: "";
+    position: absolute;
+    left: -1.4rem;
+    top: 1.3rem;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--accent-red, #d61616);
+    border: 2px solid var(--card-bg);
+}
+.history-card:hover { border-color: var(--accent-red, #d61616); }
+.history-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.85rem;
+    padding-bottom: 0.85rem;
+    border-bottom: 1px solid var(--border-color);
+}
+.history-date { display: flex; align-items: center; gap: 0.5rem; color: var(--text-main); font-weight: 600; font-size: 0.85rem; }
+.history-date i { color: var(--accent-red, #d61616); }
+.history-user { display: flex; align-items: center; gap: 0.5rem; color: var(--text-muted); font-size: 0.82rem; }
+.history-changes { display: flex; flex-direction: column; gap: 0.9rem; }
+
+.change-item { display: flex; flex-direction: column; gap: 0.4rem; }
+.change-field { color: var(--text-main); font-weight: 600; font-size: 0.82rem; }
+.change-values {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 0.75rem;
+    align-items: start;
+    background: transparent;
+    padding: 0;
+    border-radius: 0;
+}
+.change-box { background: var(--bg-main); border: 1px solid var(--border-color); border-radius: 10px; padding: 0.6rem 0.75rem; }
+.change-box.before { border-color: rgba(226, 75, 74, 0.35); }
+.change-box.after { border-color: rgba(29, 158, 117, 0.35); }
+.change-badge {
+    display: inline-block;
+    font-size: 0.62rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 2px 8px;
+    border-radius: 20px;
+    margin-bottom: 0.35rem;
+}
+.change-badge.before { background: rgba(226, 75, 74, 0.12); color: #E24B4A; }
+.change-badge.after { background: rgba(29, 158, 117, 0.12); color: #1D9E75; }
+.change-value { font-size: 0.82rem; color: var(--text-main); white-space: pre-wrap; word-break: break-word; max-height: 200px; overflow: auto; }
+.change-arrow { color: var(--text-muted); font-size: 1.1rem; padding-top: 1.5rem; }
+
+.empty-history { text-align: center; padding: 3rem 1.5rem; color: var(--text-muted); }
+.empty-history i { font-size: 3.5rem; margin-bottom: 0.75rem; opacity: 0.5; }
+
+/* Modo claro: histórico + formulários do modal */
+body.tema-claro .history-card { background: #ffffff; border-color: #e2e8f0; }
+body.tema-claro .history-card::before { border-color: #ffffff; }
+body.tema-claro .change-box { background: #f8fafc; border-color: #e2e8f0; }
+body.tema-claro .change-value { color: #1e293b; }
+
+body.tema-claro .form-group label { color: #64748b; }
+body.tema-claro .form-group input,
+body.tema-claro .form-group select,
+body.tema-claro .form-group textarea {
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
+    color: #1e293b;
+}
+body.tema-claro .form-group input:disabled,
+body.tema-claro .form-group select:disabled,
+body.tema-claro .form-group textarea:disabled {
+    background-color: #f1f5f9;
+    opacity: 0.7;
+}
+body.tema-claro .change-field { color: #1e293b; }
+
+/* Modal do cliente — largura maior + itens alinhados */
+.modal-lg { max-width: 880px !important; }
+
+.project-list-item {
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: center;
+    border-bottom: 1px solid var(--border-color);
+}
+.project-item-head { flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+.project-item-info h4 { color: var(--text-main); }
+
+.project-meta-chips {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+    margin-top: 0.45rem;
+}
+.project-meta-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    background: var(--bg-main);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    padding: 0.18rem 0.6rem;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+}
+
+.project-total-fee { border-left: 2px solid var(--accent-red, #d61616); }
+
+body.tema-claro .project-list-item { border-bottom-color: #e2e8f0; }
+body.tema-claro .project-item-info h4 { color: #1e293b; }
+body.tema-claro .project-item-info p { color: #64748b; }
+body.tema-claro .project-meta-chip { background: #f1f5f9; border-color: #e2e8f0; color: #475569; }

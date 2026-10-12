@@ -104,68 +104,17 @@ const modal = {
 
             snapshots.forEach(h => {
                 const item = document.createElement('div');
-                item.className = 'history-item';
-                if (window.APP_CONFIG.podeEditarKanban) {
-                    item.classList.add('clickable');
-                    item.onclick = () => this.showHistoryEditModal(h, config, card);
-                }
-                
-                let fieldsHtml = '';
-                const labels = h.labels || {};
-                const dados = h.dados || {};
-                
-                // Encontrar a configuração da fase para filtrar apenas os campos que pertencem a ela
-                const phaseConfig = config.fases.find(f => f.nome === h.fase_entrada);
-                const allowedFields = phaseConfig ? phaseConfig.campos.map(c => c.id) : [];
-
-                Object.entries(dados).forEach(([key, val]) => {
-                    if (key === '_labels' || key === 'titulo' || key === 'fase') return;
-                    
-                    // SE a fase for conhecida, filtramos para mostrar apenas os campos dela
-                    if (allowedFields.length > 0 && !allowedFields.includes(key)) return;
-
-                    const label = labels[key] || fallbackLabels[key] || key;
-                    
-                    let displayVal = val;
-                    if (Array.isArray(val)) displayVal = val.join(', ');
-                    else if (val === true) displayVal = 'Sim';
-                    else if (val === false) displayVal = 'Não';
-                    else if (!val && val !== 0) displayVal = '-';
-                    else if (typeof val === 'string' && val.includes('T') && val.length > 10) {
-                         try { displayVal = new Date(val).toLocaleString(); } catch(e) {}
-                    }
-
-                    fieldsHtml += `
-                        <div class="history-field" style="margin-bottom: 6px; border-bottom: 1px solid rgba(255,255,255,0.03); padding-bottom: 4px;">
-                            <span style="font-weight: 600; font-size: 0.7rem; color: var(--text-muted); display: block; text-transform: uppercase;">${label}</span>
-                            <span style="font-size: 0.85rem; color: #eee;">${displayVal}</span>
-                        </div>
-                    `;
-                });
-
-                let edicaoHtml = '';
-                if (h.snapshot && h.snapshot.edicoes && h.snapshot.edicoes.length > 0) {
-                    const ultimaEdicao = h.snapshot.edicoes[h.snapshot.edicoes.length - 1];
-                    const dataEdicao = new Date(ultimaEdicao.data).toLocaleDateString();
-                    edicaoHtml = `
-                        <div style="font-size: 0.65rem; color: var(--text-muted); margin-top: 8px; border-top: 1px dotted rgba(255,255,255,0.1); padding-top: 4px; font-style: italic; display: flex; align-items: center; gap: 4px;">
-                            <i class="fas fa-edit"></i> Editado em ${dataEdicao} por ${ultimaEdicao.usuario}
-                        </div>
-                    `;
-                }
+                item.className = 'history-item clickable';
+                item.onclick = () => this.showHistoryEditModal(h, config, card);
 
                 item.innerHTML = `
-                    <div class="history-phase-header" style="background: rgba(255,255,255,0.05); padding: 8px 12px; border-radius: 6px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+                    <div class="history-phase-header" style="background: rgba(255,255,255,0.05); padding: 10px 12px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
                         <span style="font-weight: 700; color: var(--kanban-accent); font-size: 0.75rem; text-transform: uppercase;">${h.fase_entrada}</span>
                         <div style="display: flex; align-items: center; gap: 6px;">
                             <span style="font-size: 0.65rem; color: var(--text-muted);">${new Date(h.timestamp).toLocaleDateString()}</span>
-                            ${window.APP_CONFIG.podeEditarKanban ? '<i class="fas fa-pen" style="font-size: 0.65rem; color: var(--text-muted); opacity: 0.6;"></i>' : ''}
+                            <i class="fas fa-eye" style="font-size: 0.65rem; color: var(--text-muted); opacity: 0.6;" title="Ver dados da fase"></i>
                             ${window.APP_CONFIG.podeEditarKanban ? `<button class="btn-clone-snapshot" data-history-id="${h.id}" title="Clonar card a partir deste snapshot" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:0.7rem;padding:2px 6px;border-radius:4px;transition:all 0.2s;"><i class="fas fa-copy"></i></button>` : ''}
                         </div>
-                    </div>
-                    <div class="history-snapshot-content" style="padding: 0 4px;">
-                        ${fieldsHtml || '<div style="color:var(--text-muted); font-size:0.75rem;">Sem dados registrados nesta fase.</div>'}
-                        ${edicaoHtml}
                     </div>
                 `;
                 historyCol.appendChild(item);
@@ -268,7 +217,7 @@ const modal = {
                     const targetSlug = selectEl.value;
                     if (!targetSlug) return;
                     const boardName = outrosBoards.find(b => b.slug === targetSlug)?.nome || targetSlug;
-                    if (!confirm(`Migrar "${card.titulo}" para o board "${boardName}"?`)) return;
+                    if (!(await HubModal.confirm(`Migrar "${card.titulo}" para o board "${boardName}"?`))) return;
                     try {
                         btnMigrate.disabled = true;
                         btnMigrate.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Migrando...';
@@ -792,7 +741,7 @@ const modal = {
 
         // Render structure
         editModal.innerHTML = `
-            <div class="modal-content" style="max-width: 600px; width: 90%;">
+            <div class="modal-content" style="max-width: 900px; width: 94%;">
                 <div class="modal-header">
                     <h2><i class="fas fa-edit" style="color: var(--kanban-accent); margin-right: 10px;"></i>Editar dados: ${phaseConfig.nome}</h2>
                     <button class="btn-close-modal btn-close-edit-history" title="Fechar"><i class="fas fa-xmark"></i></button>
@@ -854,6 +803,11 @@ const modal = {
         cancelBtn.onclick = closeFn;
         editModal.onclick = (e) => { if (e.target === editModal) closeFn(); };
 
+        if (!window.APP_CONFIG || !window.APP_CONFIG.podeEditarKanban) {
+            editModal.querySelectorAll('input, select, textarea').forEach(el => (el.disabled = true));
+            saveBtn.style.display = 'none';
+        }
+
         saveBtn.onclick = async () => {
             const novosDados = {};
             let valid = true;
@@ -885,7 +839,7 @@ const modal = {
             if (!valid) return toast.error("Preencha todos os campos obrigatórios.");
 
             try {
-                if (!confirm("Tem certeza de que deseja atualizar as informações históricas desta fase?")) {
+                if (!(await HubModal.confirm("Tem certeza de que deseja atualizar as informações históricas desta fase?"))) {
                     return;
                 }
 

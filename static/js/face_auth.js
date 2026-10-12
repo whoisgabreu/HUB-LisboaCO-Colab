@@ -301,8 +301,8 @@ async function startFaceUpdate() {
     if (instruction) instruction.textContent = 'Centralize o rosto e clique em Capturar';
 }
 
-function confirmFaceDelete() {
-    if (!confirm('Tem certeza que deseja remover sua biometria facial? O login facial será desativado.')) return;
+async function confirmFaceDelete() {
+    if (!(await HubModal.confirm('Tem certeza que deseja remover sua biometria facial? O login facial será desativado.', { okLabel: "Remover", danger: true }))) return;
     fetch('/api/face/biometry/delete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }

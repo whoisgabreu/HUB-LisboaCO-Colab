@@ -33,6 +33,112 @@ function generateUUID() {
     });
 }
 
+/* ---- Postar no feed: variáveis como chips arrastáveis ---- */
+const FEED_VARS = ['titulo', 'fase', 'fase_anterior', 'fee', 'moeda', 'cliente', 'squad', 'responsavel', 'documento', 'produto', 'data_inicio', 'usuario'];
+
+function feedEscHtml(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function feedRenderTemplate(tpl) {
+    if (!tpl) return '';
+    return feedEscHtml(tpl).split(/(\{[a-z_]+\})/).map(part => {
+        if (/^\{[a-z_]+\}$/.test(part)) {
+            return `<span class="var-chip" contenteditable="false" data-token="${part}">${part}</span>`;
+        }
+        return part.replace(/\n/g, '<br>');
+    }).join('');
+}
+
+function feedSerializeEditor(el) {
+    let out = '';
+    const BLOCK = /^(DIV|P|LI|H[1-6]|BLOCKQUOTE|PRE|UL|OL|TR|TABLE|SECTION|ARTICLE|FIGURE)$/;
+    const walk = (node) => {
+        node.childNodes.forEach(n => {
+            if (n.nodeType === 3) {
+                out += n.textContent;
+            } else if (n.nodeType === 1) {
+                const tag = n.tagName;
+                if (n.dataset && n.dataset.token) {
+                    out += n.dataset.token;
+                } else if (tag === 'BR') {
+                    out += '\n';
+                } else if (BLOCK.test(tag)) {
+                    if (out.length > 0 && !out.endsWith('\n')) out += '\n';
+                    walk(n);
+                    out += '\n';
+                } else {
+                    walk(n);
+                }
+            }
+        });
+    };
+    walk(el);
+    return out
+        .replace(/\u200B/g, '')
+        .replace(/\u00A0/g, ' ')
+        .replace(/\n{3,}/g, '\n\n')
+        .replace(/\n+$/g, '');
+}
+
+function feedEnsureSentinel(editor) {
+    const last = editor.lastChild;
+    if (last && last.nodeType === 1 && last.dataset && last.dataset.token) {
+        editor.appendChild(document.createTextNode('\u200B'));
+    }
+}
+
+function feedPlaceCaret(container, offset) {
+    const range = document.createRange();
+    range.setStart(container, offset);
+    range.collapse(true);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+    return range;
+}
+
+function feedMakeChip(token) {
+    const span = document.createElement('span');
+    span.className = 'var-chip';
+    span.setAttribute('contenteditable', 'false');
+    span.dataset.token = token;
+    span.textContent = token;
+    return span;
+}
+
+function feedInsertChip(editor, token, x, y) {
+    if (!editor || !token) return;
+    editor.focus();
+    const inEditor = (r) => r && (r.startContainer === editor || editor.contains(r.startContainer));
+    let range = null;
+    if (typeof x === 'number') {
+        if (document.caretRangeFromPoint) range = document.caretRangeFromPoint(x, y);
+        else if (document.caretPositionFromPoint) {
+            const p = document.caretPositionFromPoint(x, y);
+            if (p) { range = document.createRange(); range.setStart(p.offsetNode, p.offset); range.collapse(true); }
+        }
+    }
+    if (!inEditor(range)) {
+        const sel = window.getSelection();
+        if (sel && sel.rangeCount && inEditor(sel.getRangeAt(0))) range = sel.getRangeAt(0);
+    }
+    if (!inEditor(range) && inEditor(editor._lastRange)) range = editor._lastRange;
+    if (!inEditor(range)) {
+        range = document.createRange();
+        range.selectNodeContents(editor);
+        range.collapse(false);
+    }
+    const chip = feedMakeChip(token);
+    const sentinel = document.createTextNode('\u200B');
+    range.deleteContents();
+    range.insertNode(sentinel);
+    range.insertNode(chip);
+    const caret = feedPlaceCaret(sentinel, 1);
+    editor._lastRange = caret.cloneRange();
+    editor.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
 const kanbanConfig = {
     overlay: null,
     body: null,
@@ -158,6 +264,23 @@ const kanbanConfig = {
                             <button class="btn-danger btn-remove-phase" data-findex="${fIndex}" title="Excluir fase" style="padding: 8px 12px; border-radius: 8px; font-size: 0.8rem;">
                                 <i class="fas fa-trash"></i>
                             </button>
+                        </div>
+                    </div>
+
+                    <div class="phase-feed-config" style="margin-top:18px; border-top:1px solid rgba(255,255,255,0.06); padding-top:16px;">
+                        <label class="checkbox-label" style="cursor:pointer; font-weight:600;">
+                            <input type="checkbox" class="phase-feed-auto" data-findex="${fIndex}" ${fase.feed_auto ? 'checked' : ''}>
+                            <i class="fas fa-share" style="color:#d61616; margin-right:4px;"></i> Postar no feed
+                        </label>
+                        <div style="margin-top:12px;">
+                            <label>Mensagem do feed</label>
+                            <div class="phase-feed-palette" data-findex="${fIndex}">
+                                ${FEED_VARS.map(v => `<span class="var-chip palette-chip" draggable="true" data-findex="${fIndex}" data-drag-token="{${v}}">{${v}}</span>`).join('')}
+                            </div>
+                            <div class="phase-feed-editor" contenteditable="true" spellcheck="false" data-findex="${fIndex}" data-placeholder="Ex.: Novo cliente na fase {fase}: {titulo} ({fee} {moeda}) 🚀">${feedRenderTemplate(fase.feed_template || '')}</div>
+                            <div style="font-size:0.65rem; color:var(--text-muted); margin-top:6px; line-height:1.5;">
+                                Arraste (ou clique) as variáveis acima para posicioná-las na mensagem.
+                            </div>
                         </div>
                     </div>
 
@@ -349,6 +472,57 @@ const kanbanConfig = {
             input.onchange = (e) => { this.currentConfig.fases[e.target.dataset.findex].nome = e.target.value; };
         });
 
+        this.body.querySelectorAll('.phase-feed-auto').forEach(chk => {
+            chk.onchange = (e) => { this.currentConfig.fases[e.target.dataset.findex].feed_auto = e.target.checked; };
+        });
+        this.body.querySelectorAll('.phase-feed-editor').forEach(editor => {
+            const fi = editor.dataset.findex;
+            const saveCaret = () => {
+                const sel = window.getSelection();
+                if (sel && sel.rangeCount && (sel.getRangeAt(0).startContainer === editor || editor.contains(sel.getRangeAt(0).startContainer))) {
+                    editor._lastRange = sel.getRangeAt(0).cloneRange();
+                }
+            };
+            editor.addEventListener('keyup', saveCaret);
+            editor.addEventListener('mouseup', saveCaret);
+            editor.addEventListener('focus', saveCaret);
+            editor.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    document.execCommand('insertLineBreak');
+                    editor.dispatchEvent(new Event('input', { bubbles: true }));
+                }
+            });
+            editor.addEventListener('input', () => {
+                saveCaret();
+                if (editor.textContent.replace(/\u200B/g, '').length === 0 && !editor.querySelector('.var-chip')) {
+                    editor.innerHTML = '';
+                } else {
+                    feedEnsureSentinel(editor);
+                }
+                this.currentConfig.fases[fi].feed_template = feedSerializeEditor(editor);
+            });
+            editor.addEventListener('dragover', (e) => { e.preventDefault(); editor.classList.add('drag-over'); });
+            editor.addEventListener('dragleave', () => editor.classList.remove('drag-over'));
+            editor.addEventListener('drop', (e) => {
+                e.preventDefault();
+                editor.classList.remove('drag-over');
+                const token = e.dataTransfer.getData('text/plain');
+                if (token) feedInsertChip(editor, token, e.clientX, e.clientY);
+            });
+        });
+        this.body.querySelectorAll('.palette-chip').forEach(chip => {
+            chip.addEventListener('dragstart', (e) => {
+                e.dataTransfer.setData('text/plain', chip.dataset.dragToken);
+                e.dataTransfer.effectAllowed = 'copy';
+            });
+            chip.addEventListener('mousedown', (e) => e.preventDefault());
+            chip.addEventListener('click', () => {
+                const editor = this.body.querySelector(`.phase-feed-editor[data-findex="${chip.dataset.findex}"]`);
+                if (editor) feedInsertChip(editor, chip.dataset.dragToken, null, null);
+            });
+        });
+
         this.body.querySelectorAll('.status-pill').forEach(pill => {
             pill.onclick = (e) => {
                 const btn = e.currentTarget;
@@ -443,9 +617,9 @@ const kanbanConfig = {
         });
 
         this.body.querySelectorAll('.btn-regenerate-token').forEach(btn => {
-            btn.onclick = (e) => {
+            btn.onclick = async (e) => {
                 const { findex } = e.target.dataset;
-                if (!confirm("Regenerar o link invalidará o link anterior. Continuar?")) return;
+                if (!(await HubModal.confirm("Regenerar o link invalidará o link anterior. Continuar?"))) return;
                 const fase = this.currentConfig.fases[findex];
                 fase.form_token = generateUUID();
                 this.render();

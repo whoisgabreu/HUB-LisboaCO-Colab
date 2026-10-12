@@ -4,14 +4,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ranking de Performance | HUB Lisboa</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
-        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="static/style/styles.css">
     <link rel="stylesheet" href="static/style/tema-claro.css">
     <link rel="stylesheet" href="static/style/ranking.css">
+    <script src="static/js/app.js" defer></script>
     {% include "components/icon_title.html" %}
 </head>
 
@@ -24,132 +25,52 @@
     <div class="app-container">
         <div class="sidebar-overlay"></div>
         <main class="main-container">
-            <header class="ranking-header">
-                <div class="header-main-info">
+            <header class="rk-header">
+                <div>
                     <h1>Ranking de Performance</h1>
-                    <p>Métricas consolidadas dos investidores.</p>
+                    <p class="rk-subtitle">Clientes ativos, MRR sob gestão e dias sem churn por pessoa.</p>
                 </div>
-
-                <div class="ranking-controls">
-                    <div class="sort-wrapper">
-                        <label><i class="fas fa-sort-amount-down"></i> ORDENAR POR</label>
-                        <select id="sortBy">
-                            <option value="daysWithoutChurn">Dias sem Churn</option>
-                            <option value="mrr">Maior MRR</option>
-                        </select>
+                <div class="rk-controls">
+                    <div class="rk-search">
+                        <i class="fa-solid fa-search"></i>
+                        <input type="text" id="rkBusca" placeholder="Buscar por nome...">
                     </div>
-
-                    <div class="filter-pill-box">
-                        <select id="filterRole">
-                            <option value="all">Cargos</option>
-                            <option value="Gestor de Tráfego">Gestores</option>
-                            <option value="Designer">Designers</option>
-                            <option value="Account">Accounts</option>
-                            <option value="SDR">SDRs</option>
-                        </select>
-                        <select id="filterLevel">
-                            <option value="all">Sênior</option>
-                            <option value="Júnior">Júnior</option>
-                            <option value="Pleno">Pleno</option>
-                            <option value="Sênior">Sênior</option>
-                            <option value="Especialista">Expert</option>
-                        </select>
-                        <select id="filterFlag">
-                            <option value="all">Status</option>
-                            <option value="green">Green</option>
-                            <option value="yellow">Yellow</option>
-                            <option value="red">Red</option>
-                        </select>
-                        <div class="search-mini">
-                            <i class="fas fa-search"></i>
-                            <input type="text" id="rankingSearch" name="rankingSearch" placeholder="Buscar..."
-                                autocomplete="new-password">
-                        </div>
-                    </div>
+                    <select id="rkRole">
+                        <option value="">Todos os cargos</option>
+                    </select>
+                    <select id="rkSort">
+                        <option value="clients">Clientes ativos</option>
+                        <option value="mrr">MRR sob gestão</option>
+                        <option value="days">Dias sem churn</option>
+                    </select>
                 </div>
             </header>
 
-            <div id="rankingGrid" class="ranking-grid">
-                <!-- Cards serão renderizados via JS -->
-                <div class="loader-container">
-                    <div class="premium-loader"></div>
-                    <p>Carregando ranking...</p>
-                </div>
+            <div id="rkLoading" class="rk-loading">
+                <i class="fa-solid fa-spinner fa-spin"></i> Carregando ranking...
+            </div>
+
+            <div id="rkTop3" class="rk-top3"></div>
+
+            <div class="rk-table-wrap">
+                <table class="rk-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Pessoa</th>
+                            <th>Clientes ativos</th>
+                            <th>MRR sob gestão</th>
+                            <th>Dias sem churn</th>
+                        </tr>
+                    </thead>
+                    <tbody id="rkBody"></tbody>
+                </table>
             </div>
         </main>
     </div>
 
-    <!-- Modal de Detalhes -->
-    <div id="rankingModal" class="ranking-modal">
-        <div class="ranking-modal-content">
-            <span class="modal-close"><i class="fas fa-times"></i></span>
-
-            <div class="modal-profile">
-                <img src="" alt="Foto" class="modal-profile-img">
-                <div class="modal-profile-overlay">
-                    <div class="modal-meta-line">
-                        <span class="modal-tag"></span>
-                        <span class="modal-tenure-tag"></span>
-                    </div>
-                    <h2 class="modal-name-title"></h2>
-                    <p class="modal-sub-title"></p>
-
-                    <div class="modal-highlights">
-                        <h4 class="highlights-title">DESTAQUES</h4>
-                        <ul class="highlights-list"></ul>
-                    </div>
-                </div>
-            </div>
-
-            <div class="modal-performance">
-                <h3 class="perf-section-title">PERFORMANCE CORE</h3>
-                <div class="perf-grid">
-                    <div class="perf-box">
-                        <i class="fas fa-users"></i>
-                        <div class="perf-col">
-                            <div class="perf-box-val"></div>
-                            <div class="perf-box-label">CLIENTES</div>
-                        </div>
-                    </div>
-                    <div class="perf-box">
-                        <i class="fas fa-calendar-check"></i>
-                        <div class="perf-col">
-                            <div class="perf-box-val"></div>
-                            <div class="perf-box-label">DIAS SEM CHURN</div>
-                        </div>
-                    </div>
-                    <div class="perf-box">
-                        <i class="fas fa-wallet"></i>
-                        <div class="perf-col">
-                            <div class="perf-box-val"></div>
-                            <div class="perf-box-label">MRR ATUAL</div>
-                        </div>
-                    </div>
-                    <div class="perf-box" style="display: none;">
-                        <i class="fas fa-info-circle"></i>
-                        <div class="perf-col">
-                            <div class="perf-box-val"></div>
-                            <div class="perf-box-label">-</div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="price-sim-container">
-                    <h3 class="perf-section-title">RESUMO DE CARTEIRA</h3>
-                    <div class="sim-row total">
-                        <span>MRR TOTAL</span>
-                        <span class="final-price"></span>
-                    </div>
-                    <button class="hire-btn"></button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script src="static/js/app.js"></script>
-    <script src="static/js/placeholders.js"></script>
-    <script src="static/js/ranking.js"></script>
     {% include "components/modal-configuracoes.html" %}
+    <script src="static/js/ranking.js"></script>
     <script src="static/js/tema.js"></script>
 </body>
 

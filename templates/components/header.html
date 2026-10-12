@@ -3,23 +3,23 @@
 {% include "components/up-button.html" %}
 
 <link rel="stylesheet" href="/static/style/notificacoes.css">
+<link rel="stylesheet" href="/static/style/chat.css">
+<link rel="stylesheet" href="/static/style/hub-modal.css">
 <script src="/static/js/notificacoes.js" defer></script>
-
-<!-- Decoy para capturar Autofill indesejado do Chrome -->
-<div style="position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); border: 0;">
-    <input type="text" name="prevent_autofill_email" tabindex="-1">
-    <input type="password" name="prevent_autofill_password" tabindex="-1">
-</div>
+<script src="/static/js/chat.js" defer></script>
+<script src="/static/js/hub-modal.js" defer></script>
 
 <header class="header">
+    <button id="floatingBurgerBtn" class="floating-burger" title="Abrir Menu">
+        <i class="fas fa-bars"></i>
+    </button>
     <div class="header-left">
-        <button class="burger-menu">
+        <button class="burger-menu" aria-label="Abrir menu">
             <i class="fas fa-bars"></i>
         </button>
         <img class="logo" src="/static/images/v4-logo.png" alt="V4">
         <div class="header-title">
             <h1>Hub Lisboa&CO</h1>
-            <!-- <div class="header-subtitle">Lisboa&CO TechOps</div> -->
         </div>
     </div>
 
@@ -39,3 +39,5 @@
         </div>
     </div>
 </header>
+
+{% include "components/chat_widget.html" %}

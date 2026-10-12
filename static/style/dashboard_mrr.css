@@ -1,0 +1,203 @@
+/* ═══════════════════════════════════════════════════════════
+   dashboard_mrr.css — Dashboard histórico de MRR/churn/LTV
+   Usa as variáveis globais de tema.
+   ═══════════════════════════════════════════════════════════ */
+
+.mrr-page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 2rem;
+}
+.mrr-page-header h2 { margin: 0; }
+.mrr-subtitle { color: var(--text-muted); margin: 5px 0 0 0; font-size: 0.85rem; }
+
+.mrr-filter {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+.mrr-filter select {
+    background: var(--bg-hover);
+    border: 1px solid var(--border-color);
+    color: var(--text-main);
+    border-radius: 8px;
+    padding: 0.45rem 0.7rem;
+    font-family: inherit;
+    font-size: 0.8rem;
+    cursor: pointer;
+}
+.mrr-admin-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: var(--accent-red);
+    color: #fff;
+    text-decoration: none;
+    border-radius: 8px;
+    padding: 0.45rem 0.8rem;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+.mrr-admin-link:hover { opacity: 0.9; }
+
+.mrr-grid {
+    display: grid;
+    gap: 1.25rem;
+    margin-bottom: 1.5rem;
+}
+.mrr-grid-kpis { grid-template-columns: repeat(6, 1fr); }
+.mrr-grid-charts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.mrr-grid > .mrr-card { min-width: 0; }
+
+.mrr-card {
+    background: var(--bg-hover);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 1.25rem;
+}
+
+.kpi-label {
+    color: var(--text-muted);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.5rem;
+}
+.kpis-main { display: flex; align-items: baseline; gap: 8px; }
+.kpi-value { font-size: 22px; font-weight: 700; color: var(--text-main); }
+.kpi-variation { font-size: 12px; font-weight: 600; }
+.kpi-subtext { font-size: 11px; color: var(--text-muted); margin-top: 0.5rem; }
+.variation-up { color: #1D9E75; }
+.variation-down { color: #E24B4A; }
+
+.chart-card { height: 320px; position: relative; overflow: hidden; }
+.chart-title { font-size: 14px; font-weight: 600; margin-bottom: 1.2rem; color: var(--text-main); }
+
+.mrr-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    padding: 4rem 1rem;
+    color: var(--text-muted);
+    text-align: center;
+}
+.mrr-empty i { font-size: 2rem; }
+
+.mrr-table-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+}
+.mrr-search {
+    background: var(--bg-main);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 0.55rem 0.9rem;
+    color: var(--text-main);
+    width: 280px;
+    font-size: 0.82rem;
+    font-family: inherit;
+}
+.mrr-table-wrap { overflow-x: auto; }
+.mrr-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+.mrr-table th {
+    text-align: left;
+    padding: 0.9rem 1rem;
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--border-color);
+}
+.mrr-table td {
+    padding: 0.9rem 1rem;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 13px;
+    color: var(--text-main);
+}
+.mrr-table tr:hover { background: rgba(148, 163, 184, 0.06); }
+.mrr-table tr:last-child td { border-bottom: none; }
+.mrr-status { padding: 3px 9px; border-radius: 6px; font-size: 11px; font-weight: 600; }
+.mrr-status.ativo { background: rgba(29, 158, 117, 0.12); color: #1D9E75; }
+.mrr-status.inativo { background: rgba(226, 75, 74, 0.12); color: #E24B4A; }
+.mrr-status.neutro { background: rgba(148, 163, 184, 0.18); color: var(--text-muted); }
+
+body.tema-claro .mrr-card {
+    background: #ffffff;
+    border-color: #e2e8f0;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.08);
+}
+body.tema-claro .mrr-search { background: #f8fafc; }
+
+.mrr-pag {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-top: 1rem;
+}
+.mrr-pag-info { font-size: 0.78rem; color: var(--text-muted); }
+.mrr-pag-size {
+    background: var(--bg-main);
+    border: 1px solid var(--border-color);
+    color: var(--text-main);
+    border-radius: 7px;
+    padding: 0.3rem 0.5rem;
+    font-family: inherit;
+    font-size: 0.78rem;
+    cursor: pointer;
+}
+.mrr-pag-btn {
+    min-width: 30px;
+    padding: 0.35rem 0.6rem;
+    background: var(--bg-main);
+    border: 1px solid var(--border-color);
+    color: var(--text-main);
+    border-radius: 7px;
+    font-family: inherit;
+    font-size: 0.8rem;
+    cursor: pointer;
+}
+.mrr-pag-btn:hover:not(:disabled) { border-color: var(--accent-red); color: var(--accent-red); }
+.mrr-pag-btn.atual { background: var(--accent-red); border-color: var(--accent-red); color: #fff; }
+.mrr-pag-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Extrato por cliente (modal) */
+.mrr-table tr.mrr-linha-cliente { cursor: pointer; }
+.mrr-extrato { display: flex; flex-direction: column; }
+.mrr-extrato-linha {
+    display: grid;
+    grid-template-columns: 72px 1fr 1fr auto;
+    gap: 0.5rem;
+    align-items: center;
+    padding: 0.35rem 0.25rem;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 0.82rem;
+}
+.mrr-extrato-linha:last-child { border-bottom: none; }
+.mrr-extrato-linha.variou { background: rgba(239, 159, 39, 0.08); }
+.mrr-extrato-mes { color: var(--text-muted); }
+.mrr-extrato-var { color: var(--accent-red); font-style: normal; font-weight: 700; }
+.mrr-extrato-status { font-size: 0.72rem; color: var(--text-muted); text-align: right; }
+.mrr-extrato-status.ativo { color: #1D9E75; }
+.fee-var { color: var(--accent-red); font-size: 0.72rem; font-weight: 700; }
+
+@media (max-width: 1200px) {
+    .mrr-grid-kpis { grid-template-columns: repeat(3, 1fr); }
+    .mrr-grid-charts { grid-template-columns: 1fr; }
+}
+@media (max-width: 600px) {
+    .mrr-grid-kpis { grid-template-columns: 1fr 1fr; }
+    .mrr-search { width: 100%; }
+}

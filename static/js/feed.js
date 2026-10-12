@@ -23,6 +23,10 @@
         foto: "",
         privilegiado: false,
         gestao: false,
+        podeFixar: false,
+        mencaoTarget: null,
+        autor: "",
+        singlePostId: null,
         cursor: null,
         temMais: false,
         carregando: false,
@@ -45,6 +49,13 @@
             .replace(/>/g, "&gt;")
             .replace(/"/g, "&quot;")
             .replace(/'/g, "&#039;");
+    }
+
+    function semAcento(str) {
+        return String(str || "")
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .toLowerCase();
     }
 
     function tempoRelativo(iso) {
@@ -109,9 +120,9 @@
     function badgesExtras(post) {
         let out = "";
         if (post.editado) out += `<span class="feed-badge editado" title="${esc(dataCompleta(post.editado_em))}">editado</span>`;
-        if (post.visibilidade && post.visibilidade !== "todos") {
-            const label = post.visibilidade === "squad" ? "Squad" : "Gerência";
-            out += `<span class="feed-badge visib"><i class="fa-solid fa-lock"></i> ${label}</span>`;
+        const nomes = (post.squads_destino || []).map((s) => s.nome).filter(Boolean);
+        if (!post.dest_todos && nomes.length) {
+            out += `<span class="feed-badge visib"><i class="fa-solid fa-lock"></i> ${esc(nomes.join(", "))}</span>`;
         }
         if (post.oculto) out += `<span class="feed-badge oculto"><i class="fa-solid fa-eye-slash"></i> Oculto</span>`;
         return out;
@@ -128,6 +139,7 @@
     function enqueteHtml(post) {
         if (post.tipo !== "enquete" || !post.enquete) return "";
         const { opcoes = [], total = 0, minha_opcao } = post.enquete;
+        const podeVer = post.autor_email === state.email || state.gestao;
         const linhas = opcoes
             .map((o, i) => {
                 const pct = total ? Math.round((o.votos / total) * 100) : 0;
@@ -139,7 +151,33 @@
                 </button>`;
             })
             .join("");
-        return `<div class="feed-enquete">${linhas}<div class="feed-enquete-total">${total} voto(s)</div></div>`;
+        const verBtn = podeVer
+            ? ` · <button type="button" class="feed-enquete-ver" onclick="Feed.verVotantes(${post.id})">Ver votantes</button>`
+            : "";
+        return `<div class="feed-enquete">${linhas}<div class="feed-enquete-total">${total} voto(s)${verBtn}</div></div>`;
+    }
+
+    function verVotantes(postId) {
+        const post = state.posts[postId];
+        if (!post || !post.enquete) return;
+        const opcoes = post.enquete.opcoes || [];
+        const corpo = opcoes.map((o) => {
+            const votantes = o.votantes || [];
+            const nomes = votantes.length
+                ? votantes.slice(0, 50).map((v) =>
+                    `<div class="feed-enquete-votante"><div class="feed-avatar tiny">${avatarHtml(v.profile_picture, v.nome)}</div><span>${esc(v.nome)}</span></div>`).join("")
+                : `<div class="feed-enquete-vazio">Ninguém votou ainda</div>`;
+            const resto = votantes.length > 50
+                ? `<div class="feed-enquete-votante-mais">+${votantes.length - 50} mais</div>` : "";
+            return `<div class="feed-enquete-grupo">
+                <div class="feed-enquete-grupo-head">
+                    <span class="feed-enquete-grupo-titulo">${esc(o.texto)}</span>
+                    <span class="feed-enquete-grupo-qtd">${o.votos} voto(s)</span>
+                </div>
+                <div class="feed-enquete-votantes-modal">${nomes}${resto}</div>
+            </div>`;
+        }).join("");
+        HubModal.alert(corpo, { html: true, title: "Quem votou", okLabel: "Fechar", wide: true });
     }
 
     function originalHtml(post) {
@@ -162,6 +200,7 @@
         const minha = post.minha_reacao;
         const meuBotao = minha && REACOES[minha] ? REACOES[minha] : REACOES.like;
         const gerenciaPost = state.gestao || post.autor_email === state.email;
+        const podeFixarPost = state.podeFixar || post.autor_email === state.email;
 
         let evento = "";
         if (post.tipo === "evento") {
@@ -173,7 +212,10 @@
         }
 
         const itensMenu = [];
-        if (gerenciaPost) itensMenu.push(pinAtivo
+        if (!state.singlePostId) {
+            itensMenu.push(`<button onclick="window.location.href='/feed/post/${post.id}'"><i class="fa-solid fa-up-right-from-square"></i> Abrir publicação</button>`);
+        }
+        if (podeFixarPost) itensMenu.push(pinAtivo
             ? `<button onclick="Feed.desfixar(${post.id})"><i class="fa-solid fa-thumbtack"></i> Desfixar</button>`
             : `<button onclick="Feed.fixar(${post.id})"><i class="fa-solid fa-thumbtack"></i> Fixar</button>`);
         if (post.autor_email === state.email && ["post", "enquete", "repost"].includes(post.tipo)) {
@@ -191,19 +233,34 @@
             itensMenu.push(`<button class="danger" onclick="Feed.deletarPost(${post.id})"><i class="fa-solid fa-trash"></i> Excluir</button>`);
         }
 
+        // Autor do sistema (posts automáticos): não clicável, ícone e selo próprios
+        const sis = !!(post.autor && post.autor.sistema);
+        const avatarCls = `feed-avatar small ${sis ? "sistema" : "clickable"}`;
+        const avatarClick = sis ? "" : ` onclick="Feed.abrirPerfil('${esc(post.autor_email)}')"`;
+        const avatarInner = sis
+            ? (post.autor.profile_picture
+                ? `<img src="/static/images/profile_pictures/${esc(post.autor.profile_picture)}" alt="${esc(post.autor.nome)}">`
+                : `<i class="fa-solid ${esc(post.autor.icone || "fa-robot")}"></i>`)
+            : avatarHtml(post.autor.profile_picture, post.autor.nome);
+        const nomeHtml = sis
+            ? `<span>${esc(post.autor.nome)}</span>`
+            : `<span class="clickable" onclick="Feed.abrirPerfil('${esc(post.autor_email)}')">${esc(post.autor.nome)}</span>`;
+        const seloSistema = sis ? `<span class="feed-badge sistema"><i class="fa-solid fa-robot"></i> Sistema</span>` : "";
+
         return `
         <article class="feed-post ${pinAtivo ? "is-pinned" : ""} ${post.oculto ? "is-oculto" : ""}" data-post-id="${post.id}">
             ${pinAtivo ? `<div class="feed-pin-flag"><i class="fa-solid fa-thumbtack"></i> Fixado</div>` : ""}
             <header class="feed-post-head">
-                <div class="feed-avatar small clickable" onclick="Feed.abrirPerfil('${esc(post.autor_email)}')">${avatarHtml(post.autor.profile_picture, post.autor.nome)}</div>
+                <div class="${avatarCls}"${avatarClick}>${avatarInner}</div>
                 <div class="feed-post-head-info">
                     <div class="feed-post-autor">
-                        <span class="clickable" onclick="Feed.abrirPerfil('${esc(post.autor_email)}')">${esc(post.autor.nome)}</span>
-                        ${badgeTipo(post)} ${badgesExtras(post)}
+                        ${nomeHtml}
+                        ${seloSistema}${badgeTipo(post)} ${badgesExtras(post)}
                     </div>
-                    <div class="feed-post-meta" title="${esc(dataCompleta(post.criado_em))}">${esc(post.autor.funcao || "")} · ${esc(tempoRelativo(post.criado_em))}</div>
+                    <div class="feed-post-meta" title="${esc(dataCompleta(post.criado_em))}">${esc(post.autor.funcao || "")} · <a class="feed-post-permalink" href="/feed/post/${post.id}">${esc(tempoRelativo(post.criado_em))}</a></div>
                 </div>
                 <div class="feed-post-menu-wrap">
+                    <button class="feed-ico-btn feed-save-btn ${post.salvo ? "ativa" : ""}" onclick="Feed.salvar(${post.id})" title="${post.salvo ? "Remover dos salvos" : "Salvar"}"><i class="fa-${post.salvo ? "solid" : "regular"} fa-bookmark"></i></button>
                     <button class="feed-ico-btn" onclick="Feed.toggleMenu(${post.id}, event)"><i class="fa-solid fa-ellipsis"></i></button>
                     <div class="feed-post-menu" data-menu="${post.id}">${itensMenu.join("")}</div>
                 </div>
@@ -219,16 +276,16 @@
             <div class="feed-post-actions">
                 <div class="feed-reaction-wrap">
                     <button class="feed-action-btn ${minha ? "ativa" : ""}" onclick="Feed.abrirPicker(${post.id}, event)">
-                        <span class="feed-action-emoji">${meuBotao.emoji}</span> ${meuBotao.label}
+                        ${minha && meuBotao.emoji ? `<span class="feed-action-emoji">${meuBotao.emoji}</span> ${meuBotao.label}` : meuBotao.label}
                     </button>
                     <div class="feed-picker" data-picker="${post.id}"></div>
                 </div>
                 <button class="feed-action-btn" onclick="Feed.toggleComentarios(${post.id})"><i class="fa-regular fa-comment"></i> Comentar</button>
-                <button class="feed-action-btn ${post.salvo ? "ativa" : ""}" onclick="Feed.salvar(${post.id})" title="Salvar"><i class="fa-${post.salvo ? "solid" : "regular"} fa-bookmark"></i></button>
                 <button class="feed-action-btn" onclick="Feed.repostar(${post.id})" title="Repostar"><i class="fa-solid fa-retweet"></i></button>
             </div>
             <div class="feed-comentarios" data-comentarios="${post.id}" style="display:none;">
                 <div class="feed-comentarios-lista"></div>
+                <div class="feed-mencao-box"></div>
                 <div class="feed-comentario-form">
                     <textarea rows="1" placeholder="Escreva um comentário..." data-input="${post.id}"></textarea>
                     <button class="feed-btn primary small" onclick="Feed.comentar(${post.id})">Enviar</button>
@@ -267,6 +324,7 @@
         if (state.q) listaParam.set("q", state.q);
         if (state.tipo) listaParam.set("tipo", state.tipo);
         if (state.salvos) listaParam.set("salvos", "1");
+        if (state.autor) listaParam.set("autor", state.autor);
 
         try {
             const data = await api(`/api/feed/posts?${listaParam.toString()}`);
@@ -301,6 +359,37 @@
         if (el) el.classList.remove("visivel");
     }
 
+    // Modo página única (permalink) de uma publicação
+    async function carregarPostUnico(id) {
+        const lista = document.getElementById("feedList");
+        try {
+            const data = await api(`/api/feed/posts/${id}`);
+            if (!data.post) throw new Error("Publicação não encontrada.");
+            renderizarPosts([data.post], false);
+
+            // Abre os comentários
+            const box = document.querySelector(`[data-comentarios="${id}"]`);
+            if (box) {
+                box.style.display = "block";
+                await carregarComentarios(id);
+            }
+
+            // Rola até o comentário alvo (?comentario=<id>)
+            const cid = new URLSearchParams(window.location.search).get("comentario");
+            if (cid) {
+                setTimeout(() => {
+                    const el = document.querySelector(`[data-comentario-id="${cid}"]`);
+                    if (el) {
+                        el.scrollIntoView({ behavior: "smooth", block: "center" });
+                        el.classList.add("comentario-destaque");
+                    }
+                }, 250);
+            }
+        } catch (e) {
+            if (lista) lista.innerHTML = `<div class="feed-erro">${esc(e.message)}</div>`;
+        }
+    }
+
     // ── Composer ─────────────────────────────────────────────────────────────
     function atualizarContador() {
         const t = document.getElementById("feedTexto");
@@ -308,14 +397,50 @@
         if (t && el) el.textContent = `${t.value.length}/3000`;
     }
 
+    // ── Canais de envio (destinos) ───────────────────────────────────────────
+    function toggleCanais(ev) {
+        if (ev) ev.stopPropagation();
+        const p = document.getElementById("feedCanaisPanel");
+        if (p) p.classList.toggle("aberto");
+    }
+
+    function atualizarCanais() {
+        const todos = document.getElementById("feedDestTodos");
+        const squads = [...document.querySelectorAll(".feed-canal-squad")];
+        const todosMarcado = !!(todos && todos.checked);
+        if (todosMarcado) squads.forEach((c) => { c.checked = false; });
+        squads.forEach((c) => { c.disabled = todosMarcado; });
+
+        const label = document.getElementById("feedCanaisLabel");
+        if (!label) return;
+        const ativas = squads.filter((c) => c.checked);
+        if (todosMarcado || ativas.length === 0) {
+            label.textContent = "Todos";
+        } else if (ativas.length <= 2) {
+            label.textContent = ativas
+                .map((c) => (c.parentElement.querySelector("span") || {}).textContent || "")
+                .join(", ");
+        } else {
+            label.textContent = `${ativas.length} squads`;
+        }
+    }
+
+    function coletarCanais() {
+        const todos = document.getElementById("feedDestTodos");
+        const destTodos = todos ? todos.checked : true;
+        const squads = [...document.querySelectorAll(".feed-canal-squad:checked")].map((c) => parseInt(c.value, 10));
+        if (destTodos || squads.length === 0) return { dest_todos: true, squads: [] };
+        return { dest_todos: false, squads };
+    }
+
     async function publicar() {
         const input = document.getElementById("feedTexto");
         const conteudo = (input.value || "").trim();
         if (!conteudo) return;
         if (state.enqueteAberta) return publicarEnquete(conteudo);
-        const visivel = document.getElementById("feedVisibilidade").value;
+        const canais = coletarCanais();
         try {
-            await api("/api/feed/posts", { method: "POST", body: JSON.stringify({ conteudo, visibilidade: visivel }) });
+            await api("/api/feed/posts", { method: "POST", body: JSON.stringify({ conteudo, ...canais }) });
             input.value = "";
             atualizarContador();
             fecharEnquete();
@@ -363,9 +488,9 @@
             alert("A enquete precisa de pelo menos 2 opções.");
             return;
         }
-        const visivel = document.getElementById("feedVisibilidade").value;
+        const canais = coletarCanais();
         try {
-            await api("/api/feed/enquetes", { method: "POST", body: JSON.stringify({ pergunta, opcoes, visibilidade: visivel }) });
+            await api("/api/feed/enquetes", { method: "POST", body: JSON.stringify({ pergunta, opcoes, ...canais }) });
             document.getElementById("feedTexto").value = "";
             atualizarContador();
             fecharEnquete();
@@ -389,7 +514,7 @@
             evento_data: document.getElementById("eventoData").value || null,
             evento_local: document.getElementById("eventoLocal").value,
             dias_fixado: parseInt(document.getElementById("eventoDias").value || "1", 10),
-            visibilidade: document.getElementById("feedVisibilidade").value,
+            ...coletarCanais(),
         };
         try {
             await api("/api/feed/eventos", { method: "POST", body: JSON.stringify(body) });
@@ -408,7 +533,15 @@
         if (ev) ev.stopPropagation();
         const p = document.getElementById("feedEmojiPicker");
         if (!p) return;
-        if (!p.innerHTML) p.innerHTML = EMOJIS.map((e) => `<button type="button">${e}</button>`).join("");
+        if (!p.dataset.pronto) {
+            p.innerHTML = EMOJIS.map((e) => `<button type="button" data-emoji="${e}">${e}</button>`).join("");
+            // Delegação: clicar num emoji insere no textarea e mantém o picker aberto
+            p.addEventListener("click", (evt) => {
+                const btn = evt.target.closest("[data-emoji]");
+                if (btn) inserirNoTextarea(btn.dataset.emoji);
+            });
+            p.dataset.pronto = "1";
+        }
         p.classList.toggle("aberto");
     }
 
@@ -422,11 +555,18 @@
         atualizarContador();
     }
 
-    function aoDigitar(e) {
-        atualizarContador();
-        const box = document.getElementById("feedMencaoBox");
-        const val = e.target.value;
-        const pos = e.target.selectionStart;
+    function boxMencaoDoCampo(inputEl) {
+        if (!inputEl) return null;
+        if (inputEl.id === "feedTexto") return document.getElementById("feedMencaoBox");
+        const cont = inputEl.closest("[data-comentarios]");
+        return cont ? cont.querySelector(".feed-mencao-box") : null;
+    }
+
+    function mostrarMencoes(inputEl) {
+        const box = boxMencaoDoCampo(inputEl);
+        if (!box) return;
+        const val = inputEl.value || "";
+        const pos = inputEl.selectionStart != null ? inputEl.selectionStart : val.length;
         const antes = val.slice(0, pos);
         const m = antes.match(/@([A-Za-z0-9._%+\-]*)$/);
         if (!m) {
@@ -434,18 +574,19 @@
             box.innerHTML = "";
             return;
         }
-        const termo = m[1].toLowerCase();
+        const termo = semAcento(m[1]);
         const sugestoes = state.usuarios
-            .filter((u) => (u.nome || "").toLowerCase().includes(termo) || (u.email || "").toLowerCase().includes(termo))
+            .filter((u) => semAcento(u.nome).includes(termo) || semAcento(u.email).includes(termo))
             .slice(0, 6);
         if (!sugestoes.length) {
             box.classList.remove("aberto");
             box.innerHTML = "";
             return;
         }
+        state.mencaoTarget = inputEl;
         box.innerHTML = sugestoes
             .map(
-                (u) => `<button type="button" class="feed-mencao-item" onclick="Feed.inserirMencao('${esc(u.email)}', '${esc(u.nome)}')">
+                (u) => `<button type="button" class="feed-mencao-item" onclick="Feed.inserirMencao('${esc(u.email)}')">
                     <span class="feed-avatar tiny">${avatarHtml(u.profile_picture, u.nome)}</span>
                     <span>${esc(u.nome)}</span><small>${esc(u.email)}</small>
                 </button>`
@@ -454,15 +595,26 @@
         box.classList.add("aberto");
     }
 
-    function inserirMencao(email, prefixo) {
-        const t = document.getElementById("feedTexto");
-        const pos = t.selectionStart;
-        const antes = t.value.slice(0, pos).replace(/@([A-Za-z0-9._%+\-]*)$/, "");
-        t.value = `${antes}@${email} ` + t.value.slice(pos);
-        t.selectionStart = t.selectionEnd = antes.length + email.length + 2;
-        document.getElementById("feedMencaoBox").classList.remove("aberto");
-        t.focus();
+    function aoDigitar(e) {
         atualizarContador();
+        mostrarMencoes(e.target);
+    }
+
+    function fecharMencoes() {
+        document.querySelectorAll(".feed-mencao-box.aberto").forEach((el) => el.classList.remove("aberto"));
+    }
+
+    function inserirMencao(email) {
+        const t = state.mencaoTarget || document.getElementById("feedTexto");
+        if (!t) return;
+        const pos = t.selectionStart != null ? t.selectionStart : (t.value || "").length;
+        const antes = (t.value || "").slice(0, pos).replace(/@([A-Za-z0-9._%+\-]*)$/, "");
+        t.value = `${antes}@${email} ` + (t.value || "").slice(pos);
+        t.selectionStart = t.selectionEnd = antes.length + email.length + 2;
+        const box = boxMencaoDoCampo(t);
+        if (box) box.classList.remove("aberto");
+        t.focus();
+        if (t.id === "feedTexto") atualizarContador();
     }
 
     // ── Reações / salvos / repost ────────────────────────────────────────────
@@ -509,9 +661,10 @@
             const data = await api(`/api/feed/posts/${postId}/salvar`, { method: "POST" });
             if (state.posts[postId]) state.posts[postId].salvo = data.salvo;
             const card = document.querySelector(`.feed-post[data-post-id="${postId}"]`);
-            const btn = card && card.querySelectorAll(".feed-action-btn")[2];
+            const btn = card && card.querySelector(".feed-save-btn");
             if (btn) {
                 btn.classList.toggle("ativa", data.salvo);
+                btn.title = data.salvo ? "Remover dos salvos" : "Salvar";
                 btn.innerHTML = `<i class="fa-${data.salvo ? "solid" : "regular"} fa-bookmark"></i>`;
             }
             if (state.salvos && !data.salvo) carregar(false);
@@ -521,9 +674,9 @@
     }
 
     async function repostar(postId) {
-        const comentario = prompt("Comentário no repost (opcional):") || "";
+        const comentario = (await HubModal.prompt("Comentário no repost (opcional):")) || "";
         try {
-            await api(`/api/feed/posts/${postId}/repostar`, { method: "POST", body: JSON.stringify({ comentario }) });
+            await api(`/api/feed/posts/${postId}/repostar`, { method: "POST", body: JSON.stringify({ comentario, ...coletarCanais() }) });
             await carregar(false);
         } catch (e) {
             alert(e.message);
@@ -556,7 +709,7 @@
     async function editar(postId) {
         const post = state.posts[postId];
         if (!post) return;
-        const novo = prompt("Editar publicação:", post.conteudo || "");
+        const novo = await HubModal.prompt("Editar publicação:", { defaultValue: post.conteudo || "" });
         if (novo === null) return;
         try {
             const data = await api(`/api/feed/posts/${postId}/editar`, { method: "POST", body: JSON.stringify({ conteudo: novo }) });
@@ -571,7 +724,7 @@
     }
 
     async function fixar(postId) {
-        const dias = parseInt(prompt("Fixar por quantos dias?", "7") || "0", 10);
+        const dias = parseInt((await HubModal.prompt("Fixar por quantos dias?", { defaultValue: "7" })) || "0", 10);
         if (!dias || dias < 1) return;
         try {
             await api(`/api/feed/posts/${postId}/fixar`, { method: "POST", body: JSON.stringify({ dias }) });
@@ -600,7 +753,7 @@
     }
 
     async function denunciar(postId) {
-        const motivo = prompt("Motivo da denúncia (opcional):") || "";
+        const motivo = (await HubModal.prompt("Motivo da denúncia (opcional):")) || "";
         try {
             await api(`/api/feed/posts/${postId}/denunciar`, { method: "POST", body: JSON.stringify({ motivo }) });
             alert("Denúncia registrada. Obrigado!");
@@ -610,7 +763,7 @@
     }
 
     async function deletarPost(postId) {
-        if (!confirm("Remover esta publicação?")) return;
+        if (!(await HubModal.confirm("Remover esta publicação?", { okLabel: "Remover", danger: true }))) return;
         try {
             await api(`/api/feed/posts/${postId}`, { method: "DELETE" });
             await carregar(false);
@@ -636,7 +789,7 @@
         const respostas = (c.respostas || []).map((r) => comentarioHtml(r, depth + 1)).join("");
         const reac = c.reacoes && c.reacoes.like ? c.reacoes.like : 0;
         return `
-        <div class="feed-comentario" style="margin-left:${depth * 28}px">
+        <div class="feed-comentario" data-comentario-id="${c.id}" style="margin-left:${depth * 28}px">
             <div class="feed-avatar tiny clickable" onclick="Feed.abrirPerfil('${esc(c.autor_email)}')">${avatarHtml(c.autor.profile_picture, c.autor.nome)}</div>
             <div class="feed-comentario-corpo">
                 <div class="feed-comentario-bolha">
@@ -710,7 +863,7 @@
     }
 
     async function deletarComentario(postId, comentarioId) {
-        if (!confirm("Remover este comentário?")) return;
+        if (!(await HubModal.confirm("Remover este comentário?", { okLabel: "Remover", danger: true }))) return;
         try {
             await api(`/api/feed/comentarios/${comentarioId}`, { method: "DELETE" });
             await carregarComentarios(postId);
@@ -721,6 +874,7 @@
 
     // ── Perfil rápido ────────────────────────────────────────────────────────
     async function abrirPerfil(email) {
+        if (!email || email === "sistema") return; // perfil do sistema não abre
         const modal = document.getElementById("feedPerfilModal");
         const body = document.getElementById("feedPerfilBody");
         if (!modal || !email) return;
@@ -755,6 +909,20 @@
         state.salvos = !state.salvos;
         document.getElementById("feedSalvosBtn").classList.toggle("ativo", state.salvos);
         carregar(false);
+    }
+
+    // Modo perfil: abas "Minhas postagens" / "Salvos"
+    async function modoPerfil(tab) {
+        const salvos = tab === "salvos";
+        state.salvos = salvos;
+        state.autor = salvos ? "" : state.email;
+        const pa = document.getElementById("perfilAbaPosts");
+        const sa = document.getElementById("perfilAbaSalvos");
+        if (pa) pa.classList.toggle("ativa", !salvos);
+        if (sa) sa.classList.toggle("ativa", salvos);
+        const btn = document.getElementById("feedSalvosBtn");
+        if (btn) btn.classList.toggle("ativo", salvos);
+        await carregar(false);
     }
 
     let buscaTimer = null;
@@ -794,13 +962,13 @@
     }
 
     function renderAniversariantes(itens) {
-        if (!itens.length) return setWidget("widgetAniversariantes", `<div class="feed-widget-empty">Sem aniversários hoje.</div>`);
+        if (!itens.length) return setWidget("widgetAniversariantes", `<div class="feed-widget-empty">Sem aniversários nos próximos dias.</div>`);
         setWidget("widgetAniversariantes", itens.map((i) => `
             <div class="feed-widget-item">
                 <div class="feed-avatar">${avatarHtml(i.profile_picture, i.nome)}</div>
                 <div class="feed-widget-item-info">
-                    <div class="feed-widget-item-nome">${esc(i.nome)}</div>
-                    <div class="feed-widget-item-meta">${esc(i.funcao || "")} · ${i.idade} anos 🎂</div>
+                    <div class="feed-widget-item-nome">${esc(i.nome)}${i.eh_hoje ? ' <span class="feed-aniv-hoje">🎉 hoje</span>' : ""}</div>
+                    <div class="feed-widget-item-meta">${esc(i.funcao || "")} · ${esc(i.data_ddmm)} · ${i.idade} anos 🎂</div>
                 </div>
             </div>`).join(""));
     }
@@ -842,7 +1010,7 @@
         if (!document.getElementById("widgetAniversariantes")) return;
         try {
             const data = await api("/api/feed/widgets");
-            renderAniversariantes(data.aniversariantes || []);
+            renderAniversariantes(data.aniversariantes_mes || []);
             renderEventosWidget(data.proximos_eventos || []);
             renderEmAlta(data.em_alta || []);
             renderRanking(data.ranking || []);
@@ -861,7 +1029,19 @@
     }
 
     // ── Eventos globais ──────────────────────────────────────────────────────
-    document.addEventListener("click", () => {
+    document.addEventListener("click", (event) => {
+        // Emoji picker: fecha só em clique fora (clicar num emoji mantém aberto)
+        if (!event.target.closest("#feedEmojiPicker")) {
+            document.querySelectorAll(".feed-emoji-picker.aberto").forEach((el) => el.classList.remove("aberto"));
+        }
+        // Canais: fecha em clique fora
+        if (!event.target.closest("#feedCanais")) {
+            document.querySelectorAll(".feed-canais-panel.aberto").forEach((el) => el.classList.remove("aberto"));
+        }
+        // Menções: fecha em clique fora
+        if (!event.target.closest(".feed-mencao-box")) {
+            document.querySelectorAll(".feed-mencao-box.aberto").forEach((el) => el.classList.remove("aberto"));
+        }
         document.querySelectorAll(".feed-picker.aberto").forEach((el) => el.classList.remove("aberto"));
         document.querySelectorAll(".feed-post-menu.aberto").forEach((el) => el.classList.remove("aberto"));
     });
@@ -870,11 +1050,12 @@
         publicar, publicarEvento, toggleEvento,
         toggleEnquete, addOpcaoEnquete,
         toggleEmoji, inserirMencao,
+        toggleCanais, atualizarCanais,
         carregarMais, carregarNovos,
-        reagir, abrirPicker, salvar, repostar, votar,
+        reagir, abrirPicker, salvar, repostar, votar, verVotantes,
         toggleComentarios, comentar, responder, reagirComentario, deletarComentario,
         toggleMenu, editar, fixar, desfixar, ocultar, denunciar, deletarPost,
-        abrirPerfil, fecharPerfil, toggleSalvos, carregarWidgets,
+        abrirPerfil, fecharPerfil, toggleSalvos, carregarWidgets, modoPerfil,
     };
 
     document.addEventListener("DOMContentLoaded", () => {
@@ -886,11 +1067,21 @@
         state.foto = root.dataset.userFoto || "";
         state.privilegiado = root.dataset.privilegiado === "true";
         state.gestao = root.dataset.gestao === "true";
+        state.podeFixar = root.dataset.podeFixar === "true";
+        state.autor = root.dataset.autor || "";
+        state.singlePostId = root.dataset.postId || null;
 
         const texto = document.getElementById("feedTexto");
         if (texto) {
             texto.addEventListener("input", aoDigitar);
             texto.addEventListener("input", atualizarContador);
+        }
+        const listaEl = document.getElementById("feedList");
+        if (listaEl) {
+            // Menções nos comentários (textareas geradas dinamicamente)
+            listaEl.addEventListener("input", (e) => {
+                if (e.target && e.target.matches("[data-input]")) mostrarMencoes(e.target);
+            });
         }
         const busca = document.getElementById("feedBusca");
         if (busca) busca.addEventListener("input", aoBuscar);
@@ -900,13 +1091,18 @@
             if (e.key === "Escape") {
                 fecharPerfil();
                 fecharEnquete();
+                fecharMencoes();
             }
         });
 
         atualizarContador();
         carregarUsuarios();
-        carregar(false);
-        carregarWidgets();
-        iniciarPolling();
+        if (state.singlePostId) {
+            carregarPostUnico(state.singlePostId);
+        } else {
+            carregar(false);
+            carregarWidgets();
+            iniciarPolling();
+        }
     });
 })();

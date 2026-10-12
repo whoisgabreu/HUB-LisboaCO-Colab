@@ -14,6 +14,7 @@ from models import (
     OperacaoCheckin, OperacaoPlanoMidia, OperacaoOtimizacao,
     OperacaoTarefa, MetricaMensal, Projeto
 )
+import permissions
 
 class DeliveryService:
     # Definição de Enums (como sugerido para validação no código)
@@ -44,13 +45,13 @@ class DeliveryService:
             if not investidor:
                 return {"status": "error", "message": "Usuário não encontrado."}
 
-            role = investidor.funcao
+            role = permissions.cargo_do_investidor(db, investidor.id)
+            if role in ("Account Manager", "Gestor de Projeto"):
+                role = "Account"
+            elif role == "Desenvolvedor":
+                role = "Gestor de Tráfego"
             if not role or role not in DeliveryService.ROLES:
-                # Mapeamento de fallback para desenvolvedores/gerência testarem
-                if role == "Desenvolvedor":
-                    role = "Gestor de Tráfego"
-                else:
-                    return {"status": "skipped", "message": f"Cargo {role} não possui entregas automáticas."}
+                return {"status": "skipped", "message": f"Cargo {role} não possui entregas automáticas."}
 
             # 2. Verificar se a entrega pertence ao cargo (Isolamento)
             account_types = ['checkin', 'relatorio_account', 'planner_monday', 'forecasting']

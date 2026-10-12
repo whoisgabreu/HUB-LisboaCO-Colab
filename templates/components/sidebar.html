@@ -1,14 +1,9 @@
 <nav class="sidebar">
 
     <div class="sidebar-nav">
-        <a href="/" class="nav-item">
-            <i class="fas fa-home"></i>
-            <span>Home</span>
-        </a>
-
         <a href="/feed" class="nav-item">
             <i class="fas fa-newspaper"></i>
-            <span>Feed Lisboa</span>
+            <span>Feed</span>
         </a>
 
         <!-- Grupo Dashboard -->
@@ -18,6 +13,10 @@
                 <i class="fas fa-chevron-right toggle-icon"></i>
             </div>
             <div class="nav-group-items">
+                <a href="/hub-metricas" class="nav-item">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Métricas &amp; Evolução</span>
+                </a>
                 <a href="/painel-ranking" class="nav-item">
                     <i class="fas fa-trophy"></i>
                     <span>Painel de Ranking</span>
@@ -34,9 +33,13 @@
         </div>
 
         <!-- Grupo Operação -->
-        {% set can_see_operacao = session.posicao in ["Gerência", "Sócio"] or session.funcao in ["Account", "Gestor de Tráfego"] %}
-        {% set can_see_criativa = session.posicao in ["Gerência", "Sócio", "Coordenador"] or session.funcao in ["Designer", "Webdesigner", "Account", "Gestor de Tráfego"] %}
+        {% set caps = session.get('capacidades', []) or [] %}
+        {% set is_gestao_ampla = ('gestao_ampla' in caps) or (session.nivel_acesso == 'Admin') %}
+        {% set is_gestao_squad = ('gestao_squad' in caps) %}
+        {% set can_see_operacao = is_gestao_ampla or is_gestao_squad or ('operacao_account' in caps) or ('operacao_gt' in caps) %}
+        {% set can_see_criativa = is_gestao_ampla or is_gestao_squad or ('criativa' in caps) or ('operacao_account' in caps) or ('operacao_gt' in caps) %}
         
+        {# Grupo Entregas oculto (sem uso); reativar removendo o comentário:
         {% if can_see_operacao or can_see_criativa %}
         <div class="nav-group">
             <div class="nav-group-header">
@@ -60,9 +63,10 @@
             </div>
         </div>
         {% endif %}
+#}
 
         <!-- Grupo Gestão & CS -->
-        {% if session.posicao in ["Gerência", "Sócio", "Coordenador"] %}
+        {% if is_gestao_ampla or is_gestao_squad %}
         <div class="nav-group">
             <div class="nav-group-header">
                 <span>Gestão & CS</span>
@@ -95,17 +99,35 @@
             </div>
         </div>
 
-        <!-- Grupo Administração -->
-        {% if session.nivel_acesso == "Admin" %}
+        <!-- Grupo Administração / Gestão -->
+        {% if is_gestao_ampla %}
         <div class="nav-group">
             <div class="nav-group-header">
                 <span>Administração</span>
                 <i class="fas fa-chevron-right toggle-icon"></i>
             </div>
             <div class="nav-group-items">
+                {% if session.nivel_acesso == "Admin" %}
                 <a href="/gerenciar-usuarios" class="nav-item">
                     <i class="fas fa-users-cog"></i>
                     <span>Gerenciar Usuários</span>
+                </a>
+                <a href="/squads" class="nav-item">
+                    <i class="fas fa-sitemap"></i>
+                    <span>Squads</span>
+                </a>
+                <a href="/capacidades" class="nav-item">
+                    <i class="fas fa-diagram-project"></i>
+                    <span>Matriz de Capacidades</span>
+                </a>
+                <a href="/feed-config" class="nav-item">
+                    <i class="fas fa-sliders"></i>
+                    <span>Configurações do Feed</span>
+                </a>
+                {% endif %}
+                <a href="/admin/mrr-historico" class="nav-item">
+                    <i class="fas fa-clock-rotate-left"></i>
+                    <span>Histórico de MRR</span>
                 </a>
             </div>
         </div>
@@ -127,7 +149,7 @@
             <i class="fas fa-ellipsis-v"></i>
         </button>
         <div class="user-dropdown">
-            <a href="#" class="dropdown-item" onclick="abrirModalConfiguracoes(event, 'perfil')"><i class="fas fa-user-circle"></i> Perfil</a>
+            <a href="/perfil" class="dropdown-item"><i class="fas fa-user-circle"></i> Perfil</a>
             <a href="#" class="dropdown-item" onclick="abrirModalConfiguracoes(event, 'aparencia')"><i class="fas fa-palette"></i> Aparência</a>
             <a href="#" class="dropdown-item" onclick="abrirModalConfiguracoes(event, 'perfil')"><i class="fas fa-cog"></i> Configurações</a>
             <div class="dropdown-divider"></div>
@@ -136,7 +158,3 @@
     </div>
 
 </nav>
-
-<button id="floatingBurgerBtn" class="floating-burger" title="Abrir Menu">
-    <i class="fas fa-bars"></i>
-</button>

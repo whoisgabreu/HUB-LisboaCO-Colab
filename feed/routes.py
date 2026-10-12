@@ -5,7 +5,8 @@ from datetime import datetime
 from flask import jsonify, request, session
 
 from database import Session
-from feed.service import FeedService, is_gestao_feed, is_privilegiado
+from feed.service import FeedService
+import permissions
 
 from . import bp
 
@@ -22,11 +23,18 @@ def _erro(e: Exception):
 
 
 def _privilegiado() -> bool:
-    return is_privilegiado(session.get("posicao", ""), session.get("nivel_acesso", ""))
+    """Quem pode criar eventos: gestão ou flag de feed do usuário."""
+    return permissions.pode_criar_eventos()
 
 
 def _gestao() -> bool:
-    return is_gestao_feed(session.get("posicao", ""), session.get("nivel_acesso", ""))
+    """Quem pode excluir/ocultar: gestão ampla ou admin."""
+    return permissions.is_gestao_ampla()
+
+
+def _pode_fixar() -> bool:
+    """Quem pode fixar/desfixar: gestão ampla, admin ou flag de feed."""
+    return permissions.is_gestao_ampla() or permissions.pode_fixar_feed()
 
 
 def _email() -> str:
@@ -38,6 +46,7 @@ def _viewer() -> dict:
         "posicao": session.get("posicao", ""),
         "nivel_acesso": session.get("nivel_acesso", ""),
         "squad": session.get("squad", ""),
+        "squad_ids": session.get("squad_ids", []) or [],
     }
 
 
@@ -67,9 +76,8 @@ def listar_posts():
                     tipo=request.args.get("tipo"),
                     autor=request.args.get("autor"),
                     salvos=request.args.get("salvos", "").lower() in ("1", "true", "sim"),
-                    posicao=v["posicao"],
-                    nivel_acesso=v["nivel_acesso"],
-                    squad=v["squad"],
+                    gestao=_gestao(),
+                    squad_ids=v["squad_ids"],
                 )
             )
         except Exception as e:  # noqa: BLE001
@@ -85,11 +93,23 @@ def novos_posts():
                 FeedService(db).novos_posts(
                     request.args.get("desde", ""),
                     _email(),
-                    posicao=v["posicao"],
-                    nivel_acesso=v["nivel_acesso"],
-                    squad=v["squad"],
+                    gestao=_gestao(),
+                    squad_ids=v["squad_ids"],
                 )
             )
+        except Exception as e:  # noqa: BLE001
+            return _erro(e)
+
+
+@bp.route("/posts/<int:post_id>", methods=["GET"])
+def obter_post(post_id):
+    v = _viewer()
+    with Session() as db:
+        try:
+            post = FeedService(db).obter_post(post_id, _email(), _gestao(), v["squad_ids"])
+            if not post:
+                return jsonify({"erro": "Publicação não encontrada."}), 404
+            return jsonify({"post": post})
         except Exception as e:  # noqa: BLE001
             return _erro(e)
 
@@ -100,7 +120,8 @@ def criar_post():
     with Session() as db:
         try:
             post = FeedService(db).criar_post(
-                _email(), payload.get("conteudo"), payload.get("visibilidade", "todos")
+                _email(), payload.get("conteudo"),
+                payload.get("dest_todos", True), payload.get("squads"),
             )
             return jsonify(post), 201
         except Exception as e:  # noqa: BLE001
@@ -121,7 +142,8 @@ def criar_evento():
                 _parse_evento_data(payload.get("evento_data")),
                 payload.get("evento_local"),
                 payload.get("dias_fixado", 1),
-                payload.get("visibilidade", "todos"),
+                payload.get("dest_todos", True),
+                payload.get("squads"),
             )
             return jsonify(evento), 201
         except Exception as e:  # noqa: BLE001
@@ -137,7 +159,8 @@ def criar_enquete():
                 _email(),
                 payload.get("pergunta"),
                 payload.get("opcoes", []),
-                payload.get("visibilidade", "todos"),
+                payload.get("dest_todos", True),
+                payload.get("squads"),
             )
             return jsonify(enquete), 201
         except Exception as e:  # noqa: BLE001
@@ -150,7 +173,8 @@ def repostar(post_id):
     with Session() as db:
         try:
             post = FeedService(db).repostar(
-                post_id, _email(), payload.get("comentario"), payload.get("visibilidade", "todos")
+                post_id, _email(), payload.get("comentario"),
+                payload.get("dest_todos", True), payload.get("squads"),
             )
             return jsonify(post), 201
         except Exception as e:  # noqa: BLE001
@@ -212,7 +236,7 @@ def votar(post_id):
     with Session() as db:
         try:
             return jsonify(
-                FeedService(db).votar_enquete(post_id, _email(), payload.get("opcao_index"))
+                FeedService(db).votar_enquete(post_id, _email(), payload.get("opcao_index"), _gestao())
             )
         except Exception as e:  # noqa: BLE001
             return _erro(e)
@@ -273,7 +297,7 @@ def fixar_post(post_id):
     with Session() as db:
         try:
             FeedService(db).fixar_post(
-                post_id, _email(), _gestao(), payload.get("dias", 7)
+                post_id, _email(), _pode_fixar(), payload.get("dias", 7)
             )
             return jsonify({"ok": True})
         except Exception as e:  # noqa: BLE001
@@ -284,7 +308,7 @@ def fixar_post(post_id):
 def desfixar_post(post_id):
     with Session() as db:
         try:
-            FeedService(db).desfixar_post(post_id, _email(), _gestao())
+            FeedService(db).desfixar_post(post_id, _email(), _pode_fixar())
             return jsonify({"ok": True})
         except Exception as e:  # noqa: BLE001
             return _erro(e)
@@ -397,7 +421,7 @@ def widgets():
             svc = FeedService(db)
             return jsonify(
                 {
-                    "aniversariantes": svc.aniversariantes_do_dia(),
+                    "aniversariantes_mes": svc.aniversariantes_do_mes(),
                     "proximos_eventos": svc.proximos_eventos(),
                     "em_alta": svc.em_alta(),
                     "ranking": svc.ranking_participacao(),

@@ -1,0 +1,49 @@
+<div id="chatWidget" class="chat-widget"
+    data-user-email="{{ session.email }}" data-user-nome="{{ session.nome }}">
+
+    <div id="chatPanel" class="chat-panel">
+        <div class="chat-panel-head">
+            <button class="chat-icon-btn" id="chatBack" onclick="Chat.voltarLista()" title="Voltar"
+                style="display:none;"><i class="fa-solid fa-arrow-left"></i></button>
+            <div class="chat-panel-title">
+                <span id="chatPanelTitle">Mensagens</span>
+                <span id="chatPanelSub" class="chat-panel-sub"></span>
+            </div>
+            <button class="chat-icon-btn" onclick="Chat.minimizar()" title="Minimizar"><i
+                    class="fa-solid fa-chevron-down"></i></button>
+        </div>
+
+        <!-- Lista -->
+        <div id="chatViewLista" class="chat-view">
+            <div class="chat-search">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input id="chatBusca" type="text" placeholder="Buscar pessoa ou mensagem...">
+            </div>
+            <div id="chatBuscaResultados" class="chat-busca-resultados" style="display:none;"></div>
+            <div class="chat-list-scroll">
+                <div class="chat-section-title" id="chatConvsTitle" style="display:none;">Conversas</div>
+                <div id="chatConvs" class="chat-list"></div>
+                <div class="chat-section-title">Pessoas ativas</div>
+                <div id="chatPessoas" class="chat-list">
+                    <div class="chat-empty"><i class="fa-solid fa-spinner fa-spin"></i></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Conversa -->
+        <div id="chatViewConversa" class="chat-view">
+            <div id="chatMensagens" class="chat-mensagens"></div>
+            <div class="chat-composer">
+                <div id="chatMencaoBox" class="chat-mencao-box"></div>
+                <textarea id="chatTexto" rows="1" maxlength="2000" placeholder="Escreva uma mensagem..."></textarea>
+                <button class="chat-send" onclick="Chat.enviar()" title="Enviar"><i
+                        class="fa-solid fa-paper-plane"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <button id="chatLauncher" class="chat-launcher" onclick="Chat.toggle()" title="Chat">
+        <i class="fa-regular fa-comment-dots"></i>
+        <span id="chatBadge" class="chat-badge" style="display:none;">0</span>
+    </button>
+</div>

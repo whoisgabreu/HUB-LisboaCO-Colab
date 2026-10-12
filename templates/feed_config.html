@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="static/style/styles.css">
+    <link rel="stylesheet" href="static/style/tema-claro.css">
+    <script src="static/js/app.js" defer></script>
+    <style>
+        .admin-wrap { max-width: 680px; margin: 1.5rem auto 0; }
+        .admin-card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; }
+        .admin-card h3 { margin: 0 0 4px; }
+        .admin-card p.hint { color: var(--text-muted); font-size: 0.8rem; margin: 0 0 16px; }
+        .welcome-section { max-width: 680px; margin: 0 auto 1rem; text-align: center; }
+        .field { margin-bottom: 16px; }
+        .field > label { display: block; font-size: 0.82rem; color: var(--text-muted); margin-bottom: 6px; }
+        .field input[type=text] {
+            width: 100%; padding: 0.7rem 0.8rem; border-radius: 9px;
+            border: 1px solid var(--border-color); background: var(--bg-main);
+            color: var(--text-main); font-family: inherit; font-size: 0.9rem;
+        }
+        .icones { display: flex; flex-wrap: wrap; gap: 8px; }
+        .icone-opt {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 48px; height: 48px; border-radius: 50%;
+            border: 1px solid var(--border-color); cursor: pointer;
+            color: var(--text-muted); font-size: 1.15rem; background: var(--bg-main);
+            transition: transform 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s;
+        }
+        .icone-opt input { display: none; }
+        .icone-opt:hover { border-color: var(--accent-red); transform: scale(1.06); }
+        .icone-opt.selecionado {
+            border-color: var(--accent-red); color: var(--accent-red);
+            background: rgba(214, 22, 22, 0.1);
+            box-shadow: 0 0 0 3px rgba(214, 22, 22, 0.18);
+        }
+        .preview {
+            display: flex; align-items: center; gap: 12px; margin-top: 6px;
+            padding: 12px; border: 1px dashed var(--border-color); border-radius: 10px;
+        }
+        .preview .avatar {
+            width: 48px; height: 48px; border-radius: 50%;
+            background: var(--bg-main); border: 2px solid var(--accent-red);
+            display: flex; align-items: center; justify-content: center; color: var(--text-muted);
+            overflow: hidden; flex-shrink: 0;
+        }
+        .preview .avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .foto-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+        .foto-row .avatar {
+            width: 64px; height: 64px; border-radius: 50%;
+            background: var(--bg-main); border: 2px solid var(--accent-red);
+            display: flex; align-items: center; justify-content: center; color: var(--text-muted);
+            overflow: hidden; flex-shrink: 0;
+        }
+        .foto-row .avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .actions { display: flex; justify-content: flex-end; margin-top: 8px; }
+    </style>
+    {% include "components/icon_title.html" %}
+</head>
+
+<body>
+    {% include "components/header.html" %}
+    {% include "components/sidebar.html" %}
+
+    <div class="app-shell">
+        <div class="sidebar-overlay"></div>
+        <div class="main-content">
+            <main class="main-container">
+                <section class="welcome-section">
+                    <h2>Configurações do Feed</h2>
+                    <p>Perfil interno usado como autor dos posts automáticos do feed.</p>
+                </section>
+
+                <div class="admin-wrap admin-card">
+                    <h3>Perfil do Sistema</h3>
+                    <p class="hint">Posts automáticos (ex.: aniversários) são publicados por este perfil.</p>
+
+                    <div class="field">
+                        <label>Nome do perfil</label>
+                        <input type="text" id="sistemaNome" maxlength="80" value="{{ sistema_nome }}"
+                            placeholder="Ex: HUB (Sistema)">
+                    </div>
+
+                    <div class="field">
+                        <label>Foto do Sistema</label>
+                        <div class="foto-row">
+                            <div class="avatar" id="pav">
+                                <img id="pvFotoImg" src="{% if sistema_foto %}/static/images/profile_pictures/{{ sistema_foto }}{% endif %}"
+                                    alt="Sistema" style="{% if not sistema_foto %}display:none{% endif %}">
+                                <i id="pvFotoIcone" class="fa-solid {{ sistema_icone }}" style="{% if sistema_foto %}display:none{% endif %}"></i>
+                            </div>
+                            <div>
+                                <input type="file" id="fotoInput" accept="image/png,image/jpeg,image/webp" hidden>
+                                <button class="btn-secondary" type="button" onclick="document.getElementById('fotoInput').click()">
+                                    <i class="fas fa-camera"></i> Escolher foto
+                                </button>
+                                <button class="btn-secondary" type="button" id="btnRemoverFoto" onclick="removerFoto()"
+                                    style="{% if not sistema_foto %}display:none{% endif %}">
+                                    <i class="fas fa-trash"></i> Remover
+                                </button>
+                                <p class="hint" style="margin: 6px 0 0;">PNG, JPG ou WEBP. Máx. 2MB.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <label>Ícone (usado quando não há foto)</label>
+                        <div class="icones" id="iconesWrap">
+                            {% for ic in icones %}
+                            <label class="icone-opt {{ 'selecionado' if ic == sistema_icone else '' }}"
+                                data-icone="{{ ic }}" title="{{ ic }}">
+                                <input type="radio" name="icone" value="{{ ic }}" {{ 'checked' if ic == sistema_icone else '' }}>
+                                <i class="fa-solid {{ ic }}"></i>
+                            </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="preview">
+                        <div class="avatar">
+                            <img id="pvAvatarImg" src="{% if sistema_foto %}/static/images/profile_pictures/{{ sistema_foto }}{% endif %}"
+                                alt="Sistema" style="{% if not sistema_foto %}display:none{% endif %}">
+                            <i id="pvIcone" class="fa-solid {{ sistema_icone }}" style="{% if sistema_foto %}display:none{% endif %}"></i>
+                        </div>
+                        <div>
+                            <div style="font-weight:600" id="pvNome">{{ sistema_nome }}</div>
+                            <div style="font-size:.78rem;color:var(--text-muted)">Publicação automática</div>
+                        </div>
+                    </div>
+
+                    <div class="actions">
+                        <button class="btn-primary" onclick="salvar()"><i class="fas fa-save"></i> Salvar</button>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    {% include "components/modal-configuracoes.html" %}
+    <script src="static/js/tema.js"></script>
+    <script>
+        let temFoto = {{ 'true' if sistema_foto else 'false' }};
+
+        function iconeSelecionado() {
+            const sel = document.querySelector('.icone-opt.selecionado');
+            return sel ? sel.dataset.icone : 'fa-robot';
+        }
+
+        function atualizarPreview() {
+            const nome = document.getElementById('sistemaNome').value || 'HUB (Sistema)';
+            const icone = iconeSelecionado();
+            document.getElementById('pvNome').textContent = nome;
+            document.getElementById('pvIcone').className = 'fa-solid ' + icone;
+            document.getElementById('pvFotoIcone').className = 'fa-solid ' + icone;
+            if (!temFoto) {
+                document.getElementById('pvIcone').style.display = '';
+                document.getElementById('pvAvatarImg').style.display = 'none';
+                document.getElementById('pvFotoIcone').style.display = '';
+                document.getElementById('pvFotoImg').style.display = 'none';
+            }
+        }
+
+        document.getElementById('sistemaNome').addEventListener('input', atualizarPreview);
+        document.querySelectorAll('.icone-opt').forEach((opt) => {
+            opt.addEventListener('click', () => {
+                document.querySelectorAll('.icone-opt').forEach((o) => o.classList.remove('selecionado'));
+                opt.classList.add('selecionado');
+                opt.querySelector('input').checked = true;
+                atualizarPreview();
+            });
+        });
+
+        async function salvar() {
+            const sistema_nome = document.getElementById('sistemaNome').value.trim();
+            const sistema_icone = iconeSelecionado();
+            const r = await fetch('/api/admin/feed-config', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sistema_nome, sistema_icone })
+            });
+            const d = await r.json();
+            alert(r.ok ? 'Configurações salvas.' : (d.error || 'Erro'));
+        }
+
+        document.getElementById('fotoInput').addEventListener('change', async function () {
+            const file = this.files[0];
+            if (!file) return;
+            if (file.size > 2 * 1024 * 1024) { alert('A imagem deve ter no máximo 2MB.'); this.value = ''; return; }
+            const fd = new FormData();
+            fd.append('foto', file);
+            const r = await fetch('/api/admin/feed-config/foto', { method: 'POST', body: fd });
+            const d = await r.json();
+            if (r.ok) {
+                temFoto = true;
+                const url = d.url;
+                document.getElementById('pvAvatarImg').src = url;
+                document.getElementById('pvFotoImg').src = url;
+                document.getElementById('pvAvatarImg').style.display = '';
+                document.getElementById('pvIcone').style.display = 'none';
+                document.getElementById('pvFotoImg').style.display = '';
+                document.getElementById('pvFotoIcone').style.display = 'none';
+                document.getElementById('btnRemoverFoto').style.display = '';
+                alert('Foto salva.');
+            } else {
+                alert(d.error || 'Erro ao salvar foto.');
+            }
+            this.value = '';
+        });
+
+        async function removerFoto() {
+            if (!(await HubModal.confirm('Remover a foto do sistema?', { okLabel: 'Remover', danger: true }))) return;
+            const r = await fetch('/api/admin/feed-config/foto', { method: 'DELETE' });
+            const d = await r.json();
+            if (r.ok) {
+                temFoto = false;
+                document.getElementById('pvAvatarImg').style.display = 'none';
+                document.getElementById('pvFotoImg').style.display = 'none';
+                document.getElementById('pvIcone').style.display = '';
+                document.getElementById('pvFotoIcone').style.display = '';
+                document.getElementById('btnRemoverFoto').style.display = 'none';
+                atualizarPreview();
+            } else {
+                alert(d.error || 'Erro ao remover.');
+            }
+        }
+    </script>
+</body>
+
+</html>

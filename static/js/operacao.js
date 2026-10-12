@@ -49,8 +49,14 @@ let chartEntregas = null;
 
 // Mapeamento de cargos alternativos para o DELIVERY_CONFIG (mesmo mapeamento do backend)
 const ROLE_MAP_ENTREGAS = {
+    "Account Manager": "Account",
+    "Gestor de Projeto": "Account",
     "Desenvolvedor": "Gestor de Tráfego",
 };
+
+// Aliases (v2_) para os blocos de entregas equivalentes
+DELIVERY_CONFIG["Account Manager"] = DELIVERY_CONFIG["Account"];
+DELIVERY_CONFIG["Gestor de Projeto"] = DELIVERY_CONFIG["Account"];
 
 // Mapeamento delivery_type (backend) → tipo (frontend DELIVERY_CONFIG)
 const BACKEND_TO_FRONTEND_TIPO = {
@@ -80,7 +86,8 @@ function hasAccountAuth() {
     const pos = window.__USER_POSICAO__ || "";
     const isScientist = currentProject?.cientista === true;
     const isHighLevel = pos === 'Gerência' || pos === 'Sócio' || role === 'Gerência' || role === 'Sócio' || role === 'Desenvolvedor';
-    return isHighLevel || isScientist || role === 'Cientista' || role === 'Account' || role === 'Coordenador de CX';
+    return isHighLevel || isScientist || role === 'Cientista'
+        || role === 'Account' || role === 'Account Manager' || role === 'Gestor de Projeto' || role === 'Coordenador de CX';
 }
 
 // ─── TOAST ───────────────────────────────────────────────────────────────────

@@ -2,6 +2,7 @@ import copy
 from datetime import datetime
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
+import permissions
 from models import (
     InvestidorProjeto, Projeto,
     MetricaMensal, Investidor, OperacaoTarefa,
@@ -9,25 +10,22 @@ from models import (
 
 class OperacaoService:
     @staticmethod
-    def get_projetos_operacao(db: Session, email: str, squad: str, posicao: str = None) -> list:
+    def get_projetos_operacao(db: Session, email: str, gestao_ampla: bool = False, apenas_squad: bool = False, squad_ids=None) -> list:
         """
         Retorna todos os projetos vinculados e ativos ao usuário para a tela de operação.
         Considera Projetos Ativos, Onetime e Inativos.
         """
         query = db.query(Projeto)
         meus_projetos_dict = {}
-        if squad == "Gerência" or posicao in ["Gerência", "Sócio"]:
-            # Para gerência/sócio, buscar de todos (acesso global)
-            projetos = query.all()
-            for p in projetos:
+        if gestao_ampla:
+            for p in query.all():
                 if p.pipefy_id not in meus_projetos_dict:
                     meus_projetos_dict[p.pipefy_id] = p
-        elif posicao == "Coordenador":
-            # Coordenador vê todos os projetos da sua squad
-            if not squad:
+        elif apenas_squad:
+            ids = permissions.projeto_ids_das_squads(db, squad_ids)
+            if not ids:
                 return []
-            projetos = query.filter(Projeto.squad_atribuida == squad).all()
-            for p in projetos:
+            for p in query.filter(Projeto.pipefy_id.in_(ids)).all():
                 if p.pipefy_id not in meus_projetos_dict:
                     meus_projetos_dict[p.pipefy_id] = p
         else:
@@ -223,9 +221,9 @@ class OperacaoSnapshotService:
         ).first()
         is_cientista_projeto = inv_proj.cientista if inv_proj else False
 
-        funcao = investidor.funcao or ""
-        is_gt      = is_cientista_projeto or funcao in ("Gestor de Tráfego", "Cientista", "Desenvolvedor")
-        is_account = is_cientista_projeto or funcao in ("Account", "Cientista", "Coordenador de CX")
+        funcao = permissions.cargo_do_investidor(db, investidor.id) or ""
+        is_gt      = is_cientista_projeto or funcao in ("Gestor de Tráfego", "Desenvolvedor", "Cientista")
+        is_account = is_cientista_projeto or funcao in ("Account Manager", "Gestor de Projeto", "Coordenador de CX", "Cientista")
 
         snap = OperacaoSnapshotService.get_snapshot(db, id_projeto, mes, ano)
         if snap is None:
