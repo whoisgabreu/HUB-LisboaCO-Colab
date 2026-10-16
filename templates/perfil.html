@@ -12,8 +12,11 @@
     <link rel="stylesheet" href="static/style/styles.css">
     <link rel="stylesheet" href="static/style/tema-claro.css">
     <link rel="stylesheet" href="static/style/feed.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
     <script src="static/js/app.js" defer></script>
     <script src="static/js/feed.js" defer></script>
+    <script src="static/js/agenda.js" defer></script>
+    <script src="static/js/perfil.js" defer></script>
     {% include "components/icon_title.html" %}
 </head>
 
@@ -27,7 +30,7 @@
         <div class="sidebar-overlay"></div>
 
         <div class="main-content">
-            <main class="main-container">
+            <main class="main-container feed-page">
                 {% set modo_perfil = session.email %}
 
                 <div class="perfil-cabecalho">
@@ -38,7 +41,29 @@
                     {% endif %}
                     <div class="perfil-info">
                         <div class="perfil-nome">{{ session.nome or 'Usuário' }}</div>
-                        <div class="perfil-cargo">{{ session.funcao or session.posicao or 'Colaborador' }}</div>
+                        <div class="perfil-cargo" id="perfilCargo">{{ session.funcao or session.posicao or 'Colaborador' }}</div>
+                        <div class="perfil-tempo" id="perfilTempo"></div>
+                    </div>
+                    <button type="button" class="perfil-editar-btn" onclick="Perfil.abrirEdicao()">
+                        <i class="fa-solid fa-pen"></i> Editar perfil
+                    </button>
+                </div>
+
+                <div class="perfil-stats">
+                    <div class="perfil-stat">
+                        <i class="fa-solid fa-briefcase"></i>
+                        <span class="perfil-stat-valor" id="statProjetos">—</span>
+                        <span class="perfil-stat-label">Projetos ativos</span>
+                    </div>
+                    <div class="perfil-stat">
+                        <i class="fa-solid fa-ranking-star"></i>
+                        <span class="perfil-stat-valor" id="statRanking">—</span>
+                        <span class="perfil-stat-label">Ranking</span>
+                    </div>
+                    <div class="perfil-stat">
+                        <i class="fa-solid fa-cake-candles"></i>
+                        <span class="perfil-stat-valor" id="statTempo">—</span>
+                        <span class="perfil-stat-label">Tempo de casa</span>
                     </div>
                 </div>
 
@@ -49,17 +74,94 @@
                     <button type="button" class="perfil-aba" id="perfilAbaSalvos" onclick="Feed.modoPerfil('salvos')">
                         <i class="fa-regular fa-bookmark"></i> Salvos
                     </button>
+                    <button type="button" class="perfil-aba" id="perfilAbaInteracoes" onclick="Feed.modoPerfil('interacoes')">
+                        <i class="fa-solid fa-comments"></i> Interações
+                    </button>
                 </div>
 
                 {# Remuneração escondida por ora (reativar quando a remuneração for usada). #}
 
-                {% include "components/feed.html" %}
+                <div class="feed-layout">
+                    <div class="feed-col">
+                        {% include "components/feed.html" %}
+                    </div>
+                    <aside class="feed-rail" id="perfilRail">
+                        <div class="feed-widget" id="agendaWidget">
+                            <div class="feed-widget-title agenda-widget-header">
+                                <span><i class="fa-solid fa-calendar-days"></i> Minha Agenda</span>
+                                <button type="button" class="agenda-widget-btn" onclick="location.href='/minha-agenda'" title="Abrir Minha Agenda">
+                                    Abrir <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                                </button>
+                            </div>
+                            <div class="feed-widget-body" id="agendaWidgetBody">
+                                <div class="feed-widget-empty">Carregando agenda...</div>
+                            </div>
+                        </div>
+
+                        <div class="feed-widget" id="projetosWidget">
+                            <div class="feed-widget-title agenda-widget-header">
+                                <span><i class="fa-solid fa-briefcase"></i> Projetos em que atuo</span>
+                                <button type="button" class="agenda-widget-btn" onclick="location.href='/hub-projetos'" title="Abrir Hub de Projetos">
+                                    Abrir <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                                </button>
+                            </div>
+                            <div class="feed-widget-body" id="projetosWidgetBody">
+                                <div class="feed-widget-empty">Carregando projetos...</div>
+                            </div>
+                        </div>
+                    </aside>
+                </div>
+
+                <div class="perfil-card-atividade">
+                    <h3><i class="fa-solid fa-chart-line"></i> Minha atividade <span class="perfil-card-sub">últimas 8 semanas</span></h3>
+                    <div class="perfil-chart-wrap">
+                        <canvas id="perfilAtividadeChart"></canvas>
+                    </div>
+                </div>
             </main>
         </div>
     </div>
 
     {% include "components/modal-configuracoes.html" %}
     <script src="static/js/tema.js"></script>
+
+    <!-- Modal: Editar perfil -->
+    <div id="perfilEditModal" class="perfil-modal">
+        <div class="perfil-modal-content">
+            <div class="perfil-modal-header">
+                <h3><i class="fa-solid fa-user-pen"></i> Editar perfil</h3>
+                <button type="button" class="perfil-modal-close" onclick="Perfil.fecharEdicao()"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="perfil-modal-body">
+                <div class="perfil-modal-foto">
+                    <div class="perfil-modal-avatar" id="perfilModalAvatar">
+                        <img id="perfilModalImg" src="" alt="" style="display:none;">
+                        <i class="fa-solid fa-user-tie" id="perfilModalIcone"></i>
+                    </div>
+                    <label class="perfil-foto-btn">
+                        <i class="fa-solid fa-camera"></i> Alterar foto
+                        <input type="file" id="perfilFotoInput" accept="image/*" hidden>
+                    </label>
+                </div>
+                <div class="perfil-form-group">
+                    <label>Cargo/Função</label>
+                    <input type="text" id="perfilFuncao" placeholder="Ex: Account Manager" maxlength="50">
+                </div>
+                <div class="perfil-form-group">
+                    <label>Telefone</label>
+                    <input type="text" id="perfilTelefone" maxlength="15" placeholder="(00) 00000-0000">
+                </div>
+                <div class="perfil-form-group">
+                    <label>Data de nascimento</label>
+                    <input type="date" id="perfilNascimento">
+                </div>
+            </div>
+            <div class="perfil-modal-actions">
+                <button type="button" class="perfil-btn ghost" onclick="Perfil.fecharEdicao()">Cancelar</button>
+                <button type="button" class="perfil-btn primary" id="perfilSalvarBtn" onclick="Perfil.salvarEdicao()">Salvar</button>
+            </div>
+        </div>
+    </div>
 
 </body>
 

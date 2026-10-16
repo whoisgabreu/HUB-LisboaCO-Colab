@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minha Agenda | HUB Lisboa</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="static/style/styles.css">
+    <link rel="stylesheet" href="static/style/tema-claro.css">
+    <link rel="stylesheet" href="static/style/feed.css">
+    <script src="static/js/app.js" defer></script>
+    <script src="static/js/agenda.js" defer></script>
+    {% include "components/icon_title.html" %}
+</head>
+
+<body class="agenda-page">
+
+    {% include "components/header.html" %}
+
+    {% include "components/sidebar.html" %}
+
+    <div class="app-shell">
+        <div class="sidebar-overlay"></div>
+
+        <div class="main-content">
+            <main class="main-container feed-page">
+                <div class="ekyte-page-cabecalho">
+                    <button type="button" class="ekyte-voltar" onclick="location.href='/perfil'" title="Voltar ao perfil">
+                        <i class="fa-solid fa-arrow-left"></i>
+                    </button>
+                    <div class="ekyte-page-titulo">
+                        <i class="fa-solid fa-calendar-days"></i> Minha Agenda
+                        <span class="ekyte-count" id="agendaCount">0</span>
+                    </div>
+                </div>
+
+                <div class="agenda-abas">
+                    <button type="button" class="agenda-aba ativa" id="agendaAbaTarefas" onclick="Agenda.mudarAba('tarefas')">
+                        <i class="fa-solid fa-list-check"></i> Tarefas <span class="agenda-aba-count" id="agendaQtdTarefas">0</span>
+                    </button>
+                    <button type="button" class="agenda-aba" id="agendaAbaAgenda" onclick="Agenda.mudarAba('agenda')">
+                        <i class="fa-regular fa-calendar"></i> Agenda <span class="agenda-aba-count" id="agendaQtdAgenda">0</span>
+                    </button>
+                </div>
+
+                <div class="ekyte-busca">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="text" id="agendaBusca" placeholder="Buscar por título, fase ou workspace...">
+                </div>
+
+                <div id="agendaLista" class="ekyte-lista">
+                    <div class="feed-loading"><i class="fa-solid fa-spinner fa-spin"></i> Carregando agenda...</div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    {% include "components/modal-configuracoes.html" %}
+    <script src="static/js/tema.js"></script>
+
+</body>
+
+</html>

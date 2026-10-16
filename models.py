@@ -25,6 +25,7 @@ class Investidor(Base):
     profile_picture = Column(String(250))
     posicao = Column(String(250))
     data_nascimento = Column(Date)
+    data_admissao = Column(Date)
 
 
 class Auth(Base):

@@ -34,6 +34,8 @@ from services.operacao_service import OperacaoService, OperacaoSnapshotService
 from services.projeto_participacao_service import ProjetoParticipacaoService
 from services.kanban_service import KanbanService, PhaseTransitionError
 from services.automacao_service import AutomacaoService
+from services.ekyte_service import listar_tarefas_do_email, refresh_agora
+from services.agenda_service import listar_itens, resumo
 
 from dashboard_grupos.hub_integration import register as register_dashboard_grupos
 from feed.hub_integration import register as register_feed
@@ -78,6 +80,9 @@ GOOGLE_SCOPE = [
     "https://www.googleapis.com/auth/userinfo.email",
     "https://www.googleapis.com/auth/userinfo.profile",
 ]
+
+# TEMP (teste agenda) — remover após validar
+GOOGLE_CALENDAR_SCOPE = "https://www.googleapis.com/auth/calendar.readonly"
 
 # Configuração do Scheduler
 scheduler = APScheduler()
@@ -137,10 +142,24 @@ def daily_mrr_historico_job():
     try:
         from services.mrr_historico_service import MrrHistoricoService
         with Session() as db:
-            total = MrrHistoricoService(db).snapshot_atual()
-        print(f"Snapshot de MRR: {total} projeto(s) processado(s).")
+            MrrHistoricoService(db).snapshot_mes(ano=None, mes=None, projeto_id=None, forcar=False)
+        print("Snapshot de MRR histórico concluído.")
     except Exception as e:
         print(f"Erro no snapshot de MRR histórico: {e}")
+
+
+@scheduler.task('interval', id='ekyte_cache_warm', minutes=15)
+def ekyte_cache_warm_job():
+    """Mantém aquecido o cache de tarefas do Ekyte (raspagem pesada em background)."""
+    print(f"[{dt.now()}] Atualizando cache de tarefas Ekyte...")
+    from datetime import timedelta
+    from services.ekyte_service import JANELA_DIAS
+    created_from = (dt.now() - timedelta(days=JANELA_DIAS)).strftime("%Y-%m-%d")
+    try:
+        refresh_agora(created_from)
+        print("Cache Ekyte atualizado.")
+    except Exception as e:
+        print(f"Erro ao atualizar cache Ekyte: {e}")
 
 
 def check_session(func):
@@ -1347,9 +1366,93 @@ def login_google():
     return redirect(authorization_url)
 
 
+# ── TEMP: teste de acesso à Google Agenda (remover depois) ──────────────────
+@app.route("/debug/agenda/connect")
+def debug_agenda_connect():
+    """Inicia OAuth pedindo o escopo de Calendar (não afeta o login normal)."""
+    google = OAuth2Session(
+        GOOGLE_CLIENT_ID,
+        scope=GOOGLE_SCOPE + [GOOGLE_CALENDAR_SCOPE],
+        redirect_uri=REDIRECT_URI,
+    )
+    authorization_url, state = google.authorization_url(
+        AUTHORIZATION_BASE_URL,
+        access_type="offline",
+        prompt="consent",
+        include_granted_scopes="true",
+    )
+    session["oauth_state"] = state
+    session["oauth_calendar"] = True
+    return redirect(authorization_url)
+
+
+@app.route("/debug/agenda")
+@check_session
+def debug_agenda():
+    """Troca o refresh_token por access_token e lista os próximos eventos (primary)."""
+    import requests as _rq
+    email = session.get("email")
+    try:
+        with Session() as db:
+            row = db.execute(
+                text(
+                    "SELECT refresh_token, scope FROM plataforma_geral.google_oauth_tmp WHERE email=:e"
+                ),
+                {"e": email},
+            ).mappings().first()
+    except Exception as e:
+        return jsonify({"erro": "sem_tabela", "detalhe": str(e), "dica": "Acesse /debug/agenda/connect primeiro."})
+
+    if not row or not row.get("refresh_token"):
+        return jsonify({"erro": "sem_token", "dica": "Acesse /debug/agenda/connect para conectar a agenda."})
+
+    try:
+        tr = _rq.post(
+            TOKEN_URL,
+            data={
+                "client_id": GOOGLE_CLIENT_ID,
+                "client_secret": GOOGLE_CLIENT_SECRET,
+                "refresh_token": row["refresh_token"],
+                "grant_type": "refresh_token",
+            },
+            timeout=15,
+        )
+        tok = tr.json()
+        if tr.status_code != 200 or "access_token" not in tok:
+            return jsonify({"erro": "refresh", "status": tr.status_code, "resposta": tok})
+
+        access = tok["access_token"]
+        from datetime import datetime as _dtc, timezone as _tz
+        agora = _dtc.now(_tz.utc).isoformat()
+        ev = _rq.get(
+            "https://www.googleapis.com/calendar/v3/calendars/primary/events",
+            params={"timeMin": agora, "singleEvents": "true", "orderBy": "startTime", "maxResults": 10},
+            headers={"Authorization": f"Bearer {access}"},
+            timeout=15,
+        )
+        dados = ev.json()
+        if ev.status_code != 200:
+            return jsonify({"erro": "events", "status": ev.status_code, "resposta": dados})
+
+        itens = []
+        for e in (dados.get("items") or []):
+            ini = e.get("start") or {}
+            fim = e.get("end") or {}
+            itens.append({
+                "summary": e.get("summary"),
+                "start": ini.get("dateTime") or ini.get("date"),
+                "end": fim.get("dateTime") or fim.get("date"),
+                "link": e.get("htmlLink"),
+            })
+        return jsonify({"ok": True, "scopes": row.get("scope"), "total": len(itens), "eventos": itens})
+    except Exception as e:
+        return jsonify({"erro": "excecao", "detalhe": str(e)})
+
+
 @app.route("/login/callback")
 def login_callback():
     state = session.get("oauth_state")
+    veio_calendar = session.pop("oauth_calendar", False)  # TEMP: teste agenda
     if not state:
         return render_template("login.html", error="Sessão expirada. Tente fazer login novamente.")
 
@@ -1372,6 +1475,27 @@ def login_callback():
 
     if not email:
         return render_template("login.html", error="Não foi possível obter o e-mail do Google.")
+
+    # TEMP: teste agenda — guarda o refresh_token para chamar o Calendar
+    if veio_calendar:
+        try:
+            rt = token.get("refresh_token")
+            if rt:
+                with Session() as _db:
+                    _db.execute(text(
+                        "CREATE TABLE IF NOT EXISTS plataforma_geral.google_oauth_tmp "
+                        "(email TEXT PRIMARY KEY, refresh_token TEXT, scope TEXT, criado_em TIMESTAMP DEFAULT now())"
+                    ))
+                    _db.execute(text(
+                        "INSERT INTO plataforma_geral.google_oauth_tmp (email, refresh_token, scope, criado_em) "
+                        "VALUES (:e, :r, :s, now()) "
+                        "ON CONFLICT (email) DO UPDATE SET refresh_token=EXCLUDED.refresh_token, scope=EXCLUDED.scope, criado_em=now()"
+                    ), {"e": email, "r": rt, "s": token.get("scope", "")})
+                    _db.commit()
+            else:
+                print("[debug agenda] login sem refresh_token (talvez consent já existente).")
+        except Exception as _e:
+            print(f"[debug agenda] falha ao salvar token: {_e}")
 
     with Session() as db:
         user = db.query(Investidor).filter_by(email=email).first()
@@ -1407,6 +1531,8 @@ def login_callback():
 
         db.commit()
 
+    if veio_calendar:  # TEMP: teste agenda
+        return redirect(url_for("debug_agenda"))
     return redirect(url_for("home"))
 
 
@@ -1678,6 +1804,127 @@ def feed_post(post_id):
 def perfil():
     """Tela de perfil do usuário: postagens e itens salvos."""
     return render_template("perfil.html")
+
+
+@app.route("/api/ekyte/tarefas", methods=["GET"])
+@check_session
+def api_ekyte_tarefas():
+    """Widget/página: tarefas em aberto do Ekyte atribuídas ao e-mail do usuário logado."""
+    email = session.get("email")
+    if not email:
+        return jsonify({"erro": "nao_logado"}), 401
+    limite = request.args.get("limite", type=int)
+    return jsonify(listar_tarefas_do_email(email, limite=limite))
+
+
+@app.route("/ekyte-tarefas", methods=["GET"])
+@check_session
+def ekyte_tarefas():
+    """Compat: rota antiga redireciona para a nova página Minha Agenda."""
+    return redirect(url_for("minha_agenda"))
+
+
+@app.route("/api/agenda/resumo", methods=["GET"])
+@check_session
+def api_agenda_resumo():
+    """Contadores do widget Minha Agenda (tarefas em aberto + agenda hoje)."""
+    email = session.get("email")
+    if not email:
+        return jsonify({"erro": "nao_logado"}), 401
+    return jsonify(resumo(email))
+
+
+@app.route("/api/agenda/items", methods=["GET"])
+@check_session
+def api_agenda_items():
+    """Minha Agenda: agrega itens de múltiplas fontes (ekyte, google) por data."""
+    email = session.get("email")
+    if not email:
+        return jsonify({"erro": "nao_logado"}), 401
+    fontes = request.args.get("fontes") or "ekyte"
+    limite = request.args.get("limite", type=int)
+    return jsonify(listar_itens(email, fontes=fontes, limite=limite))
+
+
+@app.route("/minha-agenda", methods=["GET"])
+@check_session
+def minha_agenda():
+    """Página completa com tarefas (Ekyte) e eventos (Google Agenda, futura)."""
+    return render_template("minha_agenda.html")
+
+
+@app.route("/api/perfil", methods=["GET"])
+@check_session
+def api_perfil():
+    """Resumo do perfil: dados do investidor, projetos ativos, ranking e tempo de casa."""
+    email = session.get("email")
+    if not email:
+        return jsonify({"erro": "nao_logado"}), 401
+    from services.perfil_service import resumo_perfil
+    with Session() as db:
+        dados = resumo_perfil(db, email)
+    if not dados:
+        return jsonify({"erro": "nao_encontrado"}), 404
+    return jsonify(dados)
+
+
+@app.route("/api/perfil", methods=["POST"])
+@check_session
+def api_perfil_atualizar():
+    """Edição do próprio perfil: função, telefone e data de nascimento."""
+    email = session.get("email")
+    if not email:
+        return jsonify({"erro": "nao_logado"}), 401
+    data = request.get_json(silent=True) or {}
+    from services.perfil_service import atualizar_perfil
+    try:
+        with Session() as db:
+            dados = atualizar_perfil(db, email, data)
+    except ValueError as e:
+        return jsonify({"erro": str(e)}), 400
+    if not dados:
+        return jsonify({"erro": "nao_encontrado"}), 404
+    return jsonify({"status": "success", "perfil": dados})
+
+
+@app.route("/api/perfil/atividade", methods=["GET"])
+@check_session
+def api_perfil_atividade():
+    """Série semanal de atividade (postagens + reações recebidas)."""
+    email = session.get("email")
+    if not email:
+        return jsonify({"erro": "nao_logado"}), 401
+    semanas = request.args.get("semanas", 8, type=int)
+    from services.perfil_service import atividade_semanal
+    with Session() as db:
+        dados = atividade_semanal(db, email, semanas=semanas)
+    return jsonify(dados)
+
+
+@app.route("/api/perfil/projetos", methods=["GET"])
+@check_session
+def api_perfil_projetos():
+    """Projetos em que o usuário logado atua (vínculos ativos)."""
+    email = session.get("email")
+    if not email:
+        return jsonify({"erro": "nao_logado"}), 401
+    with Session() as db:
+        rows = db.query(InvestidorProjeto, Projeto).join(
+            Projeto, Projeto.pipefy_id == InvestidorProjeto.pipefy_id_projeto
+        ).filter(
+            InvestidorProjeto.email_investidor == email,
+            InvestidorProjeto.active.is_(True),
+        ).all()
+        projetos = [{
+            "pipefy_id": p.pipefy_id,
+            "nome": p.nome,
+            "status": p.status or "",
+            "fase": p.fase_do_pipefy or "",
+            "squad": p.squad_atribuida or "",
+            "fee": float(p.fee) if p.fee is not None else None,
+            "moeda": p.moeda or "",
+        } for _v, p in rows]
+    return jsonify({"projetos": projetos, "total": len(projetos)})
 
 
 @app.template_filter('format_date')
@@ -1986,6 +2233,7 @@ def api_get_usuarios():
                     "pode_editar_kanban": u.pode_editar_kanban,
                     "profile_picture": u.profile_picture or "",
                     "data_nascimento": u.data_nascimento.isoformat() if u.data_nascimento else None,
+                    "data_admissao": u.data_admissao.isoformat() if u.data_admissao else None,
                     "telefone": u.telefone or "",
                     "cpf": u.cpf or "",
                     # v2_
@@ -2024,6 +2272,10 @@ def api_create_usuario():
             if dn and dn > dt.now().date():
                 return jsonify({"error": "Data de nascimento não pode ser no futuro."}), 400
 
+            da = _parse_data_iso(data.get("data_admissao"))
+            if da and da > dt.now().date():
+                return jsonify({"error": "Data de entrada não pode ser no futuro."}), 400
+
             # v2_: cargo, posições e squads
             cargo = data.get("cargo") if data.get("cargo") is not None else data.get("funcao")
             posicoes = data.get("posicoes") or ([data.get("posicao")] if data.get("posicao") else [])
@@ -2050,6 +2302,7 @@ def api_create_usuario():
                 ativo=data.get("ativo", True),
                 pode_editar_kanban=data.get("pode_editar_kanban", False),
                 data_nascimento=dn,
+                data_admissao=da,
                 telefone=_so_digitos(data.get("telefone")),
                 cpf=_so_digitos(data.get("cpf"), 11),
                 senha=generate_password_hash(data.get("senha", "v4company")) # Senha padrão se não enviada
@@ -2114,6 +2367,11 @@ def api_update_usuario(email):
                 if dn and dn > dt.now().date():
                     return jsonify({"error": "Data de nascimento não pode ser no futuro."}), 400
                 user.data_nascimento = dn
+            if "data_admissao" in data:
+                da = _parse_data_iso(data.get("data_admissao"))
+                if da and da > dt.now().date():
+                    return jsonify({"error": "Data de entrada não pode ser no futuro."}), 400
+                user.data_admissao = da
             if "telefone" in data:
                 user.telefone = _so_digitos(data.get("telefone"))
             if "cpf" in data:

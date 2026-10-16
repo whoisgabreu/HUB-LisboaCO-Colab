@@ -32,6 +32,7 @@
         carregando: false,
         posts: {},
         salvos: false,
+        interacoes: false,
         q: "",
         tipo: "",
         usuarios: [],
@@ -326,8 +327,12 @@
         if (state.salvos) listaParam.set("salvos", "1");
         if (state.autor) listaParam.set("autor", state.autor);
 
+        const endpoint = state.interacoes
+            ? `/api/feed/minhas-interacoes?por_pagina=20`
+            : `/api/feed/posts?${listaParam.toString()}`;
+
         try {
-            const data = await api(`/api/feed/posts?${listaParam.toString()}`);
+            const data = await api(endpoint);
             renderizarPosts(data.posts, append);
             state.temMais = data.tem_mais;
             state.cursor = data.proximo_cursor;
@@ -914,12 +919,16 @@
     // Modo perfil: abas "Minhas postagens" / "Salvos"
     async function modoPerfil(tab) {
         const salvos = tab === "salvos";
+        const interacoes = tab === "interacoes";
         state.salvos = salvos;
-        state.autor = salvos ? "" : state.email;
+        state.interacoes = interacoes;
+        state.autor = (salvos || interacoes) ? "" : state.email;
         const pa = document.getElementById("perfilAbaPosts");
         const sa = document.getElementById("perfilAbaSalvos");
-        if (pa) pa.classList.toggle("ativa", !salvos);
+        const ina = document.getElementById("perfilAbaInteracoes");
+        if (pa) pa.classList.toggle("ativa", !salvos && !interacoes);
         if (sa) sa.classList.toggle("ativa", salvos);
+        if (ina) ina.classList.toggle("ativa", interacoes);
         const btn = document.getElementById("feedSalvosBtn");
         if (btn) btn.classList.toggle("ativo", salvos);
         await carregar(false);

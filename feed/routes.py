@@ -84,6 +84,23 @@ def listar_posts():
             return _erro(e)
 
 
+@bp.route("/minhas-interacoes", methods=["GET"])
+def minhas_interacoes():
+    v = _viewer()
+    with Session() as db:
+        try:
+            return jsonify(
+                FeedService(db).minhas_interacoes(
+                    _email(),
+                    por_pagina=request.args.get("por_pagina", 20, type=int),
+                    gestao=_gestao(),
+                    squad_ids=v["squad_ids"],
+                )
+            )
+        except Exception as e:  # noqa: BLE001
+            return _erro(e)
+
+
 @bp.route("/novos", methods=["GET"])
 def novos_posts():
     v = _viewer()

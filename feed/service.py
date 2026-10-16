@@ -327,6 +327,47 @@ class FeedService:
             "proximo_cursor": proximo_cursor,
         }
 
+    def minhas_interacoes(
+        self,
+        usuario_email: str,
+        por_pagina: int = 20,
+        gestao: bool = False,
+        squad_ids=None,
+    ) -> Dict[str, Any]:
+        """Posts em que o usuário interagiu: comentou, reagiu, repostou ou foi mencionado."""
+        self.verificar_aniversarios()
+        conds = self._condicoes_base(usuario_email, gestao, squad_ids)
+        inter = or_(
+            FeedPost.id.in_(
+                select(FeedComentario.post_id).where(
+                    FeedComentario.autor_email == usuario_email,
+                    FeedComentario.deletado.is_(False),
+                )
+            ),
+            FeedPost.id.in_(
+                select(FeedReacao.post_id).where(
+                    FeedReacao.usuario_email == usuario_email
+                )
+            ),
+            and_(
+                FeedPost.autor_email == usuario_email,
+                FeedPost.original_post_id.isnot(None),
+            ),
+            FeedPost.conteudo.ilike(f"%@{usuario_email}%"),
+        )
+        stmt = (
+            select(FeedPost)
+            .where(*conds, inter)
+            .order_by(FeedPost.criado_em.desc(), FeedPost.id.desc())
+            .limit(por_pagina)
+        )
+        posts = list(self.db.execute(stmt).scalars().all())
+        return {
+            "posts": self._serializar(posts, usuario_email, gestao=gestao),
+            "tem_mais": False,
+            "proximo_cursor": None,
+        }
+
     def novos_posts(
         self,
         desde_iso: str,

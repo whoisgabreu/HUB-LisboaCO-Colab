@@ -695,6 +695,15 @@ body.kanban-page .main-content {
     padding-top: 4px;
 }
 
+#configModalOverlay .config-phases-section,
+#configModalOverlay .transitions-config-section,
+#configModalOverlay .public-link-config-section,
+#configModalOverlay .public-link-card,
+#configModalOverlay .fields-config-section,
+#configModalOverlay .phase-accordion-item.active {
+    box-shadow: none !important;
+}
+
 .config-phases-header {
     display: flex;
     align-items: center;

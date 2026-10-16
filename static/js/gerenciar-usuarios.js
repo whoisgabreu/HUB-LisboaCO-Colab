@@ -214,6 +214,7 @@ function openEditUserModal(email) {
     document.getElementById('userName').value = u.nome;
     document.getElementById('userEmail').value = u.email;
     document.getElementById('userDataNascimento').value = u.data_nascimento || '';
+    document.getElementById('userDataAdmissao').value = u.data_admissao || '';
     document.getElementById('userTelefone').value = mascaraTelefone(u.telefone || '');
     document.getElementById('userCpf').value = mascaraCpf(u.cpf || '');
     document.getElementById('userFuncao').value = u.cargo || '';
@@ -282,6 +283,7 @@ form.onsubmit = async (e) => {
         nome: document.getElementById('userName').value,
         email: document.getElementById('userEmail').value,
         data_nascimento: document.getElementById('userDataNascimento').value || null,
+        data_admissao: document.getElementById('userDataAdmissao').value || null,
         telefone: document.getElementById('userTelefone').value,
         cpf: document.getElementById('userCpf').value,
         cargo: document.getElementById('userFuncao').value,
