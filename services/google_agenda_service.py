@@ -1,7 +1,7 @@
 import os
 import time
 import requests
-from datetime import datetime, timedelta, time
+from datetime import datetime, timedelta, time as dtime
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import text
@@ -88,8 +88,8 @@ def listar_eventos(email, dias=7, forcar=False):
         return {"conectado": False, "eventos": [], "erro": "token", "detalhe": err}
 
     hoje = datetime.now(TZ)
-    inicio = datetime.combine(hoje.date(), time.min, tzinfo=TZ)
-    fim = datetime.combine((hoje + timedelta(days=dias)).date(), time.max, tzinfo=TZ)
+    inicio = datetime.combine(hoje.date(), dtime.min, tzinfo=TZ)
+    fim = datetime.combine((hoje + timedelta(days=dias)).date(), dtime.max, tzinfo=TZ)
     try:
         r = requests.get(EVENTS_URL, params={
             "timeMin": inicio.isoformat(),

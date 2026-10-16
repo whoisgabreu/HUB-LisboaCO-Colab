@@ -19,16 +19,31 @@
         return '<span class="agenda-fonte-badge"><i class="fa-solid fa-list-check"></i> Tarefa</span>';
     }
 
+    function fmtDataHora(iso) {
+        if (!iso) return '';
+        const m = String(iso).match(/^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}))?/);
+        if (!m) return esc(iso);
+        let out = m[3] + '/' + m[2];
+        if (m[4]) out += ' ' + m[4] + ':' + m[5];
+        return out;
+    }
+
     function montarItem(t) {
         const titulo = esc(t.titulo || 'Sem título');
         const meta = [];
-        if (t.rotulo) meta.push('<span>' + esc(t.rotulo) + '</span>');
-        if (t.data) {
-            const iso = dataISO(t);
-            const atrasada = t.fonte === 'ekyte' && iso && iso < hojeISO();
-            meta.push('<span><i class="fa-regular fa-calendar"></i> ' + esc(t.data) + '</span>' + (atrasada ? ' <span class="ekyte-prazo atrasado">Atrasada</span>' : ''));
+        if (t.fonte === 'google') {
+            const quando = fmtDataHora(t.rotulo || t.data);
+            if (quando) meta.push('<span><i class="fa-regular fa-calendar"></i> ' + quando + '</span>');
+            if (t.sub) meta.push('<span><i class="fa-solid fa-location-dot"></i> ' + esc(t.sub) + '</span>');
+        } else {
+            if (t.rotulo) meta.push('<span>' + esc(t.rotulo) + '</span>');
+            if (t.data) {
+                const iso = dataISO(t);
+                const atrasada = iso && iso < hojeISO();
+                meta.push('<span><i class="fa-regular fa-calendar"></i> ' + esc(t.data) + '</span>' + (atrasada ? ' <span class="ekyte-prazo atrasado">Atrasada</span>' : ''));
+            }
+            if (t.sub) meta.push('<span><i class="fa-solid fa-layer-group"></i> ' + esc(t.sub) + '</span>');
         }
-        if (t.sub) meta.push('<span><i class="fa-solid fa-layer-group"></i> ' + esc(t.sub) + '</span>');
         const metaHtml = meta.length ? '<div class="ekyte-task-meta">' + meta.join(' · ') + '</div>' : '';
         const rotuloLink = t.fonte === 'google' ? 'Abrir no Google' : 'Abrir no Ekyte';
         const link = t.link
@@ -84,16 +99,23 @@
         document.getElementById('agendaQtdAgenda').textContent = (paginaItens || []).filter(t => t.fonte === 'google').length;
 
         if (fonte === 'google' && (!fonteInfo || !fonteInfo.conectado)) {
-            lista.innerHTML = '<div class="feed-widget-empty"><i class="fa-regular fa-calendar-plus"></i> Conecte sua Google Agenda para ver seus eventos (em breve).</div>';
+            lista.innerHTML = '<div class="agenda-conectar">' +
+                '<i class="fa-brands fa-google"></i>' +
+                '<p>Conecte sua Google Agenda para ver seus eventos aqui.</p>' +
+                '<a class="agenda-conectar-btn" href="/agenda/google/conectar">Conectar Google Agenda</a>' +
+                '</div>';
             return;
         }
         if (!filtrados.length) {
             lista.innerHTML = q
                 ? '<div class="feed-widget-empty">Nenhum item encontrado para "' + esc(document.getElementById('agendaBusca').value) + '".</div>'
-                : '<div class="feed-widget-empty">' + (fonte === 'google' ? 'Nenhum evento em aberto.' : 'Nenhuma tarefa em aberto.') + '</div>';
+                : '<div class="feed-widget-empty">' + (fonte === 'google' ? 'Nenhum evento nos próximos dias.' : 'Nenhuma tarefa em aberto.') + '</div>';
             return;
         }
-        lista.innerHTML = '<div class="ekyte-tasks">' + filtrados.map(montarItem).join('') + '</div>';
+        const toolbar = (fonte === 'google')
+            ? '<div class="agenda-lista-toolbar"><form method="post" action="/agenda/google/desconectar"><button type="submit" class="agenda-desconectar-btn"><i class="fa-solid fa-link-slash"></i> Desconectar Google Agenda</button></form></div>'
+            : '';
+        lista.innerHTML = toolbar + '<div class="ekyte-tasks">' + filtrados.map(montarItem).join('') + '</div>';
     }
 
     async function carregarPagina() {
@@ -131,6 +153,14 @@
         const busca = document.getElementById('agendaBusca');
         if (busca) {
             busca.addEventListener('input', renderPagina);
+            const params = new URLSearchParams(location.search);
+            if (params.get('agenda') === 'conectada') {
+                paginaAba = 'agenda';
+                document.getElementById('agendaAbaTarefas').classList.remove('ativa');
+                document.getElementById('agendaAbaAgenda').classList.add('ativa');
+                if (typeof toast !== 'undefined' && toast.success) toast.success('Google Agenda conectada!');
+                history.replaceState(null, '', location.pathname);
+            }
             carregarPagina();
         } else {
             carregarWidget();

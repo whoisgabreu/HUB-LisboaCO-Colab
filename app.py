@@ -1402,7 +1402,7 @@ def agenda_google_desconectar():
 @app.route("/login/callback")
 def login_callback():
     state = session.get("oauth_state")
-    veio_calendar = session.pop("oauth_calendar", False)  # TEMP: teste agenda
+    veio_agenda = session.pop("oauth_agenda", False)
     if not state:
         return render_template("login.html", error="Sessão expirada. Tente fazer login novamente.")
 
@@ -1426,26 +1426,18 @@ def login_callback():
     if not email:
         return render_template("login.html", error="Não foi possível obter o e-mail do Google.")
 
-    # TEMP: teste agenda — guarda o refresh_token para chamar o Calendar
-    if veio_calendar:
+    # Google Agenda: guarda o refresh_token para ler os eventos do usuário
+    if veio_agenda:
         try:
             rt = token.get("refresh_token")
             if rt:
+                from services.google_agenda_service import salvar_token
                 with Session() as _db:
-                    _db.execute(text(
-                        "CREATE TABLE IF NOT EXISTS plataforma_geral.google_oauth_tmp "
-                        "(email TEXT PRIMARY KEY, refresh_token TEXT, scope TEXT, criado_em TIMESTAMP DEFAULT now())"
-                    ))
-                    _db.execute(text(
-                        "INSERT INTO plataforma_geral.google_oauth_tmp (email, refresh_token, scope, criado_em) "
-                        "VALUES (:e, :r, :s, now()) "
-                        "ON CONFLICT (email) DO UPDATE SET refresh_token=EXCLUDED.refresh_token, scope=EXCLUDED.scope, criado_em=now()"
-                    ), {"e": email, "r": rt, "s": token.get("scope", "")})
-                    _db.commit()
+                    salvar_token(_db, email, rt, token.get("scope", ""))
             else:
-                print("[debug agenda] login sem refresh_token (talvez consent já existente).")
+                print("[agenda] login sem refresh_token (consent já existente).")
         except Exception as _e:
-            print(f"[debug agenda] falha ao salvar token: {_e}")
+            print(f"[agenda] falha ao salvar token: {_e}")
 
     with Session() as db:
         user = db.query(Investidor).filter_by(email=email).first()
@@ -1481,8 +1473,8 @@ def login_callback():
 
         db.commit()
 
-    if veio_calendar:  # TEMP: teste agenda
-        return redirect(url_for("debug_agenda"))
+    if veio_agenda:
+        return redirect(url_for("minha_agenda", agenda="conectada"))
     return redirect(url_for("home"))
 
 
