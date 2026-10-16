@@ -202,10 +202,34 @@ def listar_membros():
     )
 
 
-def criar_membro(nome, email=None):
+def listar_usuarios_tech():
+    """Usuários do HUB com capacidade 'tech' (posição Tech ∪ cargo que concede tech)."""
+    return _fetch(
+        """
+        SELECT DISTINCT i.id, i.nome, i.email
+        FROM plataforma_geral.investidores i
+        WHERE i.ativo IS TRUE AND i.id IN (
+            SELECT investidor_id FROM plataforma_geral.v2_investidor_posicoes
+             WHERE posicao IN (
+                SELECT posicao FROM plataforma_geral.v2_posicao_capacidades WHERE capacidade = 'tech')
+            UNION
+            SELECT investidor_id FROM plataforma_geral.v2_investidor_cargo
+             WHERE cargo IN (
+                SELECT cargo FROM plataforma_geral.v2_cargo_capacidades WHERE capacidade = 'tech')
+        )
+        ORDER BY i.nome
+        """
+    )
+
+
+def limpar_membros():
+    _execute(f'DELETE FROM "{SCHEMA}".membros')
+
+
+def criar_membro(nome, email=None, hub_user_id=None):
     return _execute(
-        f'INSERT INTO "{SCHEMA}".membros (nome, email) VALUES (%s, %s) RETURNING *',
-        (nome, email or None),
+        f'INSERT INTO "{SCHEMA}".membros (nome, email, hub_user_id) VALUES (%s, %s, %s) RETURNING *',
+        (nome, email or None, hub_user_id),
     )
 
 

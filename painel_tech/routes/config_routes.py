@@ -28,12 +28,14 @@ def configuracoes():
             config=get_config(),
             config_json=bruto,
             membros=db.listar_membros(),
+            usuarios_tech=db.listar_usuarios_tech(),
         )
     return render_template(
         "painel_tech/configuracoes.html",
         config=get_config(),
         config_json=json.dumps(get_config(), ensure_ascii=False, indent=2),
         membros=db.listar_membros(),
+        usuarios_tech=db.listar_usuarios_tech(),
     )
 
 
@@ -141,7 +143,7 @@ def _resposta_membros(mensagem, tipo="ok"):
     if view_utils.quer_fragmento():
         view_utils.enfileirar_toast(mensagem, tipo)
         return view_utils.anexar_toasts(
-            render_template("painel_tech/partials/_membros.html", membros=db.listar_membros())
+            render_template("painel_tech/partials/_membros.html", membros=db.listar_membros(), usuarios_tech=db.listar_usuarios_tech())
         )
     flash(mensagem, tipo)
     return redirect(request.referrer or url_for("painel_tech.configuracoes"))
@@ -149,11 +151,15 @@ def _resposta_membros(mensagem, tipo="ok"):
 
 @bp.route("/membros", methods=["POST"])
 def membro_criar():
-    nome = request.form.get("nome", "").strip()
-    if not nome:
-        return _resposta_membros("Informe o nome do membro.", "erro")
-    db.criar_membro(nome, request.form.get("email"))
-    return _resposta_membros("Membro adicionado.", "ok")
+    email = (request.form.get("email") or "").strip().lower()
+    tech = db.listar_usuarios_tech()
+    escolhido = next((u for u in tech if (u.get("email") or "").lower() == email), None)
+    if not escolhido:
+        return _resposta_membros(
+            "Selecione um usuário com a posição TECH para ser membro do painel.", "erro"
+        )
+    db.criar_membro(escolhido["nome"], escolhido.get("email"), escolhido.get("id"))
+    return _resposta_membros(f"{escolhido['nome']} adicionado como membro.", "ok")
 
 
 @bp.route("/membros/<int:membro_id>/capacidade", methods=["POST"])

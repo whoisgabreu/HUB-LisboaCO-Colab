@@ -1,9 +1,19 @@
 <form class="inline" method="post" action="{{ url_for('painel_tech.membro_criar') }}"
       hx-post="{{ url_for('painel_tech.membro_criar') }}"
       hx-target="#aba-membros" hx-swap="innerHTML" hx-indicator="#aba-membros">
-  <input type="text" name="nome" placeholder="Nome" required>
-  <input type="email" name="email" placeholder="E-mail (opcional)">
+  {% set ja = membros | map(attribute='email') | select | map('lower') | list %}
+  {% set disponiveis = usuarios_tech | rejectattr('email', 'in', ja) | list %}
+  {% if disponiveis %}
+  <select name="email" required>
+    <option value="" disabled selected>Selecione um usuário TECH...</option>
+    {% for u in disponiveis %}
+    <option value="{{ u.email }}">{{ u.nome }}{% if u.email %} — {{ u.email }}{% endif %}</option>
+    {% endfor %}
+  </select>
   <button class="btn btn-secundario" type="submit" hx-disabled-elt="this">Adicionar</button>
+  {% else %}
+  <span class="vazio">Todos os usuários TECH já são membros.</span>
+  {% endif %}
 </form>
 <div class="tabela-wrapper">
   <table class="tabela">
