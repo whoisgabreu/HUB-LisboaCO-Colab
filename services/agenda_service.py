@@ -1,6 +1,8 @@
 from services import ekyte_service
+from services import google_agenda_service
 
 FONTES_DISPONIVEIS = ("ekyte", "google")
+JANELA_AGENDA_DIAS = 7
 
 
 def _item_ekyte(t: dict) -> dict:
@@ -12,18 +14,36 @@ def _item_ekyte(t: dict) -> dict:
         "rotulo": t.get("fase") or "",
         "sub": t.get("workspace") or "",
         "link": t.get("url") or "",
+        "inicio": "",
     }
 
 
-def _provedor_google() -> tuple:
-    """Placeholder para o vínculo futuro com Google Agenda (eventos)."""
-    return [], {"conectado": False, "total": 0}
+def _item_google(e: dict) -> dict:
+    inicio = e.get("inicio") or ""
+    return {
+        "fonte": "google",
+        "tipo": "evento",
+        "titulo": e.get("titulo") or "(sem título)",
+        "data": inicio[:10] if "T" in inicio else inicio,
+        "rotulo": inicio,        # data/hora completa (o front formata)
+        "sub": e.get("local") or "",
+        "link": e.get("link") or "",
+        "inicio": inicio,
+    }
+
+
+def _provedor_google(email: str, dias: int = JANELA_AGENDA_DIAS) -> tuple:
+    res = google_agenda_service.listar_eventos(email, dias=dias)
+    if not res.get("conectado"):
+        return [], {"conectado": False, "total": 0, "erro": res.get("erro")}
+    eventos = res.get("eventos") or []
+    return [_item_google(e) for e in eventos], {"conectado": True, "total": len(eventos)}
 
 
 def listar_itens(email: str, fontes=None, limite: int = None) -> dict:
-    """Agrega itens de múltiplas fontes (ekyte hoje; google futura), ordenados por data.
+    """Agrega itens de múltiplas fontes (ekyte e google), ordenados por data.
 
-    Cada item: {fonte, tipo, titulo, data, rotulo, sub, link}
+    Cada item: {fonte, tipo, titulo, data, rotulo, sub, link, inicio}
     Retorno: {itens, total, fontes:{<fonte>: {info}}}
     """
     if not fontes:
@@ -48,12 +68,13 @@ def listar_itens(email: str, fontes=None, limite: int = None) -> dict:
         itens += [_item_ekyte(t) for t in lista]
 
     if "google" in fontes:
-        google_itens, google_info = _provedor_google()
+        google_itens, google_info = _provedor_google(email)
         info["google"] = google_info
         itens += google_itens
 
     def chave(it):
-        return (0, it["data"][:10]) if it.get("data") else (1, "9999-12-31")
+        ref = it.get("inicio") or (it["data"] + "T00:00:00" if it.get("data") else "")
+        return (0, ref) if ref else (1, "9999-12-31")
 
     itens.sort(key=chave)
     total = len(itens)
@@ -64,6 +85,42 @@ def listar_itens(email: str, fontes=None, limite: int = None) -> dict:
     if atualizando:
         out["atualizando"] = True
     return out
+
+
+def _eventos_hoje(eventos) -> int:
+    """Conta eventos que ocorrem hoje (intervalo sobrepõe o dia de hoje, em America/Sao_Paulo)."""
+    from datetime import datetime, time, timedelta
+    try:
+        from zoneinfo import ZoneInfo
+        tz = ZoneInfo("America/Sao_Paulo")
+    except Exception:
+        tz = None
+    hoje = datetime.now(tz).date() if tz else datetime.now().date()
+    d0 = datetime.combine(hoje, time.min)
+    d1 = datetime.combine(hoje + timedelta(days=1), time.min)
+    count = 0
+    for e in eventos:
+        ini_raw = e.get("inicio")
+        fim_raw = e.get("fim") or ini_raw
+        try:
+            if ini_raw and "T" in ini_raw:
+                ini = datetime.fromisoformat(ini_raw)
+            elif ini_raw:
+                ini = datetime.fromisoformat(ini_raw + "T00:00:00")
+            else:
+                continue
+            fim = datetime.fromisoformat(fim_raw) if fim_raw and "T" in fim_raw else (datetime.fromisoformat(fim_raw + "T23:59:59") if fim_raw else ini)
+        except Exception:
+            continue
+        if ini.tzinfo is not None:
+            ini = ini.astimezone(tz)
+        if fim.tzinfo is not None:
+            fim = fim.astimezone(tz)
+        ini = ini.replace(tzinfo=None)
+        fim = fim.replace(tzinfo=None)
+        if (ini < d1) and (fim > d0):
+            count += 1
+    return count
 
 
 def resumo(email: str) -> dict:
@@ -80,10 +137,10 @@ def resumo(email: str) -> dict:
         if "erro" not in dados:
             tarefas_total = dados.get("total") or len(dados.get("tarefas") or [])
 
-    if "google" in FONTES_DISPONIVEIS:
-        _g, g_info = _provedor_google()
-        google_conectado = bool(g_info.get("conectado"))
-        agenda_hoje = g_info.get("total") or 0
+    res = google_agenda_service.listar_eventos(email, dias=JANELA_AGENDA_DIAS)
+    google_conectado = bool(res.get("conectado"))
+    if google_conectado:
+        agenda_hoje = _eventos_hoje(res.get("eventos") or [])
 
     out = {
         "tarefas_total": tarefas_total,

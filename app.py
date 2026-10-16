@@ -1366,10 +1366,11 @@ def login_google():
     return redirect(authorization_url)
 
 
-# ── TEMP: teste de acesso à Google Agenda (remover depois) ──────────────────
-@app.route("/debug/agenda/connect")
-def debug_agenda_connect():
-    """Inicia OAuth pedindo o escopo de Calendar (não afeta o login normal)."""
+# ── Google Agenda (Minha Agenda) ────────────────────────────────────────────
+@app.route("/agenda/google/conectar")
+@check_session
+def agenda_google_conectar():
+    """Inicia o OAuth pedindo o escopo de Calendar (separado do login normal)."""
     google = OAuth2Session(
         GOOGLE_CLIENT_ID,
         scope=GOOGLE_SCOPE + [GOOGLE_CALENDAR_SCOPE],
@@ -1382,71 +1383,20 @@ def debug_agenda_connect():
         include_granted_scopes="true",
     )
     session["oauth_state"] = state
-    session["oauth_calendar"] = True
+    session["oauth_agenda"] = True
     return redirect(authorization_url)
 
 
-@app.route("/debug/agenda")
+@app.route("/agenda/google/desconectar", methods=["POST"])
 @check_session
-def debug_agenda():
-    """Troca o refresh_token por access_token e lista os próximos eventos (primary)."""
-    import requests as _rq
+def agenda_google_desconectar():
+    """Remove o token da Google Agenda do usuário."""
     email = session.get("email")
-    try:
+    if email:
+        from services.google_agenda_service import desconectar
         with Session() as db:
-            row = db.execute(
-                text(
-                    "SELECT refresh_token, scope FROM plataforma_geral.google_oauth_tmp WHERE email=:e"
-                ),
-                {"e": email},
-            ).mappings().first()
-    except Exception as e:
-        return jsonify({"erro": "sem_tabela", "detalhe": str(e), "dica": "Acesse /debug/agenda/connect primeiro."})
-
-    if not row or not row.get("refresh_token"):
-        return jsonify({"erro": "sem_token", "dica": "Acesse /debug/agenda/connect para conectar a agenda."})
-
-    try:
-        tr = _rq.post(
-            TOKEN_URL,
-            data={
-                "client_id": GOOGLE_CLIENT_ID,
-                "client_secret": GOOGLE_CLIENT_SECRET,
-                "refresh_token": row["refresh_token"],
-                "grant_type": "refresh_token",
-            },
-            timeout=15,
-        )
-        tok = tr.json()
-        if tr.status_code != 200 or "access_token" not in tok:
-            return jsonify({"erro": "refresh", "status": tr.status_code, "resposta": tok})
-
-        access = tok["access_token"]
-        from datetime import datetime as _dtc, timezone as _tz
-        agora = _dtc.now(_tz.utc).isoformat()
-        ev = _rq.get(
-            "https://www.googleapis.com/calendar/v3/calendars/primary/events",
-            params={"timeMin": agora, "singleEvents": "true", "orderBy": "startTime", "maxResults": 10},
-            headers={"Authorization": f"Bearer {access}"},
-            timeout=15,
-        )
-        dados = ev.json()
-        if ev.status_code != 200:
-            return jsonify({"erro": "events", "status": ev.status_code, "resposta": dados})
-
-        itens = []
-        for e in (dados.get("items") or []):
-            ini = e.get("start") or {}
-            fim = e.get("end") or {}
-            itens.append({
-                "summary": e.get("summary"),
-                "start": ini.get("dateTime") or ini.get("date"),
-                "end": fim.get("dateTime") or fim.get("date"),
-                "link": e.get("htmlLink"),
-            })
-        return jsonify({"ok": True, "scopes": row.get("scope"), "total": len(itens), "eventos": itens})
-    except Exception as e:
-        return jsonify({"erro": "excecao", "detalhe": str(e)})
+            desconectar(db, email)
+    return redirect(url_for("minha_agenda"))
 
 
 @app.route("/login/callback")
