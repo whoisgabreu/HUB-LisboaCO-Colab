@@ -1,0 +1,1 @@
+ALTER TABLE painel_tech.membros ADD COLUMN IF NOT EXISTS capacidade INTEGER;

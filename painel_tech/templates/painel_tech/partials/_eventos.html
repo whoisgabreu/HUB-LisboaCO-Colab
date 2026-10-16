@@ -1,0 +1,7 @@
+<ul class="eventos">
+  {% for evento in eventos %}
+  <li><span class="evento-data">{{ evento.created_at.strftime('%d/%m/%Y %H:%M') }}</span> {{ evento.descricao }}{% if evento.autor_nome %} <span class="evento-autor">por {{ evento.autor_nome }}</span>{% endif %}</li>
+  {% else %}
+  <li class="vazio">Sem eventos.</li>
+  {% endfor %}
+</ul>

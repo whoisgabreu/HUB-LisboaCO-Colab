@@ -1,0 +1,201 @@
+{% from "painel_tech/_macros.html" import estado_vazio, paginacao, barra %}
+{% include "painel_tech/partials/_relatorios_tabs.html" %}
+
+<div class="relatorio-secao">
+  {% if aba == 'resumo' %}
+  <section class="secao">
+    <div class="secao-cabecalho">
+      <h2 class="secao-titulo">Resumo do período</h2>
+      <span class="chip-periodo">📅 {{ de_data.strftime('%d/%m/%Y') }} — {{ ate_data.strftime('%d/%m/%Y') }}</span>
+    </div>
+    <div class="relatorio-grupos">
+      {% for grupo in relatorio.resumo_grupos %}
+      <div class="relatorio-grupo">
+        <h3 class="grupo-titulo">{{ grupo.icone }} {{ grupo.titulo }}</h3>
+        <div class="relatorio-resumo">
+          {% for item in grupo.itens %}
+          <div class="relatorio-resumo-item{% if item.destaque %} destaque-{{ item.destaque }}{% endif %}">
+            <span class="rotulo">{{ item.rotulo }}</span>
+            <span class="valor">{{ item.valor }}</span>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  {% elif aba == 'projetos' %}
+  <section class="secao">
+    <h2 class="secao-titulo">Projetos ({{ secao.pag.total }})</h2>
+    {% if secao.itens %}
+    <div class="tabela-wrapper">
+      <table class="tabela">
+        <thead>
+          <tr>
+            <th>Projeto</th>
+            <th>Status</th>
+            <th>Responsável</th>
+            <th>Prioridade</th>
+            <th>Progresso</th>
+            <th>Tempo gasto</th>
+            <th>Sessões</th>
+            <th>Lead time</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for linha in secao.itens %}
+          <tr>
+            <td data-label="Projeto">{{ linha.nome }}</td>
+            <td data-label="Status"><span class="badge badge-{{ linha.status_cor }}"><span class="dot"></span>{{ linha.status }}</span></td>
+            <td data-label="Responsável">{{ linha.responsavel }}</td>
+            <td data-label="Prioridade">
+              <span class="badge badge-{{ linha.prioridade_cor }}"><span class="dot"></span>{{ linha.prioridade }}</span>
+              <span class="indice-min">{{ "%.2f"|format(linha.indice) }}</span>
+            </td>
+            <td data-label="Progresso" class="celula-progresso">
+              {{ barra(linha.progresso) }}
+              <span class="progresso-texto">{{ linha.progresso }}% ({{ linha.concluidas }}/{{ linha.total_etapas }})</span>
+            </td>
+            <td data-label="Tempo gasto">{{ linha.tempo | duracao_br }}</td>
+            <td data-label="Sessões">{{ linha.sessoes }}</td>
+            <td data-label="Lead time">{% if linha.lead_dias is not none %}{{ linha.lead_dias }}d{% else %}—{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    {{ estado_vazio('📭', 'Nenhum projeto com atividade no período') }}
+    {% endif %}
+    {{ paginacao(secao.pag, 'painel_tech.relatorios_pagina', parametros_base, por_pagina_opcoes) }}
+  </section>
+
+  {% elif aba == 'sla' %}
+  <section class="secao">
+    <h2 class="secao-titulo">Checklists concluídos / SLA ({{ secao.pag.total }})</h2>
+    {% if secao.itens %}
+    <div class="tabela-wrapper">
+      <table class="tabela">
+        <thead>
+          <tr>
+            <th>Projeto</th>
+            <th>Etapa</th>
+            <th>Responsável</th>
+            <th>Prevista</th>
+            <th>Concluída em</th>
+            <th>Atraso</th>
+            <th>Intervalo anterior</th>
+            <th>Ciclo</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for linha in secao.itens %}
+          <tr>
+            <td data-label="Projeto">{{ linha.projeto }}</td>
+            <td data-label="Etapa">{{ linha.etapa }}</td>
+            <td data-label="Responsável">{{ linha.responsavel }}</td>
+            <td data-label="Prevista">{{ linha.prevista | data_br if linha.prevista else '—' }}</td>
+            <td data-label="Concluída em">{{ linha.concluida_em.strftime('%d/%m/%Y %H:%M') }}</td>
+            <td data-label="Atraso"{% if linha.atraso and linha.atraso > 0 %} class="atraso"{% elif linha.atraso is not none %} class="atraso-ok"{% endif %}>{% if linha.atraso is not none %}{{ linha.atraso }}d{% else %}—{% endif %}</td>
+            <td data-label="Intervalo anterior">{{ linha.cadencia | duracao_br }}</td>
+            <td data-label="Ciclo">{{ linha.ciclo | duracao_br }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    {{ estado_vazio('☑️', 'Nenhum checklist concluído no período') }}
+    {% endif %}
+    {{ paginacao(secao.pag, 'painel_tech.relatorios_pagina', parametros_base, por_pagina_opcoes) }}
+  </section>
+
+  {% elif aba == 'tempo' %}
+  <section class="secao">
+    <h2 class="secao-titulo">Tempo por membro</h2>
+    {% if relatorio.membros %}
+    <div class="tabela-wrapper relatorio-tempo">
+      <div class="distribuicao">
+        {% for linha in relatorio.membros %}
+        <div class="dist-linha">
+          <span class="dist-nome">{{ linha.membro }}</span>
+          <div class="dist-barra"><span style="width: {{ linha.pct }}%"></span></div>
+          <span class="dist-total">{{ linha.tempo | duracao_br }} · {{ linha.pct }}%</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% else %}
+    {{ estado_vazio('⏱️', 'Sem sessões no período') }}
+    {% endif %}
+  </section>
+
+  <section class="secao">
+    <h2 class="secao-titulo">Sessões de tempo ({{ secao.pag.total }})</h2>
+    {% if secao.itens %}
+    <div class="tabela-wrapper">
+      <table class="tabela">
+        <thead>
+          <tr>
+            <th>Projeto</th>
+            <th>Membro</th>
+            <th>Início</th>
+            <th>Fim</th>
+            <th>Duração no período</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for linha in secao.itens %}
+          <tr>
+            <td data-label="Projeto">{{ linha.projeto }}</td>
+            <td data-label="Membro">{{ linha.membro }}</td>
+            <td data-label="Início">{{ linha.inicio.strftime('%d/%m/%Y %H:%M') }}</td>
+            <td data-label="Fim">{{ linha.fim.strftime('%d/%m/%Y %H:%M') }}</td>
+            <td data-label="Duração">{{ linha.duracao | duracao_br }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    {{ estado_vazio('⏱️', 'Sem sessões no período') }}
+    {% endif %}
+    {{ paginacao(secao.pag, 'painel_tech.relatorios_pagina', parametros_base, por_pagina_opcoes) }}
+  </section>
+
+  {% elif aba == 'eventos' %}
+  <section class="secao">
+    <h2 class="secao-titulo">Eventos ({{ secao.pag.total }})</h2>
+    {% if secao.itens %}
+    <div class="tabela-wrapper">
+      <table class="tabela">
+        <thead>
+          <tr>
+            <th>Data</th>
+            <th>Projeto</th>
+            <th>Tipo</th>
+            <th>Descrição</th>
+            <th>Autor</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for linha in secao.itens %}
+          <tr>
+            <td data-label="Data">{{ linha.quando.strftime('%d/%m/%Y %H:%M') }}</td>
+            <td data-label="Projeto">{{ linha.projeto }}</td>
+            <td data-label="Tipo"><span class="badge">{{ linha.tipo }}</span></td>
+            <td data-label="Descrição">{{ linha.descricao or '—' }}</td>
+            <td data-label="Autor">{{ linha.autor }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    {{ estado_vazio('🗂️', 'Nenhum evento no período') }}
+    {% endif %}
+    {{ paginacao(secao.pag, 'painel_tech.relatorios_pagina', parametros_base, por_pagina_opcoes) }}
+  </section>
+  {% endif %}
+</div>

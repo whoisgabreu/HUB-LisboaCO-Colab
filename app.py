@@ -40,6 +40,7 @@ from services.agenda_service import listar_itens, resumo
 from dashboard_grupos.hub_integration import register as register_dashboard_grupos
 from feed.hub_integration import register as register_feed
 from chat.hub_integration import register as register_chat
+from painel_tech.hub_integration import register as register_painel_tech
 import permissions
 
 
@@ -59,6 +60,9 @@ register_feed(app)
 
 # Chat interno (blueprint isolado, APIs em /api/chat)
 register_chat(app)
+
+# Painel Gerencial TECH (blueprint isolado, acessível em /tech)
+register_painel_tech(app)
 
 
 @app.route("/favicon.ico")

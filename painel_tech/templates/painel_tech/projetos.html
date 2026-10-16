@@ -1,0 +1,66 @@
+{% extends "painel_tech/base.html" %}
+{% from "painel_tech/_macros.html" import barra, tag, dot %}
+{% block title %}Projetos — Painel Gerencial TECH{% endblock %}
+{% block cabecalho %}Projetos{% endblock %}
+{% block acoes %}
+<a class="btn btn-secundario" href="{{ url_export }}">Exportar CSV</a>
+<a class="btn btn-primario" href="{{ url_for('painel_tech.projetos_novo') }}">+ Novo projeto</a>
+{% endblock %}
+
+{% block conteudo %}
+{% include "painel_tech/partials/_projetos_tabs.html" %}
+
+<section class="kpis kpis-compacto">
+  <a class="kpi {{ 'kpi-ativo' if not args.get('status') else '' }}" href="{{ url_for('painel_tech.projetos_listar') }}">
+    <span class="kpi-txts"><span class="kpi-label">Todos</span><span class="kpi-valor">{{ total }}</span></span>
+  </a>
+  {% for chave, meta in STATUS.items() %}
+  <a class="kpi {{ 'kpi-ativo' if args.get('status') == chave else '' }}" href="{{ url_for('painel_tech.projetos_listar', status=chave) }}">
+    <span class="kpi-txts"><span class="kpi-label">{{ dot(meta.cor) }} {{ meta.label }}</span><span class="kpi-valor">{{ contagem[chave] }}</span></span>
+  </a>
+  {% endfor %}
+</section>
+
+{% include "painel_tech/partials/_projetos_filtros.html" %}
+{% include "painel_tech/partials/_chips_filtros.html" %}
+
+<div class="tabela-wrapper">
+  <table class="tabela">
+    <thead>
+      <tr>
+        <th scope="col">Projeto</th>
+        <th scope="col">Status</th>
+        <th scope="col">Impacto</th>
+        <th scope="col">Risco</th>
+        <th scope="col">Prioridade</th>
+        <th scope="col">Ritmo</th>
+        <th scope="col">Progresso</th>
+        <th scope="col">Intervenção</th>
+        <th scope="col">Responsável</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for linha in linhas %}
+      {% set p = linha.projeto %}
+      {% set a = linha.analise %}
+        <tr>
+          <td data-label="Projeto"><a href="{{ url_for('painel_tech.projeto_detalhe', projeto_id=p.id) }}">{{ p.nome }}</a></td>
+          <td data-label="Status">{{ tag(status_meta(p.status).cor, status_meta(p.status).label) }}</td>
+          <td data-label="Impacto">{{ tag(indicador_meta('impacto', p.impacto).cor, indicador_meta('impacto', p.impacto).label) }}</td>
+          <td data-label="Risco">{{ tag(indicador_meta('risco', p.risco).cor, indicador_meta('risco', p.risco).label) }}</td>
+          <td data-label="Prioridade">{{ tag(a.prioridade.cor, a.prioridade.label) }}</td>
+          <td data-label="Ritmo">{{ tag(ritmo_meta(a.saude.ritmo).cor, ritmo_meta(a.saude.ritmo).label) }}</td>
+          <td data-label="Progresso" class="celula-progresso">
+            {{ barra(a.saude.progresso_pct) }}
+            <span>{{ a.saude.progresso_pct }}%</span>
+          </td>
+          <td data-label="Intervenção">{{ tag(a.intervencao.cor, a.intervencao.label) }}</td>
+          <td data-label="Responsável">{{ p.responsavel_nome or '—' }}</td>
+        </tr>
+      {% else %}
+      <tr><td colspan="9" class="vazio">Nenhum projeto encontrado.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

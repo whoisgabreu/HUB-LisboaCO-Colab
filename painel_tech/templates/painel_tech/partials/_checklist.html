@@ -1,0 +1,200 @@
+{% from "painel_tech/_macros.html" import icone_check, tag, estado_vazio %}
+<div class="checklist-cabecalho">
+  <div class="checklist-titulos">
+    <h2 class="secao-titulo">Checklist</h2>
+    <span class="checklist-resumo">
+      {{ resumo_checklist.concluidas }}/{{ resumo_checklist.total }} concluídas
+      {% if resumo_checklist.vencidas %}<span class="checklist-marca marca-vermelho">{{ resumo_checklist.vencidas }} vencidas</span>{% endif %}
+      {% if resumo_checklist.bloqueadas %}<span class="checklist-marca marca-ambar">{{ resumo_checklist.bloqueadas }} bloqueadas</span>{% endif %}
+    </span>
+  </div>
+  <label class="checklist-ocultar"><input type="checkbox" data-ocultar-concluidas> Ocultar concluídas</label>
+</div>
+
+<div class="etapas">
+  {% for etapa in etapas %}
+  <div class="etapa {{ 'etapa-andamento' if etapa.status == 'em_andamento' else '' }} {{ 'etapa-concluida' if etapa.status == 'concluida' else '' }} {{ 'etapa-bloqueada' if etapa.bloqueada else '' }} {{ 'etapa-dep' if etapa.dep_pendente else '' }}">
+    <form method="post" action="{{ url_for('painel_tech.etapa_concluir', etapa_id=etapa.id) }}" class="etapa-toggle"
+          hx-post="{{ url_for('painel_tech.etapa_concluir', etapa_id=etapa.id) }}"
+          hx-target="#checklist" hx-swap="outerHTML" hx-indicator="#checklist">
+      <button type="submit" aria-label="{{ 'Reabrir etapa' if etapa.status == 'concluida' else 'Concluir etapa' }}" title="{{ 'Reabrir' if etapa.status == 'concluida' else 'Concluir' }}" hx-disabled-elt="this">
+        {{ icone_check(etapa.status) }}
+      </button>
+    </form>
+
+    <div class="etapa-info">
+      <span class="etapa-cabecalho">
+        <span class="etapa-nome">{{ etapa.nome }}</span>
+        {{ tag(ETAPA_STATUS[etapa.status].cor, ETAPA_STATUS[etapa.status].label) }}
+      </span>
+      <span class="etapa-sub">
+        {{ etapa.responsavel_nome or 'Sem responsável' }}
+        {% if etapa.data_prevista %} · previsto {{ etapa.data_prevista|data_br }}{% endif %}
+        {% if etapa.data_conclusao %} · concluído {{ etapa.data_conclusao|data_br }}{% endif %}
+      </span>
+      {% if etapa.observacao %}<span class="etapa-obs">{{ etapa.observacao }}</span>{% endif %}
+      {% if etapa.dependencia_nome %}
+      <span class="etapa-sub">⛓️ depende de {{ etapa.dependencia_nome }}{% if etapa.dep_pendente %} · aguardando dependência{% endif %}</span>
+      {% endif %}
+      {% if etapa.bloqueada %}
+      <span class="etapa-bloqueio">
+        ⛔ {{ etapa.bloqueio_motivo or 'Bloqueada' }}
+        {% if etapa.bloqueio_descricao %}: {{ etapa.bloqueio_descricao }}{% endif %}
+        {% if etapa.bloqueio_desde %} (desde {{ etapa.bloqueio_desde|data_br }}){% endif %}
+      </span>
+      {% endif %}
+    </div>
+
+    <div class="etapa-acoes">
+      <form method="post" action="{{ url_for('painel_tech.etapa_mover', etapa_id=etapa.id) }}"
+            hx-post="{{ url_for('painel_tech.etapa_mover', etapa_id=etapa.id) }}"
+            hx-target="#checklist" hx-swap="outerHTML" hx-indicator="#checklist">
+        <input type="hidden" name="direcao" value="cima"><button class="btn-icone" title="Subir" aria-label="Mover etapa para cima" hx-disabled-elt="this">↑</button>
+      </form>
+      <form method="post" action="{{ url_for('painel_tech.etapa_mover', etapa_id=etapa.id) }}"
+            hx-post="{{ url_for('painel_tech.etapa_mover', etapa_id=etapa.id) }}"
+            hx-target="#checklist" hx-swap="outerHTML" hx-indicator="#checklist">
+        <input type="hidden" name="direcao" value="baixo"><button class="btn-icone" title="Descer" aria-label="Mover etapa para baixo" hx-disabled-elt="this">↓</button>
+      </form>
+      {% if etapa.bloqueada %}
+      <form method="post" action="{{ url_for('painel_tech.etapa_desbloquear', etapa_id=etapa.id) }}"
+            hx-post="{{ url_for('painel_tech.etapa_desbloquear', etapa_id=etapa.id) }}"
+            hx-target="#checklist" hx-swap="outerHTML" hx-indicator="#checklist">
+        <button class="btn-icone" title="Desbloquear" aria-label="Desbloquear etapa" hx-disabled-elt="this">🔓</button>
+      </form>
+      {% endif %}
+      <button type="button" class="btn-icone" data-abrir-edicao="modal-etapa-{{ etapa.id }}" title="Editar etapa" aria-label="Editar etapa">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
+      </button>
+      <form method="post" action="{{ url_for('painel_tech.etapa_excluir', etapa_id=etapa.id) }}"
+            hx-post="{{ url_for('painel_tech.etapa_excluir', etapa_id=etapa.id) }}"
+            hx-target="#checklist" hx-swap="outerHTML" hx-indicator="#checklist"
+            hx-confirm="Remover esta etapa?">
+        <button class="btn-icone btn-icone-perigo" title="Excluir" aria-label="Excluir etapa" hx-disabled-elt="this">✕</button>
+      </form>
+    </div>
+
+    <details class="etapa-comentarios">
+      <summary>Comentários ({{ comentarios_etapa.get(etapa.id, []) | length }})</summary>
+      <ul class="comentarios">
+        {% for comentario in comentarios_etapa.get(etapa.id, []) %}
+        <li>
+          <span class="comentario-data">{{ comentario.created_at.strftime('%d/%m/%Y %H:%M') }}</span>
+          <span class="comentario-autor">{{ comentario.autor_nome or 'Sistema' }}:</span>
+          {{ comentario.texto }}
+        </li>
+        {% else %}
+        <li class="vazio">Sem comentários.</li>
+        {% endfor %}
+      </ul>
+      <form class="inline form-comentario" method="post" action="{{ url_for('painel_tech.etapa_comentar', etapa_id=etapa.id) }}">
+        <input type="text" name="texto" placeholder="Comentar etapa..." required>
+        <button class="btn btn-secundario" type="submit">Comentar</button>
+      </form>
+    </details>
+
+    <dialog id="modal-etapa-{{ etapa.id }}" class="modal modal-etapa" aria-labelledby="titulo-etapa-{{ etapa.id }}">
+      <header class="modal-cabecalho">
+        <h2 id="titulo-etapa-{{ etapa.id }}" class="secao-titulo">Editar etapa</h2>
+        <button type="button" class="btn-icone" data-fechar-edicao aria-label="Fechar">✕</button>
+      </header>
+      <div class="modal-corpo">
+        <form class="form-etapa" method="post" action="{{ url_for('painel_tech.etapa_editar', etapa_id=etapa.id) }}"
+              hx-post="{{ url_for('painel_tech.etapa_editar', etapa_id=etapa.id) }}"
+              hx-target="#checklist" hx-swap="outerHTML" hx-indicator="#checklist">
+          <div class="form-grade">
+            <div class="campo">
+              <label>Nome</label>
+              <input type="text" name="nome" value="{{ etapa.nome }}" required>
+            </div>
+            <div class="campo">
+              <label>Responsável</label>
+              <select name="responsavel_id">
+                <option value="">—</option>
+                {% for membro in membros %}
+                <option value="{{ membro.id }}" {{ 'selected' if etapa.responsavel_id == membro.id else '' }}>{{ membro.nome }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="campo">
+              <label>Status</label>
+              <select name="status">
+                {% for chave, meta in ETAPA_STATUS.items() %}
+                <option value="{{ chave }}" {{ 'selected' if etapa.status == chave else '' }}>{{ meta.label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="campo">
+              <label>Data prevista</label>
+              <input type="date" name="data_prevista" value="{{ etapa.data_prevista or '' }}">
+            </div>
+            <div class="campo">
+              <label>Depende de</label>
+              <select name="dependencia_id">
+                <option value="">—</option>
+                {% for outra in etapas %}
+                {% if outra.id != etapa.id %}
+                <option value="{{ outra.id }}" {{ 'selected' if etapa.dependencia_id == outra.id else '' }}>{{ outra.nome }}</option>
+                {% endif %}
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+          <div class="campo campo-largo">
+            <label>Observação</label>
+            <input type="text" name="observacao" value="{{ etapa.observacao or '' }}">
+          </div>
+          <div class="campo campo-largo campo-check">
+            <label><input type="checkbox" name="bloqueada" {{ 'checked' if etapa.bloqueada else '' }}> Etapa bloqueada</label>
+          </div>
+          <div class="form-grade">
+            <div class="campo">
+              <label>Motivo do bloqueio</label>
+              <input type="text" name="bloqueio_motivo" value="{{ etapa.bloqueio_motivo or '' }}">
+            </div>
+            <div class="campo">
+              <label>Descrição do bloqueio</label>
+              <input type="text" name="bloqueio_descricao" value="{{ etapa.bloqueio_descricao or '' }}">
+            </div>
+            <div class="campo">
+              <label>Bloqueada desde</label>
+              <input type="date" name="bloqueio_desde" value="{{ etapa.bloqueio_desde or '' }}">
+            </div>
+            <div class="campo">
+              <label>Responsável do bloqueio</label>
+              <select name="bloqueio_responsavel_id">
+                <option value="">—</option>
+                {% for membro in membros %}
+                <option value="{{ membro.id }}" {{ 'selected' if etapa.bloqueio_responsavel_id == membro.id else '' }}>{{ membro.nome }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+          <div class="form-rodape">
+            <button class="btn btn-primario" type="submit" hx-disabled-elt="this">Salvar etapa</button>
+          </div>
+        </form>
+      </div>
+    </dialog>
+  </div>
+  {% else %}
+  {{ estado_vazio('🗒️', 'Nenhuma etapa cadastrada', 'Adicione a primeira etapa do projeto.') }}
+  {% endfor %}
+</div>
+
+<form class="form-nova-etapa" method="post" action="{{ url_for('painel_tech.etapa_criar', projeto_id=projeto.id) }}"
+      hx-post="{{ url_for('painel_tech.etapa_criar', projeto_id=projeto.id) }}"
+      hx-target="#checklist" hx-swap="outerHTML" hx-indicator="#checklist">
+  <span class="form-secao">Adicionar etapa</span>
+  <div class="form-nova-linha">
+    <input type="text" name="nome" placeholder="Nome da etapa..." required>
+    <select name="responsavel_id">
+      <option value="">—</option>
+      {% for membro in membros %}
+      <option value="{{ membro.id }}">{{ membro.nome }}</option>
+      {% endfor %}
+    </select>
+    <input type="date" name="data_prevista">
+    <button class="btn btn-primario" type="submit" hx-disabled-elt="this">+ Adicionar</button>
+  </div>
+</form>

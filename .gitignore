@@ -209,3 +209,6 @@ __marimo__/
 # Dados de runtime (dashboard_grupos) — não versionar
 # equipe.json
 # clientes.json
+
+# Painel Gerencial TECH (config de runtime)
+painel_tech/config.json

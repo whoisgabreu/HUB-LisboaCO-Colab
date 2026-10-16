@@ -1,0 +1,53 @@
+{% extends "painel_tech/base.html" %}
+{% block title %}{{ projeto.nome }} — Painel Gerencial TECH{% endblock %}
+{% block cabecalho %}{{ projeto.nome }}{% endblock %}
+{% block acoes %}
+<button type="button" class="btn btn-secundario" data-abrir-historico>
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+       stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/>
+  </svg>
+  Histórico
+</button>
+<a class="btn btn-secundario" href="{{ url_for('painel_tech.projeto_editar', projeto_id=projeto.id) }}">Editar</a>
+<form method="post" action="{{ url_for('painel_tech.projeto_excluir', projeto_id=projeto.id) }}" onsubmit="return confirm('Excluir este projeto e todas as etapas?');">
+  <button class="btn btn-perigo" type="submit">Excluir</button>
+</form>
+{% endblock %}
+
+{% block conteudo %}
+<div class="detalhe-topo-grade">
+  <section class="detalhe-topo card" id="projeto-resumo">
+    {% include "painel_tech/partials/_projeto_resumo.html" %}
+  </section>
+
+  <section class="card" id="projeto-indicadores">
+    {% include "painel_tech/partials/_projeto_indicadores.html" %}
+  </section>
+</div>
+
+<section class="card painel-abas">
+  <div class="abas aba-botoes" role="tablist">
+    <button type="button" class="aba ativa" data-alvo="aba-checklist" aria-selected="true">Checklist</button>
+    <button type="button" class="aba" data-alvo="aba-comentarios" aria-selected="false">Comentários</button>
+  </div>
+  <div id="aba-checklist">
+    <section id="checklist">
+      {% include "painel_tech/partials/_checklist.html" %}
+    </section>
+  </div>
+  <div id="aba-comentarios" hidden>
+    {% include "painel_tech/partials/_comentarios_projeto.html" %}
+  </div>
+</section>
+
+<dialog id="modal-historico" class="modal" aria-labelledby="titulo-historico">
+  <header class="modal-cabecalho">
+    <h2 id="titulo-historico" class="secao-titulo">Histórico recente</h2>
+    <button type="button" class="btn-icone" data-fechar-historico aria-label="Fechar">✕</button>
+  </header>
+  <section id="eventos" class="modal-corpo">
+    {% include "painel_tech/partials/_eventos.html" %}
+  </section>
+</dialog>
+{% endblock %}

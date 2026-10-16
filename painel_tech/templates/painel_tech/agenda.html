@@ -1,0 +1,11 @@
+{% extends "painel_tech/base.html" %}
+{% block title %}Agenda — Painel Gerencial TECH{% endblock %}
+{% block cabecalho %}Agenda da semana{% endblock %}
+
+{% block conteudo %}
+{% include "painel_tech/partials/_filtros_dashboard.html" %}
+{% include "painel_tech/partials/_chips_filtros.html" %}
+<div id="agenda-conteudo">
+  {% include "painel_tech/partials/_agenda_grelha.html" %}
+</div>
+{% endblock %}

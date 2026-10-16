@@ -1,0 +1,95 @@
+{% macro barra(pct, classe="") %}
+<div class="barra {{ classe }}"><span style="width: {{ pct }}%"></span></div>
+{% endmacro %}
+
+{% macro dot(cor) %}
+<span class="dot dot-{{ cor }}"></span>
+{% endmacro %}
+
+{% macro tag(cor, texto) %}
+<span class="badge badge-{{ cor }}"><span class="dot"></span>{{ texto }}</span>
+{% endmacro %}
+
+{% macro indicador_linha(label, meta, maximo=4) %}
+<div class="ind-linha">
+  <span class="ind-nome">{{ label }}</span>
+  <div class="ind-barra"><span style="width: {{ (meta.nivel / maximo * 100) | round }}%"></span></div>
+  <span class="ind-valor"><span class="ind-emoji dot dot-{{ meta.cor }}"></span><span class="ind-texto">{{ meta.label }}</span></span>
+</div>
+{% endmacro %}
+
+{% macro badge(texto, classe="") %}
+<span class="badge {{ classe }}">{{ texto }}</span>
+{% endmacro %}
+
+{% macro alertas_lista(alertas) %}
+{% if alertas %}
+<div class="alertas">
+  {% for alerta in alertas %}
+  {{ tag(alerta.cor, alerta.mensagem) }}
+  {% endfor %}
+</div>
+{% endif %}
+{% endmacro %}
+
+{% macro url_pagina(endpoint, parametros, pagina) -%}
+{{- url_for(endpoint, de=parametros.de, ate=parametros.ate, aba=parametros.aba, por_pagina=parametros.por_pagina, pagina=pagina) -}}
+{%- endmacro %}
+
+{% macro paginacao(pag, endpoint, parametros, opcoes) %}
+{% if pag and pag.total %}
+<div class="paginacao">
+  <span class="paginacao-info">Mostrando {{ pag.inicio }}–{{ pag.fim }} de {{ pag.total }}</span>
+  {% if pag.total_paginas > 1 %}
+  <nav class="paginacao-paginas" aria-label="Paginação">
+    <a class="pagina-btn {{ 'desabilitado' if not pag.tem_anterior else '' }}"
+       {% if pag.tem_anterior %}href="{{ url_pagina(endpoint, parametros, pag.pagina - 1) }}"
+       hx-get="{{ url_pagina(endpoint, parametros, pag.pagina - 1) }}"
+       hx-target="#relatorio-conteudo" hx-swap="innerHTML" hx-push-url="true"{% else %}role="link" aria-disabled="true"{% endif %}>‹ Anterior</a>
+    {% for n in range(1, pag.total_paginas + 1) %}
+      {% if n == 1 or n == pag.total_paginas or (n >= pag.pagina - 2 and n <= pag.pagina + 2) %}
+      <a class="pagina-btn {{ 'ativa' if n == pag.pagina else '' }}"
+         href="{{ url_pagina(endpoint, parametros, n) }}"
+         hx-get="{{ url_pagina(endpoint, parametros, n) }}"
+         hx-target="#relatorio-conteudo" hx-swap="innerHTML" hx-push-url="true">{{ n }}</a>
+      {% elif n == pag.pagina - 3 or n == pag.pagina + 3 %}
+      <span class="pagina-ellipsis">…</span>
+      {% endif %}
+    {% endfor %}
+    <a class="pagina-btn {{ 'desabilitado' if not pag.tem_proxima else '' }}"
+       {% if pag.tem_proxima %}href="{{ url_pagina(endpoint, parametros, pag.pagina + 1) }}"
+       hx-get="{{ url_pagina(endpoint, parametros, pag.pagina + 1) }}"
+       hx-target="#relatorio-conteudo" hx-swap="innerHTML" hx-push-url="true"{% else %}aria-disabled="true"{% endif %}>›</a>
+  </div>
+  {% endif %}
+  <label class="por-pagina">
+    <span>Por página</span>
+    <select name="por_pagina"
+            hx-get="{{ url_for(endpoint, de=parametros.de, ate=parametros.ate, aba=parametros.aba) }}"
+            hx-target="#relatorio-conteudo" hx-swap="innerHTML" hx-push-url="true" hx-trigger="change">
+      {% for n in opcoes %}
+      <option value="{{ n }}" {{ 'selected' if n == pag.por_pagina else '' }}>{{ n }}</option>
+      {% endfor %}
+    </select>
+  </label>
+</div>
+{% endif %}
+{% endmacro %}
+
+{% macro icone_check(status) %}
+{% if status == 'concluida' %}
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8.5 12.5 2.5 2.5 4.5-5"/></svg>
+{% elif status == 'em_andamento' %}
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+{% else %}
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/></svg>
+{% endif %}
+{% endmacro %}
+
+{% macro estado_vazio(icone, titulo, texto="") %}
+<div class="vazio">
+  <span class="vazio-icone">{{ icone }}</span>
+  <span class="vazio-titulo">{{ titulo }}</span>
+  {% if texto %}<span class="vazio-texto">{{ texto }}</span>{% endif %}
+</div>
+{% endmacro %}

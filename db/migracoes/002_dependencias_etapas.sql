@@ -1,0 +1,1 @@
+ALTER TABLE painel_tech.etapas ADD COLUMN IF NOT EXISTS dependencia_id INTEGER REFERENCES painel_tech.etapas(id) ON DELETE SET NULL;

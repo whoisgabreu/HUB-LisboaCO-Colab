@@ -1,0 +1,97 @@
+{% from "painel_tech/_macros.html" import dot, estado_vazio, tag %}
+
+<div class="agenda-topo">
+  <div class="agenda-nav">
+    <a class="btn btn-fantasma btn-compacto" href="{{ url_anterior }}"
+       hx-get="{{ url_anterior }}" hx-target="#agenda-conteudo" hx-swap="innerHTML" hx-push-url="true"
+       aria-label="Semana anterior">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+      Anterior
+    </a>
+    <a class="btn btn-fantasma btn-compacto" href="{{ url_hoje }}"
+       hx-get="{{ url_hoje }}" hx-target="#agenda-conteudo" hx-swap="innerHTML" hx-push-url="true">
+      Hoje
+    </a>
+    <a class="btn btn-fantasma btn-compacto" href="{{ url_proxima }}"
+       hx-get="{{ url_proxima }}" hx-target="#agenda-conteudo" hx-swap="innerHTML" hx-push-url="true"
+       aria-label="Próxima semana">
+      Próxima
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+    </a>
+  </div>
+  <span class="agenda-periodo chip-periodo">{{ agenda.semana_inicio|data_br }} – {{ agenda.semana_fim|data_br }}</span>
+</div>
+
+{% if not agenda.blocos %}
+  {{ estado_vazio('🗓️', 'Nenhum projeto ativo para agendar nesta semana' if agenda.tem_projetos else 'Nenhum projeto ativo no momento') }}
+{% else %}
+<div class="agenda-resumo">
+  <div class="agenda-kpi">
+    <span class="agenda-kpi-valor">{{ agenda.resumo.projetos }}</span>
+    <span class="agenda-kpi-rotulo">projetos</span>
+  </div>
+  <div class="agenda-kpi">
+    <span class="agenda-kpi-valor">{{ agenda.resumo.blocos }}</span>
+    <span class="agenda-kpi-rotulo">blocos</span>
+  </div>
+  <div class="agenda-kpi">
+    <span class="agenda-kpi-valor">{{ agenda.resumo.planejado_min|minutos_br }}</span>
+    <span class="agenda-kpi-rotulo">planejadas</span>
+  </div>
+  <div class="agenda-kpi">
+    <span class="agenda-kpi-valor">{{ agenda.resumo.disponivel_min|minutos_br }}</span>
+    <span class="agenda-kpi-rotulo">disponíveis</span>
+  </div>
+  <div class="agenda-kpi">
+    <span class="agenda-kpi-valor">{{ agenda.resumo.ocupacao_pct }}%</span>
+    <span class="agenda-kpi-rotulo">ocupação</span>
+  </div>
+</div>
+
+<div class="agenda">
+  <div class="agenda-cabecalho">
+    <span class="agenda-cabecalho-hora"></span>
+    {% for dia in agenda.dias %}
+    <span class="agenda-cabecalho-dia{{ ' hoje' if dia.data == hoje else '' }}">
+      <span class="agenda-dia-nome">{{ dia.label }}</span>
+      <span class="agenda-dia-data">{{ dia.data|data_br }}</span>
+    </span>
+    {% endfor %}
+  </div>
+  <div class="agenda-corpo">
+    <div class="agenda-regua">
+      {% for minuto in agenda.regua %}
+      <span class="agenda-hora" style="top: {{ ((minuto - agenda.expediente.inicio) / (agenda.expediente.fim - agenda.expediente.inicio) * 100)|round(3) }}%">
+        {{ '%02d:00'|format(minuto // 60) }}
+      </span>
+      {% endfor %}
+    </div>
+    {% for dia in agenda.dias %}
+    <div class="agenda-dia{{ ' hoje' if dia.data == hoje else '' }}">
+      {% if agenda.almoco.top_pct is not none %}
+      <div class="agenda-almoco" style="top: {{ agenda.almoco.top_pct }}%; height: {{ agenda.almoco.altura_pct }}%"></div>
+      {% endif %}
+      {% for b in dia.blocos %}
+      <a class="agenda-bloco cor-{{ b.cor }}{{ ' minimo' if b.duracao_min < 40 else (' compacto' if b.duracao_min < 75 else '') }}"
+         href="{{ url_for('painel_tech.projeto_detalhe', projeto_id=b.projeto.id) }}"
+         style="top: {{ b.top_pct }}%; height: {{ b.altura_pct }}%"
+         title="{{ b.projeto.nome }} — {{ b.inicio }}–{{ b.fim }} — {{ b.motivo }}">
+        <span class="agenda-bloco-nome">{{ b.projeto.nome }}</span>
+        <span class="agenda-bloco-hora">{{ b.inicio }}–{{ b.fim }}</span>
+        <span class="agenda-bloco-meta">{{ dot(b.cor) }} {{ b.prioridade }} · {{ b.esforco }}</span>
+      </a>
+      {% endfor %}
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+{% if agenda.nao_alocados %}
+<div class="agenda-fora">
+  <span class="agenda-fora-titulo">Sem espaço nesta semana:</span>
+  {% for item in agenda.nao_alocados %}
+  {{ tag('cinza', item.nome) }}
+  {% endfor %}
+</div>
+{% endif %}
+{% endif %}

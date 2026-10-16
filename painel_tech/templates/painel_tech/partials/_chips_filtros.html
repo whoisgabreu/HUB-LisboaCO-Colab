@@ -1,0 +1,8 @@
+{% if chips %}
+<div class="chips">
+  {% for chip in chips %}
+  <a class="chip" href="{{ chip.url }}">{{ chip.rotulo }} <span class="chip-x" aria-hidden="true">✕</span></a>
+  {% endfor %}
+  <a class="chip chip-limpar" href="{{ url_limpar }}">Limpar tudo</a>
+</div>
+{% endif %}

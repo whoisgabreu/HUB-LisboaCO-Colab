@@ -1,0 +1,19 @@
+{% from "painel_tech/_macros.html" import dot %}
+<div class="kanban" id="kanban">
+  {% for status in ordem_colunas %}
+  <section class="kanban-coluna {{ 'kanban-coluna-fila' if status == 'fila' else '' }}" data-status="{{ status }}">
+    <header class="kanban-cabecalho">
+      <span class="kanban-titulo">{{ dot(STATUS[status].cor) }} {{ STATUS[status].label }}</span>
+      {% if status == 'fila' %}<span class="kanban-dica" title="Arraste os cards para reordenar a fila">↕ reordenar</span>{% endif %}
+      <span class="kanban-contagem">{{ colunas[status]|length }}</span>
+    </header>
+    <div class="kanban-cards">
+      {% for linha in colunas[status] %}
+      {% include "painel_tech/partials/_kanban_card.html" %}
+      {% else %}
+      <div class="vazio">Nada aqui.</div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endfor %}
+</div>

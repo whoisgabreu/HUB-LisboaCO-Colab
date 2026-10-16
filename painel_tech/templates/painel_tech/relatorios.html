@@ -1,0 +1,39 @@
+{% extends "painel_tech/base.html" %}
+{% block title %}Relatórios — Painel Gerencial TECH{% endblock %}
+{% block cabecalho %}Relatórios{% endblock %}
+
+{% block conteudo %}
+<section class="secao">
+  <div class="filtros relatorio-barra">
+    <form class="filtros-corpo" method="get" action="{{ url_for('painel_tech.relatorios_pagina') }}"
+          hx-get="{{ url_for('painel_tech.relatorios_pagina') }}"
+          hx-target="#relatorio-conteudo" hx-swap="innerHTML" hx-push-url="true">
+      <input type="hidden" name="aba" value="{{ aba }}" data-rel-aba-campo>
+      <input type="hidden" name="por_pagina" value="{{ por_pagina }}">
+      <div class="campo">
+        <label for="rel-de">De</label>
+        <input id="rel-de" type="date" name="de" value="{{ de_data.isoformat() }}">
+      </div>
+      <div class="campo">
+        <label for="rel-ate">Até</label>
+        <input id="rel-ate" type="date" name="ate" value="{{ ate_data.isoformat() }}">
+      </div>
+      <div class="relatorio-acoes">
+        <button class="btn btn-primario" type="submit">Atualizar prévia</button>
+        <a class="btn btn-secundario" href="{{ url_export }}">Baixar planilha (XLSX)</a>
+      </div>
+    </form>
+  </div>
+  <p class="relatorio-nota">
+    Considera os projetos <strong>com atividade</strong> no período (sessões de tempo, eventos ou checklists concluídos).
+    <details class="relatorio-ajuda">
+      <summary>O que vem no arquivo XLSX?</summary>
+      Abas <strong>Resumo</strong>, Projetos, Checklists (SLA), Tempo, Tempo por membro e Eventos.
+    </details>
+  </p>
+</section>
+
+<div id="relatorio-conteudo">
+  {% include "painel_tech/partials/_relatorio_secao.html" %}
+</div>
+{% endblock %}

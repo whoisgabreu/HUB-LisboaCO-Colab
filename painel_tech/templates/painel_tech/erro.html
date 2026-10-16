@@ -1,0 +1,10 @@
+{% extends "painel_tech/base.html" %}
+{% block title %}{{ codigo }} — Painel Gerencial TECH{% endblock %}
+{% block cabecalho %}{{ mensagem }}{% endblock %}
+{% block conteudo %}
+<section class="card erro">
+  <span class="erro-codigo">{{ codigo }}</span>
+  <p class="erro-texto">{{ mensagem }}</p>
+  <a class="btn btn-primario" href="{{ url_for('painel_tech.dashboard') }}">Voltar ao painel</a>
+</section>
+{% endblock %}

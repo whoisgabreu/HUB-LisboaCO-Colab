@@ -1,0 +1,20 @@
+{% extends "painel_tech/base.html" %}
+{% block title %}Projetos — Kanban — Painel Gerencial TECH{% endblock %}
+{% block classe_conteudo %}conteudo-kanban{% endblock %}
+{% block cabecalho %}Projetos{% endblock %}
+{% block acoes %}
+<a class="btn btn-secundario" href="{{ url_export }}">Exportar CSV</a>
+<a class="btn btn-primario" href="{{ url_for('painel_tech.projetos_novo') }}">+ Novo projeto</a>
+{% endblock %}
+
+{% block conteudo %}
+{% include "painel_tech/partials/_projetos_tabs.html" %}
+{% include "painel_tech/partials/_projetos_filtros.html" %}
+{% include "painel_tech/partials/_chips_filtros.html" %}
+{% include "painel_tech/partials/_kanban.html" %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('painel_tech.static', filename='js/sortable.min.js') }}" defer></script>
+<script src="{{ url_for('painel_tech.static', filename='js/kanban.js') }}" defer></script>
+{% endblock %}

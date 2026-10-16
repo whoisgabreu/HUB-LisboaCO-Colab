@@ -1,0 +1,141 @@
+{% extends "painel_tech/base.html" %}
+{% from "painel_tech/_macros.html" import tag, dot %}
+{% set CORES_SEVERIDADE = {'info': 'azul', 'atencao': 'ambar', 'critico': 'vermelho'} %}
+{% block title %}Configurações — Painel Gerencial TECH{% endblock %}
+{% block cabecalho %}Configurações{% endblock %}
+
+{% block conteudo %}
+<section class="card painel-abas">
+  <div class="abas aba-botoes" role="tablist">
+    <button type="button" class="aba ativa" data-alvo="aba-ajustes" aria-selected="true">Ajustes</button>
+    <button type="button" class="aba" data-alvo="aba-membros" aria-selected="false">Membros</button>
+    <button type="button" class="aba" data-alvo="aba-regras" aria-selected="false">Regras</button>
+  </div>
+
+  <div id="aba-ajustes">
+    <form method="post" action="{{ url_for('painel_tech.configuracoes_numeros') }}" class="form">
+      <h3 class="form-secao">Pesos da prioridade</h3>
+      <div class="form-grade">
+        {% for campo in ['impacto', 'urgencia', 'risco', 'esforco'] %}
+        <div class="campo">
+          <label>{{ INDICADORES[campo].label }}</label>
+          <input type="number" step="0.05" min="0" name="peso_{{ campo }}" value="{{ config.prioridade.pesos.get(campo, 0) }}">
+        </div>
+        {% endfor %}
+      </div>
+      <h3 class="form-secao">Bandas de prioridade</h3>
+      <div class="form-grade">
+        {% for campo in ['critica', 'alta', 'media'] %}
+        <div class="campo">
+          <label>{{ PRIORIDADE[campo].label }}</label>
+          <input type="number" step="0.1" name="banda_{{ campo }}" value="{{ config.prioridade.bandas.get(campo, 0) }}">
+        </div>
+        {% endfor %}
+      </div>
+      <h3 class="form-secao">Saúde do ritmo</h3>
+      <div class="form-grade">
+        <div class="campo">
+          <label>Dias para alerta de bloqueio</label>
+          <input type="number" min="0" step="1" name="dias_bloqueio" value="{{ config.saude.dias_bloqueio_alerta }}">
+        </div>
+        <div class="campo">
+          <label>Dias sem movimento</label>
+          <input type="number" min="0" step="1" name="dias_movimento" value="{{ config.saude.dias_sem_movimento }}">
+        </div>
+      </div>
+      <h3 class="form-secao">Capacidade do time</h3>
+      <div class="form-grade">
+        <div class="campo">
+          <label>Limite de projetos ativos por pessoa (padrão)</label>
+          <input type="number" min="1" step="1" name="limite_ativo" value="{{ config.capacidade.limite_ativo_padrao }}">
+        </div>
+      </div>
+      {% set DIAS_AGENDA = [('seg', 'Seg'), ('ter', 'Ter'), ('qua', 'Qua'), ('qui', 'Qui'), ('sex', 'Sex')] %}
+      {% set ESFORCOS_AGENDA = ['pequeno', 'medio', 'grande', 'muito_grande'] %}
+      <h3 class="form-secao">Agenda da semana</h3>
+      <div class="form-grade">
+        <div class="campo">
+          <label>Expediente — início</label>
+          <input type="time" name="agenda_expediente_inicio" value="{{ config.agenda.expediente.inicio }}">
+        </div>
+        <div class="campo">
+          <label>Expediente — fim</label>
+          <input type="time" name="agenda_expediente_fim" value="{{ config.agenda.expediente.fim }}">
+        </div>
+        <div class="campo">
+          <label>Almoço — início</label>
+          <input type="time" name="agenda_almoco_inicio" value="{{ config.agenda.almoco.inicio }}">
+        </div>
+        <div class="campo">
+          <label>Almoço — fim</label>
+          <input type="time" name="agenda_almoco_fim" value="{{ config.agenda.almoco.fim }}">
+        </div>
+        <div class="campo">
+          <label>Duração do bloco (min)</label>
+          <input type="number" min="5" step="5" name="agenda_slot" value="{{ config.agenda.slot_min }}">
+        </div>
+      </div>
+      <div class="campo">
+        <label>Dias considerados</label>
+        <div class="opcoes-linha">
+          {% for chave, rotulo in DIAS_AGENDA %}
+          <label class="opcao-check">
+            <input type="checkbox" name="agenda_dia" value="{{ chave }}" {% if chave in config.agenda.dias %}checked{% endif %}>
+            {{ rotulo }}
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="campo">
+        <label>Horas previstas por nível de esforço</label>
+        <div class="form-grade">
+          {% for chave in ESFORCOS_AGENDA %}
+          <div class="campo">
+            <label>{{ INDICADORES.esforco.opcoes[chave].label }}</label>
+            <input type="number" min="0.5" step="0.5" name="agenda_horas_{{ chave }}" value="{{ config.agenda.horas_por_esforco.get(chave, 0) }}">
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="form-rodape">
+        <button class="btn btn-primario" type="submit">Salvar pesos e limiares</button>
+      </div>
+    </form>
+  </div>
+
+  <div id="aba-membros" hidden>
+    {% include "painel_tech/partials/_membros.html" %}
+  </div>
+
+  <div id="aba-regras" hidden>
+    <h3 class="form-secao">Regras ativas</h3>
+    <div class="tabela-wrapper">
+      <table class="tabela">
+        <thead><tr><th scope="col">Regra</th><th scope="col">Severidade</th><th scope="col">Condição</th></tr></thead>
+        <tbody>
+          {% for regra in config.regras %}
+          <tr>
+            <td data-label="Regra">{{ dot(CORES_SEVERIDADE.get(regra.severidade, 'cinza')) }} {{ regra.mensagem }}</td>
+            <td data-label="Severidade">{{ tag(CORES_SEVERIDADE.get(regra.severidade, 'cinza'), regra.severidade) }}</td>
+            <td data-label="Condição" class="mono pequeno">{{ regra.quando }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <h3 class="form-secao separador-topo">Avançado (JSON)</h3>
+    <p class="ajuda">Regras SE/ENTÃO e limiares de ritmo detalhados.</p>
+    <form method="post">
+      <div class="campo campo-largo">
+        <textarea name="config_json" rows="18" class="mono">{{ config_json }}</textarea>
+      </div>
+      <div class="form-rodape">
+        <button class="btn btn-primario" type="submit">Salvar configurações</button>
+      </div>
+    </form>
+    <form method="post" action="{{ url_for('painel_tech.configuracoes_reset') }}" onsubmit="return confirm('Restaurar o padrão?');">
+      <button class="btn btn-fantasma" type="submit">Restaurar padrão</button>
+    </form>
+  </div>
+</section>
+{% endblock %}

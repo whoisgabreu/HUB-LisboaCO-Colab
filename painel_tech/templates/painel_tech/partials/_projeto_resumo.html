@@ -1,0 +1,51 @@
+{% from "painel_tech/_macros.html" import barra, alertas_lista, tag %}
+{% set a = analise %}
+<div class="detalhe-meta">
+  {{ tag(a.intervencao.cor, a.intervencao.label) }}
+  <span>Status: {{ tag(status_meta(projeto.status).cor, status_meta(projeto.status).label) }}</span>
+  <span>Responsável: {{ projeto.responsavel_nome or '—' }}</span>
+  <span>Prioridade: {{ tag(a.prioridade.cor, a.prioridade.label) }} (índice {{ a.prioridade.indice }})</span>
+</div>
+{% if projeto.descricao %}<p class="detalhe-descricao">{{ projeto.descricao }}</p>{% endif %}
+{{ alertas_lista(a.alertas) }}
+<div class="detalhe-progresso">
+  <span>Progresso {{ a.saude.progresso_pct }}% ({{ a.saude.concluidas }}/{{ a.saude.total }} etapas)</span>
+  {{ barra(a.saude.progresso_pct) }}
+</div>
+<div class="detalhe-tempo">
+  <div class="tempo-info">
+    <span class="tempo-titulo">⏱️ Tempo do time</span>
+    <span class="tempo-valor" data-tempo-total="{{ tempo.total }}" data-tempo-inicios="{{ tempo.inicios }}">{{ tempo.total | tempo_br }}</span>
+    {% if tempo.ativo %}<span class="tempo-badge tempo-ativo">▶ rodando</span>{% endif %}
+  </div>
+  <div class="tempo-acoes">
+    {% if tempo.ativo %}
+    <form class="inline" method="post"
+          action="{{ url_for('painel_tech.projeto_tempo_pause', projeto_id=projeto.id) }}"
+          hx-post="{{ url_for('painel_tech.projeto_tempo_pause', projeto_id=projeto.id) }}"
+          hx-target="#checklist" hx-swap="outerHTML" hx-indicator="#checklist">
+      <button class="btn btn-secundario" type="submit" hx-disabled-elt="this">⏸ Pausar</button>
+    </form>
+    {% else %}
+    <form class="inline" method="post"
+          action="{{ url_for('painel_tech.projeto_tempo_play', projeto_id=projeto.id) }}"
+          hx-post="{{ url_for('painel_tech.projeto_tempo_play', projeto_id=projeto.id) }}"
+          hx-target="#checklist" hx-swap="outerHTML" hx-indicator="#checklist">
+      <button class="btn btn-primario" type="submit" hx-disabled-elt="this">▶ Iniciar</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+<div class="detalhe-acoes">
+  <form class="inline" method="post"
+        action="{{ url_for('painel_tech.projeto_status', projeto_id=projeto.id) }}"
+        hx-post="{{ url_for('painel_tech.projeto_status', projeto_id=projeto.id) }}"
+        hx-target="#checklist" hx-swap="outerHTML" hx-indicator="#checklist">
+    <select name="status">
+      {% for chave, meta in STATUS.items() %}
+      <option value="{{ chave }}" {{ 'selected' if projeto.status == chave else '' }}>{{ meta.label }}</option>
+      {% endfor %}
+    </select>
+    <button class="btn btn-secundario" type="submit" hx-disabled-elt="this">Alterar status</button>
+  </form>
+</div>

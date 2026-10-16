@@ -1,0 +1,18 @@
+<div class="painel-comentarios">
+  <h2 class="secao-titulo">Comentários do projeto</h2>
+  <ul class="comentarios">
+    {% for comentario in comentarios_projeto %}
+    <li>
+      <span class="comentario-data">{{ comentario.created_at.strftime('%d/%m/%Y %H:%M') }}</span>
+      <span class="comentario-autor">{{ comentario.autor_nome or 'Sistema' }}:</span>
+      {{ comentario.texto }}
+    </li>
+    {% else %}
+    <li class="vazio">Sem comentários.</li>
+    {% endfor %}
+  </ul>
+  <form class="inline form-comentario" method="post" action="{{ url_for('painel_tech.projeto_comentar', projeto_id=projeto.id) }}">
+    <input type="text" name="texto" placeholder="Escreva um comentário..." required>
+    <button class="btn btn-secundario" type="submit">Comentar</button>
+  </form>
+</div>

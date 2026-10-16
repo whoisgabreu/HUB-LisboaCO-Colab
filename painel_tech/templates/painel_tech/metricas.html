@@ -1,0 +1,62 @@
+{% extends "painel_tech/base.html" %}
+{% from "painel_tech/_macros.html" import barra, dot, estado_vazio %}
+{% block title %}Métricas — Painel Gerencial TECH{% endblock %}
+{% block cabecalho %}Métricas{% endblock %}
+
+{% block conteudo %}
+{% include "painel_tech/partials/_filtros_dashboard.html" %}
+{% include "painel_tech/partials/_chips_filtros.html" %}
+
+<div class="grade-dupla">
+  <section class="secao">
+    <h2 class="secao-titulo">Distribuição dos projetos</h2>
+    <div class="distribuicao">
+      {% set maximo = [contagem.ativo, contagem.fila, contagem.pausado, contagem.finalizado, 1] | max %}
+      {% for chave, meta in STATUS.items() %}
+      {% set total = contagem[chave] %}
+      <div class="dist-linha">
+        <span class="dist-nome">{{ dot(meta.cor) }} {{ meta.label }}</span>
+        <div class="dist-barra"><span style="width: {{ (total / maximo * 100) | round }}%"></span></div>
+        <span class="dist-total">{{ total }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="secao">
+    <h2 class="secao-titulo">Progresso dos ativos</h2>
+    {% if ativos %}
+    <div class="progresso-lista">
+      {% for linha in ativos %}
+      <div class="progresso-item">
+        <a href="{{ url_for('painel_tech.projeto_detalhe', projeto_id=linha.projeto.id) }}">{{ linha.projeto.nome }}</a>
+        <div class="progresso-barra">
+          {{ barra(linha.analise.saude.progresso_pct) }}
+          <span>{{ linha.analise.saude.progresso_pct }}% {{ dot(ritmo_meta(linha.analise.saude.ritmo).cor) }}</span>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    {{ estado_vazio('', 'Nenhum projeto ativo') }}
+    {% endif %}
+  </section>
+</div>
+
+<section class="secao">
+  <h2 class="secao-titulo">Tendência (últimos 6 meses)</h2>
+  <div class="tendencia">
+    {% for mes in tendencia.meses %}
+    <div class="tend-mes">
+      <span class="tend-rotulo">{{ mes.rotulo }}</span>
+      <div class="tend-grupo">
+        <div class="tend-barra tend-criados" style="height: {{ (mes.criados / tendencia.max * 100) | round }}%"></div>
+        <div class="tend-barra tend-finalizados" style="height: {{ (mes.finalizados / tendencia.max * 100) | round }}%"></div>
+      </div>
+      <span class="tend-numeros"><span class="tend-n-criados">{{ mes.criados }}</span><span class="tend-n-finalizados">{{ mes.finalizados }}</span></span>
+    </div>
+    {% endfor %}
+  </div>
+  <div class="legenda"><span><span class="dot dot-azul"></span> Criados</span><span><span class="dot dot-verde"></span> Finalizados</span></div>
+</section>
+{% endblock %}

@@ -1,0 +1,25 @@
+{% extends "painel_tech/base.html" %}
+{% from "painel_tech/_macros.html" import tag %}
+{% block title %}Capacidade — Painel Gerencial TECH{% endblock %}
+{% block cabecalho %}Capacidade do time{% endblock %}
+
+{% block conteudo %}
+<section class="secao">
+  <div class="capacidade-grid">
+    {% for cap in capacidade %}
+    <a class="card capacidade-card" href="{{ url_for('painel_tech.capacidade_membro', membro_id=cap.id) }}">
+      <div class="capacidade-topo">
+        <span class="capacidade-nome">{{ cap.nome }}</span>
+        {{ tag(cap.cor, cap.rotulo) }}
+      </div>
+      <div class="capacidade-numeros">{{ cap.ativos }} / {{ cap.limite }} ativos</div>
+      <div class="capacidade-barra">
+        {% set pct = (cap.ativos / cap.limite * 100) | round if cap.limite else 0 %}
+        <span class="capacidade-preenchimento cap-{{ cap.situacao }}" style="width: {{ [pct, 100] | min }}%"></span>
+      </div>
+      <span class="capacidade-ver">Ver projetos →</span>
+    </a>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

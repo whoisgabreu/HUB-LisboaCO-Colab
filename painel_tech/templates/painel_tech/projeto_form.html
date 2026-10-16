@@ -1,0 +1,93 @@
+{% extends "painel_tech/base.html" %}
+{% block title %}{{ 'Editar projeto' if modo == 'editar' else 'Novo projeto' }} — Painel Gerencial TECH{% endblock %}
+{% block cabecalho %}{{ 'Editar projeto' if modo == 'editar' else 'Novo projeto' }}{% endblock %}
+
+{% block conteudo %}
+<form class="form card" method="post">
+  <div class="form-linha">
+    <div class="campo campo-largo">
+      <label for="nome">Nome do projeto *</label>
+      <input type="text" id="nome" name="nome" value="{{ projeto.get('nome', '') }}" required>
+    </div>
+  </div>
+
+  <div class="campo campo-largo">
+    <label for="descricao">Descrição</label>
+    <textarea id="descricao" name="descricao" rows="3">{{ projeto.get('descricao', '') or '' }}</textarea>
+  </div>
+
+  <div class="form-grade">
+    <div class="campo">
+      <label for="status">Status</label>
+      <select id="status" name="status">
+        {% for chave, meta in STATUS.items() %}
+        <option value="{{ chave }}" {{ 'selected' if projeto.get('status', 'fila') == chave else '' }}>{{ meta.label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="campo">
+      <label for="responsavel_id">Responsável</label>
+      <select id="responsavel_id" name="responsavel_id">
+        <option value="">—</option>
+        {% for membro in membros %}
+        {% set cap = capacidades_por_membro.get(membro.id) %}
+        <option value="{{ membro.id }}" {{ 'selected' if projeto.get('responsavel_id') == membro.id else '' }}>{{ membro.nome }}{% if cap and (cap.ativos or cap.situacao in ('cheio', 'acima')) %} ({{ cap.ativos }}/{{ cap.limite }}{% if cap.situacao in ('cheio', 'acima') %} ⚠️{% endif %}){% endif %}</option>
+        {% endfor %}
+      </select>
+      {% set cap_atual = capacidades_por_membro.get(projeto.get('responsavel_id')) %}
+      {% if cap_atual and cap_atual.situacao in ('cheio', 'acima') %}
+      <p class="ajuda cap-aviso">⚠️ {{ cap_atual.nome }} está em capacidade ({{ cap_atual.ativos }}/{{ cap_atual.limite }}).</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <h3 class="form-secao">Indicadores</h3>
+  <div class="form-grade">
+    {% for campo in ['impacto', 'urgencia', 'risco', 'esforco'] %}
+    <div class="campo">
+      <label for="{{ campo }}">{{ INDICADORES[campo].label }}</label>
+      <select id="{{ campo }}" name="{{ campo }}">
+        {% for chave, meta in INDICADORES[campo].opcoes.items() %}
+        <option value="{{ chave }}" {{ 'selected' if projeto.get(campo, 'medio') == chave else '' }}>{{ meta.label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    {% endfor %}
+    <div class="campo">
+      <label for="ritmo_manual">Ritmo</label>
+      <select id="ritmo_manual" name="ritmo_manual">
+        <option value="">Automático</option>
+        {% for chave, meta in RITMO.items() %}
+        <option value="{{ chave }}" {{ 'selected' if projeto.get('ritmo_manual') == chave else '' }}>{{ meta.label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+
+  <div class="campo campo-largo">
+    <label for="ritmo_justificativa">Justificativa do ritmo (opcional)</label>
+    <input type="text" id="ritmo_justificativa" name="ritmo_justificativa" value="{{ projeto.get('ritmo_justificativa', '') or '' }}">
+  </div>
+
+  <h3 class="form-secao">Datas</h3>
+  <div class="form-grade">
+    <div class="campo">
+      <label for="data_inicio">Início</label>
+      <input type="date" id="data_inicio" name="data_inicio" value="{{ projeto.get('data_inicio') or '' }}">
+    </div>
+    <div class="campo">
+      <label for="data_prevista_fim">Previsão de término</label>
+      <input type="date" id="data_prevista_fim" name="data_prevista_fim" value="{{ projeto.get('data_prevista_fim') or '' }}">
+    </div>
+    <div class="campo">
+      <label for="data_fim">Conclusão</label>
+      <input type="date" id="data_fim" name="data_fim" value="{{ projeto.get('data_fim') or '' }}">
+    </div>
+  </div>
+
+  <div class="form-rodape">
+    <a class="btn btn-fantasma" href="{{ url_for('painel_tech.projetos_listar') }}">Cancelar</a>
+    <button class="btn btn-primario" type="submit">Salvar</button>
+  </div>
+</form>
+{% endblock %}

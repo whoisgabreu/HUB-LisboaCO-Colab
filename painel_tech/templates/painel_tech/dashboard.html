@@ -1,0 +1,109 @@
+{% extends "painel_tech/base.html" %}
+{% from "painel_tech/_macros.html" import barra, indicador_linha, alertas_lista, tag, dot, estado_vazio %}
+{% block title %}Visão geral — Painel Gerencial TECH{% endblock %}
+{% block cabecalho %}Visão geral{% endblock %}
+{% block acoes %}
+<a class="btn btn-primario" href="{{ url_for('painel_tech.projetos_novo') }}">+ Novo projeto</a>
+{% endblock %}
+
+{% block conteudo %}
+<section class="kpis">
+  <div class="kpi">
+    <span class="kpi-icone cor-azul"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M10 8.5l5 3.5-5 3.5z"/></svg></span>
+    <span class="kpi-txts"><span class="kpi-label">Ativos</span><span class="kpi-valor">{{ contagem.ativo }}</span></span>
+  </div>
+  <div class="kpi">
+    <span class="kpi-icone cor-ambar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
+    <span class="kpi-txts"><span class="kpi-label">Na fila</span><span class="kpi-valor">{{ contagem.fila }}</span></span>
+  </div>
+  <div class="kpi">
+    <span class="kpi-icone cor-cinza"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="5" width="4" height="14" rx="1"/><rect x="13" y="5" width="4" height="14" rx="1"/></svg></span>
+    <span class="kpi-txts"><span class="kpi-label">Pausados</span><span class="kpi-valor">{{ contagem.pausado }}</span></span>
+  </div>
+  <div class="kpi">
+    <span class="kpi-icone cor-verde"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m8.5 12.5 2.5 2.5 4.5-5"/></svg></span>
+    <span class="kpi-txts"><span class="kpi-label">Finalizados</span><span class="kpi-valor">{{ contagem.finalizado }}</span></span>
+  </div>
+  <div class="kpi kpi-alerta">
+    <span class="kpi-icone cor-vermelho"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2.5 20h19z"/><line x1="12" y1="10" x2="12" y2="14"/><line x1="12" y1="17" x2="12" y2="17"/></svg></span>
+    <span class="kpi-txts"><span class="kpi-label">Precisam de atenção</span><span class="kpi-valor">{{ atencao|length }}</span></span>
+  </div>
+</section>
+
+{% include "painel_tech/partials/_filtros_dashboard.html" %}
+{% include "painel_tech/partials/_chips_filtros.html" %}
+
+{% if atencao %}
+<section class="secao">
+  <h2 class="secao-titulo vermelho">{{ dot('vermelho') }} Precisam de atenção</h2>
+  <div class="cards-atencao">
+    {% for linha in atencao %}
+    {% set p = linha.projeto %}
+    {% set a = linha.analise %}
+    <article class="card card-projeto card-{{ a.intervencao.nivel }}">
+      <header class="card-cabecalho">
+        <h3><a href="{{ url_for('painel_tech.projeto_detalhe', projeto_id=p.id) }}">{{ p.nome }}</a></h3>
+        {{ tag(a.intervencao.cor, a.intervencao.label) }}
+      </header>
+      {{ indicador_linha('Impacto', indicador_meta('impacto', p.impacto)) }}
+      {{ indicador_linha('Urgência', indicador_meta('urgencia', p.urgencia)) }}
+      {{ indicador_linha('Risco', indicador_meta('risco', p.risco)) }}
+      {{ indicador_linha('Esforço', indicador_meta('esforco', p.esforco)) }}
+      {{ indicador_linha('Ritmo', indicador_meta('ritmo', a.saude.ritmo), 5) }}
+      <div class="card-progresso">
+        <span>Progresso {{ a.saude.progresso_pct }}%</span>
+        {{ barra(a.saude.progresso_pct) }}
+      </div>
+      {% if a.intervencao.motivo %}<p class="motivo">Motivo: {{ a.intervencao.motivo }}</p>{% endif %}
+      {{ alertas_lista(a.alertas) }}
+      <footer class="card-rodape">
+        <span>Prioridade: {{ tag(a.prioridade.cor, a.prioridade.label) }}</span>
+        <a class="btn btn-secundario" href="{{ url_for('painel_tech.projeto_detalhe', projeto_id=p.id) }}">Ver projeto</a>
+      </footer>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% else %}
+<section class="secao">
+  {{ estado_vazio('✅', 'Nenhum projeto precisa de atenção', 'Tudo sob controle no momento.') }}
+</section>
+{% endif %}
+
+<section class="secao">
+  <h2 class="secao-titulo">{{ dot('ambar') }} Próximas prioridades</h2>
+  <div class="tabela-wrapper">
+    <table class="tabela">
+      <thead>
+        <tr>
+          <th scope="col">Projeto</th>
+          <th scope="col">Status</th>
+          <th scope="col">Prioridade</th>
+          <th scope="col">Ritmo</th>
+          <th scope="col">Progresso</th>
+          <th scope="col">Responsável</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for linha in linhas %}
+        {% set p = linha.projeto %}
+        {% set a = linha.analise %}
+        <tr>
+          <td data-label="Projeto"><a href="{{ url_for('painel_tech.projeto_detalhe', projeto_id=p.id) }}">{{ p.nome }}</a></td>
+          <td data-label="Status">{{ tag(status_meta(p.status).cor, status_meta(p.status).label) }}</td>
+          <td data-label="Prioridade">{{ tag(a.prioridade.cor, a.prioridade.label) }}</td>
+          <td data-label="Ritmo">{{ tag(ritmo_meta(a.saude.ritmo).cor, ritmo_meta(a.saude.ritmo).label) }}</td>
+          <td data-label="Progresso" class="celula-progresso">
+            {{ barra(a.saude.progresso_pct) }}
+            <span>{{ a.saude.progresso_pct }}%</span>
+          </td>
+          <td data-label="Responsável">{{ p.responsavel_nome or '—' }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" class="vazio">Nenhum projeto encontrado com os filtros atuais.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

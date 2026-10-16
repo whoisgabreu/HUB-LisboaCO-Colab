@@ -1,0 +1,72 @@
+<form class="filtros" method="get" action="{{ url_for('painel_tech.projetos_listar') }}" data-ativos="{{ chips|length }}">
+  <input type="hidden" name="aba" value="{{ aba }}">
+  <div class="filtros-cabecalho">
+    <span class="filtros-titulo">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
+      Filtros
+      {% if chips %}<span class="filtros-contagem">{{ chips|length }}</span>{% endif %}
+    </span>
+    <button type="button" class="btn-icone filtros-toggle" data-alternar-filtros aria-expanded="true" aria-label="Expandir ou recolher filtros">
+      <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+    </button>
+  </div>
+  <div class="filtros-corpo">
+  <div class="campo campo-largo">
+    <label>Busca</label>
+    <input type="search" name="q" placeholder="Nome do projeto" value="{{ args.get('q', '') }}">
+  </div>
+  <div class="campo">
+    <label>Responsável</label>
+    <select name="responsavel">
+      <option value="">Todos</option>
+      {% for membro in membros %}
+      <option value="{{ membro.id }}" {{ 'selected' if args.get('responsavel') == membro.id|string else '' }}>{{ membro.nome }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="campo">
+    <label>Status</label>
+    <select name="status">
+      <option value="">Todos</option>
+      {% for chave, meta in STATUS.items() %}
+      <option value="{{ chave }}" {{ 'selected' if args.get('status') == chave else '' }}>{{ meta.label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  {% for campo in ['impacto', 'urgencia', 'risco', 'esforco'] %}
+  <div class="campo">
+    <label>{{ INDICADORES[campo].label }}</label>
+    <select name="{{ campo }}">
+      <option value="">Todos</option>
+      {% for chave, meta in INDICADORES[campo].opcoes.items() %}
+      <option value="{{ chave }}" {{ 'selected' if args.get(campo) == chave else '' }}>{{ meta.label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  {% endfor %}
+  <div class="campo">
+    <label>Ritmo</label>
+    <select name="ritmo">
+      <option value="">Todos</option>
+      {% for chave, meta in RITMO.items() %}
+      <option value="{{ chave }}" {{ 'selected' if args.get('ritmo') == chave else '' }}>{{ meta.label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="campo">
+    <label>De</label>
+    <input type="date" name="de" value="{{ args.get('de', '') }}">
+  </div>
+  <div class="campo">
+    <label>Até</label>
+    <input type="date" name="ate" value="{{ args.get('ate', '') }}">
+  </div>
+  <div class="campo campo-check">
+    <label><input type="checkbox" name="atencao" value="1" {{ 'checked' if args.get('atencao') == '1' else '' }}> Somente atenção</label>
+  </div>
+  </div>
+  <div class="filtros-rodape">
+    <button class="btn btn-primario" type="submit">Filtrar</button>
+    <a class="btn btn-fantasma" href="{{ url_kanban if aba == 'kanban' else url_geral }}">Limpar</a>
+  </div>
+</form>

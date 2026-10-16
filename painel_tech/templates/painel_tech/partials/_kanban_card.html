@@ -1,0 +1,23 @@
+{% from "painel_tech/_macros.html" import barra, tag, dot %}
+{% set p = linha.projeto %}
+{% set a = linha.analise %}
+<article class="kanban-card card-{{ a.intervencao.nivel }}" data-projeto-id="{{ p.id }}">
+  <a class="kanban-card-nome" href="{{ url_for('painel_tech.projeto_detalhe', projeto_id=p.id) }}">{{ p.nome }}</a>
+  <div class="kanban-card-badges">
+    {{ tag(a.prioridade.cor, a.prioridade.label) }}
+    {{ tag(a.intervencao.cor, a.intervencao.label) }}
+  </div>
+  <div class="kanban-card-meta">
+    <span>{{ dot(ritmo_meta(a.saude.ritmo).cor) }} {{ ritmo_meta(a.saude.ritmo).label }}</span>
+    <span>{{ p.responsavel_nome or '—' }}</span>
+  </div>
+  <div class="kanban-card-progresso">
+    {{ barra(a.saude.progresso_pct) }}
+    <span>{{ a.saude.progresso_pct }}%</span>
+  </div>
+  {% set tempo = tempos.get(p.id, {'total': 0, 'inicios': '', 'ativo': False}) %}
+  <div class="kanban-card-tempo">
+    <span class="tempo-valor" data-tempo-total="{{ tempo.total }}" data-tempo-inicios="{{ tempo.inicios }}">{{ tempo.total | tempo_br }}</span>
+    {% if tempo.ativo %}<span class="tempo-badge tempo-ativo">▶</span>{% endif %}
+  </div>
+</article>
