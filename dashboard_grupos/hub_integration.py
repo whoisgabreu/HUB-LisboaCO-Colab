@@ -37,8 +37,6 @@ def _injetar_envs():
 
     base = os.path.dirname(__file__)
     raiz = os.path.abspath(os.path.join(base, ".."))
-    os.environ.setdefault("EQUIPE_PATH", os.path.join(raiz, "equipe.json"))
-    os.environ.setdefault("CLIENTES_PATH", os.path.join(raiz, "clientes.json"))
     os.environ.setdefault("CHURN_PATH", os.path.join(raiz, "churn.json"))
 
 

@@ -248,7 +248,7 @@ def diagnostico():
     if nao_mapeados:
         alerts.append(
             {"nivel": "warning", "tipo": "Mapeamento", "item": f"{len(nao_mapeados)} remetente(s)",
-             "texto": "Não estão no equipe.json nem no clientes.json — revisar classificação.",
+             "texto": "Não estão mapeados como equipe nem cliente — revisar classificação.",
              "link": url_for("dashboard_grupos.equipe_view")}
         )
     alerts.sort(key=lambda a: 0 if a["nivel"] == "danger" else 1)
