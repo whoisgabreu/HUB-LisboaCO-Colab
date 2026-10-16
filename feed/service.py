@@ -34,6 +34,7 @@ TZ = ZoneInfo("America/Sao_Paulo")
 
 REACOES_VALIDAS = ["like", "love", "haha", "wow", "sad", "angry"]
 TIPOS_VALIDOS = ["post", "evento", "aniversario", "enquete", "repost"]
+RESUMO_CHARS = 500
 
 _URL_RE = re.compile(r"(https?://[^\s<]+)")
 _MENCAO_RE = re.compile(r"@([A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,})")
@@ -155,6 +156,19 @@ class FeedService:
         out = out.replace("\n", "<br>")
         out += self._render_youtube(texto)
         return out
+
+    def _resumo_conteudo(self, texto: str, autores: Dict[str, Investidor]):
+        """Retorna (html_resumido, truncado). Curto → (None, False)."""
+        if not texto or len(texto) <= RESUMO_CHARS:
+            return None, False
+        corte = texto[:RESUMO_CHARS]
+        limite = corte.rfind(" ")
+        if limite > RESUMO_CHARS * 0.6:
+            corte = corte[:limite]
+        corte = corte.rstrip()
+        if not corte:
+            return None, False
+        return self._render_conteudo(corte + "…", autores), True
 
     @staticmethod
     def _render_youtube(texto: str) -> str:
@@ -554,12 +568,15 @@ class FeedService:
             original = None
             if p.tipo == "repost" and p.original_post_id in originais:
                 o = originais[p.original_post_id]
+                o_resumo, o_trunc = self._resumo_conteudo(o.conteudo, autores)
                 original = {
                     "id": o.id,
                     "tipo": o.tipo,
                     "titulo": o.titulo,
                     "conteudo": o.conteudo,
                     "conteudo_html": self._render_conteudo(o.conteudo, autores),
+                    "conteudo_truncado": o_trunc,
+                    "conteudo_resumo_html": o_resumo,
                     "criado_em": o.criado_em.isoformat() if o.criado_em else None,
                     "autor_email": o.autor_email,
                     "autor": self._autor_obj(o.autor_email, autores),
@@ -567,6 +584,7 @@ class FeedService:
                 }
 
             autor = self._autor_obj(p.autor_email, autores)
+            resumo_html, truncado = self._resumo_conteudo(p.conteudo, autores)
             resultado.append(
                 {
                     "id": p.id,
@@ -574,6 +592,8 @@ class FeedService:
                     "titulo": p.titulo,
                     "conteudo": p.conteudo,
                     "conteudo_html": self._render_conteudo(p.conteudo, autores),
+                    "conteudo_truncado": truncado,
+                    "conteudo_resumo_html": resumo_html,
                     "evento_data": p.evento_data.isoformat() if p.evento_data else None,
                     "evento_local": p.evento_local,
                     "fixado": bool(p.fixado),

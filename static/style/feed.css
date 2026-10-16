@@ -276,6 +276,29 @@
     font-size: 0.68rem;
 }
 
+.feed-post-mais {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    margin-top: 0.35rem;
+}
+.feed-ler-mais {
+    background: transparent;
+    border: none;
+    padding: 0;
+    color: var(--accent-red, #d61616);
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+.feed-ler-mais:hover { text-decoration: underline; }
+.feed-ver-post {
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    text-decoration: none;
+}
+.feed-ver-post:hover { color: var(--text-main); text-decoration: underline; }
+
 /* ── Stats e ações ─────────────────────────────────────────── */
 .feed-post-stats {
     display: flex;

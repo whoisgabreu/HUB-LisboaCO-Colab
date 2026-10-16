@@ -31,6 +31,8 @@
         temMais: false,
         carregando: false,
         posts: {},
+        fullHtml: {},
+        fullHtmlOrig: {},
         salvos: false,
         interacoes: false,
         q: "",
@@ -181,6 +183,18 @@
         HubModal.alert(corpo, { html: true, title: "Quem votou", okLabel: "Fechar", wide: true });
     }
 
+    function conteudoOriginalHtml(o) {
+        if (o.conteudo_truncado) {
+            state.fullHtmlOrig[o.id] = o.conteudo_html;
+            return `<div class="feed-repost-conteudo">${o.conteudo_resumo_html || o.conteudo_html}</div>
+                <div class="feed-post-mais" data-mais-orig="${o.id}">
+                    <button type="button" class="feed-ler-mais" onclick="Feed.expandirRepost(${o.id})">Ler mais</button>
+                    <a class="feed-ver-post" href="/feed/post/${o.id}">Ver publicação</a>
+                </div>`;
+        }
+        return `<div class="feed-repost-conteudo">${o.conteudo_html || esc(o.conteudo)}</div>`;
+    }
+
     function originalHtml(post) {
         if (post.tipo !== "repost" || !post.original) return "";
         const o = post.original;
@@ -192,8 +206,22 @@
                 <span class="feed-repost-meta">${esc(tempoRelativo(o.criado_em))}</span>
             </div>
             ${o.titulo ? `<div class="feed-repost-titulo">${esc(o.titulo)}</div>` : ""}
-            <div class="feed-repost-conteudo">${o.conteudo_html || esc(o.conteudo)}</div>
+            ${conteudoOriginalHtml(o)}
         </div>`;
+    }
+
+    function conteudoPostHtml(post) {
+        if (!post.conteudo_html) return "";
+        const single = state.singlePostId && String(post.id) === String(state.singlePostId);
+        if (post.conteudo_truncado && !single) {
+            state.fullHtml[post.id] = post.conteudo_html;
+            return `<div class="feed-post-conteudo">${post.conteudo_resumo_html || post.conteudo_html}</div>
+                <div class="feed-post-mais" data-mais="${post.id}">
+                    <button type="button" class="feed-ler-mais" onclick="Feed.expandir(${post.id})">Ler mais</button>
+                    <a class="feed-ver-post" href="/feed/post/${post.id}">Ver publicação</a>
+                </div>`;
+        }
+        return `<div class="feed-post-conteudo">${post.conteudo_html}</div>`;
     }
 
     function cardHtml(post) {
@@ -267,7 +295,7 @@
                 </div>
             </header>
             ${evento}
-            ${post.conteudo_html ? `<div class="feed-post-conteudo">${post.conteudo_html}</div>` : ""}
+            ${conteudoPostHtml(post)}
             ${enqueteHtml(post)}
             ${originalHtml(post)}
             <div class="feed-post-stats">
@@ -711,6 +739,24 @@
         if (menu) menu.classList.toggle("aberto");
     }
 
+    function expandir(postId) {
+        const card = document.querySelector(`.feed-post[data-post-id="${postId}"]`);
+        if (!card) return;
+        const conteudo = card.querySelector(".feed-post-conteudo");
+        if (conteudo && state.fullHtml[postId]) conteudo.innerHTML = state.fullHtml[postId];
+        const mais = card.querySelector(".feed-post-mais");
+        if (mais) mais.remove();
+    }
+
+    function expandirRepost(origId) {
+        const mais = document.querySelector(`.feed-post-mais[data-mais-orig="${origId}"]`);
+        if (!mais) return;
+        const box = mais.closest(".feed-repost-box");
+        const conteudo = box && box.querySelector(".feed-repost-conteudo");
+        if (conteudo && state.fullHtmlOrig[origId]) conteudo.innerHTML = state.fullHtmlOrig[origId];
+        mais.remove();
+    }
+
     async function editar(postId) {
         const post = state.posts[postId];
         if (!post) return;
@@ -1065,6 +1111,7 @@
         toggleComentarios, comentar, responder, reagirComentario, deletarComentario,
         toggleMenu, editar, fixar, desfixar, ocultar, denunciar, deletarPost,
         abrirPerfil, fecharPerfil, toggleSalvos, carregarWidgets, modoPerfil,
+        expandir, expandirRepost,
     };
 
     document.addEventListener("DOMContentLoaded", () => {
