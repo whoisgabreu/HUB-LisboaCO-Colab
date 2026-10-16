@@ -37,6 +37,11 @@ TIPOS_VALIDOS = ["post", "evento", "aniversario", "enquete", "repost"]
 
 _URL_RE = re.compile(r"(https?://[^\s<]+)")
 _MENCAO_RE = re.compile(r"@([A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,})")
+# Formatação inline leve (aplicada sobre o texto já escapado): código, negrito, tachado, itálico
+_CODIGO_RE = re.compile(r"`([^`<>\n]+?)`")
+_NEGRITO_RE = re.compile(r"\*(?!\s)([^*<>\n]+?)(?<!\s)\*")
+_TACHADO_RE = re.compile(r"~(?!\s)([^~<>\n]+?)(?<!\s)~")
+_ITALICO_RE = re.compile(r"(?<![A-Za-z0-9_])_(?!\s)([^_<>\n]+?)(?<!\s)_(?![A-Za-z0-9_])")
 _YT_RE = re.compile(
     r"(https?://(?:www\.)?(?:youtube\.com/(?:watch\?v=|shorts/|embed/)|youtu\.be/)"
     r"([A-Za-z0-9_-]{11}))"
@@ -140,6 +145,13 @@ class FeedService:
             return f'<span class="feed-mention">@{html_lib.escape(nome)}</span>'
 
         out = _MENCAO_RE.sub(_sub, out)
+
+        # Formatação inline (código primeiro; o conteúdo fica entre tags e não é reprocessado)
+        out = _CODIGO_RE.sub(r"<code>\1</code>", out)
+        out = _NEGRITO_RE.sub(r"<strong>\1</strong>", out)
+        out = _TACHADO_RE.sub(r"<del>\1</del>", out)
+        out = _ITALICO_RE.sub(r"<em>\1</em>", out)
+
         out = out.replace("\n", "<br>")
         out += self._render_youtube(texto)
         return out

@@ -264,6 +264,18 @@
     word-break: break-word;
 }
 
+.feed-formato-dica {
+    margin-top: 0.35rem;
+    font-size: 0.68rem;
+    color: var(--text-muted);
+}
+.feed-formato-dica code {
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 4px;
+    padding: 0 4px;
+    font-size: 0.68rem;
+}
+
 /* ── Stats e ações ─────────────────────────────────────────── */
 .feed-post-stats {
     display: flex;
