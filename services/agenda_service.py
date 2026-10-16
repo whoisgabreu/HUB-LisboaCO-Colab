@@ -15,6 +15,8 @@ def _item_ekyte(t: dict) -> dict:
         "sub": t.get("workspace") or "",
         "link": t.get("url") or "",
         "inicio": "",
+        "fim": "",
+        "dia_todo": False,
     }
 
 
@@ -29,6 +31,8 @@ def _item_google(e: dict) -> dict:
         "sub": e.get("local") or "",
         "link": e.get("link") or "",
         "inicio": inicio,
+        "fim": e.get("fim") or "",
+        "dia_todo": bool(inicio) and "T" not in inicio,
     }
 
 
@@ -139,14 +143,47 @@ def resumo(email: str) -> dict:
 
     res = google_agenda_service.listar_eventos(email, dias=JANELA_AGENDA_DIAS)
     google_conectado = bool(res.get("conectado"))
+    proxima = None
     if google_conectado:
-        agenda_hoje = _eventos_hoje(res.get("eventos") or [])
+        eventos = res.get("eventos") or []
+        agenda_hoje = _eventos_hoje(eventos)
+        proxima = _proxima_reuniao(eventos)
 
     out = {
         "tarefas_total": tarefas_total,
         "agenda_hoje": agenda_hoje,
         "google_conectado": google_conectado,
+        "proxima_reuniao": proxima,
     }
     if atualizando:
         out["atualizando"] = True
     return out
+
+
+def _proxima_reuniao(eventos):
+    """Próximo evento com horário cujo início seja >= agora (America/Sao_Paulo)."""
+    from datetime import datetime
+    try:
+        from zoneinfo import ZoneInfo
+        tz = ZoneInfo("America/Sao_Paulo")
+    except Exception:
+        tz = None
+    agora = datetime.now(tz) if tz else datetime.now()
+    melhor = None
+    for e in eventos:
+        ini = e.get("inicio")
+        if not ini or "T" not in ini:
+            continue
+        try:
+            ini_dt = datetime.fromisoformat(ini)
+        except Exception:
+            continue
+        if ini_dt.tzinfo is None and tz is not None:
+            ini_dt = ini_dt.replace(tzinfo=tz)
+        if tz is not None:
+            ini_dt = ini_dt.astimezone(tz)
+        if ini_dt >= agora and (melhor is None or ini_dt < melhor[0]):
+            melhor = (ini_dt, e)
+    if not melhor:
+        return None
+    return {"titulo": melhor[1].get("titulo") or "", "inicio": melhor[1].get("inicio") or ""}

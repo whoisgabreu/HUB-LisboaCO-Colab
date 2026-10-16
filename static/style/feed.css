@@ -1486,6 +1486,96 @@ body.perfil-page #feedSalvosBtn { display: none; }
 }
 .agenda-desconectar-btn:hover { color: var(--accent-red, #d61616); border-color: var(--accent-red, #d61616); }
 
+/* ── Visão de agenda (aba Agenda) ─────────────────────────────────── */
+.agenda-seguir {
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    padding: 0.9rem 1rem;
+    margin-bottom: 1rem;
+    background: rgba(214, 22, 22, 0.04);
+}
+.agenda-seguir-titulo {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--accent-red, #d61616);
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-bottom: 0.6rem;
+}
+.agenda-seguir-lista { display: flex; flex-direction: column; gap: 0.4rem; }
+.agenda-seguir-item { display: flex; gap: 0.75rem; align-items: baseline; }
+.agenda-seguir-hora { font-weight: 700; color: var(--text-main); font-size: 0.85rem; min-width: 46px; }
+.agenda-seguir-info { min-width: 0; }
+.agenda-seguir-nome { font-size: 0.85rem; color: var(--text-main); font-weight: 600; }
+.agenda-seguir-meta { font-size: 0.72rem; color: var(--text-muted); }
+
+.agenda-view { display: flex; flex-direction: column; gap: 1.25rem; }
+.agenda-dia-header {
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--text-muted);
+    padding-bottom: 0.4rem;
+    margin-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.agenda-evento {
+    display: flex;
+    gap: 0.85rem;
+    padding: 0.6rem 0.5rem;
+    border-left: 3px solid var(--border-color);
+    border-radius: 0 8px 8px 0;
+}
+.agenda-evento + .agenda-evento { margin-top: 0.35rem; }
+.agenda-evento:hover { background: rgba(255, 255, 255, 0.03); }
+.agenda-evento.proxima {
+    border-left-color: var(--accent-red, #d61616);
+    background: rgba(214, 22, 22, 0.06);
+}
+.agenda-evento.dia-todo { border-left-color: #3b82f6; }
+.agenda-evento-hora {
+    min-width: 54px;
+    text-align: right;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    padding-top: 2px;
+}
+.agenda-evento-horas { display: flex; flex-direction: column; }
+.agenda-evento-horas .ini { color: var(--text-main); font-weight: 600; }
+.agenda-evento-horas .fim { font-size: 0.7rem; }
+.agenda-diatodo-tag { font-size: 0.68rem; color: #3b82f6; font-weight: 600; }
+.agenda-evento-body { min-width: 0; flex: 1; }
+.agenda-evento-titulo { font-size: 0.88rem; font-weight: 600; color: var(--text-main); word-break: break-word; }
+.agenda-evento-meta { font-size: 0.72rem; color: var(--text-muted); margin-top: 2px; }
+.agenda-proxima-badge {
+    display: inline-block;
+    font-size: 0.62rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #fff;
+    background: var(--accent-red, #d61616);
+    border-radius: 999px;
+    padding: 1px 7px;
+    vertical-align: 1px;
+    margin-left: 0.35rem;
+}
+
+.agenda-proxima {
+    margin-top: 0.6rem;
+    font-size: 0.78rem;
+    color: var(--text-main);
+    border-top: 1px solid var(--border-color);
+    padding-top: 0.6rem;
+}
+.agenda-proxima i { color: var(--accent-red, #d61616); margin-right: 0.3rem; }
+.agenda-proxima.vazio { color: var(--text-muted); }
+
+body.tema-claro .agenda-evento:hover { background: rgba(0, 0, 0, 0.03); }
+body.tema-claro .agenda-seguir { background: rgba(214, 22, 22, 0.05); }
+
 .agenda-widget-header {
     display: flex;
     align-items: center;
