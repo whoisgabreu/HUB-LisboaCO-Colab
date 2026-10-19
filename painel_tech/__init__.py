@@ -37,7 +37,7 @@ def create_app():
     @app.errorhandler(400)
     def erro_400(_erro):
         return (
-            render_template("erro.html", codigo=400, mensagem="Requisição inválida"),
+            render_template("painel_tech/erro.html", codigo=400, mensagem="Requisição inválida"),
             400,
         )
 
@@ -45,7 +45,7 @@ def create_app():
     def erro_404(_erro):
         return (
             render_template(
-                "erro.html", codigo=404, mensagem="Página não encontrada"
+                "painel_tech/erro.html", codigo=404, mensagem="Página não encontrada"
             ),
             404,
         )
@@ -53,7 +53,7 @@ def create_app():
     @app.errorhandler(500)
     def erro_500(_erro):
         return (
-            render_template("erro.html", codigo=500, mensagem="Erro interno do servidor"),
+            render_template("painel_tech/erro.html", codigo=500, mensagem="Erro interno do servidor"),
             500,
         )
 

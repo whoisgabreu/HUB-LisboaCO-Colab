@@ -410,6 +410,6 @@ def resposta_projeto(projeto_id):
         if contexto is None:
             abort(404)
         return anexar_toasts(
-            render_template("partials/_projeto_estado.html", **contexto)
+            render_template("painel_tech/partials/_projeto_estado.html", **contexto)
         )
     return redirect(url_for("painel_tech.projeto_detalhe", projeto_id=projeto_id))

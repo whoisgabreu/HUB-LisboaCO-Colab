@@ -1,5 +1,5 @@
 {% from "painel_tech/_macros.html" import dot %}
-<div class="kanban" id="kanban">
+<div class="kanban" id="kanban" data-base="{{ url_for('painel_tech.projetos_listar') }}">
   {% for status in ordem_colunas %}
   <section class="kanban-coluna {{ 'kanban-coluna-fila' if status == 'fila' else '' }}" data-status="{{ status }}">
     <header class="kanban-cabecalho">

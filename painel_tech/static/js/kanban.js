@@ -5,6 +5,12 @@
     return "?" + params.toString();
   }
 
+  function baseUrl() {
+    var el = document.getElementById("kanban");
+    var base = el && el.dataset ? el.dataset.base : "";
+    return (base || "/tech/projetos").replace(/\/$/, "");
+  }
+
   function enviarStatus(evento) {
     var coluna = evento.to.closest(".kanban-coluna");
     var card = evento.item;
@@ -12,7 +18,7 @@
     var novoStatus = coluna.dataset.status;
     var projetoId = card.dataset.projetoId;
     if (!novoStatus || !projetoId) return;
-    htmx.ajax("POST", "/projetos/" + projetoId + "/mover" + urlComAba(), {
+    htmx.ajax("POST", baseUrl() + "/" + projetoId + "/mover" + urlComAba(), {
       target: "#kanban",
       swap: "outerHTML",
       values: { status: novoStatus },
@@ -29,7 +35,7 @@
       })
       .filter(Boolean);
     if (!ids.length) return;
-    htmx.ajax("POST", "/projetos/fila/ordem" + urlComAba(), {
+    htmx.ajax("POST", baseUrl() + "/fila/ordem" + urlComAba(), {
       target: "#kanban",
       swap: "outerHTML",
       values: { ids: ids.join(",") },
