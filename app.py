@@ -170,11 +170,42 @@ def ekyte_cache_warm_job():
         print(f"Erro ao atualizar cache Ekyte: {e}")
 
 
+def _registrar_acesso(db, user):
+    """Marca o último acesso do usuário (UTC)."""
+    try:
+        from datetime import timezone
+        user.ultimo_acesso = dt.now(timezone.utc)
+    except Exception:
+        pass
+
+
+def _marcar_atividade():
+    """Atualiza ultimo_acesso no máximo 1x por dia por sessão (atividade real)."""
+    try:
+        from datetime import datetime as _dt, timedelta as _td, timezone as _tz
+        hoje = _dt.now(_tz(_td(hours=-3))).date().isoformat()
+        if session.get("_ultimo_acesso_dia") == hoje:
+            return
+        iid = session.get("investidor_id")
+        if not iid:
+            return
+        with Session() as _db:
+            _db.execute(
+                text(f"UPDATE {permissions.SCHEMA}.investidores SET ultimo_acesso = now() WHERE id = :i"),
+                {"i": iid},
+            )
+            _db.commit()
+        session["_ultimo_acesso_dia"] = hoje
+    except Exception:
+        pass
+
+
 def check_session(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
         if "nome" not in session:
             return redirect(url_for("login"))
+        _marcar_atividade()
         return func(*args, **kwargs)
     return wrapper
 
@@ -1322,6 +1353,7 @@ def login():
                         max_id = db.query(Auth.id).order_by(Auth.id.desc()).first()
                         auth_entry = Auth(id=max_id[0] + 1, email=user.email, token=token)
                         db.add(auth_entry)
+                    _registrar_acesso(db, user)
                     db.commit()
 
                     # 3. Popula sessão
@@ -1467,6 +1499,7 @@ def login_callback():
         session["profile_picture"] = user.profile_picture
         permissions.aplicar_sessao(db, session, user)
         session.permanent = True
+        _registrar_acesso(db, user)
 
         db.commit()
 
@@ -1492,6 +1525,8 @@ def dev_login():
             session["pode_editar_kanban"] = True
             session["profile_picture"] = user.profile_picture
             permissions.aplicar_sessao(db, session, user)
+            _registrar_acesso(db, user)
+            db.commit()
             return redirect(url_for("view_kanban"))
         return "Dev user not found", 404
 
@@ -2112,6 +2147,21 @@ def _so_digitos(valor, limite=None):
     return digitos
 
 
+def _dias_sem_acesso(valor):
+    """Dias corridos desde o último acesso (America/Sao_Paulo). None se nunca acessou."""
+    if not valor:
+        return None
+    try:
+        from zoneinfo import ZoneInfo
+
+        tz = ZoneInfo("America/Sao_Paulo")
+        agora = dt.now(tz)
+        quando = valor.astimezone(tz) if getattr(valor, "tzinfo", None) else valor.replace(tzinfo=tz)
+        return max(0, (agora.date() - quando.date()).days)
+    except Exception:
+        return None
+
+
 @app.route("/gerenciar-usuarios")
 @check_session
 def gerenciar_usuarios():
@@ -2180,6 +2230,8 @@ def api_get_usuarios():
                     "profile_picture": u.profile_picture or "",
                     "data_nascimento": u.data_nascimento.isoformat() if u.data_nascimento else None,
                     "data_admissao": u.data_admissao.isoformat() if u.data_admissao else None,
+                    "ultimo_acesso": u.ultimo_acesso.isoformat() if u.ultimo_acesso else None,
+                    "dias_sem_acesso": _dias_sem_acesso(u.ultimo_acesso),
                     "telefone": u.telefone or "",
                     "cpf": u.cpf or "",
                     # v2_
@@ -6743,6 +6795,7 @@ def face_login_authenticate():
                 session["pode_editar_kanban"] = user.pode_editar_kanban
                 session["profile_picture"] = user.profile_picture
                 permissions.aplicar_sessao(db, session, user)
+                _registrar_acesso(db, user)
                 _log_face_auth(db, email, "LOGIN", "SUCCESS",
                                similarity=match_result["similarity"])
                 db.commit()
@@ -6820,6 +6873,7 @@ def face_login_capture_and_auth():
                 session["pode_editar_kanban"] = user.pode_editar_kanban
                 session["profile_picture"] = user.profile_picture
                 permissions.aplicar_sessao(db, session, user)
+                _registrar_acesso(db, user)
                 _log_face_auth(db, email, "LOGIN", "SUCCESS",
                                similarity=match_result["similarity"],
                                samples=len(frames))

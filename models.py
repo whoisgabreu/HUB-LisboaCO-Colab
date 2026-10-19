@@ -26,6 +26,7 @@ class Investidor(Base):
     posicao = Column(String(250))
     data_nascimento = Column(Date)
     data_admissao = Column(Date)
+    ultimo_acesso = Column(DateTime(timezone=True))
 
 
 class Auth(Base):

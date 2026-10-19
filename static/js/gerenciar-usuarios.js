@@ -106,12 +106,26 @@ function badgesHtml(arr, cls) {
     return arr.map(v => `<span class="mini-badge ${cls}">${v}</span>`).join("");
 }
 
+
+function ultimoAcessoHtml(u) {
+    const dias = u.dias_sem_acesso;
+    let label, cls;
+    if (dias === null || dias === undefined) { label = 'Nunca'; cls = 'cinza'; }
+    else if (dias === 0) { label = 'Hoje'; cls = 'verde'; }
+    else if (dias === 1) { label = 'Ontem'; cls = 'verde'; }
+    else if (dias <= 7) { label = `Há ${dias} dias`; cls = 'verde'; }
+    else if (dias <= 30) { label = `Há ${dias} dias`; cls = 'amarelo'; }
+    else { label = `Há ${dias} dias`; cls = 'vermelho'; }
+    const titulo = u.ultimo_acesso ? new Date(u.ultimo_acesso).toLocaleString('pt-BR') : 'Nunca acessou';
+    return `<span class="ultimo-acesso ${cls}" title="${titulo}">${label}</span>`;
+}
+
 function renderUsers(users) {
     const tbody = document.getElementById('usersTableBody');
     tbody.innerHTML = '';
 
     if (!users.length) {
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--text-muted);">Nenhum usuário encontrado.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--text-muted);">Nenhum usuário encontrado.</td></tr>`;
         return;
     }
 
@@ -144,6 +158,7 @@ function renderUsers(users) {
                     ${u.nivel_acesso || 'N/A'}
                 </span>
             </td>
+            <td>${ultimoAcessoHtml(u)}</td>
             <td>
                 <div class="status-indicator ${u.ativo ? 'active' : 'inactive'}">
                     <span class="status-dot"></span>
