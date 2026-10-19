@@ -59,14 +59,14 @@ CAP_TELAS = {
     },
     "gestao_squad": {
         "metricas": "editar", "ranking": "editar", "projetos": "editar", "kanban": "editar",
-        "operacao": "editar", "criativa": "editar",
+        "operacao": "editar", "criativa": "editar", "remuneracao": "ver",
     },
     "operacao_account": {
-        "operacao": "editar", "criativa": "editar", "projetos": "editar", "kanban": "editar",
-        "metricas": "ver", "ranking": "ver",
+        "operacao": "editar", "criativa": "editar", "projetos": "ver", "kanban": "editar",
+        "metricas": "ver", "ranking": "ver", "cs_cx": "ver",
     },
     "operacao_gt": {
-        "operacao": "editar", "criativa": "editar", "projetos": "editar", "kanban": "editar",
+        "operacao": "editar", "criativa": "editar", "projetos": "ver", "kanban": "editar",
         "metricas": "ver", "ranking": "ver",
     },
     "criativa": {

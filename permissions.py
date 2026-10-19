@@ -315,7 +315,10 @@ def aplicar_sessao(db, sessao, user) -> None:
     sessao["squad_ids"] = [s["id"] for s in ctx["squads"]]
     sessao["capacidades"] = capacidades
     sessao["pode_gerenciar_feed"] = bool(ctx.get("pode_gerenciar_feed"))
-    sessao["acessos_telas"] = carregar_acessos(db, user.id, user.nivel_acesso)
+    acessos = carregar_acessos(db, user.id, user.nivel_acesso)
+    if getattr(user, "pode_editar_kanban", False):
+        acessos["kanban"] = "editar"
+    sessao["acessos_telas"] = acessos
 
     # Compatibilidade de exibição (valores vindos do v2_)
     sessao["funcao"] = ctx["cargo"]

@@ -38,6 +38,7 @@ _MAPA = [
     ("/api/ranking", "ranking"),
     ("/hub-projetos", "projetos"),
     ("/api/projetos", "projetos"),
+    ("/api/admin/investidores-ativos", "projetos"),
     ("/kanban", "kanban"),
     ("/api/kanban", "kanban"),
     ("/operacao", "operacao"),
