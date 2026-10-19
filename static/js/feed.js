@@ -1041,10 +1041,10 @@
         if (!itens.length) return setWidget("widgetEmAlta", `<div class="feed-widget-empty">Sem publicações em alta.</div>`);
         setWidget("widgetEmAlta", itens.map((p) => {
             const base = p.titulo || (p.conteudo || "").slice(0, 70) || "Publicação";
-            return `<div class="feed-widget-post">
+            return `<a class="feed-widget-post" href="/feed/post/${p.id}" title="Abrir publicação">
                 <div class="feed-widget-post-titulo">${esc(base)}</div>
                 <div class="feed-widget-post-meta">${esc(p.autor.nome)} · ${p.total_reacoes} reação(ões)</div>
-            </div>`;
+            </a>`;
         }).join(""));
     }
 

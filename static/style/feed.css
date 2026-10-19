@@ -565,9 +565,24 @@
 }
 
 .feed-widget-post {
+    display: block;
     background: var(--bg-main);
+    border: 1px solid transparent;
     border-radius: 10px;
     padding: 0.6rem 0.7rem;
+    color: inherit;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+}
+.feed-widget-post:hover {
+    border-color: var(--accent-red);
+    background: rgba(214, 22, 22, 0.06);
+}
+.feed-widget-post:hover .feed-widget-post-titulo { color: var(--accent-red); }
+.feed-widget-post:focus-visible {
+    outline: 2px solid var(--accent-red);
+    outline-offset: 2px;
 }
 
 .feed-widget-post-titulo {
