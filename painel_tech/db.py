@@ -237,6 +237,17 @@ def excluir_membro(membro_id):
     _execute(f'DELETE FROM "{SCHEMA}".membros WHERE id = %s', (membro_id,))
 
 
+def membro_id_por_hub_user(hub_user_id):
+    """Mapeia o id do investidor (HUB) para o id do membro no painel."""
+    if hub_user_id is None:
+        return None
+    row = _fetch_one(
+        f'SELECT id FROM "{SCHEMA}".membros WHERE hub_user_id = %s LIMIT 1',
+        (str(hub_user_id),),
+    )
+    return row["id"] if row else None
+
+
 def atualizar_membro_capacidade(membro_id, capacidade):
     _execute(
         f'UPDATE "{SCHEMA}".membros SET capacidade = %s WHERE id = %s',

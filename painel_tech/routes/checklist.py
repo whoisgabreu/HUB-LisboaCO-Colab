@@ -209,7 +209,12 @@ def etapa_comentar(etapa_id):
             url_for("painel_tech.projeto_detalhe", projeto_id=etapa["projeto_id"])
         )
     autor = view_utils.usuario_atual()
-    db.criar_comentario(etapa_id=etapa_id, autor_nome=autor.get("nome"), texto=texto)
+    db.criar_comentario(
+        projeto_id=etapa["projeto_id"],
+        etapa_id=etapa_id,
+        autor_nome=autor.get("nome"),
+        texto=texto,
+    )
     view_utils.registrar_evento(
         etapa["projeto_id"],
         "comentario",

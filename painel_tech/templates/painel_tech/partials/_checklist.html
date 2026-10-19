@@ -74,7 +74,7 @@
       </form>
     </div>
 
-    <details class="etapa-comentarios">
+    <details class="etapa-comentarios" {% if comentarios_etapa.get(etapa.id) %}open{% endif %}>
       <summary>Comentários ({{ comentarios_etapa.get(etapa.id, []) | length }})</summary>
       <ul class="comentarios">
         {% for comentario in comentarios_etapa.get(etapa.id, []) %}

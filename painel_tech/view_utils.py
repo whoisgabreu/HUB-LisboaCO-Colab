@@ -359,6 +359,20 @@ def usuario_atual():
     usuario = session.get("usuario") if session is not None else None
     if usuario:
         return usuario
+    # HUB: a sessão guarda "nome"/"email"/"investidor_id" (não "usuario")
+    nome = session.get("nome") if session is not None else None
+    if nome:
+        membro_id = None
+        try:
+            from . import db as _db
+            membro_id = _db.membro_id_por_hub_user(session.get("investidor_id"))
+        except Exception:  # noqa: BLE001
+            membro_id = None
+        return {
+            "id": membro_id,
+            "nome": nome,
+            "email": session.get("email"),
+        }
     nome = request.headers.get("X-Usuario")
     if nome:
         return {"id": None, "nome": nome}
