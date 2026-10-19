@@ -41,6 +41,8 @@
         enqueteAberta: false,
         pollTimer: null,
         ultimoPostISO: null,
+        imagens: [],
+        imagensUrls: [],
     };
 
     // ── Utils ────────────────────────────────────────────────────────────────
@@ -102,6 +104,164 @@
         }
         if (!resp.ok) throw new Error((data && data.erro) || "Falha na requisição.");
         return data;
+    }
+
+    async function enviarImagens(arquivos) {
+        const fd = new FormData();
+        arquivos.forEach((f) => fd.append("imagens", f));
+        const resp = await fetch("/api/feed/imagens", { method: "POST", body: fd });
+        let data = null;
+        try {
+            data = await resp.json();
+        } catch (e) {
+            data = null;
+        }
+        if (!resp.ok) throw new Error((data && data.erro) || "Falha ao enviar imagens.");
+        return data.imagens || [];
+    }
+
+    function escolherImagens() {
+        const input = document.getElementById("feedImagemInput");
+        if (input) input.click();
+    }
+
+    function anexarImagens(input) {
+        const arquivos = Array.from(input.files || []);
+        input.value = "";
+        if (!arquivos.length) return;
+
+        const restantes = 4 - state.imagens.length;
+        if (restantes <= 0) {
+            alert("Você pode anexar no máximo 4 imagens por publicação.");
+            return;
+        }
+        if (arquivos.length > restantes) {
+            alert(`Você pode anexar mais ${restantes} imagem(ns).`);
+        }
+
+        arquivos.slice(0, restantes).forEach((arquivo) => {
+            if (!arquivo.type || !arquivo.type.startsWith("image/")) {
+                alert(`"${arquivo.name}" não é uma imagem válida.`);
+                return;
+            }
+            if (arquivo.size > 5 * 1024 * 1024) {
+                alert(`"${arquivo.name}" excede o limite de 5MB.`);
+                return;
+            }
+            state.imagens.push(arquivo);
+        });
+        renderPreviewImagens();
+    }
+
+    function renderPreviewImagens() {
+        const box = document.getElementById("feedImagemPreview");
+        if (!box) return;
+
+        state.imagensUrls.forEach((url) => URL.revokeObjectURL(url));
+        state.imagensUrls = [];
+
+        box.innerHTML = state.imagens.map((arquivo, i) => {
+            const url = URL.createObjectURL(arquivo);
+            state.imagensUrls.push(url);
+            return `<div class="feed-imagem-item">
+                <img src="${url}" alt="Prévia da imagem ${i + 1}">
+                <button type="button" title="Remover imagem" onclick="Feed.removerImagem(${i})">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>`;
+        }).join("");
+        box.classList.toggle("aberto", state.imagens.length > 0);
+    }
+
+    function removerImagem(index) {
+        if (index < 0 || index >= state.imagens.length) return;
+        state.imagens.splice(index, 1);
+        renderPreviewImagens();
+    }
+
+    function limparImagens() {
+        state.imagensUrls.forEach((url) => URL.revokeObjectURL(url));
+        state.imagensUrls = [];
+        state.imagens = [];
+        renderPreviewImagens();
+    }
+
+    function abrirImagem(url) {
+        if (!url) return;
+        let box = document.getElementById("feedLightbox");
+        if (!box) {
+            box = document.createElement("div");
+            box.id = "feedLightbox";
+            box.className = "feed-lightbox";
+            box.innerHTML = `<button type="button" class="feed-lightbox-close" aria-label="Fechar">&times;</button><img alt="Imagem da publicação">`;
+            box.addEventListener("click", (e) => {
+                if (e.target === box || e.target.closest(".feed-lightbox-close")) fecharImagem();
+            });
+            document.body.appendChild(box);
+        }
+        box.querySelector("img").src = url;
+        box.classList.add("aberto");
+        document.body.style.overflow = "hidden";
+    }
+
+    function fecharImagem() {
+        const box = document.getElementById("feedLightbox");
+        if (box) box.classList.remove("aberto");
+        document.body.style.overflow = "";
+    }
+
+    function midiaHtml(imagens, postId) {
+        const imgs = (imagens || []).filter((img) => img && img.url);
+        if (!imgs.length) return "";
+
+        if (imgs.length === 1) {
+            return `<div class="feed-post-midia">
+                <img class="feed-midia-img" src="${esc(imgs[0].url)}" alt="Imagem da publicação"
+                    loading="lazy" onclick="Feed.abrirImagem(this.src)">
+            </div>`;
+        }
+
+        const slides = imgs.map((img, i) => `<div class="feed-midia-slide">
+            <img class="feed-midia-img" src="${esc(img.url)}" alt="Imagem ${i + 1} de ${imgs.length}"
+                loading="lazy" onclick="Feed.abrirImagem(this.src)">
+        </div>`).join("");
+
+        const dots = imgs.map((_, i) => `<button type="button"
+            class="feed-midia-dot${i === 0 ? " ativo" : ""}"
+            onclick="Feed.midiaIr(${postId}, ${i})" aria-label="Ir para imagem ${i + 1}"></button>`).join("");
+
+        return `<div class="feed-post-midia carrossel">
+            <div class="feed-midia-track" id="feedMidiaTrack-${postId}" onscroll="Feed.midiaScroll(${postId})">
+                ${slides}
+            </div>
+            <button type="button" class="feed-midia-nav prev" onclick="Feed.midiaNav(${postId}, -1)" aria-label="Imagem anterior">
+                <i class="fa-solid fa-chevron-left"></i>
+            </button>
+            <button type="button" class="feed-midia-nav next" onclick="Feed.midiaNav(${postId}, 1)" aria-label="Próxima imagem">
+                <i class="fa-solid fa-chevron-right"></i>
+            </button>
+            <div class="feed-midia-dots">${dots}</div>
+        </div>`;
+    }
+
+    function midiaNav(postId, direcao) {
+        const track = document.getElementById(`feedMidiaTrack-${postId}`);
+        if (!track) return;
+        track.scrollBy({ left: direcao * track.clientWidth, behavior: "smooth" });
+    }
+
+    function midiaIr(postId, index) {
+        const track = document.getElementById(`feedMidiaTrack-${postId}`);
+        if (!track) return;
+        track.scrollTo({ left: index * track.clientWidth, behavior: "smooth" });
+    }
+
+    function midiaScroll(postId) {
+        const track = document.getElementById(`feedMidiaTrack-${postId}`);
+        if (!track || !track.clientWidth) return;
+        const index = Math.round(track.scrollLeft / track.clientWidth);
+        const dots = track.closest(".feed-post-midia").querySelectorAll(".feed-midia-dot");
+        dots.forEach((dot, i) => dot.classList.toggle("ativo", i === index));
     }
 
     function pingar(post) {
@@ -207,6 +367,7 @@
             </div>
             ${o.titulo ? `<div class="feed-repost-titulo">${esc(o.titulo)}</div>` : ""}
             ${conteudoOriginalHtml(o)}
+            ${midiaHtml(o.imagens, o.id)}
         </div>`;
     }
 
@@ -296,6 +457,7 @@
             </header>
             ${evento}
             ${conteudoPostHtml(post)}
+            ${midiaHtml(post.imagens, post.id)}
             ${enqueteHtml(post)}
             ${originalHtml(post)}
             <div class="feed-post-stats">
@@ -469,12 +631,24 @@
     async function publicar() {
         const input = document.getElementById("feedTexto");
         const conteudo = (input.value || "").trim();
-        if (!conteudo) return;
-        if (state.enqueteAberta) return publicarEnquete(conteudo);
+        const temImagens = state.imagens.length > 0;
+        if (!conteudo && !temImagens) return;
+        if (state.enqueteAberta) {
+            if (temImagens) {
+                alert("Enquetes não aceitam imagens. Remova as imagens ou publique a enquete primeiro.");
+                return;
+            }
+            return publicarEnquete(conteudo);
+        }
         const canais = coletarCanais();
         try {
-            await api("/api/feed/posts", { method: "POST", body: JSON.stringify({ conteudo, ...canais }) });
+            const imagens = temImagens ? await enviarImagens(state.imagens) : [];
+            await api("/api/feed/posts", {
+                method: "POST",
+                body: JSON.stringify({ conteudo, imagens, ...canais }),
+            });
             input.value = "";
+            limparImagens();
             atualizarContador();
             fecharEnquete();
             await carregar(false);
@@ -1105,6 +1279,8 @@
         publicar, publicarEvento, toggleEvento,
         toggleEnquete, addOpcaoEnquete,
         toggleEmoji, inserirMencao,
+        escolherImagens, anexarImagens, removerImagem,
+        midiaNav, midiaIr, midiaScroll, abrirImagem, fecharImagem,
         toggleCanais, atualizarCanais,
         carregarMais, carregarNovos,
         reagir, abrirPicker, salvar, repostar, votar, verVotantes,
@@ -1148,6 +1324,7 @@
                 fecharPerfil();
                 fecharEnquete();
                 fecharMencoes();
+                fecharImagem();
             }
         });
 

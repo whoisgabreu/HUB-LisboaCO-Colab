@@ -33,6 +33,10 @@
                 <div class="feed-formato-dica">Formatação: <code>*negrito*</code> · <code>_itálico_</code> · <code>~tachado~</code> · <code>`código`</code></div>
                 <div id="feedMencaoBox" class="feed-mencao-box"></div>
 
+                <input type="file" id="feedImagemInput" accept="image/*" multiple hidden
+                    onchange="Feed.anexarImagens(this)">
+                <div id="feedImagemPreview" class="feed-imagem-preview"></div>
+
                 <!-- Enquete -->
                 <div id="feedEnqueteForm" class="feed-enquete-form">
                     <div class="feed-enquete-opcoes" id="feedEnqueteOpcoes"></div>
@@ -45,6 +49,10 @@
                     <div class="feed-composer-tools">
                         <button type="button" class="feed-ico-btn" title="Emoji" onclick="Feed.toggleEmoji(event)">
                             <i class="fa-regular fa-face-smile"></i>
+                        </button>
+                        <button type="button" class="feed-ico-btn" title="Anexar imagens (até 4, 5MB cada)"
+                            onclick="Feed.escolherImagens()">
+                            <i class="fa-regular fa-image"></i>
                         </button>
                         <button type="button" class="feed-ico-btn" title="Enquete" onclick="Feed.toggleEnquete()">
                             <i class="fa-solid fa-square-poll-vertical"></i>

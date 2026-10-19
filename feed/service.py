@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 
 from models import Investidor, InvestidorProjeto
 from permissions import SCHEMA, squad_ids_do_investidor, config_get
+from feed.media import normalizar_referencias, remover_imagens, serializar_imagens
 
 AUTOR_SISTEMA = "sistema"
 from feed.models import (
@@ -580,6 +581,7 @@ class FeedService:
                     "criado_em": o.criado_em.isoformat() if o.criado_em else None,
                     "autor_email": o.autor_email,
                     "autor": self._autor_obj(o.autor_email, autores),
+                    "imagens": serializar_imagens(o.imagens),
                     "deletado": bool(o.deletado),
                 }
 
@@ -617,6 +619,7 @@ class FeedService:
                     "total_comentarios": coment_map.get(p.id, 0),
                     "salvo": p.id in salvos,
                     "enquete": enquete,
+                    "imagens": serializar_imagens(p.imagens),
                     "original": original,
                 }
             )
@@ -625,24 +628,28 @@ class FeedService:
     # ── Criação ───────────────────────────────────────────────────────────────
 
     def criar_post(
-        self, autor_email: str, conteudo: str, dest_todos: bool = True, squads=None
+        self, autor_email: str, conteudo: str, dest_todos: bool = True, squads=None,
+        imagens=None,
     ) -> Dict[str, Any]:
         conteudo = (conteudo or "").strip()
-        if not conteudo:
-            raise ValueError("O conteúdo do post não pode ser vazio.")
+        imagens = normalizar_referencias(imagens)
+        if not conteudo and not imagens:
+            raise ValueError("Escreva algo ou anexe pelo menos uma imagem.")
         dest_todos, squads = self._sanitizar_destinos(autor_email, dest_todos, squads)
 
         post = FeedPost(
             autor_email=autor_email,
             tipo="post",
-            conteudo=conteudo,
+            conteudo=conteudo or None,
+            imagens=imagens,
             dest_todos=dest_todos,
             squads_destino=squads,
             criado_em=self._agora(),
         )
         self.db.add(post)
         self.db.flush()
-        self._notificar_mencoes(conteudo, autor_email, post.id)
+        if conteudo:
+            self._notificar_mencoes(conteudo, autor_email, post.id)
         self.db.commit()
         self.db.refresh(post)
         return self._serializar([post], autor_email)[0]
@@ -1094,6 +1101,8 @@ class FeedService:
             raise ValueError("Post não encontrado.")
         if post.autor_email != solicitante_email and not gestao:
             raise PermissionError("Sem permissão para remover este post.")
+        remover_imagens(post.imagens)
+        post.imagens = []
         post.deletado = True
         post.atualizado_em = self._agora()
         self.db.commit()

@@ -44,6 +44,8 @@ class FeedPost(Base):
     squads_destino = Column(ARRAY(Integer), nullable=False, default=list)
     original_post_id = Column(Integer)
     enquete = Column(JSONB)
+    # Lista de imagens anexadas: [{arquivo, largura, altura}]
+    imagens = Column(JSONB, nullable=False, default=list)
     editado = Column(Boolean, nullable=False, default=False)
     total_edicoes = Column(Integer, nullable=False, default=0)
     editado_em = Column(DateTime)

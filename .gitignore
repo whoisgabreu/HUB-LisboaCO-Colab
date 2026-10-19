@@ -212,3 +212,6 @@ __marimo__/
 
 # Painel Gerencial TECH (config de runtime)
 painel_tech/config.json
+
+# Feed media (uploads em runtime)
+static/images/feed/

@@ -5,6 +5,7 @@ from datetime import datetime
 from flask import jsonify, request, session
 
 from database import Session
+from feed import media
 from feed.service import FeedService
 import permissions
 
@@ -131,6 +132,20 @@ def obter_post(post_id):
             return _erro(e)
 
 
+@bp.route("/imagens", methods=["POST"])
+def upload_imagens():
+    try:
+        imagens = media.processar_upload(request.files.getlist("imagens"))
+        return jsonify({
+            "imagens": [
+                {**img, "url": media.url_publica(img["arquivo"])}
+                for img in imagens
+            ]
+        }), 201
+    except Exception as e:  # noqa: BLE001
+        return _erro(e)
+
+
 @bp.route("/posts", methods=["POST"])
 def criar_post():
     payload = request.get_json(silent=True) or {}
@@ -139,6 +154,7 @@ def criar_post():
             post = FeedService(db).criar_post(
                 _email(), payload.get("conteudo"),
                 payload.get("dest_todos", True), payload.get("squads"),
+                payload.get("imagens"),
             )
             return jsonify(post), 201
         except Exception as e:  # noqa: BLE001
