@@ -41,6 +41,7 @@ from dashboard_grupos.hub_integration import register as register_dashboard_grup
 from feed.hub_integration import register as register_feed
 from chat.hub_integration import register as register_chat
 from painel_tech.hub_integration import register as register_painel_tech
+import access_guard
 import permissions
 
 
@@ -63,6 +64,9 @@ register_chat(app)
 
 # Painel Gerencial TECH (blueprint isolado, acessível em /tech)
 register_painel_tech(app)
+
+# Guard central de acesso por tela (modelo v2_usuario_telas)
+access_guard.init_app(app)
 
 
 @app.route("/favicon.ico")
@@ -176,20 +180,9 @@ def check_session(func):
 
 
 def check_access(roles):
-    """Decorator de acesso baseado em capacidades (v2).
-
-    Aceita a mesma lista de nomes de cargos/posições das rotas antigas, mas a
-    decisão usa as capacidades efetivas do usuário (união de cargo + posições).
-    Admin e gestão ampla têm bypass.
-    """
+    """Compatibilidade: o acesso por tela é aplicado pelo access_guard central."""
     def decorator(f):
-        @wraps(f)
-        def wrapper(*args, **kwargs):
-            if not permissions.pode_por_roles(roles):
-                print(f"[check_access] BLOQUEADO: caps={sorted(permissions.capacidades())} roles={roles}")
-                return redirect(url_for("feed"))
-            return f(*args, **kwargs)
-        return wrapper
+        return f
     return decorator
 
 
@@ -2137,6 +2130,7 @@ def gerenciar_usuarios():
             cargos = permissions.listar_catalogo(db, "v2_cargos")
             posicoes = permissions.listar_catalogo(db, "v2_posicoes")
             squads = permissions.listar_squads(db)
+            telas = permissions.listar_telas(db)
 
             return render_template(
                 "gerenciar-usuarios.html",
@@ -2146,6 +2140,7 @@ def gerenciar_usuarios():
                     "niveis": [n[0] for n in niveis],
                     "posicoes": posicoes,
                     "squads": squads,
+                    "telas": telas,
                 }
             )
     except Exception as e:
@@ -2162,6 +2157,11 @@ def api_get_usuarios():
     try:
         with Session() as db:
             usuarios = db.query(Investidor).order_by(Investidor.nome).all()
+            overrides = {}
+            for iid, tela, nivel in db.execute(
+                text(f"SELECT investidor_id, tela, nivel FROM {permissions.SCHEMA}.v2_usuario_telas")
+            ).all():
+                overrides.setdefault(iid, {})[tela] = nivel
             resultado = []
             for u in usuarios:
                 ctx = permissions.carregar_contexto(db, u.id)
@@ -2187,6 +2187,7 @@ def api_get_usuarios():
                     "posicoes": ctx["posicoes"],
                     "squads": [{"id": s["id"], "nome": s["nome"]} for s in ctx["squads"]],
                     "pode_gerenciar_feed": ctx.get("pode_gerenciar_feed", False),
+                    "acessos_telas": overrides.get(u.id, {}),
                 })
             return jsonify(resultado)
     except Exception as e:
@@ -2259,6 +2260,8 @@ def api_create_usuario():
             permissions.definir_posicoes(db, new_id, posicoes)
             permissions.definir_squads(db, new_id, squad_ids)
             permissions.definir_flag_gerenciar_feed(db, new_id, data.get("pode_gerenciar_feed", False))
+            if "acessos_telas" in data:
+                permissions.definir_acessos_usuario(db, new_id, data.get("acessos_telas") or {})
             db.commit()
             return jsonify({"status": "success", "message": "Usuário criado com sucesso!"})
     except Exception as e:
@@ -2326,6 +2329,9 @@ def api_update_usuario(email):
             # Se vier senha nova, atualiza
             if data.get("senha"):
                 user.senha = generate_password_hash(data["senha"])
+
+            if "acessos_telas" in data:
+                permissions.definir_acessos_usuario(db, user.id, data.get("acessos_telas") or {})
 
             db.commit()
             return jsonify({"status": "success", "message": "Usuário atualizado com sucesso!"})
@@ -2551,6 +2557,124 @@ def api_salvar_capacidades():
         return jsonify({"status": "success", "message": "Matriz atualizada."})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+# ─── ACESSOS POR TELA (v2_usuario_telas / cargo / posicao) ──────────────────
+
+
+@app.route("/acessos")
+@check_session
+def acessos_page():
+    with Session() as db:
+        telas = permissions.listar_telas(db)
+        cargos = permissions.listar_catalogo(db, "v2_cargos")
+        posicoes = permissions.listar_catalogo(db, "v2_posicoes")
+        cargo_telas = {c: permissions.listar_acessos_cargo(db, c) for c in cargos}
+        posicao_telas = {p: permissions.listar_acessos_posicao(db, p) for p in posicoes}
+    return render_template(
+        "acessos.html",
+        telas=telas, cargos=cargos, posicoes=posicoes,
+        cargo_telas=cargo_telas, posicao_telas=posicao_telas,
+    )
+
+
+@app.route("/api/admin/telas")
+@check_session
+def api_admin_telas():
+    with Session() as db:
+        return jsonify(permissions.listar_telas(db))
+
+
+@app.route("/api/admin/cargos", methods=["POST"])
+@check_session
+def api_admin_cargos():
+    data = request.json or {}
+    acao = data.get("acao")
+    nome = (data.get("nome") or "").strip()
+    if not nome:
+        return jsonify({"error": "Informe o nome do cargo."}), 400
+    with Session() as db:
+        if acao == "criar":
+            permissions.criar_cargo(db, nome)
+        elif acao == "renomear":
+            permissions.renomear_cargo(db, nome, (data.get("novo") or "").strip())
+        elif acao == "desativar":
+            permissions.desativar_cargo(db, nome)
+        else:
+            return jsonify({"error": "Ação inválida."}), 400
+        db.commit()
+    return jsonify({"status": "success"})
+
+
+@app.route("/api/admin/posicoes", methods=["POST"])
+@check_session
+def api_admin_posicoes():
+    data = request.json or {}
+    acao = data.get("acao")
+    nome = (data.get("nome") or "").strip()
+    if not nome:
+        return jsonify({"error": "Informe o nome da posição."}), 400
+    with Session() as db:
+        if acao == "criar":
+            permissions.criar_posicao(db, nome)
+        elif acao == "renomear":
+            permissions.renomear_posicao(db, nome, (data.get("novo") or "").strip())
+        elif acao == "desativar":
+            permissions.desativar_posicao(db, nome)
+        else:
+            return jsonify({"error": "Ação inválida."}), 400
+        db.commit()
+    return jsonify({"status": "success"})
+
+
+@app.route("/api/admin/acessos-cargo", methods=["GET", "POST"])
+@check_session
+def api_admin_acessos_cargo():
+    if request.method == "GET":
+        with Session() as db:
+            return jsonify(permissions.listar_acessos_cargo(db, request.args.get("cargo", "")))
+    data = request.json or {}
+    cargo = (data.get("cargo") or "").strip()
+    if not cargo:
+        return jsonify({"error": "Cargo inválido."}), 400
+    with Session() as db:
+        permissions.definir_acessos_cargo(db, cargo, data.get("acessos") or {})
+        db.commit()
+    return jsonify({"status": "success"})
+
+
+@app.route("/api/admin/acessos-posicao", methods=["GET", "POST"])
+@check_session
+def api_admin_acessos_posicao():
+    if request.method == "GET":
+        with Session() as db:
+            return jsonify(permissions.listar_acessos_posicao(db, request.args.get("posicao", "")))
+    data = request.json or {}
+    posicao = (data.get("posicao") or "").strip()
+    if not posicao:
+        return jsonify({"error": "Posição inválida."}), 400
+    with Session() as db:
+        permissions.definir_acessos_posicao(db, posicao, data.get("acessos") or {})
+        db.commit()
+    return jsonify({"status": "success"})
+
+
+@app.route("/api/admin/usuarios/<email>/acessos", methods=["GET", "POST"])
+@check_session
+def api_admin_usuario_acessos(email):
+    with Session() as db:
+        user = db.query(Investidor).filter_by(email=email).first()
+        if not user:
+            return jsonify({"error": "Usuário não encontrado."}), 404
+        if request.method == "GET":
+            return jsonify({
+                "overrides": permissions.listar_acessos_usuario(db, user.id),
+                "efetivo": permissions.carregar_acessos(db, user.id, user.nivel_acesso),
+            })
+        data = request.json or {}
+        permissions.definir_acessos_usuario(db, user.id, data.get("acessos") or {})
+        db.commit()
+    return jsonify({"status": "success"})
 
 
 # ─── CONFIGURAÇÕES DO FEED (ADMIN, v2_) ──────────────────────────────────────

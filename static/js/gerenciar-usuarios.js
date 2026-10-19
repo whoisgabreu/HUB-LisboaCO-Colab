@@ -199,6 +199,7 @@ function openNewUserModal() {
     document.getElementById('userAtivo').value = 'true';
     form.reset();
     limparAreas();
+    renderTelasMatriz({});
     resetUserFormTabs();
     modal.classList.add('active');
 }
@@ -217,6 +218,7 @@ function openEditUserModal(email) {
     document.getElementById('userDataAdmissao').value = u.data_admissao || '';
     document.getElementById('userTelefone').value = mascaraTelefone(u.telefone || '');
     document.getElementById('userCpf').value = mascaraCpf(u.cpf || '');
+    renderTelasMatriz(u.acessos_telas || {});
     document.getElementById('userFuncao').value = u.cargo || '';
     document.getElementById('userSenioridade').value = u.senioridade || '';
     document.getElementById('userNivel').value = u.nivel || '';
@@ -279,6 +281,11 @@ form.onsubmit = async (e) => {
     const posicoes = [...document.querySelectorAll('#userPosicoes input:checked')].map(cb => cb.value);
     const squads = [...document.querySelectorAll('#userSquads input:checked')].map(cb => parseInt(cb.value, 10));
 
+    const acessosTelas = {};
+    document.querySelectorAll('#userTelasMatriz select[data-tela]').forEach(s => {
+        if (s.value) acessosTelas[s.dataset.tela] = s.value;
+    });
+
     const payload = {
         nome: document.getElementById('userName').value,
         email: document.getElementById('userEmail').value,
@@ -294,7 +301,8 @@ form.onsubmit = async (e) => {
         nivel_acesso: document.getElementById('userNivelAcesso').value,
         ativo: document.getElementById('userAtivo').value === 'true',
         pode_editar_kanban: document.getElementById('userPodeEditarKanban').checked,
-        pode_gerenciar_feed: document.getElementById('userPodeGerenciarFeed').checked
+        pode_gerenciar_feed: document.getElementById('userPodeGerenciarFeed').checked,
+        acessos_telas: acessosTelas
     };
 
     if (!isEdit) {
@@ -358,3 +366,29 @@ resetForm.onsubmit = async (e) => {
 };
 
 function resetPassword(email) { openResetModal(email); }
+
+/* Aba "Telas": matriz de acesso por usuário */
+function renderTelasMatriz(overrides) {
+    const box = document.getElementById('userTelasMatriz');
+    if (!box) return;
+    const telas = window.HUB_TELAS || [];
+    const ov = overrides || {};
+    let grupoAtual = null;
+    let html = '';
+    telas.forEach(t => {
+        if (t.grupo !== grupoAtual) {
+            grupoAtual = t.grupo;
+            html += `<div class="telas-grupo">${grupoAtual || ''}</div>`;
+        }
+        const v = ov[t.codigo] || '';
+        const sel = (val, label) => `<option value="${val}" ${v === val ? 'selected' : ''}>${label}</option>`;
+        html += `<div class="telas-linha"><span>${t.nome}</span>
+            <select data-tela="${t.codigo}">
+                ${sel('', 'Herdar')}
+                ${sel('nenhum', 'Sem acesso')}
+                ${sel('ver', 'Ver')}
+                ${sel('editar', 'Editar')}
+            </select></div>`;
+    });
+    box.innerHTML = html || '<p class="hint">Sem telas cadastradas.</p>';
+}

@@ -178,6 +178,10 @@
                             onclick="switchUserFormTab('acesso')">
                             <i class="fas fa-shield-alt"></i> Acesso e Status
                         </button>
+                        <button type="button" class="admin-form-tab" data-tab="telas"
+                            onclick="switchUserFormTab('telas')">
+                            <i class="fas fa-table-columns"></i> Telas
+                        </button>
                     </div>
 
                     <!-- PAINEL: DADOS PESSOAIS -->
@@ -329,6 +333,17 @@
                         </div>
                     </div>
 
+                    <!-- PAINEL: TELAS (ACESSO POR USUÁRIO) -->
+                    <div class="admin-form-panel" data-panel="telas">
+                        <div class="form-section">
+                            <p class="hint" style="color:var(--text-muted);font-size:.8rem;margin:0 0 12px;">
+                                Acesso individual por tela. <strong>Herdar</strong> usa o padrão do cargo/posição;
+                                <strong>Sem acesso</strong> revoga o padrão.
+                            </p>
+                            <div id="userTelasMatriz"></div>
+                        </div>
+                    </div>
+
                     <div class="modal-footer">
                         <button type="button" class="btn-secondary" onclick="closeUserModal()">Cancelar</button>
                         <button type="submit" class="btn-primary">
@@ -381,6 +396,7 @@
             userToken: "{{session.token}}"
         };
         window.__USER_ROLE__ = "{{ session.cargo }}";
+        window.HUB_TELAS = {{ options.telas | tojson }};
     </script>
     {% include "components/modal-configuracoes.html" %}
     <script src="static/js/tema.js"></script>

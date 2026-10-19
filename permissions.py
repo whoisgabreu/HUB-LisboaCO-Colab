@@ -315,6 +315,7 @@ def aplicar_sessao(db, sessao, user) -> None:
     sessao["squad_ids"] = [s["id"] for s in ctx["squads"]]
     sessao["capacidades"] = capacidades
     sessao["pode_gerenciar_feed"] = bool(ctx.get("pode_gerenciar_feed"))
+    sessao["acessos_telas"] = carregar_acessos(db, user.id, user.nivel_acesso)
 
     # Compatibilidade de exibição (valores vindos do v2_)
     sessao["funcao"] = ctx["cargo"]
@@ -424,3 +425,234 @@ def pode_por_roles(roles) -> bool:
         needed |= ROLE_CAPS.get(_norm(role), set())
     return bool(caps & needed)
 
+
+
+# ── Acesso por tela (usuário) ────────────────────────────────────────────────
+NIVEIS_TELA = ("nenhum", "ver", "editar")
+ORDEM_NIVEL_TELA = {"nenhum": 0, "ver": 1, "editar": 2}
+
+
+def _nivel_max_tela(a, b):
+    return a if ORDEM_NIVEL_TELA.get(a, 0) >= ORDEM_NIVEL_TELA.get(b, 0) else b
+
+
+def listar_telas(db) -> List[Dict[str, Any]]:
+    rows = db.execute(
+        text(
+            f"SELECT codigo, nome, grupo, ordem, acesso_padrao, ativo "
+            f"FROM {SCHEMA}.v2_telas WHERE ativo = TRUE ORDER BY ordem, nome"
+        )
+    ).all()
+    return [
+        {"codigo": r[0], "nome": r[1], "grupo": r[2], "ordem": r[3], "acesso_padrao": r[4]}
+        for r in rows
+    ]
+
+
+def carregar_acessos(db, investidor_id=None, nivel_acesso=None) -> Dict[str, str]:
+    """Resolve o nível efetivo por tela.
+
+    Precedência: usuário > maior(cargo, posições, padrão da tela).
+    Admin recebe 'editar' em todas.
+    """
+    telas = listar_telas(db)
+    mapa = {t["codigo"]: t["acesso_padrao"] for t in telas}
+
+    if (nivel_acesso or "").strip() == "Admin":
+        return {codigo: "editar" for codigo in mapa}
+
+    if investidor_id:
+        cargo = db.execute(
+            text(f"SELECT cargo FROM {SCHEMA}.v2_investidor_cargo WHERE investidor_id = :i"),
+            {"i": investidor_id},
+        ).scalar()
+        posicoes = [
+            r[0]
+            for r in db.execute(
+                text(f"SELECT posicao FROM {SCHEMA}.v2_investidor_posicoes WHERE investidor_id = :i"),
+                {"i": investidor_id},
+            ).all()
+        ]
+
+        if cargo:
+            for tela, nivel in db.execute(
+                text(f"SELECT tela, nivel FROM {SCHEMA}.v2_cargo_telas WHERE cargo = :c"),
+                {"c": cargo},
+            ).all():
+                mapa[tela] = _nivel_max_tela(mapa.get(tela, "nenhum"), nivel)
+        if posicoes:
+            for tela, nivel in db.execute(
+                text(f"SELECT tela, nivel FROM {SCHEMA}.v2_posicao_telas WHERE posicao = ANY(:p)"),
+                {"p": posicoes},
+            ).all():
+                mapa[tela] = _nivel_max_tela(mapa.get(tela, "nenhum"), nivel)
+
+        # Override explícito do usuário (inclusive 'nenhum' para revogar)
+        for tela, nivel in db.execute(
+            text(f"SELECT tela, nivel FROM {SCHEMA}.v2_usuario_telas WHERE investidor_id = :i"),
+            {"i": investidor_id},
+        ).all():
+            mapa[tela] = nivel
+    return mapa
+
+
+def _acessos_sessao() -> Dict[str, str]:
+    from flask import session
+
+    return session.get("acessos_telas") or {}
+
+
+def nivel_tela(codigo: str) -> str:
+    mapa = _acessos_sessao()
+    if codigo in mapa:
+        return mapa[codigo]
+    # sessão antiga (antes do modelo de telas): calcula e guarda
+    try:
+        from flask import session as _s
+        from database import Session
+
+        with Session() as db:
+            mapa = carregar_acessos(db, _s.get("investidor_id"), _s.get("nivel_acesso"))
+        _s["acessos_telas"] = mapa
+        return mapa.get(codigo, "nenhum")
+    except Exception:
+        return "ver" if codigo in ("feed", "perfil", "minha_agenda") else "nenhum"
+
+
+def pode_tela(codigo: str, nivel: str = "ver") -> bool:
+    if is_admin():
+        return True
+    return ORDEM_NIVEL_TELA.get(nivel_tela(codigo), 0) >= ORDEM_NIVEL_TELA.get(nivel, 1)
+
+
+def pode_editar_tela(codigo: str) -> bool:
+    return pode_tela(codigo, "editar")
+
+
+# ── Escrita: acessos por usuário / cargo / posição ──────────────────────────
+
+
+def _salvar_acessos(db, tabela, coluna, alvo, acessos):
+    db.execute(
+        text(f"DELETE FROM {SCHEMA}.{tabela} WHERE {coluna} = :a"), {"a": alvo}
+    )
+    for tela, nivel in (acessos or {}).items():
+        if nivel in NIVEIS_TELA and nivel != "nenhum":
+            db.execute(
+                text(
+                    f"INSERT INTO {SCHEMA}.{tabela} ({coluna}, tela, nivel) "
+                    "VALUES (:a, :t, :n) ON CONFLICT DO NOTHING"
+                ),
+                {"a": alvo, "t": tela, "n": nivel},
+            )
+
+
+def definir_acessos_usuario(db, investidor_id, acessos):
+    """Grava overrides do usuário. Níveis 'nenhum' são gravados (revogação)."""
+    db.execute(
+        text(f"DELETE FROM {SCHEMA}.v2_usuario_telas WHERE investidor_id = :i"),
+        {"i": investidor_id},
+    )
+    for tela, nivel in (acessos or {}).items():
+        if nivel in NIVEIS_TELA:
+            db.execute(
+                text(
+                    f"INSERT INTO {SCHEMA}.v2_usuario_telas (investidor_id, tela, nivel) "
+                    "VALUES (:i, :t, :n)"
+                ),
+                {"i": investidor_id, "t": tela, "n": nivel},
+            )
+
+
+def definir_acessos_cargo(db, cargo, acessos):
+    _salvar_acessos(db, "v2_cargo_telas", "cargo", cargo, acessos)
+
+
+def definir_acessos_posicao(db, posicao, acessos):
+    _salvar_acessos(db, "v2_posicao_telas", "posicao", posicao, acessos)
+
+
+def listar_acessos_cargo(db, cargo) -> Dict[str, str]:
+    return {
+        r[0]: r[1]
+        for r in db.execute(
+            text(f"SELECT tela, nivel FROM {SCHEMA}.v2_cargo_telas WHERE cargo = :c"),
+            {"c": cargo},
+        ).all()
+    }
+
+
+def listar_acessos_posicao(db, posicao) -> Dict[str, str]:
+    return {
+        r[0]: r[1]
+        for r in db.execute(
+            text(f"SELECT tela, nivel FROM {SCHEMA}.v2_posicao_telas WHERE posicao = :p"),
+            {"p": posicao},
+        ).all()
+    }
+
+
+def listar_acessos_usuario(db, investidor_id) -> Dict[str, str]:
+    return {
+        r[0]: r[1]
+        for r in db.execute(
+            text(f"SELECT tela, nivel FROM {SCHEMA}.v2_usuario_telas WHERE investidor_id = :i"),
+            {"i": investidor_id},
+        ).all()
+    }
+
+
+# ── CRUD de cargos / posições ───────────────────────────────────────────────
+
+
+def _crud_tabela(db, tabela, acao, nome, novo=None):
+    if tabela not in ("v2_cargos", "v2_posicoes"):
+        raise ValueError("Catálogo inválido.")
+    if acao == "criar":
+        db.execute(
+            text(
+                f"INSERT INTO {SCHEMA}.{tabela} (nome, ativo, ordem) "
+                f"VALUES (:n, TRUE, (SELECT COALESCE(MAX(ordem),0)+1 FROM {SCHEMA}.{tabela})) "
+                "ON CONFLICT (nome) DO UPDATE SET ativo = TRUE"
+            ),
+            {"n": nome},
+        )
+    elif acao == "renomear" and novo:
+        db.execute(
+            text(f"UPDATE {SCHEMA}.{tabela} SET nome = :novo WHERE nome = :n"),
+            {"novo": novo, "n": nome},
+        )
+    elif acao == "desativar":
+        db.execute(
+            text(f"UPDATE {SCHEMA}.{tabela} SET ativo = FALSE WHERE nome = :n"),
+            {"n": nome},
+        )
+    elif acao == "ativar":
+        db.execute(
+            text(f"UPDATE {SCHEMA}.{tabela} SET ativo = TRUE WHERE nome = :n"),
+            {"n": nome},
+        )
+
+
+def criar_cargo(db, nome):
+    _crud_tabela(db, "v2_cargos", "criar", nome)
+
+
+def criar_posicao(db, nome):
+    _crud_tabela(db, "v2_posicoes", "criar", nome)
+
+
+def renomear_cargo(db, nome, novo):
+    _crud_tabela(db, "v2_cargos", "renomear", nome, novo)
+
+
+def renomear_posicao(db, nome, novo):
+    _crud_tabela(db, "v2_posicoes", "renomear", nome, novo)
+
+
+def desativar_cargo(db, nome):
+    _crud_tabela(db, "v2_cargos", "desativar", nome)
+
+
+def desativar_posicao(db, nome):
+    _crud_tabela(db, "v2_posicoes", "desativar", nome)

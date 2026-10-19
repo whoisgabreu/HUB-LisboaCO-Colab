@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="static/style/styles.css">
+    <link rel="stylesheet" href="static/style/tema-claro.css">
+    <script src="static/js/app.js" defer></script>
+    <script src="static/js/acessos.js" defer></script>
+    <style>
+        .adm-card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+        .adm-card h3 { margin: 0 0 4px; }
+        .adm-card p.hint { color: var(--text-muted); font-size: .8rem; margin: 0 0 14px; }
+        .adm-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+        .adm-input, .adm-select { background: transparent; border: 1px solid var(--border-color); color: var(--text-main); border-radius: 8px; padding: 8px 10px; font-family: inherit; font-size: .84rem; }
+        .adm-btn { background: var(--accent-red, #d61616); color: #fff; border: none; border-radius: 8px; padding: 8px 14px; cursor: pointer; font-family: inherit; font-size: .82rem; font-weight: 600; }
+        .adm-btn.ghost { background: transparent; border: 1px solid var(--border-color); color: var(--text-main); }
+        .adm-list { display: flex; flex-wrap: wrap; gap: 8px; }
+        .adm-chip { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--border-color); border-radius: 999px; padding: 4px 10px; font-size: .78rem; }
+        .adm-chip button { background: transparent; border: none; color: var(--text-muted); cursor: pointer; }
+        .adm-chip button:hover { color: var(--accent-red); }
+        .matrix { width: 100%; border-collapse: collapse; }
+        .matrix th, .matrix td { padding: 6px 8px; border-bottom: 1px solid var(--border-color); font-size: .8rem; text-align: left; }
+        .matrix td.nivel { text-align: right; }
+        .matrix .grupo td { background: rgba(255,255,255,.03); font-weight: 700; font-size: .74rem; text-transform: uppercase; color: var(--text-muted); }
+        .info-banner { background: rgba(59,130,246,.08); border: 1px solid rgba(59,130,246,.25); border-radius: 10px; padding: 12px 14px; font-size: .84rem; color: var(--text-main); margin-top: 10px; }
+    </style>
+    {% include "components/icon_title.html" %}
+</head>
+
+<body>
+    {% include "components/header.html" %}
+    {% include "components/sidebar.html" %}
+
+    <div class="app-shell">
+        <div class="sidebar-overlay"></div>
+        <div class="main-content">
+            <main class="main-container">
+                <section class="welcome-section">
+                    <h2>Acessos &amp; Cargos</h2>
+                    <p>Defina os acessos padrão por <strong>cargo</strong> e <strong>posição</strong>. O acesso individual do usuário (em Gerenciar Usuários) sobrescreve esses padrões.</p>
+                    <div class="info-banner">
+                        Níveis: <strong>Ver</strong> (abre a tela) e <strong>Editar</strong> (pode salvar). O acesso definido no usuário tem prioridade sobre cargo/posição. A regra de negócio (capacidades) continua em <a href="/capacidades" style="color:inherit;text-decoration:underline;">Matriz de Capacidades</a>.
+                    </div>
+                </section>
+
+                <div class="adm-card">
+                    <h3>Cargos</h3>
+                    <p class="hint">Crie, renomeie ou desative cargos.</p>
+                    <div class="adm-row">
+                        <input class="adm-input" id="novoCargo" placeholder="Novo cargo">
+                        <button class="adm-btn" onclick="Acessos.criar('cargo')">Adicionar cargo</button>
+                    </div>
+                    <div class="adm-list" id="listaCargos"></div>
+                </div>
+
+                <div class="adm-card">
+                    <h3>Posições</h3>
+                    <p class="hint">Crie, renomeie ou desative posições.</p>
+                    <div class="adm-row">
+                        <input class="adm-input" id="novaPosicao" placeholder="Nova posição">
+                        <button class="adm-btn" onclick="Acessos.criar('posicao')">Adicionar posição</button>
+                    </div>
+                    <div class="adm-list" id="listaPosicoes"></div>
+                </div>
+
+                <div class="adm-card">
+                    <h3>Acessos padrão por tela</h3>
+                    <p class="hint">Escolha um cargo/posição e defina o nível de cada tela.</p>
+                    <div class="adm-row">
+                        <select class="adm-select" id="alvoTipo" onchange="Acessos.trocarTipo()">
+                            <option value="cargo">Cargo</option>
+                            <option value="posicao">Posição</option>
+                        </select>
+                        <select class="adm-select" id="alvoNome" onchange="Acessos.renderMatriz()"></select>
+                        <button class="adm-btn" onclick="Acessos.salvar()">Salvar acessos</button>
+                    </div>
+                    <div id="matriz"></div>
+                </div>
+
+                <script>
+                    window.ACESSOS_DATA = {
+                        telas: {{ telas | tojson }},
+                        cargos: {{ cargos | tojson }},
+                        posicoes: {{ posicoes | tojson }},
+                        cargo_telas: {{ cargo_telas | tojson }},
+                        posicao_telas: {{ posicao_telas | tojson }}
+                    };
+                </script>
+            </main>
+        </div>
+    </div>
+
+    {% include "components/modal-configuracoes.html" %}
+    <script src="static/js/tema.js"></script>
+</body>
+
+</html>

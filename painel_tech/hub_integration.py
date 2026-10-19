@@ -16,6 +16,7 @@ def _pode_editar() -> bool:
         permissions.tem(permissions.CAP_TECH)
         or permissions.is_admin()
         or permissions.is_gestao_ampla()
+        or permissions.pode_editar_tela("tech")
     )
 
 
