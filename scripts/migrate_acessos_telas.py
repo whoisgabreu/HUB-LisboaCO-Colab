@@ -28,6 +28,7 @@ TELAS = [
     ("feed", "Feed", "Principal", 1, "ver"),
     ("perfil", "Perfil", "Principal", 2, "ver"),
     ("minha_agenda", "Minha Agenda", "Principal", 3, "ver"),
+    ("desabafo", "Desabafo", "Comunidade", 5, "ver"),
     ("metricas", "Métricas & Evolução", "Dashboard", 10, "ver"),
     ("ranking", "Painel de Ranking", "Dashboard", 11, "ver"),
     ("projetos", "Hub de Projetos", "Dashboard", 12, "ver"),
@@ -52,7 +53,7 @@ TELAS = [
 CAP_TELAS = {
     "gestao_ampla": {
         "metricas": "editar", "ranking": "editar", "projetos": "editar", "kanban": "editar",
-        "operacao": "editar", "criativa": "editar", "grupos": "editar", "tech": "editar",
+        "operacao": "editar", "criativa": "editar", "grupos": "editar", "tech": "editar", "desabafo": "editar",
         "mrr_historico": "editar", "remuneracao": "editar", "feed_config": "editar",
         "nomenclaturas": "ver", "prompts": "ver",
     },

@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Desabafo | HUB Lisboa</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="static/style/styles.css">
+    <link rel="stylesheet" href="static/style/tema-claro.css">
+    <link rel="stylesheet" href="static/style/desabafo.css">
+    <script src="static/js/app.js" defer></script>
+    <script src="static/js/desabafo.js" defer></script>
+    {% include "components/icon_title.html" %}
+</head>
+
+<body class="desabafo-page">
+    {% include "components/header.html" %}
+    {% include "components/sidebar.html" %}
+
+    <div class="app-shell">
+        <div class="sidebar-overlay"></div>
+        <div class="main-content">
+            <main class="main-container">
+                <div class="desabafo-wrap">
+                    <header class="desabafo-topo">
+                        <h2><i class="fa-solid fa-user-secret"></i> Desabafo</h2>
+                        <p>Espaço <strong>100% anônimo</strong>. Nada sobre quem escreve é registrado — nem no banco de dados.</p>
+                    </header>
+
+                    <section class="desabafo-composer">
+                        <textarea id="desabafoTexto" maxlength="1000" rows="3"
+                            placeholder="Escreva aqui. Ninguém saberá quem escreveu..."></textarea>
+                        <div class="desabafo-composer-acoes">
+                            <select id="desabafoCategoria" class="desabafo-select">
+                                <option value="">Sem categoria</option>
+                                <option value="Sugestão">Sugestão</option>
+                                <option value="Reclamação">Reclamação</option>
+                                <option value="Elogio">Elogio</option>
+                                <option value="Outro">Outro</option>
+                            </select>
+                            <span id="desabafoCount" class="desabafo-count">0/1000</span>
+                            <button type="button" class="desabafo-btn" onclick="Desabafo.publicar()">
+                                <i class="fa-solid fa-paper-plane"></i> Publicar
+                            </button>
+                        </div>
+                    </section>
+
+                    <div id="desabafoStatus" class="desabafo-status"></div>
+                    <div id="desabafoLista" class="desabafo-lista">
+                        <div class="desabafo-vazio">Carregando...</div>
+                    </div>
+                    <div class="desabafo-mais">
+                        <button type="button" id="desabafoMais" class="desabafo-btn ghost" style="display:none;"
+                            onclick="Desabafo.mais()">Carregar mais</button>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    {% include "components/modal-configuracoes.html" %}
+    <script src="static/js/tema.js"></script>
+</body>
+
+</html>

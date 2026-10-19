@@ -69,6 +69,22 @@ register_painel_tech(app)
 access_guard.init_app(app)
 
 
+# Desabafo: não registrar a rota no log de acesso (anonimato)
+import logging
+
+
+class _FiltroDesabafo(logging.Filter):
+    def filter(self, record):
+        try:
+            msg = record.getMessage()
+        except Exception:
+            return True
+        return not ("/api/desabafo" in msg or "POST /desabafo" in msg)
+
+
+logging.getLogger("werkzeug").addFilter(_FiltroDesabafo())
+
+
 @app.route("/favicon.ico")
 def favicon():
     """Fallback global para o favicon, solicitado automaticamente pelo navegador."""
@@ -2726,6 +2742,90 @@ def api_admin_usuario_acessos(email):
         data = request.json or {}
         permissions.definir_acessos_usuario(db, user.id, data.get("acessos") or {})
         db.commit()
+    return jsonify({"status": "success"})
+
+
+# ─── DESABAFO (100% anônimo) ────────────────────────────────────────────────
+_DESABAFO_RATE = {}
+_DESABAFO_LIMITE = 5
+_DESABAFO_JANELA = 600  # 10 min
+
+
+def _desabafo_rate_ok():
+    import time as _time
+
+    chave = session.get("desabafo_rl")
+    if not chave:
+        chave = os.urandom(8).hex()
+        session["desabafo_rl"] = chave
+    agora = _time.time()
+    hist = [t for t in _DESABAFO_RATE.get(chave, []) if agora - t < _DESABAFO_JANELA]
+    if len(hist) >= _DESABAFO_LIMITE:
+        _DESABAFO_RATE[chave] = hist
+        return False
+    hist.append(agora)
+    _DESABAFO_RATE[chave] = hist
+    return True
+
+
+def _pode_moderar_desabafo():
+    return (
+        permissions.is_admin()
+        or permissions.is_gestao_ampla()
+        or permissions.pode_editar_tela("desabafo")
+    )
+
+
+@app.route("/desabafo")
+@check_session
+def desabafo_page():
+    return render_template("desabafo.html")
+
+
+@app.route("/api/desabafo", methods=["GET", "POST"])
+@check_session
+def api_desabafo():
+    from services import desabafo_service
+
+    if request.method == "GET":
+        mod = _pode_moderar_desabafo()
+        cursor = request.args.get("cursor", type=int)
+        itens = desabafo_service.listar(cursor=cursor, limite=20, incluir_ocultos=mod)
+        return jsonify({"itens": itens, "pode_moderar": mod})
+
+    data = request.get_json(silent=True) or {}
+    conteudo = (data.get("conteudo") or "").strip()
+    categoria = (data.get("categoria") or "").strip()[:40] or None
+    if not conteudo:
+        return jsonify({"error": "Escreva algo antes de publicar."}), 400
+    if len(conteudo) > 1000:
+        return jsonify({"error": "Máximo de 1000 caracteres."}), 400
+    if not _desabafo_rate_ok():
+        return jsonify({"error": "Muitas publicações em pouco tempo. Tente novamente mais tarde."}), 429
+    novo = desabafo_service.criar(conteudo, categoria)
+    return jsonify({"status": "success", "id": (novo or {}).get("id")})
+
+
+@app.route("/api/desabafo/<int:post_id>/ocultar", methods=["POST"])
+@check_session
+def api_desabafo_ocultar(post_id):
+    from services import desabafo_service
+
+    if not _pode_moderar_desabafo():
+        return jsonify({"error": "Sem permissão."}), 403
+    oculto = bool((request.get_json(silent=True) or {}).get("oculto", True))
+    desabafo_service.ocultar(post_id, oculto)
+    return jsonify({"status": "success"})
+
+
+@app.route("/api/desabafo/<int:post_id>/excluir", methods=["POST"])
+@check_session
+def api_desabafo_excluir(post_id):
+    from services import desabafo_service
+
+    if not _pode_moderar_desabafo():
+        return jsonify({"error": "Sem permissão."}), 403
+    desabafo_service.excluir(post_id)
     return jsonify({"status": "success"})
 
 

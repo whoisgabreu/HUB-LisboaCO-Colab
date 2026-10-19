@@ -48,8 +48,13 @@ _MAPA = [
     ("/hub-cs-cx", "cs_cx"),
     ("/padrao-nomenclaturas", "nomenclaturas"),
     ("/prompts-gt-ia", "prompts"),
+    ("/api/desabafo", "desabafo"),
+    ("/desabafo", "desabafo"),
 ]
 _MAPA.sort(key=lambda par: len(par[0]), reverse=True)
+
+# Rotas de escrita liberadas com nível 'ver' (ex.: qualquer logado pode postar no Desabafo)
+_POST_COM_VER = {"/api/desabafo"}
 
 
 def tela_do_path(path: str):
@@ -70,6 +75,8 @@ def init_app(app):
         if not tela:
             return None
         nivel = "ver" if request.method in ("GET", "HEAD", "OPTIONS") else "editar"
+        if request.method not in ("GET", "HEAD", "OPTIONS") and request.path in _POST_COM_VER:
+            nivel = "ver"
         if permissions.pode_tela(tela, nivel):
             return None
         if request.path.startswith("/api/"):
