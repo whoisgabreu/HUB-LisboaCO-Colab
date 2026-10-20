@@ -76,8 +76,13 @@ def init_app(app):
         if not tela:
             return None
         nivel = "ver" if request.method in ("GET", "HEAD", "OPTIONS") else "editar"
-        if request.method not in ("GET", "HEAD", "OPTIONS") and request.path in _POST_COM_VER:
-            nivel = "ver"
+        if request.method not in ("GET", "HEAD", "OPTIONS"):
+            if request.path in _POST_COM_VER:
+                nivel = "ver"
+            elif request.path.startswith("/api/projetos/") and request.path.endswith("/contexto-geral"):
+                # Documento do projeto: autorização fina é feita no endpoint
+                # (responsável pelo projeto pode não ter 'editar' na tela).
+                nivel = "ver"
         if permissions.pode_tela(tela, nivel):
             return None
         if request.path.startswith("/api/"):

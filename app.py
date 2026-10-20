@@ -5311,16 +5311,57 @@ def update_projeto_local(pipefy_id):
         return jsonify({"error": str(e)}), 500
 
 
+def _pode_editar_documento_projeto(projeto) -> bool:
+    """Documento do projeto: responsável, gestão ou quem edita a tela de projetos."""
+    if projeto is None:
+        return False
+    if permissions.is_gestao_ampla():
+        return True
+    if session.get("email") and session.get("email") == projeto.responsavel_projeto:
+        return True
+    if not permissions.pode_tela("projetos", "editar"):
+        return False
+    if permissions.apenas_gestao_squad():
+        return bool(session.get("squad")) and projeto.squad_atribuida == session.get("squad")
+    return True
+
+
+def _novo_snapshot_contexto(projeto, anterior, origem, motivo=None):
+    """Cria um snapshot do contexto copiando os campos da versão anterior."""
+    cliente = None
+    if anterior is not None:
+        cliente = getattr(anterior, "cliente", None)
+    cliente = (cliente or projeto.nome or "").strip() or "—"
+
+    ctx = ProjetoContexto(
+        projeto_pipefy_id=projeto.pipefy_id,
+        cliente=cliente,
+        origem_contexto=origem,
+        motivo_atualizacao=(motivo or None),
+        contexto_anterior_id=(anterior.id if anterior else None),
+    )
+    if anterior is not None:
+        for campo in ProjetoContexto.CAMPOS:
+            if campo == "cliente":
+                continue
+            setattr(ctx, campo, getattr(anterior, campo, None))
+    return ctx
+
+
 @app.route("/api/projetos/<int:pipefy_id>/contexto", methods=["GET"])
 @check_session
 def get_projeto_contexto(pipefy_id):
     """Retorna o contexto mais recente do projeto (ou vazio)."""
     try:
         with Session() as db:
+            projeto = db.query(Projeto).filter_by(pipefy_id=pipefy_id).first()
             ctx = db.query(ProjetoContexto).filter_by(
                 projeto_pipefy_id=pipefy_id
             ).order_by(ProjetoContexto.id.desc()).first()
-            return jsonify({"contexto": ctx.to_dict() if ctx else None})
+            return jsonify({
+                "contexto": ctx.to_dict() if ctx else None,
+                "pode_editar_documento": _pode_editar_documento_projeto(projeto),
+            })
     except SQLAlchemyError as e:
         return jsonify({"error": str(e)}), 500
 
@@ -5347,20 +5388,56 @@ def update_projeto_contexto(pipefy_id):
                 projeto_pipefy_id=pipefy_id
             ).order_by(ProjetoContexto.id.desc()).first()
 
-            cliente = (data.get("cliente") or projeto.nome or "").strip() or (projeto.nome or "—")
-            ctx = ProjetoContexto(
-                projeto_pipefy_id=pipefy_id,
-                cliente=cliente,
-                origem_contexto="hub",
-                motivo_atualizacao=(data.get("motivo_atualizacao") or None),
-                contexto_anterior_id=(anterior.id if anterior else None),
+            ctx = _novo_snapshot_contexto(
+                projeto, anterior, "hub", data.get("motivo_atualizacao")
             )
+            cliente = (data.get("cliente") or ctx.cliente or projeto.nome or "").strip()
+            ctx.cliente = cliente or (projeto.nome or "—")
             for campo in ProjetoContexto.CAMPOS:
                 if campo == "cliente":
                     continue
                 if campo in data:
                     valor = data.get(campo)
                     setattr(ctx, campo, (valor if (valor is None or str(valor).strip()) else None))
+
+            db.add(ctx)
+            db.commit()
+            db.refresh(ctx)
+            return jsonify({"status": "success", "id": ctx.id, "contexto": ctx.to_dict()})
+    except SQLAlchemyError as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/projetos/<int:pipefy_id>/contexto-geral", methods=["PUT"])
+@check_session
+def update_projeto_documento_geral(pipefy_id):
+    """Salva o documento do projeto (context.md) em uma nova versão do contexto."""
+    data = request.get_json(silent=True) or {}
+    texto = data.get("contexto_geral")
+    if texto is None:
+        texto = ""
+    if not isinstance(texto, str):
+        return jsonify({"error": "Documento inválido."}), 400
+    if len(texto.encode("utf-8")) > 512 * 1024:
+        return jsonify({"error": "O documento deve ter no máximo 512 KB."}), 400
+
+    try:
+        with Session() as db:
+            projeto = db.query(Projeto).filter_by(pipefy_id=pipefy_id).first()
+            if not projeto:
+                return jsonify({"error": "Projeto não encontrado."}), 404
+            if not _pode_editar_documento_projeto(projeto):
+                return jsonify({"error": "Sem permissão para editar o documento deste projeto."}), 403
+
+            anterior = db.query(ProjetoContexto).filter_by(
+                projeto_pipefy_id=pipefy_id
+            ).order_by(ProjetoContexto.id.desc()).first()
+
+            ctx = _novo_snapshot_contexto(
+                projeto, anterior, "hub-documento",
+                data.get("motivo_atualizacao") or "Atualização do documento do projeto",
+            )
+            ctx.contexto_geral = texto.strip() or None
 
             db.add(ctx)
             db.commit()

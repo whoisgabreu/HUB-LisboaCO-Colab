@@ -115,6 +115,7 @@ class ProjetoContexto(Base):
     relacionamento_alertas = Column(Text)
     pendencias_proximos_passos = Column(Text)
     link_drive_documentos = Column(Text)
+    contexto_geral = Column(Text)  # Documento do projeto (context.md em Markdown)
 
     data_contexto = Column(DateTime, server_default=FetchedValue())
     origem_contexto = Column(Text)
@@ -131,6 +132,7 @@ class ProjetoContexto(Base):
         "must_donts_restricoes", "benchmark_cpl_referencia", "tracking_crm",
         "o_que_funciona", "o_que_nao_funciona", "forma_pagamento",
         "relacionamento_alertas", "pendencias_proximos_passos", "link_drive_documentos",
+        "contexto_geral",
     ]
 
     def to_dict(self):
