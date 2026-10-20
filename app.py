@@ -94,6 +94,35 @@ def favicon():
         mimetype="image/vnd.microsoft.icon",
     )
 
+
+@app.route("/manifest.webmanifest")
+def manifest_webmanifest():
+    """Manifesto do PWA (MIME correto para instalação)."""
+    return send_from_directory(
+        os.path.join(app.root_path, "static"),
+        "manifest.webmanifest",
+        mimetype="application/manifest+json",
+    )
+
+
+@app.route("/sw.js")
+def service_worker():
+    """Service worker na raiz (escopo total) e sem cache HTTP."""
+    resposta = send_from_directory(
+        os.path.join(app.root_path, "static"),
+        "sw.js",
+        mimetype="application/javascript",
+    )
+    resposta.headers["Service-Worker-Allowed"] = "/"
+    resposta.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    return resposta
+
+
+@app.route("/offline")
+def offline_page():
+    """Página exibida pelo service worker quando não há conexão."""
+    return render_template("offline.html")
+
 # Google OAuth
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")

@@ -91,6 +91,8 @@ function initSidebar() {
 
     if (floatingBurger) floatingBurger.addEventListener('click', toggleSidebar);
     if (headerBurger) headerBurger.addEventListener('click', toggleSidebar);
+    const bottomMenu = document.getElementById('bottomNavMenu');
+    if (bottomMenu) bottomMenu.addEventListener('click', toggleSidebar);
     if (overlay) overlay.addEventListener('click', closeSidebar);
 
     // Close on ESC

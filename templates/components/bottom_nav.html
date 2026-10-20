@@ -1,0 +1,26 @@
+{% set acessos = session.get('acessos_telas', {}) or {} %}
+{% set pode_projetos = acessos.get('projetos', 'ver') in ('ver', 'editar') %}
+{% set path = request.path %}
+<nav class="bottom-nav" aria-label="Navegação principal">
+    <a href="/feed"
+        class="bottom-nav-item {% if path == '/feed' or path.startswith('/feed/') %}ativo{% endif %}"
+        {% if path == '/feed' or path.startswith('/feed/') %}aria-current="page"{% endif %}>
+        <i class="fa-solid fa-newspaper"></i><span>Feed</span>
+    </a>
+    <a href="/desabafo"
+        class="bottom-nav-item {% if path == '/desabafo' or path.startswith('/desabafo/') %}ativo{% endif %}"
+        {% if path == '/desabafo' or path.startswith('/desabafo/') %}aria-current="page"{% endif %}>
+        <i class="fa-solid fa-user-secret"></i><span>Desabafo</span>
+    </a>
+    {% if pode_projetos %}
+    <a href="/hub-projetos"
+        class="bottom-nav-item {% if path == '/hub-projetos' or path.startswith('/hub-projetos/') %}ativo{% endif %}"
+        {% if path == '/hub-projetos' or path.startswith('/hub-projetos/') %}aria-current="page"{% endif %}>
+        <i class="fa-solid fa-project-diagram"></i><span>Projetos</span>
+    </a>
+    {% endif %}
+    <button type="button" id="bottomNavMenu" class="bottom-nav-item" aria-label="Abrir menu">
+        <i class="fa-solid fa-bars"></i><span>Menu</span>
+    </button>
+</nav>
+<script>document.body.classList.add("has-bottom-nav");</script>

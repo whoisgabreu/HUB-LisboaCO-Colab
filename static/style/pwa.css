@@ -1,0 +1,302 @@
+/* ═══════════════════════════════════════════════════════════
+   pwa.css — Instalação, atualização, conexão e ajustes de app
+   ═══════════════════════════════════════════════════════════ */
+
+.pwa-install-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    height: 36px;
+    padding: 0 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: rgba(214, 22, 22, 0.08);
+    color: var(--text-main);
+    font-family: inherit;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+}
+.pwa-install-btn:hover {
+    background: rgba(214, 22, 22, 0.18);
+    border-color: var(--accent-red, #d61616);
+}
+.pwa-install-btn i { color: var(--accent-red, #d61616); }
+
+.pwa-update-banner {
+    position: fixed;
+    left: 50%;
+    bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+    transform: translateX(-50%);
+    z-index: 10040;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    max-width: calc(100vw - 2rem);
+    padding: 0.7rem 0.9rem;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: var(--card-bg, #1e1e24);
+    color: var(--text-main, #fff);
+    font-size: 0.82rem;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+}
+.pwa-update-banner button {
+    border: none;
+    border-radius: 8px;
+    padding: 0.45rem 0.8rem;
+    background: var(--accent-red, #d61616);
+    color: #fff;
+    font-family: inherit;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.pwa-offline-toast {
+    position: fixed;
+    left: 50%;
+    top: calc(0.75rem + env(safe-area-inset-top, 0px));
+    transform: translate(-50%, -150%);
+    z-index: 10060;
+    padding: 0.55rem 0.9rem;
+    border-radius: 999px;
+    background: #b01010;
+    color: #fff;
+    font-size: 0.78rem;
+    font-weight: 600;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    transition: transform 0.25s ease;
+    pointer-events: none;
+}
+.pwa-offline-toast.aberto { transform: translate(-50%, 0); }
+
+/* Em modo app (standalone), respeita a área segura no topo. */
+@media (display-mode: standalone) {
+    .header {
+        margin-top: calc(0.5rem + env(safe-area-inset-top, 0px));
+    }
+}
+
+@media (max-width: 480px) {
+    .pwa-install-btn span { display: none; }
+    .pwa-install-btn { padding: 0 0.6rem; }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Bottom navigation (mobile)
+   ═══════════════════════════════════════════════════════════ */
+.bottom-nav { display: none; }
+
+@media (max-width: 768px) {
+    .bottom-nav {
+        display: flex;
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 990;
+        gap: 0.25rem;
+        padding: 0.35rem 0.5rem calc(0.35rem + env(safe-area-inset-bottom, 0px));
+        background: var(--bg-hover, #17171b);
+        border-top: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+        box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.35);
+    }
+
+    .bottom-nav-item {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 2px;
+        min-height: 50px;
+        border: none;
+        border-radius: 10px;
+        background: transparent;
+        color: var(--text-muted, #a0a0a0);
+        font-family: inherit;
+        font-size: 0.66rem;
+        font-weight: 600;
+        text-decoration: none;
+        cursor: pointer;
+        transition: color 0.15s, background 0.15s;
+    }
+
+    .bottom-nav-item i { font-size: 1.12rem; }
+    .bottom-nav-item.ativo {
+        color: var(--accent-red, #d61616);
+        background: rgba(214, 22, 22, 0.1);
+    }
+
+    body.has-bottom-nav {
+        padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+    }
+
+    /* Flutuantes acima da barra inferior */
+    body.has-bottom-nav .chat-launcher {
+        bottom: calc(72px + env(safe-area-inset-bottom, 0px) + 12px);
+    }
+    body.has-bottom-nav .chat-panel {
+        bottom: calc(72px + env(safe-area-inset-bottom, 0px) + 12px);
+        height: min(540px, calc(100dvh - 190px));
+        max-height: calc(100dvh - 190px);
+    }
+    body.has-bottom-nav #upBtn {
+        bottom: calc(72px + env(safe-area-inset-bottom, 0px) + 74px);
+    }
+    body.has-bottom-nav .pwa-update-banner {
+        bottom: calc(72px + env(safe-area-inset-bottom, 0px) + 8px);
+    }
+
+    /* Overlay do drawer (antes não estilizado) */
+    .sidebar-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 998;
+        background: rgba(0, 0, 0, 0.55);
+        -webkit-backdrop-filter: blur(2px);
+        backdrop-filter: blur(2px);
+    }
+    .sidebar-overlay.active { display: block; }
+    body.sidebar-open { overflow: hidden; }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Viewport dinâmico e área segura
+   ═══════════════════════════════════════════════════════════ */
+@supports (height: 100dvh) {
+    body,
+    .app-shell { min-height: 100dvh; }
+    .main-content { min-height: calc(100dvh - var(--header-height)); }
+    .sidebar { height: calc(100dvh - var(--header-height)); }
+    .login-layout { min-height: 100dvh; }
+
+    @media (max-width: 768px) {
+        .sidebar { height: auto; }
+    }
+}
+
+@media (max-width: 480px) {
+    .main-container { padding: 1rem; }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Modais como bottom-sheet no mobile
+   ═══════════════════════════════════════════════════════════ */
+@media (max-width: 600px) {
+    body .hub-modal-overlay {
+        align-items: flex-end;
+        padding: 0;
+    }
+    body .hub-modal,
+    body .hub-modal.hub-modal-wide {
+        width: 100%;
+        max-width: 100%;
+        max-height: 90dvh;
+        overflow-y: auto;
+        border-radius: 18px 18px 0 0;
+        padding-bottom: calc(1.35rem + env(safe-area-inset-bottom, 0px));
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Alvos de toque e zoom do iOS
+   ═══════════════════════════════════════════════════════════ */
+@media (pointer: coarse) {
+    .feed-ico-btn,
+    .feed-action-btn,
+    .notif-bell,
+    .chat-icon-btn,
+    .pwa-install-btn { min-height: 40px; }
+
+    .nav-item { min-height: 46px; }
+}
+
+@supports (-webkit-touch-callout: none) {
+    @media (max-width: 768px) {
+        input,
+        select,
+        textarea { font-size: 16px; }
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Ajustes por página
+   ═══════════════════════════════════════════════════════════ */
+
+/* Login */
+@media (max-width: 960px) {
+    .login-panel { padding-top: calc(80px + env(safe-area-inset-top, 0px)); }
+}
+
+/* Feed */
+@media (max-width: 480px) {
+    .feed-imagem-preview { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .feed-composer-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .feed-composer-right {
+        width: 100%;
+        justify-content: space-between;
+    }
+    .feed-composer-right .feed-btn.primary {
+        flex: 1;
+        justify-content: center;
+    }
+    .feed-post-actions { flex-wrap: wrap; }
+}
+
+/* Desabafo */
+@media (max-width: 600px) {
+    .desabafo-wrap { margin: 0.75rem auto 2rem; }
+    .desabafo-composer-acoes { flex-wrap: wrap; }
+    .desabafo-count { margin-left: 0; }
+    .desabafo-meta,
+    .desabafo-mod { flex-wrap: wrap; }
+}
+
+/* Acessos & Cargos */
+@media (max-width: 640px) {
+    .adm-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .adm-row .adm-input,
+    .adm-row .adm-select,
+    .adm-row .adm-btn { width: 100%; }
+    .matrix {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+        -webkit-overflow-scrolling: touch;
+    }
+}
+
+/* Chat em telas estreitas */
+@media (max-width: 560px) {
+    .chat-panel {
+        left: 2vw;
+        right: 2vw;
+        width: auto;
+    }
+}
+
+/* Fallback: botão de instalação flutuante em páginas sem header padrão */
+.pwa-install-btn.pwa-install-flutuante {
+    position: fixed;
+    left: 1rem;
+    bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+    z-index: 10040;
+    background: var(--card-bg, #1e1e24);
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.4);
+}
+@media (max-width: 768px) {
+    body.has-bottom-nav .pwa-install-btn.pwa-install-flutuante {
+        bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+    }
+}
