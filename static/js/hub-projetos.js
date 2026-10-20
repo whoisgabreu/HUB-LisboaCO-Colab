@@ -4,6 +4,10 @@ let currentProjectData = null;
 let currentHistorico = null;
 let isEditMode = false;
 let projectVinculosLocal = []; // ESTADO LOCAL DE VÍNCULOS
+let ctxDocPodeEditar = false;
+let ctxDocEditando = false;
+let ctxDocOriginal = '';
+let ctxDocCarregado = false;
 const PROJETOS_CACHE = {}; // cache cliente→projetos (chave: `${tipo}::${nomeLower}`)
 const TIPO_STATUS = { ativo: 'Ativo', onetime: 'Onetime', onboarding: 'Onboarding', inativo: 'Inativo' };
 
@@ -31,6 +35,7 @@ const FIELD_LABELS = {
     relacionamento_alertas: 'Relacionamento / alertas',
     pendencias_proximos_passos: 'Pendências / próximos passos',
     link_drive_documentos: 'Link do Drive', motivo_atualizacao: 'Motivo da atualização',
+    contexto_geral: 'Documento do projeto',
 };
 
 function rotuloCampo(field) {
@@ -431,6 +436,7 @@ function closeProjectModal() {
     currentProjectData = null;
     currentHistorico = null;
     isEditMode = false;
+    ctxDocEditando = false;
     setEditMode(false);
 }
 
@@ -510,6 +516,8 @@ function toggleEditMode() {
 function setEditMode(enable) {
     const inputs = document.querySelectorAll('#projectForm input, #projectForm select, #projectForm textarea');
     inputs.forEach(input => {
+        // O documento do projeto tem edição própria (aba .md), independente do Editar global.
+        if (input.closest && input.closest('#ctxDocEditor')) return;
         // PERMITIR EDIÇÃO DE NOME E FEE NO HUB LOCAL
         if (input.id !== 'modal_projeto_id' && input.id !== 'modal_tipo_projeto' && input.id !== 'modal_pipefy_id' && input.id !== 'modal_fase_pipefy') {
             if (input.id === 'modal_contrato_variavel') {
@@ -881,6 +889,14 @@ function switchProjectTab(tab) {
 
 async function carregarContextoProjeto(pipefyId) {
     if (!pipefyId) return;
+    ctxDocPodeEditar = false;
+    ctxDocEditando = false;
+    ctxDocOriginal = '';
+    ctxDocCarregado = false;
+    const taReset = document.getElementById('ctxDocTexto');
+    if (taReset) taReset.value = '';
+    renderPreviewDocumento('');
+    atualizarControlesDocumento();
     try {
         const resp = await fetch(`/api/projetos/${pipefyId}/contexto`);
         const data = await resp.json();
@@ -892,6 +908,15 @@ async function carregarContextoProjeto(pipefyId) {
         // Cliente padrão: nome do projeto
         const cli = document.querySelector('#projectForm [data-ctx-field="cliente"]');
         if (cli && !cli.value && currentProjectData) cli.value = currentProjectData.nome || '';
+
+        ctxDocPodeEditar = !!data.pode_editar_documento;
+        ctxDocEditando = false;
+        ctxDocOriginal = ctx.contexto_geral || '';
+        ctxDocCarregado = true;
+        const ta = document.getElementById('ctxDocTexto');
+        if (ta) ta.value = ctxDocOriginal;
+        renderPreviewDocumento(ctxDocOriginal);
+        atualizarControlesDocumento();
     } catch (e) {
         console.error('Erro ao carregar contexto do projeto:', e);
     }
@@ -902,6 +927,8 @@ function coletarContexto() {
     document.querySelectorAll('#projectForm [data-ctx-field]').forEach(el => {
         ctx[el.dataset.ctxField] = el.value;
     });
+    // Se o documento ainda não carregou, não envia vazio (evita apagar sem querer).
+    if (!ctxDocCarregado) delete ctx.contexto_geral;
     return ctx;
 }
 
@@ -921,6 +948,175 @@ async function salvarContextoProjeto(pipefyId) {
     } catch (e) {
         console.error('Erro ao salvar contexto:', e);
     }
+}
+
+/* ==============================
+DOCUMENTO DO PROJETO (context.md)
+=============================== */
+
+function setStatusDocumento(msg, tipo) {
+    const el = document.getElementById('ctxDocStatus');
+    if (!el) return;
+    el.textContent = msg || '';
+    el.className = 'ctx-doc-status' + (tipo ? ` ${tipo}` : '');
+    clearTimeout(el._timer);
+    if (msg) {
+        el._timer = setTimeout(() => {
+            el.textContent = '';
+            el.className = 'ctx-doc-status';
+        }, 6000);
+    }
+}
+
+function renderPreviewDocumento(texto) {
+    const box = document.getElementById('ctxDocPreview');
+    if (!box) return;
+
+    const raw = (texto || '').trim();
+    if (!raw) {
+        box.innerHTML = '<p class="ctx-doc-vazio">Nenhum documento cadastrado.</p>';
+        return;
+    }
+
+    const marked = window.marked;
+    const purify = window.DOMPurify;
+    const parse = marked && (marked.parse || marked);
+    if (parse && purify) {
+        try {
+            const html = parse(raw, { gfm: true, breaks: true });
+            box.innerHTML = purify.sanitize(html, {
+                FORBID_TAGS: ['style', 'iframe', 'object', 'embed', 'form', 'input', 'button'],
+                FORBID_ATTR: ['style'],
+            });
+            box.querySelectorAll('a').forEach((a) => {
+                a.target = '_blank';
+                a.rel = 'noopener noreferrer';
+            });
+            return;
+        } catch (e) {
+            console.error('Erro ao renderizar Markdown:', e);
+        }
+    }
+
+    box.innerHTML = '';
+    const pre = document.createElement('pre');
+    pre.className = 'ctx-doc-raw';
+    pre.textContent = raw;
+    box.appendChild(pre);
+}
+
+function atualizarControlesDocumento() {
+    const editBtn = document.getElementById('ctxDocEditBtn');
+    const downloadBtn = document.getElementById('ctxDocDownloadBtn');
+    const editor = document.getElementById('ctxDocEditor');
+    const preview = document.getElementById('ctxDocPreview');
+    const ta = document.getElementById('ctxDocTexto');
+
+    const temTexto = !!(ctxDocOriginal || '').trim();
+    if (editBtn) editBtn.style.display = (ctxDocPodeEditar && !ctxDocEditando) ? 'inline-flex' : 'none';
+    if (downloadBtn) downloadBtn.style.display = (temTexto && !ctxDocEditando) ? 'inline-flex' : 'none';
+    if (editor) editor.style.display = ctxDocEditando ? 'block' : 'none';
+    if (preview) preview.style.display = ctxDocEditando ? 'none' : 'block';
+    if (ta) ta.disabled = !ctxDocEditando;
+}
+
+function editarDocumentoProjeto() {
+    if (!ctxDocPodeEditar) return;
+    const ta = document.getElementById('ctxDocTexto');
+    if (ta) ta.value = ctxDocOriginal;
+    ctxDocEditando = true;
+    atualizarControlesDocumento();
+    setStatusDocumento('', '');
+    if (ta) ta.focus();
+}
+
+function cancelarDocumentoProjeto() {
+    ctxDocEditando = false;
+    const ta = document.getElementById('ctxDocTexto');
+    if (ta) ta.value = ctxDocOriginal;
+    renderPreviewDocumento(ctxDocOriginal);
+    atualizarControlesDocumento();
+    setStatusDocumento('', '');
+}
+
+async function salvarDocumentoProjeto() {
+    const pipefyId = currentProjectData && currentProjectData.pipefy_id;
+    if (!pipefyId) return;
+
+    const ta = document.getElementById('ctxDocTexto');
+    const texto = (ta && ta.value) || '';
+    const motivoEl = document.querySelector('[data-ctx-field="motivo_atualizacao"]');
+    const btn = document.getElementById('ctxDocSalvarBtn');
+    if (btn) btn.disabled = true;
+
+    try {
+        const resp = await fetch(`/api/projetos/${pipefyId}/contexto-geral`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contexto_geral: texto,
+                motivo_atualizacao: motivoEl ? motivoEl.value : '',
+            }),
+        });
+        const data = await resp.json().catch(() => ({}));
+        if (!resp.ok) throw new Error(data.error || 'Erro ao salvar o documento.');
+
+        ctxDocOriginal = (data.contexto && data.contexto.contexto_geral) || texto;
+        if (ta) ta.value = ctxDocOriginal;
+        ctxDocEditando = false;
+        renderPreviewDocumento(ctxDocOriginal);
+        atualizarControlesDocumento();
+        setStatusDocumento('', '');
+        if (typeof window.showToast === 'function') {
+            window.showToast('Documento do projeto salvo!', 'success');
+        }
+    } catch (e) {
+        setStatusDocumento(e.message || 'Erro ao salvar o documento.', 'erro');
+    } finally {
+        if (btn) btn.disabled = false;
+    }
+}
+
+function anexarDocumentoProjeto(input) {
+    const file = input.files && input.files[0];
+    input.value = '';
+    if (!file) return;
+
+    const nome = (file.name || '').toLowerCase();
+    if (!/\.(md|markdown|txt)$/.test(nome)) {
+        setStatusDocumento('Use um arquivo .md, .markdown ou .txt.', 'erro');
+        return;
+    }
+    if (file.size > 512 * 1024) {
+        setStatusDocumento('O arquivo deve ter no máximo 512 KB.', 'erro');
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+        const ta = document.getElementById('ctxDocTexto');
+        if (!ta) return;
+        ta.value = String(reader.result || '').replace(/^\uFEFF/, '');
+        setStatusDocumento(`"${file.name}" carregado. Clique em Salvar documento.`, 'ok');
+    };
+    reader.onerror = () => setStatusDocumento('Não foi possível ler o arquivo.', 'erro');
+    reader.readAsText(file, 'utf-8');
+}
+
+function baixarDocumentoProjeto() {
+    const texto = ctxDocOriginal || '';
+    if (!texto.trim()) return;
+
+    const pipefyId = currentProjectData && currentProjectData.pipefy_id;
+    const blob = new Blob([texto], { type: 'text/markdown;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `context-${pipefyId || 'projeto'}.md`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 

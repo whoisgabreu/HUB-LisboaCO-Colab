@@ -9,6 +9,8 @@
     <link rel="stylesheet" href="static/style/styles.css">
     <link rel="stylesheet" href="static/style/hub-projetos.css">
     <link rel="stylesheet" href="static/style/tema-claro.css">
+    <script src="/static/vendor/marked/marked.min.js" defer></script>
+    <script src="/static/vendor/dompurify/purify.min.js" defer></script>
     <script src="static/js/hub-projetos.js" defer></script>
     <script>
         window.APP_CONFIG = {
@@ -299,6 +301,7 @@
                                 <button type="button" class="project-tab" data-ptab="ctx-midia" onclick="switchProjectTab('ctx-midia')">Mídia &amp; Performance</button>
                                 <button type="button" class="project-tab" data-ptab="ctx-estrategia" onclick="switchProjectTab('ctx-estrategia')">Estratégia &amp; Marca</button>
                                 <button type="button" class="project-tab" data-ptab="ctx-financeiro" onclick="switchProjectTab('ctx-financeiro')">Comercial &amp; Financeiro</button>
+                                <button type="button" class="project-tab" data-ptab="ctx-documento" onclick="switchProjectTab('ctx-documento')"><i class="fa-solid fa-file-lines"></i> Documento do Projeto (.md)</button>
                             </div>
 
                             <div class="project-panel active" data-ppanel="dados">
@@ -585,6 +588,56 @@
                                     <div class="form-group full-width">
                                         <label>Link do Drive (documentos)</label>
                                         <input type="url" data-ctx-field="link_drive_documentos" disabled>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- PAINEL: DOCUMENTO DO PROJETO (.md) -->
+                            <div class="project-panel" data-ppanel="ctx-documento">
+                                <div class="ctx-doc">
+                                    <div class="ctx-doc-head">
+                                        <div>
+                                            <h4><i class="fa-solid fa-file-lines"></i> Documento do Projeto</h4>
+                                            <p>Contexto detalhado em Markdown (context.md). Visível para todos que acessam o projeto.</p>
+                                        </div>
+                                        <div class="ctx-doc-toolbar">
+                                            <button type="button" class="btn-secondary" id="ctxDocEditBtn"
+                                                onclick="editarDocumentoProjeto()" style="display:none;">
+                                                <i class="fa-solid fa-pen-to-square"></i> Editar
+                                            </button>
+                                            <button type="button" class="btn-secondary" id="ctxDocDownloadBtn"
+                                                onclick="baixarDocumentoProjeto()" style="display:none;">
+                                                <i class="fa-solid fa-download"></i> Baixar .md
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div id="ctxDocPreview" class="ctx-md ctx-doc-preview">
+                                        <p class="ctx-doc-vazio">Nenhum documento cadastrado.</p>
+                                    </div>
+
+                                    <div id="ctxDocEditor" class="ctx-doc-editor" style="display:none;">
+                                        <input type="file" id="ctxDocFile"
+                                            accept=".md,.markdown,text/markdown,text/plain" hidden
+                                            onchange="anexarDocumentoProjeto(this)">
+                                        <div class="ctx-doc-editor-toolbar">
+                                            <button type="button" class="btn-secondary"
+                                                onclick="document.getElementById('ctxDocFile').click()">
+                                                <i class="fa-solid fa-paperclip"></i> Anexar context.md
+                                            </button>
+                                            <span class="ctx-doc-hint">Até 512 KB · .md, .markdown ou .txt</span>
+                                            <span id="ctxDocStatus" class="ctx-doc-status"></span>
+                                        </div>
+                                        <textarea id="ctxDocTexto" data-ctx-field="contexto_geral" rows="18" maxlength="524288"
+                                            placeholder="# Contexto do projeto&#10;&#10;Descreva o contexto detalhado..."></textarea>
+                                        <div class="ctx-doc-actions">
+                                            <button type="button" class="btn-secondary"
+                                                onclick="cancelarDocumentoProjeto()">Cancelar</button>
+                                            <button type="button" class="btn-primary" id="ctxDocSalvarBtn"
+                                                onclick="salvarDocumentoProjeto()">
+                                                <i class="fa-solid fa-floppy-disk"></i> Salvar documento
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
