@@ -658,10 +658,12 @@
     gap: 0.6rem;
     margin-top: 1rem;
     align-items: center;
+    min-width: 0;
 }
 
 .feed-search {
     flex: 1;
+    min-width: 0;
     display: flex;
     align-items: center;
     gap: 0.5rem;
@@ -675,6 +677,8 @@
 
 .feed-search input {
     flex: 1;
+    min-width: 0;
+    width: 100%;
     background: transparent;
     border: none;
     color: var(--text-main);
@@ -1822,6 +1826,11 @@ body.tema-claro .agenda-seguir { background: rgba(214, 22, 22, 0.05); }
 .feed-lightbox-close:hover { background: rgba(255, 255, 255, 0.22); }
 
 @media (max-width: 600px) {
+    .feed-toolbar { flex-wrap: wrap; }
+    .feed-search { flex: 1 1 100%; }
+    .feed-select { flex: 1 1 0; min-width: 0; }
+    #feedSalvosBtn { flex: 0 0 auto; white-space: nowrap; }
+
     .feed-midia-nav { opacity: 1; width: 30px; height: 30px; }
     .feed-post-midia .feed-midia-img,
     .feed-midia-slide .feed-midia-img { max-height: 380px; }
