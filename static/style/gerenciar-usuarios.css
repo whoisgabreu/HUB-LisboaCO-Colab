@@ -618,3 +618,13 @@
 .ultimo-acesso.amarelo { background: rgba(241,196,15,.12); color: #f1c40f; border-color: rgba(241,196,15,.35); }
 .ultimo-acesso.vermelho { background: rgba(231,76,60,.12); color: #e74c3c; border-color: rgba(231,76,60,.35); }
 .ultimo-acesso.cinza { background: rgba(148,163,184,.15); color: #94a3b8; border-color: rgba(148,163,184,.3); }
+
+/* Telas administrativas (Admin-only) na matriz de acesso por usuário */
+.telas-lock {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    font-weight: 600;
+}

@@ -3,6 +3,7 @@ let currentClientData = null;
 let currentProjectData = null;
 let currentHistorico = null;
 let isEditMode = false;
+let podeEditarProjetoAtual = false;
 let projectVinculosLocal = []; // ESTADO LOCAL DE VÍNCULOS
 let ctxDocPodeEditar = false;
 let ctxDocEditando = false;
@@ -313,11 +314,18 @@ function openProjectModal(projectData, tipoProjeto) {
     currentProjectData = projectData;
     currentHistorico = projectData.extra?.historico || [];
 
+    const acessos = (window.APP_CONFIG && window.APP_CONFIG.acessosTelas) || {};
+    const souResponsavel = !!(projectData.responsavel_projeto && window.APP_CONFIG
+        && projectData.responsavel_projeto === window.APP_CONFIG.userEmail);
+    podeEditarProjetoAtual = acessos.projetos === 'editar' || souResponsavel;
+
     switchProjectTab('dados');
     carregarContextoProjeto(projectData.pipefy_id);
 
     isEditMode = false;
     setEditMode(false);
+    const editBtnModal = document.getElementById('editBtn');
+    if (editBtnModal) editBtnModal.style.display = podeEditarProjetoAtual ? 'inline-flex' : 'none';
 
     document.getElementById('projectModalTitle').textContent =
         projectData.nome || 'Detalhes do Projeto';
@@ -422,7 +430,7 @@ function openProjectModal(projectData, tipoProjeto) {
 
     // CARREGAR VÍNCULOS E INVESTIDORES ATIVOS
     loadProjectVinculos(projectData.pipefy_id);
-    if (window.APP_CONFIG.nivelAcesso === 'Gerência' || window.APP_CONFIG.nivelAcesso === 'Admin') {
+    if (podeEditarProjetoAtual) {
         loadActiveInvestors();
         // Define data de hoje como padrão no date picker de vincular
         const vincularDataInput = document.getElementById('vincularDataInicio');
@@ -436,6 +444,7 @@ function closeProjectModal() {
     currentProjectData = null;
     currentHistorico = null;
     isEditMode = false;
+    podeEditarProjetoAtual = false;
     ctxDocEditando = false;
     setEditMode(false);
 }
@@ -508,6 +517,7 @@ function backToClientModal() {
 }
 
 function toggleEditMode() {
+    if (!podeEditarProjetoAtual) return;
     isEditMode = !isEditMode;
     setEditMode(isEditMode);
     renderVinculos(); // 🔥 ESSENCIAL (Atualiza botões de remover)
@@ -521,9 +531,7 @@ function setEditMode(enable) {
         // PERMITIR EDIÇÃO DE NOME E FEE NO HUB LOCAL
         if (input.id !== 'modal_projeto_id' && input.id !== 'modal_tipo_projeto' && input.id !== 'modal_pipefy_id' && input.id !== 'modal_fase_pipefy') {
             if (input.id === 'modal_contrato_variavel') {
-                const nivelAcesso = window.APP_CONFIG && window.APP_CONFIG.nivelAcesso;
-                const temPermissao = nivelAcesso && nivelAcesso !== 'Usuário';
-                input.disabled = !enable || !temPermissao;
+                input.disabled = !enable || !podeEditarProjetoAtual;
             } else {
                 input.disabled = !enable;
             }
@@ -739,6 +747,10 @@ UPDATE PROJETO (ATUALIZADO)
 ================================ */
 async function updateProject(event) {
     event.preventDefault();
+    if (!podeEditarProjetoAtual) {
+        alert('Você não tem permissão para editar este projeto.');
+        return;
+    }
 
     const form = event.target;
     const data = {};

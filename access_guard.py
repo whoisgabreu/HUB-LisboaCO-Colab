@@ -65,6 +65,18 @@ def tela_do_path(path: str):
     return None
 
 
+def _escrita_projeto_responsavel(path: str) -> bool:
+    """PUTs do modal do projeto que o responsável pode executar mesmo com 'ver'."""
+    partes = path.strip("/").split("/")
+    if len(partes) not in (3, 4) or partes[:2] != ["api", "projetos"]:
+        return False
+    if not partes[2].isdigit():
+        return False
+    if len(partes) == 3:
+        return True
+    return partes[3] in ("contexto", "contexto-geral")
+
+
 def init_app(app):
     @app.before_request
     def _acesso_por_tela():
@@ -79,9 +91,9 @@ def init_app(app):
         if request.method not in ("GET", "HEAD", "OPTIONS"):
             if request.path in _POST_COM_VER:
                 nivel = "ver"
-            elif request.path.startswith("/api/projetos/") and request.path.endswith("/contexto-geral"):
-                # Documento do projeto: autorização fina é feita no endpoint
-                # (responsável pelo projeto pode não ter 'editar' na tela).
+            elif _escrita_projeto_responsavel(request.path):
+                # Autorização fina é feita no endpoint (responsável pelo projeto
+                # pode não ter 'editar' na tela de projetos).
                 nivel = "ver"
         if permissions.pode_tela(tela, nivel):
             return None

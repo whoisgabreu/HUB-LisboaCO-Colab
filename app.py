@@ -1320,11 +1320,13 @@ def _buscar_projetos_db(model_class, email_investidor, squad_usuario, status=Non
             if permissions.is_gestao_ampla():
                 projetos = query.all()
             else:
+                from sqlalchemy import or_
                 squad_ids = session.get("squad_ids", []) or []
                 ids = permissions.projeto_ids_das_squads(db, squad_ids)
-                if not ids:
-                    return []
-                projetos = query.filter(Projeto.pipefy_id.in_(ids)).all()
+                projetos = query.filter(or_(
+                    Projeto.pipefy_id.in_(ids),
+                    Projeto.responsavel_projeto == email_investidor,
+                )).all()
             return [_projeto_to_dict(p) for p in projetos]
     except SQLAlchemyError as e:
         print(f"Erro ao buscar projetos ({model_class.__tablename__}): {e}")
@@ -2225,7 +2227,8 @@ def gerenciar_usuarios():
             cargos = permissions.listar_catalogo(db, "v2_cargos")
             posicoes = permissions.listar_catalogo(db, "v2_posicoes")
             squads = permissions.listar_squads(db)
-            telas = permissions.listar_telas(db)
+            telas = [t for t in permissions.listar_telas(db)
+                     if t["codigo"] not in permissions.TELAS_FORA_DA_MATRIZ]
 
             return render_template(
                 "gerenciar-usuarios.html",
@@ -2662,8 +2665,11 @@ def api_salvar_capacidades():
 @app.route("/acessos")
 @check_session
 def acessos_page():
+    if session.get("nivel_acesso") != "Admin":
+        return redirect(url_for("feed"))
     with Session() as db:
-        telas = permissions.listar_telas(db)
+        telas = [t for t in permissions.listar_telas(db)
+                 if t["codigo"] not in permissions.TELAS_FORA_DA_MATRIZ]
         cargos = permissions.listar_catalogo(db, "v2_cargos")
         posicoes = permissions.listar_catalogo(db, "v2_posicoes")
         cargo_telas = {c: permissions.listar_acessos_cargo(db, c) for c in cargos}
@@ -2678,6 +2684,8 @@ def acessos_page():
 @app.route("/api/admin/telas")
 @check_session
 def api_admin_telas():
+    if session.get("nivel_acesso") != "Admin":
+        return jsonify({"error": "Unauthorized"}), 403
     with Session() as db:
         return jsonify(permissions.listar_telas(db))
 
@@ -2685,6 +2693,8 @@ def api_admin_telas():
 @app.route("/api/admin/cargos", methods=["POST"])
 @check_session
 def api_admin_cargos():
+    if session.get("nivel_acesso") != "Admin":
+        return jsonify({"error": "Unauthorized"}), 403
     data = request.json or {}
     acao = data.get("acao")
     nome = (data.get("nome") or "").strip()
@@ -2706,6 +2716,8 @@ def api_admin_cargos():
 @app.route("/api/admin/posicoes", methods=["POST"])
 @check_session
 def api_admin_posicoes():
+    if session.get("nivel_acesso") != "Admin":
+        return jsonify({"error": "Unauthorized"}), 403
     data = request.json or {}
     acao = data.get("acao")
     nome = (data.get("nome") or "").strip()
@@ -2727,6 +2739,8 @@ def api_admin_posicoes():
 @app.route("/api/admin/acessos-cargo", methods=["GET", "POST"])
 @check_session
 def api_admin_acessos_cargo():
+    if session.get("nivel_acesso") != "Admin":
+        return jsonify({"error": "Unauthorized"}), 403
     if request.method == "GET":
         with Session() as db:
             return jsonify(permissions.listar_acessos_cargo(db, request.args.get("cargo", "")))
@@ -2743,6 +2757,8 @@ def api_admin_acessos_cargo():
 @app.route("/api/admin/acessos-posicao", methods=["GET", "POST"])
 @check_session
 def api_admin_acessos_posicao():
+    if session.get("nivel_acesso") != "Admin":
+        return jsonify({"error": "Unauthorized"}), 403
     if request.method == "GET":
         with Session() as db:
             return jsonify(permissions.listar_acessos_posicao(db, request.args.get("posicao", "")))
@@ -2759,6 +2775,8 @@ def api_admin_acessos_posicao():
 @app.route("/api/admin/usuarios/<email>/acessos", methods=["GET", "POST"])
 @check_session
 def api_admin_usuario_acessos(email):
+    if session.get("nivel_acesso") != "Admin":
+        return jsonify({"error": "Unauthorized"}), 403
     with Session() as db:
         user = db.query(Investidor).filter_by(email=email).first()
         if not user:
@@ -5025,8 +5043,6 @@ def vincular_investidor():
 def update_projeto_local(pipefy_id):
     """Atualiza dados do projeto e sincroniza vínculos."""
     data = request.json
-    user_posicao = session.get("posicao")
-    user_squad = session.get("squad")
 
     try:
         from decimal import Decimal
@@ -5038,10 +5054,8 @@ def update_projeto_local(pipefy_id):
             if not projeto:
                 return jsonify({"error": "Projeto não encontrado."}), 404
 
-            # Validação de Squad para Coordenador
-            if permissions.apenas_gestao_squad():
-                if not user_squad or projeto.squad_atribuida != user_squad:
-                    return jsonify({"error": "Acesso restrito à sua Squad."}), 403
+            if not _pode_editar_projeto(projeto):
+                return jsonify({"error": "Sem permissão para editar este projeto."}), 403
 
             # Rastreamento de alterações para o histórico
             changes = {}
@@ -5311,11 +5325,11 @@ def update_projeto_local(pipefy_id):
         return jsonify({"error": str(e)}), 500
 
 
-def _pode_editar_documento_projeto(projeto) -> bool:
-    """Documento do projeto: responsável, gestão ou quem edita a tela de projetos."""
+def _pode_editar_projeto(projeto) -> bool:
+    """Responsável pelo projeto ou quem tem 'projetos: editar' (com escopo de squad)."""
     if projeto is None:
         return False
-    if permissions.is_gestao_ampla():
+    if permissions.is_admin():
         return True
     if session.get("email") and session.get("email") == projeto.responsavel_projeto:
         return True
@@ -5360,7 +5374,7 @@ def get_projeto_contexto(pipefy_id):
             ).order_by(ProjetoContexto.id.desc()).first()
             return jsonify({
                 "contexto": ctx.to_dict() if ctx else None,
-                "pode_editar_documento": _pode_editar_documento_projeto(projeto),
+                "pode_editar_documento": _pode_editar_projeto(projeto),
             })
     except SQLAlchemyError as e:
         return jsonify({"error": str(e)}), 500
@@ -5378,11 +5392,8 @@ def update_projeto_contexto(pipefy_id):
             if not projeto:
                 return jsonify({"error": "Projeto não encontrado."}), 404
 
-            # Escopo por squad (Coordenador)
-            if permissions.apenas_gestao_squad():
-                user_squad = session.get("squad")
-                if not user_squad or projeto.squad_atribuida != user_squad:
-                    return jsonify({"error": "Acesso restrito à sua Squad."}), 403
+            if not _pode_editar_projeto(projeto):
+                return jsonify({"error": "Sem permissão para editar este projeto."}), 403
 
             anterior = db.query(ProjetoContexto).filter_by(
                 projeto_pipefy_id=pipefy_id
@@ -5426,7 +5437,7 @@ def update_projeto_documento_geral(pipefy_id):
             projeto = db.query(Projeto).filter_by(pipefy_id=pipefy_id).first()
             if not projeto:
                 return jsonify({"error": "Projeto não encontrado."}), 404
-            if not _pode_editar_documento_projeto(projeto):
+            if not _pode_editar_projeto(projeto):
                 return jsonify({"error": "Sem permissão para editar o documento deste projeto."}), 403
 
             anterior = db.query(ProjetoContexto).filter_by(
@@ -5484,11 +5495,13 @@ def api_projetos_por_cliente():
             if status:
                 q = q.filter(Projeto.status == status)
             if not permissions.is_gestao_ampla():
+                from sqlalchemy import or_
                 squad_ids = session.get("squad_ids", []) or []
                 ids = permissions.projeto_ids_das_squads(db, squad_ids)
-                if not ids:
-                    return jsonify([])
-                q = q.filter(Projeto.pipefy_id.in_(ids))
+                q = q.filter(or_(
+                    Projeto.pipefy_id.in_(ids),
+                    Projeto.responsavel_projeto == session.get("email"),
+                ))
             projetos = sorted(q.all(), key=lambda p: p.pipefy_id or 0)
             return jsonify([_projeto_to_dict(p) for p in projetos])
     except SQLAlchemyError as e:
@@ -5501,14 +5514,14 @@ def get_projeto(pipefy_id):
     """Retorna um projeto específico (com status), respeitando o escopo de squad."""
     try:
         with Session() as db:
-            if not permissions.is_gestao_ampla():
-                squad_ids = session.get("squad_ids", []) or []
-                ids = permissions.projeto_ids_das_squads(db, squad_ids)
-                if pipefy_id not in ids:
-                    return jsonify({"error": "Acesso restrito."}), 403
             p = db.query(Projeto).filter(Projeto.pipefy_id == pipefy_id).first()
             if not p:
                 return jsonify({"error": "Projeto não encontrado."}), 404
+            if not permissions.is_gestao_ampla():
+                squad_ids = session.get("squad_ids", []) or []
+                ids = permissions.projeto_ids_das_squads(db, squad_ids)
+                if pipefy_id not in ids and p.responsavel_projeto != session.get("email"):
+                    return jsonify({"error": "Acesso restrito."}), 403
             return jsonify({**_projeto_to_dict(p), "status": p.status})
     except SQLAlchemyError as e:
         return jsonify({"error": str(e)}), 500
@@ -6352,9 +6365,7 @@ def hub_metricas():
 @app.route("/admin/mrr-historico")
 @check_session
 def admin_mrr_historico():
-    """Página de edição do histórico de MRR (Admin + gestão ampla)."""
-    if not permissions.is_gestao_ampla():
-        return redirect(url_for("feed"))
+    """Página de edição do histórico de MRR (controle pela tela mrr_historico)."""
     return render_template("admin_mrr_historico.html")
 
 
