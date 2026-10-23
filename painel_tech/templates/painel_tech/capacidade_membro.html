@@ -1,38 +1,47 @@
 {% extends "painel_tech/base.html" %}
-{% from "painel_tech/_macros.html" import barra, tag, estado_vazio %}
+{% from "painel_tech/_macros.html" import barra, tag, avatar_pessoa %}
 {% block title %}{{ membro.nome }} — Capacidade{% endblock %}
 {% block cabecalho %}{{ membro.nome }}{% endblock %}
+{% block head_extra %}<link rel="stylesheet" href="{{ url_for('painel_tech.static', filename='css/capacidade.css') }}">{% endblock %}
 {% block acoes %}
-<a class="btn btn-secundario" href="{{ url_for('painel_tech.capacidade_pagina') }}">← Voltar</a>
+<a class="btn btn-secundario tech-back-button" href="{{ url_for('painel_tech.capacidade_pagina') }}"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Voltar</a>
 {% endblock %}
 
 {% block conteudo %}
-<section class="card capacidade-resumo">
-  <div class="capacidade-topo">
-    <span class="capacidade-nome">{{ membro.nome }}</span>
-    {% if cap %}{{ tag(cap.cor, cap.rotulo) }}{% endif %}
+{% if cap %}
+{% set pct = (cap.ativos / cap.limite * 100) | round if cap.limite else 0 %}
+<section class="tech-capacity-hero">
+  <div class="tech-capacity-hero-person">
+    {{ avatar_pessoa(membro.nome, membro.email or '', 'tech-capacity-avatar tech-capacity-avatar-large') }}
+    <div>
+      <span class="tech-capacity-eyebrow">Responsável TECH</span>
+      <h2>{{ membro.nome }}</h2>
+      <p>{{ membro.email or 'E-mail não informado' }}</p>
+    </div>
   </div>
-  {% if cap %}
-  <div class="capacidade-numeros">{{ cap.ativos }} / {{ cap.limite }} ativos</div>
-  <div class="capacidade-barra">
-    {% set pct = (cap.ativos / cap.limite * 100) | round if cap.limite else 0 %}
+  <div class="tech-capacity-hero-status">
+    {{ tag(cap.cor, cap.rotulo) }}
+    <strong>{{ cap.ativos }} <span>/ {{ cap.limite }}</span></strong>
+    <small>projetos ativos</small>
+  </div>
+  <div class="capacidade-barra" role="progressbar" aria-label="Uso da capacidade" aria-valuenow="{{ [pct, 100] | min }}" aria-valuemin="0" aria-valuemax="100">
     <span class="capacidade-preenchimento cap-{{ cap.situacao }}" style="width: {{ [pct, 100] | min }}%"></span>
   </div>
-  {% endif %}
 </section>
+{% endif %}
 
-<section class="secao">
-  <h2 class="secao-titulo">Projetos de {{ membro.nome }}</h2>
-  <div class="tabela-wrapper">
+<section class="secao tech-member-projects">
+  <header class="tech-section-head">
+    <div><h2>Carteira operacional</h2><p>Projetos na fila, ativos ou pausados sob responsabilidade deste membro.</p></div>
+    <span class="tech-board-group-count">{{ linhas|length }}</span>
+  </header>
+  <div class="tech-member-table">
     <table class="tabela">
+      <colgroup><col style="width:36%"><col style="width:13%"><col style="width:13%"><col style="width:14%"><col style="width:14%"><col style="width:10%"></colgroup>
       <thead>
         <tr>
-          <th scope="col">Projeto</th>
-          <th scope="col">Status</th>
-          <th scope="col">Prioridade</th>
-          <th scope="col">Ritmo</th>
-          <th scope="col">Progresso</th>
-          <th scope="col">Intervenção</th>
+          <th scope="col">Projeto</th><th scope="col">Status</th><th scope="col">Prioridade</th>
+          <th scope="col">Ritmo</th><th scope="col">Progresso</th><th scope="col">Atenção</th>
         </tr>
       </thead>
       <tbody>
@@ -40,18 +49,15 @@
         {% set p = linha.projeto %}
         {% set a = linha.analise %}
         <tr>
-          <td data-label="Projeto"><a href="{{ url_for('painel_tech.projeto_detalhe', projeto_id=p.id) }}">{{ p.nome }}</a></td>
-          <td data-label="Status">{{ tag(status_meta(p.status).cor, status_meta(p.status).label) }}</td>
-          <td data-label="Prioridade">{{ tag(a.prioridade.cor, a.prioridade.label) }}</td>
-          <td data-label="Ritmo">{{ tag(ritmo_meta(a.saude.ritmo).cor, ritmo_meta(a.saude.ritmo).label) }}</td>
-          <td data-label="Progresso" class="celula-progresso">
-            {{ barra(a.saude.progresso_pct) }}
-            <span>{{ a.saude.progresso_pct }}%</span>
-          </td>
-          <td data-label="Intervenção">{{ tag(a.intervencao.cor, a.intervencao.label) }}</td>
+          <td><a href="{{ url_for('painel_tech.projeto_detalhe', projeto_id=p.id) }}">{{ p.nome }}</a></td>
+          <td class="tech-member-status tech-member-status-{{ p.status }}">{{ status_meta(p.status).label }}</td>
+          <td>{{ tag(a.prioridade.cor, a.prioridade.label) }}</td>
+          <td>{{ tag(ritmo_meta(a.saude.ritmo).cor, ritmo_meta(a.saude.ritmo).label) }}</td>
+          <td class="celula-progresso">{{ barra(a.saude.progresso_pct) }}<span>{{ a.saude.progresso_pct }}%</span></td>
+          <td>{{ tag(a.intervencao.cor, a.intervencao.label) }}</td>
         </tr>
         {% else %}
-        <tr><td colspan="6" class="vazio">Nenhum projeto atribuído a este membro.</td></tr>
+        <tr><td colspan="6" class="tech-board-empty">Nenhum projeto operacional atribuído a este membro.</td></tr>
         {% endfor %}
       </tbody>
     </table>

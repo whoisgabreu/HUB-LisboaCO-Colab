@@ -1,16 +1,23 @@
 {% from "painel_tech/_macros.html" import indicador_linha %}
 {% set a = analise %}
-<h2 class="secao-titulo">Indicadores</h2>
-{{ indicador_linha('Impacto', indicador_meta('impacto', projeto.impacto)) }}
-{{ indicador_linha('Urgência', indicador_meta('urgencia', projeto.urgencia)) }}
-{{ indicador_linha('Risco', indicador_meta('risco', projeto.risco)) }}
-{{ indicador_linha('Esforço', indicador_meta('esforco', projeto.esforco)) }}
-{{ indicador_linha('Ritmo', indicador_meta('ritmo', a.saude.ritmo), 5) }}
-<ul class="detalhe-lista">
-  <li>Ritmo: <strong>{{ 'manual' if a.saude.ritmo_origem == 'manual' else 'automático' }}</strong>
-    {% if a.saude.delta is not none %}(delta {{ a.saude.delta }}){% endif %}</li>
-  {% if projeto.ritmo_justificativa %}<li>Justificativa: {{ projeto.ritmo_justificativa }}</li>{% endif %}
-  {% if a.saude.dias_bloqueio is not none %}<li>Bloqueado há {{ a.saude.dias_bloqueio }} dia(s)</li>{% endif %}
-  {% if a.saude.dias_sem_movimento is not none %}<li>Sem movimento há {{ a.saude.dias_sem_movimento }} dia(s)</li>{% endif %}
-  {% if a.saude.etapas_vencidas %}<li>{{ a.saude.etapas_vencidas }} etapa(s) vencida(s)</li>{% endif %}
-</ul>
+
+<header class="project-card-heading">
+  <h3>Indicadores</h3>
+  <span class="project-health-icon" aria-hidden="true"><i class="fa-solid fa-chart-simple"></i></span>
+</header>
+
+<div class="project-health-lines" aria-label="Indicadores do projeto">
+  {{ indicador_linha('Impacto', indicador_meta('impacto', projeto.impacto)) }}
+  {{ indicador_linha('Urgência', indicador_meta('urgencia', projeto.urgencia)) }}
+  {{ indicador_linha('Risco', indicador_meta('risco', projeto.risco)) }}
+  {{ indicador_linha('Esforço', indicador_meta('esforco', projeto.esforco)) }}
+  {{ indicador_linha('Ritmo', indicador_meta('ritmo', a.saude.ritmo), 5) }}
+</div>
+
+<div class="project-criteria-notes">
+  <span><i class="fa-solid fa-gauge-high" aria-hidden="true"></i> Ritmo {{ 'manual' if a.saude.ritmo_origem == 'manual' else 'automático' }}{% if a.saude.delta is not none %} · delta {{ a.saude.delta }}{% endif %}</span>
+  {% if projeto.ritmo_justificativa %}<span><i class="fa-regular fa-message" aria-hidden="true"></i> {{ projeto.ritmo_justificativa }}</span>{% endif %}
+  {% if a.saude.dias_bloqueio is not none %}<span class="project-note-warning"><i class="fa-solid fa-lock" aria-hidden="true"></i> Bloqueado há {{ a.saude.dias_bloqueio }} {{ 'dia' if a.saude.dias_bloqueio == 1 else 'dias' }}</span>{% endif %}
+  {% if a.saude.dias_sem_movimento is not none %}<span><i class="fa-regular fa-calendar-xmark" aria-hidden="true"></i> Sem movimento há {{ a.saude.dias_sem_movimento }} {{ 'dia' if a.saude.dias_sem_movimento == 1 else 'dias' }}</span>{% endif %}
+  {% if a.saude.etapas_vencidas %}<span class="project-note-danger"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> {{ a.saude.etapas_vencidas }} etapa{{ 's' if a.saude.etapas_vencidas != 1 else '' }} vencida{{ 's' if a.saude.etapas_vencidas != 1 else '' }}</span>{% endif %}
+</div>

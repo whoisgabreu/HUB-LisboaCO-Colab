@@ -1,22 +1,24 @@
 {% extends "painel_tech/base.html" %}
-{% from "painel_tech/_macros.html" import barra, tag, dot %}
-{% block title %}Projetos — Painel Gerencial TECH{% endblock %}
+{% from "painel_tech/_macros.html" import barra, tag, avatar_responsavel %}
+{% block title %}Projetos — Painel TECH{% endblock %}
 {% block cabecalho %}Projetos{% endblock %}
 {% block acoes %}
-<a class="btn btn-secundario" href="{{ url_export }}">Exportar CSV</a>
-<a class="btn btn-primario" href="{{ url_for('painel_tech.projetos_novo') }}">+ Novo projeto</a>
+<a class="btn btn-secundario" href="{{ url_export }}"><i class="fa-solid fa-download" aria-hidden="true"></i> Exportar</a>
+<a class="btn btn-primario" href="{{ url_for('painel_tech.projetos_novo') }}"><i class="fa-solid fa-plus" aria-hidden="true"></i> Novo projeto</a>
 {% endblock %}
 
 {% block conteudo %}
 {% include "painel_tech/partials/_projetos_tabs.html" %}
 
-<section class="kpis kpis-compacto">
+{% set status_tabelas = ['fila', 'ativo', 'pausado', 'finalizado'] %}
+<section class="kpis kpis-compacto" aria-label="Resumo dos projetos">
   <a class="kpi {{ 'kpi-ativo' if not args.get('status') else '' }}" href="{{ url_for('painel_tech.projetos_listar') }}">
-    <span class="kpi-txts"><span class="kpi-label">Todos</span><span class="kpi-valor">{{ total }}</span></span>
+    <span class="kpi-txts"><span class="kpi-label">Todos</span><span class="kpi-valor">{{ contagem.total }}</span></span>
   </a>
-  {% for chave, meta in STATUS.items() %}
+  {% for chave in status_tabelas %}
+  {% set meta = STATUS[chave] %}
   <a class="kpi {{ 'kpi-ativo' if args.get('status') == chave else '' }}" href="{{ url_for('painel_tech.projetos_listar', status=chave) }}">
-    <span class="kpi-txts"><span class="kpi-label">{{ dot(meta.cor) }} {{ meta.label }}</span><span class="kpi-valor">{{ contagem[chave] }}</span></span>
+    <span class="kpi-txts"><span class="kpi-label"><span class="dot dot-{{ meta.cor }}"></span> {{ meta.label }}</span><span class="kpi-valor">{{ contagem[chave] }}</span></span>
   </a>
   {% endfor %}
 </section>
@@ -24,43 +26,103 @@
 {% include "painel_tech/partials/_projetos_filtros.html" %}
 {% include "painel_tech/partials/_chips_filtros.html" %}
 
-<div class="tabela-wrapper">
-  <table class="tabela">
-    <thead>
-      <tr>
-        <th scope="col">Projeto</th>
-        <th scope="col">Status</th>
-        <th scope="col">Impacto</th>
-        <th scope="col">Risco</th>
-        <th scope="col">Prioridade</th>
-        <th scope="col">Ritmo</th>
-        <th scope="col">Progresso</th>
-        <th scope="col">Intervenção</th>
-        <th scope="col">Responsável</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for linha in linhas %}
-      {% set p = linha.projeto %}
-      {% set a = linha.analise %}
-        <tr>
-          <td data-label="Projeto"><a href="{{ url_for('painel_tech.projeto_detalhe', projeto_id=p.id) }}">{{ p.nome }}</a></td>
-          <td data-label="Status">{{ tag(status_meta(p.status).cor, status_meta(p.status).label) }}</td>
-          <td data-label="Impacto">{{ tag(indicador_meta('impacto', p.impacto).cor, indicador_meta('impacto', p.impacto).label) }}</td>
-          <td data-label="Risco">{{ tag(indicador_meta('risco', p.risco).cor, indicador_meta('risco', p.risco).label) }}</td>
-          <td data-label="Prioridade">{{ tag(a.prioridade.cor, a.prioridade.label) }}</td>
-          <td data-label="Ritmo">{{ tag(ritmo_meta(a.saude.ritmo).cor, ritmo_meta(a.saude.ritmo).label) }}</td>
-          <td data-label="Progresso" class="celula-progresso">
-            {{ barra(a.saude.progresso_pct) }}
-            <span>{{ a.saude.progresso_pct }}%</span>
-          </td>
-          <td data-label="Intervenção">{{ tag(a.intervencao.cor, a.intervencao.label) }}</td>
-          <td data-label="Responsável">{{ p.responsavel_nome or '—' }}</td>
-        </tr>
-      {% else %}
-      <tr><td colspan="9" class="vazio">Nenhum projeto encontrado.</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
+{% if pode_editar %}
+<p class="tech-inline-hint"><i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i> Edite responsável, status, indicadores e prazo diretamente nas células. O painel recalcula a prioridade ao salvar.</p>
+{% endif %}
+
+{% set cores_grupo = {'fila': '#d99308', 'ativo': '#3478f6', 'pausado': '#7b8798', 'finalizado': '#159766'} %}
+<div class="tech-board" data-tech-project-board>
+  {% for chave in status_tabelas %}
+  {% set itens = colunas[chave] %}
+  {% set meta = STATUS[chave] %}
+  <details class="tech-board-group tech-board-disclosure" style="--group-color: {{ cores_grupo[chave] }}"
+           {% if (not args.get('status') and chave != 'finalizado') or args.get('status') == chave %}open{% endif %}>
+    <summary class="tech-board-group-header">
+      <span class="tech-board-group-title">{{ meta.label }}</span>
+      <span class="tech-board-group-meta">
+        <span class="tech-board-group-count">{{ itens|length }}</span>
+        <i class="fa-solid fa-chevron-down tech-board-group-chevron" aria-hidden="true"></i>
+      </span>
+    </summary>
+    <div class="tech-board-table">
+      <table class="tabela">
+        <colgroup>
+          <col style="width: 28%"><col style="width: 6%"><col style="width: 10%"><col style="width: 7%"><col style="width: 7%">
+          <col style="width: 7%"><col style="width: 8%"><col style="width: 10%"><col style="width: 9%"><col style="width: 8%">
+        </colgroup>
+        <thead>
+          <tr>
+            <th scope="col">Projeto</th><th scope="col" class="tech-board-person">Resp.</th><th scope="col">Status</th>
+            <th scope="col">Impacto</th><th scope="col">Urgência</th><th scope="col">Risco</th><th scope="col">Esforço</th>
+            <th scope="col">Timeline</th><th scope="col">Prazo</th><th scope="col">Prioridade</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for linha in itens %}
+          {% set p = linha.projeto %}
+          {% set a = linha.analise %}
+          {% set edit_url = url_for('painel_tech.projeto_campo', projeto_id=p.id) %}
+          <tr data-tech-project-row data-projeto-id="{{ p.id }}">
+            <td>
+              <div class="tech-board-project">
+                <a href="{{ url_for('painel_tech.projeto_detalhe', projeto_id=p.id) }}" title="{{ p.nome }}">{{ p.nome }}</a>
+              </div>
+            </td>
+            <td class="tech-board-person tech-inline-cell">
+              {% if pode_editar %}
+              <select aria-label="Responsável de {{ p.nome }}"
+                      data-tech-rich-select
+                      data-tech-avatar-only
+                      data-tech-inline-field="responsavel_id"
+                      data-tech-inline-url="{{ edit_url }}"
+                      data-tech-inline-original-value="{{ p.responsavel_id or '' }}">
+                <option value="" data-icon="fa-solid fa-minus" {{ 'selected' if not p.responsavel_id else '' }}>Não atribuído</option>
+                {% for membro in membros %}
+                <option value="{{ membro.id }}" data-avatar-email="{{ membro.email or '' }}" {{ 'selected' if p.responsavel_id == membro.id else '' }}>{{ membro.nome }}</option>
+                {% endfor %}
+              </select>
+              {% elif p.responsavel_id %}
+              {{ avatar_responsavel(p, membros) }}
+              {% else %}
+              <span class="tech-avatar tech-avatar-empty" title="Não atribuído" aria-label="Não atribuído">—</span>
+              {% endif %}
+            </td>
+            <td class="tech-inline-cell tech-inline-status tech-tone-{{ p.status }}">
+              {% if pode_editar %}
+              <select aria-label="Status de {{ p.nome }}" data-tech-inline-field="status" data-tech-inline-url="{{ edit_url }}">
+                {% for valor, opcao in STATUS.items() %}<option value="{{ valor }}" {{ 'selected' if p.status == valor else '' }}>{{ opcao.label }}</option>{% endfor %}
+              </select>
+              {% else %}{{ meta.label }}{% endif %}
+            </td>
+            {% for campo in ['impacto', 'urgencia', 'risco', 'esforco'] %}
+            {% set atual = p[campo] %}
+            <td class="tech-inline-cell tech-tone-{{ atual }}">
+              {% if pode_editar %}
+              <select aria-label="{{ INDICADORES[campo].label }} de {{ p.nome }}" data-tech-inline-field="{{ campo }}" data-tech-inline-url="{{ edit_url }}">
+                {% for valor, opcao in INDICADORES[campo].opcoes.items() %}<option value="{{ valor }}" {{ 'selected' if atual == valor else '' }}>{{ opcao.label }}</option>{% endfor %}
+              </select>
+              {% else %}{{ indicador_meta(campo, atual).label }}{% endif %}
+            </td>
+            {% endfor %}
+            <td class="tech-board-progress">{{ barra(a.saude.progresso_pct) }} <span class="pequeno">{{ a.saude.progresso_pct }}%</span></td>
+            <td class="tech-inline-date">
+              {% if pode_editar %}
+              <input type="date" value="{{ p.data_prevista_fim or '' }}" aria-label="Prazo de {{ p.nome }}" data-tech-inline-field="data_prevista_fim" data-tech-inline-url="{{ edit_url }}">
+              {% else %}{{ p.data_prevista_fim|data_br if p.data_prevista_fim else '—' }}{% endif %}
+            </td>
+            <td class="tech-board-priority">{{ tag(a.prioridade.cor, a.prioridade.label) }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="10" class="tech-board-empty">Nenhum projeto neste grupo.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </details>
+  {% endfor %}
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('painel_tech.static', filename='js/projetos-inline.js') }}"></script>
 {% endblock %}

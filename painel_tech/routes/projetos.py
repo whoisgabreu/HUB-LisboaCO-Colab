@@ -1,17 +1,19 @@
 import csv
 import io
+from datetime import date
 
 from flask import (
     Response,
     abort,
     flash,
+    jsonify,
     redirect,
     render_template,
     request,
     url_for,
 )
 
-from .. import bp, db, view_utils
+from .. import bp, db, kanban_layout, view_utils
 from ..config import get_config
 from ..domain import (
     INDICADORES,
@@ -57,10 +59,17 @@ def _aplicar_status(projeto_id, novo_status):
     view_utils.registrar_evento(projeto_id, "status_alterado", f"Status alterado para {rotulo}")
 
 
+def _contexto_kanban():
+    return kanban_layout.aplicar_contexto(
+        view_utils.contexto_lista_projetos(request.args)
+    )
+
+
 @bp.route("/projetos")
 def projetos_listar():
     contexto = view_utils.contexto_lista_projetos(request.args)
     if contexto["aba"] == "kanban":
+        contexto = kanban_layout.aplicar_contexto(contexto)
         return render_template("painel_tech/projetos_kanban.html", **contexto)
     return render_template("painel_tech/projetos.html", **contexto)
 
@@ -196,6 +205,63 @@ def projeto_status(projeto_id):
     return view_utils.resposta_projeto(projeto_id)
 
 
+@bp.route("/projetos/<int:projeto_id>/campo", methods=["POST"])
+def projeto_campo(projeto_id):
+    """Edição pontual da tabela, sem substituir os demais dados do projeto."""
+    projeto = db.obter_projeto(projeto_id)
+    if not projeto:
+        abort(404)
+
+    campo = (request.form.get("campo") or "").strip()
+    valor = (request.form.get("valor") or "").strip()
+
+    if campo == "status":
+        if valor not in STATUS:
+            return jsonify({"ok": False, "erro": "Status inválido."}), 400
+        if projeto.get("status") != valor:
+            _aplicar_status(projeto_id, valor)
+        return jsonify({"ok": True, "mensagem": "Status atualizado."})
+
+    if campo in INDICADORES:
+        if valor not in INDICADORES[campo]["opcoes"]:
+            return jsonify({"ok": False, "erro": "Valor inválido."}), 400
+        db.atualizar_projeto(projeto_id, {campo: valor})
+        view_utils.registrar_evento(
+            projeto_id,
+            "projeto_editado",
+            f"{INDICADORES[campo]['label']} atualizado na tabela",
+        )
+        return jsonify({"ok": True, "mensagem": f"{INDICADORES[campo]['label']} atualizado."})
+
+    if campo == "responsavel_id":
+        responsavel_id = None
+        if valor:
+            if not valor.isdigit() or not any(
+                membro["id"] == int(valor) for membro in db.listar_membros()
+            ):
+                return jsonify({"ok": False, "erro": "Responsável inválido."}), 400
+            responsavel_id = int(valor)
+        db.atualizar_projeto(projeto_id, {campo: responsavel_id})
+        view_utils.registrar_evento(
+            projeto_id, "projeto_editado", "Responsável atualizado na tabela"
+        )
+        return jsonify({"ok": True, "mensagem": "Responsável atualizado."})
+
+    if campo == "data_prevista_fim":
+        if valor:
+            try:
+                date.fromisoformat(valor)
+            except ValueError:
+                return jsonify({"ok": False, "erro": "Prazo inválido."}), 400
+        db.atualizar_projeto(projeto_id, {campo: valor or None})
+        view_utils.registrar_evento(
+            projeto_id, "projeto_editado", "Prazo atualizado na tabela"
+        )
+        return jsonify({"ok": True, "mensagem": "Prazo atualizado."})
+
+    return jsonify({"ok": False, "erro": "Campo não editável pela tabela."}), 400
+
+
 @bp.route("/projetos/<int:projeto_id>/tempo/play", methods=["POST"])
 def projeto_tempo_play(projeto_id):
     if not db.obter_projeto(projeto_id):
@@ -238,11 +304,26 @@ def projeto_mover(projeto_id):
     novo_status = request.form.get("status")
     if novo_status not in STATUS:
         abort(400)
-    _aplicar_status(projeto_id, novo_status)
+    coluna_id = (request.form.get("coluna_id") or "").strip()
+    coluna = None
+    if coluna_id:
+        try:
+            coluna = kanban_layout.obter_coluna(coluna_id)
+        except kanban_layout.ErroLayoutKanban:
+            abort(400)
+        if coluna["status_base"] != novo_status:
+            abort(400)
+
+    if coluna is None or projeto["status"] != novo_status:
+        _aplicar_status(projeto_id, novo_status)
+    if coluna is not None:
+        kanban_layout.atribuir_projeto(projeto_id, coluna_id, novo_status)
+
+    destino = coluna["nome"] if coluna is not None else STATUS[novo_status]["label"]
     if view_utils.quer_fragmento():
-        view_utils.enfileirar_toast(f"Projeto movido para {STATUS[novo_status]['label']}.")
+        view_utils.enfileirar_toast(f"Projeto movido para {destino}.")
         resposta = render_template(
-            "painel_tech/partials/_kanban.html", **view_utils.contexto_lista_projetos(request.args)
+            "painel_tech/partials/_kanban.html", **_contexto_kanban()
         )
         return view_utils.anexar_toasts(resposta)
     return redirect(url_for("painel_tech.projetos_listar", aba="kanban"))
@@ -261,7 +342,7 @@ def fila_ordem():
     if view_utils.quer_fragmento():
         view_utils.enfileirar_toast("Ordem da fila atualizada.")
         resposta = render_template(
-            "painel_tech/partials/_kanban.html", **view_utils.contexto_lista_projetos(request.args)
+            "painel_tech/partials/_kanban.html", **_contexto_kanban()
         )
         return view_utils.anexar_toasts(resposta)
     return redirect(url_for("painel_tech.projetos_listar", aba="kanban"))

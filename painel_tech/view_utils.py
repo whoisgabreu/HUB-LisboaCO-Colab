@@ -223,6 +223,7 @@ def capacidade_membros(linhas, membros, cfg):
             {
                 "id": membro["id"],
                 "nome": membro["nome"],
+                "email": membro.get("email"),
                 "ativos": ativos,
                 "limite": limite,
                 "situacao": situacao,
@@ -306,6 +307,7 @@ def contexto_lista_projetos(args):
 def contexto_projeto(projeto_id):
     from . import db
     from .config import get_config
+    from .task_hierarchy import arrange_stages
 
     projeto = db.obter_projeto(projeto_id)
     if not projeto:
@@ -318,6 +320,7 @@ def contexto_projeto(projeto_id):
             and etapa.get("status") != "concluida"
             and etapa["dependencia_id"] not in concluidas
         )
+    etapas_hierarquia = arrange_stages(etapas)
     analise = analisar_projeto(projeto, etapas, get_config())
     comentarios = db.listar_comentarios(projeto_id=projeto_id, todas=True)
     comentarios_projeto = [c for c in comentarios if not c.get("etapa_id")]
@@ -337,6 +340,7 @@ def contexto_projeto(projeto_id):
     return {
         "projeto": projeto,
         "etapas": etapas,
+        "etapas_hierarquia": etapas_hierarquia,
         "analise": analise,
         "resumo_checklist": resumo_checklist,
         "tempo": tempo,

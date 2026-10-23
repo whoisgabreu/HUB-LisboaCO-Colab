@@ -3,6 +3,7 @@ from . import (  # noqa: F401
     checklist,
     config_routes,
     dashboard,
+    kanban,
     projetos,
     relatorios,
 )

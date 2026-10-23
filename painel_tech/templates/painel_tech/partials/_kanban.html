@@ -1,14 +1,26 @@
-{% from "painel_tech/_macros.html" import dot %}
-<div class="kanban" id="kanban" data-base="{{ url_for('painel_tech.projetos_listar') }}">
-  {% for status in ordem_colunas %}
-  <section class="kanban-coluna {{ 'kanban-coluna-fila' if status == 'fila' else '' }}" data-status="{{ status }}">
+<div class="kanban" id="kanban" data-base="{{ url_for('painel_tech.projetos_listar') }}" data-editavel="{{ '1' if pode_editar else '0' }}" style="--kanban-colunas: {{ kanban_colunas|length }}">
+  {% for coluna in kanban_colunas %}
+  <section class="kanban-coluna kanban-coluna-status-{{ coluna.status_base }} {{ 'kanban-coluna-fila' if coluna.status_base == 'fila' else '' }}"
+           data-status="{{ coluna.status_base }}"
+           data-coluna-id="{{ coluna.id }}"
+           style="--kanban-coluna-cor: {{ coluna.cor }};">
     <header class="kanban-cabecalho">
-      <span class="kanban-titulo">{{ dot(STATUS[status].cor) }} {{ STATUS[status].label }}</span>
-      {% if status == 'fila' %}<span class="kanban-dica" title="Arraste os cards para reordenar a fila">↕ reordenar</span>{% endif %}
-      <span class="kanban-contagem">{{ colunas[status]|length }}</span>
+      <span class="kanban-titulo">
+        <span class="kanban-coluna-cor" style="background-color: {{ coluna.cor }};" aria-hidden="true"></span>
+        <span>{{ coluna.nome }}</span>
+      </span>
+      <span class="kanban-coluna-acoes">
+        {% if coluna.status_base == 'fila' %}<span class="kanban-dica" title="Arraste os cards para reordenar a fila">↕ reordenar</span>{% endif %}
+        <span class="kanban-contagem">{{ coluna.linhas|length }}</span>
+        {% if pode_editar %}
+        <button type="button" class="kanban-coluna-editar" data-kanban-editor-open data-coluna-foco="{{ coluna.id }}" aria-label="Editar coluna {{ coluna.nome }}" title="Editar coluna">
+          <i class="fa-solid fa-ellipsis" aria-hidden="true"></i>
+        </button>
+        {% endif %}
+      </span>
     </header>
     <div class="kanban-cards">
-      {% for linha in colunas[status] %}
+      {% for linha in coluna.linhas %}
       {% include "painel_tech/partials/_kanban_card.html" %}
       {% else %}
       <div class="vazio">Nada aqui.</div>

@@ -1,18 +1,32 @@
-<div class="painel-comentarios">
-  <h2 class="secao-titulo">Comentários do projeto</h2>
-  <ul class="comentarios">
+{% from "painel_tech/_macros.html" import avatar_pessoa %}
+
+<div class="painel-comentarios project-comments">
+  <ul class="comentarios project-comments-list">
     {% for comentario in comentarios_projeto %}
     <li>
-      <span class="comentario-data">{{ comentario.created_at.strftime('%d/%m/%Y %H:%M') }}</span>
-      <span class="comentario-autor">{{ comentario.autor_nome or 'Sistema' }}:</span>
-      {{ comentario.texto }}
+      {{ avatar_pessoa(comentario.autor_nome or 'Sistema', '', 'project-comment-avatar') }}
+      <div class="project-comment-content">
+        <div class="project-comment-meta">
+          <strong class="comentario-autor">{{ comentario.autor_nome or 'Sistema' }}</strong>
+          <span class="comentario-data">{{ comentario.created_at.strftime('%d/%m/%Y às %H:%M') }}</span>
+        </div>
+        <p>{{ comentario.texto }}</p>
+      </div>
     </li>
     {% else %}
-    <li class="vazio">Sem comentários.</li>
+    <li class="project-empty-state project-comments-empty">
+      <span class="project-empty-icon" aria-hidden="true"><i class="fa-regular fa-comments"></i></span>
+      <strong>Nenhum comentário ainda</strong>
+      <p>Use este espaço para registrar o primeiro alinhamento do projeto.</p>
+    </li>
     {% endfor %}
   </ul>
-  <form class="inline form-comentario" method="post" action="{{ url_for('painel_tech.projeto_comentar', projeto_id=projeto.id) }}">
-    <input type="text" name="texto" placeholder="Escreva um comentário..." required>
-    <button class="btn btn-secundario" type="submit">Comentar</button>
+
+  <form class="form-comentario project-comment-editor" method="post" action="{{ url_for('painel_tech.projeto_comentar', projeto_id=projeto.id) }}#comentarios">
+    <label for="project-comment-text">Adicionar comentário</label>
+    <div class="project-comment-composer-row">
+      <textarea id="project-comment-text" name="texto" rows="3" placeholder="Compartilhe uma atualização, decisão ou impedimento..." required></textarea>
+      <button class="btn btn-primario" type="submit"><i class="fa-regular fa-paper-plane" aria-hidden="true"></i> Enviar comentário</button>
+    </div>
   </form>
 </div>

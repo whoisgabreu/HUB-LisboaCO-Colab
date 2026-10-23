@@ -1,5 +1,5 @@
 {% extends "painel_tech/base.html" %}
-{% from "painel_tech/_macros.html" import barra, indicador_linha, alertas_lista, tag, dot, estado_vazio %}
+{% from "painel_tech/_macros.html" import barra, indicador_linha, alertas_lista, tag, dot, estado_vazio, avatar_responsavel %}
 {% block title %}Visão geral — Painel Gerencial TECH{% endblock %}
 {% block cabecalho %}Visão geral{% endblock %}
 {% block acoes %}
@@ -9,23 +9,19 @@
 {% block conteudo %}
 <section class="kpis">
   <div class="kpi">
-    <span class="kpi-icone cor-azul"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M10 8.5l5 3.5-5 3.5z"/></svg></span>
+    <span class="kpi-icone cor-azul"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M10 8.5l5 3.5-5 3.5z"/></svg></span>
     <span class="kpi-txts"><span class="kpi-label">Ativos</span><span class="kpi-valor">{{ contagem.ativo }}</span></span>
   </div>
   <div class="kpi">
-    <span class="kpi-icone cor-ambar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
+    <span class="kpi-icone cor-ambar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
     <span class="kpi-txts"><span class="kpi-label">Na fila</span><span class="kpi-valor">{{ contagem.fila }}</span></span>
   </div>
   <div class="kpi">
-    <span class="kpi-icone cor-cinza"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="5" width="4" height="14" rx="1"/><rect x="13" y="5" width="4" height="14" rx="1"/></svg></span>
+    <span class="kpi-icone cor-cinza"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="5" width="4" height="14" rx="1"/><rect x="13" y="5" width="4" height="14" rx="1"/></svg></span>
     <span class="kpi-txts"><span class="kpi-label">Pausados</span><span class="kpi-valor">{{ contagem.pausado }}</span></span>
   </div>
-  <div class="kpi">
-    <span class="kpi-icone cor-verde"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m8.5 12.5 2.5 2.5 4.5-5"/></svg></span>
-    <span class="kpi-txts"><span class="kpi-label">Finalizados</span><span class="kpi-valor">{{ contagem.finalizado }}</span></span>
-  </div>
   <div class="kpi kpi-alerta">
-    <span class="kpi-icone cor-vermelho"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2.5 20h19z"/><line x1="12" y1="10" x2="12" y2="14"/><line x1="12" y1="17" x2="12" y2="17"/></svg></span>
+    <span class="kpi-icone cor-vermelho"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2.5 20h19z"/><line x1="12" y1="10" x2="12" y2="14"/><line x1="12" y1="17" x2="12" y2="17"/></svg></span>
     <span class="kpi-txts"><span class="kpi-label">Precisam de atenção</span><span class="kpi-valor">{{ atencao|length }}</span></span>
   </div>
 </section>
@@ -34,10 +30,11 @@
 {% include "painel_tech/partials/_chips_filtros.html" %}
 
 {% if atencao %}
+{% set atencao_visivel = atencao[:4] %}
 <section class="secao">
   <h2 class="secao-titulo vermelho">{{ dot('vermelho') }} Precisam de atenção</h2>
   <div class="cards-atencao">
-    {% for linha in atencao %}
+    {% for linha in atencao_visivel %}
     {% set p = linha.projeto %}
     {% set a = linha.analise %}
     <article class="card card-projeto card-{{ a.intervencao.nivel }}">
@@ -58,11 +55,18 @@
       {{ alertas_lista(a.alertas) }}
       <footer class="card-rodape">
         <span>Prioridade: {{ tag(a.prioridade.cor, a.prioridade.label) }}</span>
+        {{ avatar_responsavel(p, membros) }}
         <a class="btn btn-secundario" href="{{ url_for('painel_tech.projeto_detalhe', projeto_id=p.id) }}">Ver projeto</a>
       </footer>
     </article>
     {% endfor %}
   </div>
+  {% if atencao|length > atencao_visivel|length %}
+  <div class="tech-overview-more">
+    <span>Exibindo {{ atencao_visivel|length }} de {{ atencao|length }} projetos que pedem atenção.</span>
+    <a class="btn btn-secundario" href="{{ url_for('painel_tech.projetos_listar', atencao='1') }}">Ver todos</a>
+  </div>
+  {% endif %}
 </section>
 {% else %}
 <section class="secao">
@@ -70,40 +74,53 @@
 </section>
 {% endif %}
 
+{% set prioridades_visiveis = linhas[:8] %}
 <section class="secao">
   <h2 class="secao-titulo">{{ dot('ambar') }} Próximas prioridades</h2>
-  <div class="tabela-wrapper">
+  <div class="tech-board-group tech-priority-board" style="--group-color: #d99308">
+    <header class="tech-board-group-header">
+      <span class="tech-board-group-title">Carteira operacional</span>
+      <span class="tech-board-group-count">{{ linhas|length }}</span>
+    </header>
+    <div class="tech-board-table">
     <table class="tabela">
+      <colgroup><col style="width:31%"><col style="width:8%"><col style="width:12%"><col style="width:12%"><col style="width:13%"><col style="width:14%"><col style="width:10%"></colgroup>
       <thead>
         <tr>
           <th scope="col">Projeto</th>
+          <th scope="col" class="tech-board-person">Resp.</th>
           <th scope="col">Status</th>
           <th scope="col">Prioridade</th>
           <th scope="col">Ritmo</th>
-          <th scope="col">Progresso</th>
-          <th scope="col">Responsável</th>
+          <th scope="col">Timeline</th>
+          <th scope="col">Atenção</th>
         </tr>
       </thead>
       <tbody>
-        {% for linha in linhas %}
+        {% for linha in prioridades_visiveis %}
         {% set p = linha.projeto %}
         {% set a = linha.analise %}
         <tr>
-          <td data-label="Projeto"><a href="{{ url_for('painel_tech.projeto_detalhe', projeto_id=p.id) }}">{{ p.nome }}</a></td>
-          <td data-label="Status">{{ tag(status_meta(p.status).cor, status_meta(p.status).label) }}</td>
-          <td data-label="Prioridade">{{ tag(a.prioridade.cor, a.prioridade.label) }}</td>
-          <td data-label="Ritmo">{{ tag(ritmo_meta(a.saude.ritmo).cor, ritmo_meta(a.saude.ritmo).label) }}</td>
-          <td data-label="Progresso" class="celula-progresso">
-            {{ barra(a.saude.progresso_pct) }}
-            <span>{{ a.saude.progresso_pct }}%</span>
-          </td>
-          <td data-label="Responsável">{{ p.responsavel_nome or '—' }}</td>
+          <td><div class="tech-board-project"><a href="{{ url_for('painel_tech.projeto_detalhe', projeto_id=p.id) }}">{{ p.nome }}</a></div></td>
+          <td class="tech-board-person">{{ avatar_responsavel(p, membros) }}</td>
+          <td class="tech-dashboard-status tech-dashboard-status-{{ p.status }}">{{ status_meta(p.status).label }}</td>
+          <td>{{ tag(a.prioridade.cor, a.prioridade.label) }}</td>
+          <td>{{ tag(ritmo_meta(a.saude.ritmo).cor, ritmo_meta(a.saude.ritmo).label) }}</td>
+          <td class="celula-progresso">{{ barra(a.saude.progresso_pct) }}<span>{{ a.saude.progresso_pct }}%</span></td>
+          <td>{{ tag(a.intervencao.cor, a.intervencao.label) }}</td>
         </tr>
         {% else %}
-        <tr><td colspan="6" class="vazio">Nenhum projeto encontrado com os filtros atuais.</td></tr>
+        <tr><td colspan="7" class="tech-board-empty">Nenhum projeto operacional encontrado com os filtros atuais.</td></tr>
         {% endfor %}
       </tbody>
     </table>
+    </div>
+    {% if linhas|length > prioridades_visiveis|length %}
+    <footer class="tech-board-footer">
+      <span>Exibindo as {{ prioridades_visiveis|length }} próximas de {{ linhas|length }} prioridades.</span>
+      <a class="btn btn-secundario" href="{{ url_for('painel_tech.projetos_listar') }}">Ver carteira completa</a>
+    </footer>
+    {% endif %}
   </div>
 </section>
 {% endblock %}

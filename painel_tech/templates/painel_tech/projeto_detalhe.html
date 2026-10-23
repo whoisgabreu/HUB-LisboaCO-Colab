@@ -1,52 +1,106 @@
 {% extends "painel_tech/base.html" %}
 {% block title %}{{ projeto.nome }} — Painel Gerencial TECH{% endblock %}
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('painel_tech.static', filename='css/projeto-detalhe.css') }}">
+<script src="{{ url_for('painel_tech.static', filename='js/projeto-detalhe.js') }}" defer></script>
+{% endblock %}
+{% block classe_conteudo %}tech-project-detail-page{% endblock %}
 {% block cabecalho %}{{ projeto.nome }}{% endblock %}
+{% block subtitulo %}Acompanhe execução, saúde, tempo e próximos passos.{% endblock %}
+
 {% block acoes %}
-<button type="button" class="btn btn-secundario" data-abrir-historico>
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-       stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-    <path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/>
-  </svg>
-  Histórico
+<a class="btn btn-secundario tech-back-button project-header-action" href="{{ url_for('painel_tech.projetos_listar') }}" aria-label="Voltar para projetos" title="Voltar para projetos">
+  <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+  <span>Voltar</span>
+</a>
+<button type="button" class="btn btn-secundario project-header-action" data-abrir-historico aria-label="Abrir histórico" title="Histórico" aria-haspopup="dialog" aria-controls="modal-historico">
+  <i class="fa-solid fa-clock-rotate-left" aria-hidden="true"></i>
+  <span>Histórico</span>
 </button>
-<a class="btn btn-secundario" href="{{ url_for('painel_tech.projeto_editar', projeto_id=projeto.id) }}">Editar</a>
-<form method="post" action="{{ url_for('painel_tech.projeto_excluir', projeto_id=projeto.id) }}" onsubmit="return confirm('Excluir este projeto e todas as etapas?');">
-  <button class="btn btn-perigo" type="submit">Excluir</button>
+<a class="btn btn-secundario project-header-action" href="{{ url_for('painel_tech.projeto_editar', projeto_id=projeto.id) }}" aria-label="Editar projeto" title="Editar projeto">
+  <i class="fa-solid fa-pen" aria-hidden="true"></i>
+  <span>Editar</span>
+</a>
+<form class="project-delete-form" method="post" action="{{ url_for('painel_tech.projeto_excluir', projeto_id=projeto.id) }}" onsubmit="return confirm('Excluir este projeto e todas as etapas?');">
+  <button class="btn btn-perigo project-header-action project-delete-action" type="submit" aria-label="Excluir projeto" title="Excluir projeto">
+    <i class="fa-regular fa-trash-can" aria-hidden="true"></i>
+    <span>Excluir</span>
+  </button>
 </form>
 {% endblock %}
 
 {% block conteudo %}
-<div class="detalhe-topo-grade">
-  <section class="detalhe-topo card" id="projeto-resumo">
-    {% include "painel_tech/partials/_projeto_resumo.html" %}
+<div class="project-detail-layout">
+  <section class="project-overview-block" aria-labelledby="project-overview-title">
+    <header class="project-section-heading">
+      <div>
+        <h2 id="project-overview-title">Visão do projeto</h2>
+        <p>Contexto, andamento e saúde em uma leitura completa.</p>
+      </div>
+    </header>
+
+    <div class="project-overview-cards">
+      <article class="metric-card project-hub-card project-summary-card" id="projeto-resumo">
+        {% include "painel_tech/partials/_projeto_resumo.html" %}
+      </article>
+      <article class="metric-card project-hub-card project-health-card" id="projeto-indicadores">
+        {% include "painel_tech/partials/_projeto_indicadores.html" %}
+      </article>
+    </div>
   </section>
 
-  <section class="card" id="projeto-indicadores">
-    {% include "painel_tech/partials/_projeto_indicadores.html" %}
+  <section class="project-plan-block" aria-labelledby="project-plan-title">
+    <header class="project-section-heading">
+      <div>
+        <h2 id="project-plan-title">Plano de execução</h2>
+        <p>Tasks, subtasks, responsáveis e prazos organizados para o time.</p>
+      </div>
+      <span class="project-section-count" id="project-tab-stage-count">{{ resumo_checklist.total }} task{{ 's' if resumo_checklist.total != 1 else '' }}</span>
+    </header>
+
+    <article class="metric-card project-hub-card project-plan-card">
+      <section id="checklist">
+        {% include "painel_tech/partials/_checklist.html" %}
+      </section>
+    </article>
+    <div class="project-plan-create-footer">
+      <button class="btn btn-primario project-create-task-trigger" type="button"
+              data-create-task data-abrir-edicao="modal-nova-task"
+              aria-haspopup="dialog" aria-controls="modal-nova-task">
+        <i class="fa-solid fa-plus" aria-hidden="true"></i> Criar task
+      </button>
+    </div>
+  </section>
+
+  <section class="project-comments-block" id="comentarios" aria-labelledby="project-comments-title">
+    <header class="project-section-heading">
+      <div>
+        <h2 id="project-comments-title">Comentários</h2>
+        <p>Decisões, alinhamentos e atualizações do projeto.</p>
+      </div>
+      <span class="project-section-count">{{ comentarios_projeto | length }} comentário{{ 's' if comentarios_projeto|length != 1 else '' }}</span>
+    </header>
+
+    <article class="metric-card project-hub-card project-comments-card">
+      {% include "painel_tech/partials/_comentarios_projeto.html" %}
+    </article>
   </section>
 </div>
 
-<section class="card painel-abas">
-  <div class="abas aba-botoes" role="tablist">
-    <button type="button" class="aba ativa" data-alvo="aba-checklist" aria-selected="true">Checklist</button>
-    <button type="button" class="aba" data-alvo="aba-comentarios" aria-selected="false">Comentários</button>
-  </div>
-  <div id="aba-checklist">
-    <section id="checklist">
-      {% include "painel_tech/partials/_checklist.html" %}
-    </section>
-  </div>
-  <div id="aba-comentarios" hidden>
-    {% include "painel_tech/partials/_comentarios_projeto.html" %}
-  </div>
-</section>
-
-<dialog id="modal-historico" class="modal" aria-labelledby="titulo-historico">
-  <header class="modal-cabecalho">
-    <h2 id="titulo-historico" class="secao-titulo">Histórico recente</h2>
-    <button type="button" class="btn-icone" data-fechar-historico aria-label="Fechar">✕</button>
+<dialog id="modal-historico" class="modal project-history-modal" aria-labelledby="titulo-historico">
+  <header class="modal-cabecalho project-modal-header">
+    <div class="project-modal-title">
+      <i class="fa-solid fa-clock-rotate-left" aria-hidden="true"></i>
+      <div>
+        <h2 id="titulo-historico" class="secao-titulo">Histórico do projeto</h2>
+        <p>Últimas movimentações e alterações registradas.</p>
+      </div>
+    </div>
+    <button type="button" class="btn-icone" data-fechar-historico aria-label="Fechar histórico">
+      <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+    </button>
   </header>
-  <section id="eventos" class="modal-corpo">
+  <section id="eventos" class="modal-corpo project-history-body">
     {% include "painel_tech/partials/_eventos.html" %}
   </section>
 </dialog>

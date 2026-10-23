@@ -1,72 +1,76 @@
-<form class="filtros" method="get" action="{{ url_for('painel_tech.projetos_listar') }}" data-ativos="{{ chips|length }}">
+<form class="filters tech-filters" method="get" action="{{ url_for('painel_tech.projetos_listar') }}">
   <input type="hidden" name="aba" value="{{ aba }}">
-  <div class="filtros-cabecalho">
-    <span class="filtros-titulo">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
-      Filtros
-      {% if chips %}<span class="filtros-contagem">{{ chips|length }}</span>{% endif %}
-    </span>
-    <button type="button" class="btn-icone filtros-toggle" data-alternar-filtros aria-expanded="true" aria-label="Expandir ou recolher filtros">
-      <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
-    </button>
+  <div class="search-box tech-search-box">
+    <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+    <label class="sr-only" for="projetos-busca">Buscar projeto</label>
+    <input id="projetos-busca" type="search" name="q" placeholder="Buscar por nome do projeto..." value="{{ args.get('q', '') }}" autocomplete="off">
   </div>
-  <div class="filtros-corpo">
-  <div class="campo campo-largo">
-    <label>Busca</label>
-    <input type="search" name="q" placeholder="Nome do projeto" value="{{ args.get('q', '') }}">
+
+  <div class="filter-group tech-filter-group">
+    <div class="tech-filter-field">
+      <label for="projetos-responsavel">Responsável</label>
+      <span class="filter-item">
+        <select id="projetos-responsavel" name="responsavel" aria-label="Responsável" data-tech-rich-select>
+          <option value="" data-icon="fa-solid fa-users">Todos</option>
+          {% for membro in membros %}
+          <option value="{{ membro.id }}" data-avatar-email="{{ membro.email or '' }}" {{ 'selected' if args.get('responsavel') == membro.id|string else '' }}>{{ membro.nome }}</option>
+          {% endfor %}
+        </select>
+      </span>
+    </div>
+    <div class="tech-filter-field">
+      <label for="projetos-status">Status</label>
+      <span class="filter-item">
+        <select id="projetos-status" name="status" aria-label="Status" data-tech-rich-select>
+          <option value="" data-icon="fa-solid fa-layer-group">Todos</option>
+          {% for chave, meta in STATUS.items() %}
+          <option value="{{ chave }}" data-color="{{ meta.cor }}" {{ 'selected' if args.get('status') == chave else '' }}>{{ meta.label }}</option>
+          {% endfor %}
+        </select>
+      </span>
+    </div>
+    {% for campo in ['impacto', 'urgencia', 'risco', 'esforco'] %}
+    <div class="tech-filter-field">
+      <label for="projetos-{{ campo }}">{{ INDICADORES[campo].label }}</label>
+      <span class="filter-item">
+        <select id="projetos-{{ campo }}" name="{{ campo }}" aria-label="{{ INDICADORES[campo].label }}" data-tech-rich-select>
+          <option value="" data-icon="fa-solid {{ 'fa-bullseye' if campo == 'impacto' else 'fa-bolt' if campo == 'urgencia' else 'fa-triangle-exclamation' if campo == 'risco' else 'fa-gauge-high' }}">Todos</option>
+          {% for chave, meta in INDICADORES[campo].opcoes.items() %}
+          <option value="{{ chave }}" data-color="{{ meta.cor }}" {{ 'selected' if args.get(campo) == chave else '' }}>{{ meta.label }}</option>
+          {% endfor %}
+        </select>
+      </span>
+    </div>
+    {% endfor %}
+    <div class="tech-filter-field">
+      <label for="projetos-ritmo">Ritmo</label>
+      <span class="filter-item">
+        <select id="projetos-ritmo" name="ritmo" aria-label="Ritmo" data-tech-rich-select>
+          <option value="" data-icon="fa-solid fa-wave-square">Todos</option>
+          {% for chave, meta in RITMO.items() %}
+          <option value="{{ chave }}" data-color="{{ meta.cor }}" {{ 'selected' if args.get('ritmo') == chave else '' }}>{{ meta.label }}</option>
+          {% endfor %}
+        </select>
+      </span>
+    </div>
+    <label class="tech-filter-field tech-date-field">
+      <span>De</span>
+      <span class="filter-item"><i class="fa-regular fa-calendar" aria-hidden="true"></i><input type="date" name="de" value="{{ args.get('de', '') }}" aria-label="Data inicial"></span>
+    </label>
+    <label class="tech-filter-field tech-date-field">
+      <span>Até</span>
+      <span class="filter-item"><i class="fa-regular fa-calendar-check" aria-hidden="true"></i><input type="date" name="ate" value="{{ args.get('ate', '') }}" aria-label="Data final"></span>
+    </label>
   </div>
-  <div class="campo">
-    <label>Responsável</label>
-    <select name="responsavel">
-      <option value="">Todos</option>
-      {% for membro in membros %}
-      <option value="{{ membro.id }}" {{ 'selected' if args.get('responsavel') == membro.id|string else '' }}>{{ membro.nome }}</option>
-      {% endfor %}
-    </select>
-  </div>
-  <div class="campo">
-    <label>Status</label>
-    <select name="status">
-      <option value="">Todos</option>
-      {% for chave, meta in STATUS.items() %}
-      <option value="{{ chave }}" {{ 'selected' if args.get('status') == chave else '' }}>{{ meta.label }}</option>
-      {% endfor %}
-    </select>
-  </div>
-  {% for campo in ['impacto', 'urgencia', 'risco', 'esforco'] %}
-  <div class="campo">
-    <label>{{ INDICADORES[campo].label }}</label>
-    <select name="{{ campo }}">
-      <option value="">Todos</option>
-      {% for chave, meta in INDICADORES[campo].opcoes.items() %}
-      <option value="{{ chave }}" {{ 'selected' if args.get(campo) == chave else '' }}>{{ meta.label }}</option>
-      {% endfor %}
-    </select>
-  </div>
-  {% endfor %}
-  <div class="campo">
-    <label>Ritmo</label>
-    <select name="ritmo">
-      <option value="">Todos</option>
-      {% for chave, meta in RITMO.items() %}
-      <option value="{{ chave }}" {{ 'selected' if args.get('ritmo') == chave else '' }}>{{ meta.label }}</option>
-      {% endfor %}
-    </select>
-  </div>
-  <div class="campo">
-    <label>De</label>
-    <input type="date" name="de" value="{{ args.get('de', '') }}">
-  </div>
-  <div class="campo">
-    <label>Até</label>
-    <input type="date" name="ate" value="{{ args.get('ate', '') }}">
-  </div>
-  <div class="campo campo-check">
-    <label><input type="checkbox" name="atencao" value="1" {{ 'checked' if args.get('atencao') == '1' else '' }}> Somente atenção</label>
-  </div>
-  </div>
-  <div class="filtros-rodape">
-    <button class="btn btn-primario" type="submit">Filtrar</button>
-    <a class="btn btn-fantasma" href="{{ url_kanban if aba == 'kanban' else url_geral }}">Limpar</a>
+
+  <div class="tech-filter-footer">
+    <label class="tech-attention-filter">
+      <input type="checkbox" name="atencao" value="1" {{ 'checked' if args.get('atencao') == '1' else '' }}>
+      Somente os que precisam de atenção
+    </label>
+    <div class="tech-filter-actions">
+      <a class="btn-secondary" href="{{ url_kanban if aba == 'kanban' else url_geral }}">Limpar</a>
+      <button class="btn-primary" type="submit"><i class="fa-solid fa-filter" aria-hidden="true"></i> Filtrar</button>
+    </div>
   </div>
 </form>

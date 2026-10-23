@@ -1,6 +1,9 @@
 {% extends "painel_tech/base.html" %}
 {% block title %}{{ 'Editar projeto' if modo == 'editar' else 'Novo projeto' }} — Painel Gerencial TECH{% endblock %}
 {% block cabecalho %}{{ 'Editar projeto' if modo == 'editar' else 'Novo projeto' }}{% endblock %}
+{% block acoes %}
+<a class="btn btn-secundario tech-back-button" href="{{ url_for('painel_tech.projeto_detalhe', projeto_id=projeto.id) if modo == 'editar' else url_for('painel_tech.projetos_listar') }}"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Voltar</a>
+{% endblock %}
 
 {% block conteudo %}
 <form class="form card" method="post">
@@ -19,19 +22,19 @@
   <div class="form-grade">
     <div class="campo">
       <label for="status">Status</label>
-      <select id="status" name="status">
+      <select id="status" name="status" data-tech-rich-select>
         {% for chave, meta in STATUS.items() %}
-        <option value="{{ chave }}" {{ 'selected' if projeto.get('status', 'fila') == chave else '' }}>{{ meta.label }}</option>
+        <option value="{{ chave }}" data-color="{{ meta.cor }}" {{ 'selected' if projeto.get('status', 'fila') == chave else '' }}>{{ meta.label }}</option>
         {% endfor %}
       </select>
     </div>
     <div class="campo">
       <label for="responsavel_id">Responsável</label>
-      <select id="responsavel_id" name="responsavel_id">
-        <option value="">—</option>
+      <select id="responsavel_id" name="responsavel_id" data-tech-rich-select>
+        <option value="" data-icon="fa-solid fa-minus">Não atribuído</option>
         {% for membro in membros %}
         {% set cap = capacidades_por_membro.get(membro.id) %}
-        <option value="{{ membro.id }}" {{ 'selected' if projeto.get('responsavel_id') == membro.id else '' }}>{{ membro.nome }}{% if cap and (cap.ativos or cap.situacao in ('cheio', 'acima')) %} ({{ cap.ativos }}/{{ cap.limite }}{% if cap.situacao in ('cheio', 'acima') %} ⚠️{% endif %}){% endif %}</option>
+        <option value="{{ membro.id }}" data-avatar-email="{{ membro.email or '' }}" {{ 'selected' if projeto.get('responsavel_id') == membro.id else '' }}>{{ membro.nome }}{% if cap and (cap.ativos or cap.situacao in ('cheio', 'acima')) %} ({{ cap.ativos }}/{{ cap.limite }}{% if cap.situacao in ('cheio', 'acima') %} ⚠️{% endif %}){% endif %}</option>
         {% endfor %}
       </select>
       {% set cap_atual = capacidades_por_membro.get(projeto.get('responsavel_id')) %}
@@ -46,19 +49,19 @@
     {% for campo in ['impacto', 'urgencia', 'risco', 'esforco'] %}
     <div class="campo">
       <label for="{{ campo }}">{{ INDICADORES[campo].label }}</label>
-      <select id="{{ campo }}" name="{{ campo }}">
+      <select id="{{ campo }}" name="{{ campo }}" data-tech-rich-select>
         {% for chave, meta in INDICADORES[campo].opcoes.items() %}
-        <option value="{{ chave }}" {{ 'selected' if projeto.get(campo, 'medio') == chave else '' }}>{{ meta.label }}</option>
+        <option value="{{ chave }}" data-color="{{ meta.cor }}" {{ 'selected' if projeto.get(campo, 'medio') == chave else '' }}>{{ meta.label }}</option>
         {% endfor %}
       </select>
     </div>
     {% endfor %}
     <div class="campo">
       <label for="ritmo_manual">Ritmo</label>
-      <select id="ritmo_manual" name="ritmo_manual">
-        <option value="">Automático</option>
+      <select id="ritmo_manual" name="ritmo_manual" data-tech-rich-select>
+        <option value="" data-icon="fa-solid fa-wand-magic-sparkles">Automático</option>
         {% for chave, meta in RITMO.items() %}
-        <option value="{{ chave }}" {{ 'selected' if projeto.get('ritmo_manual') == chave else '' }}>{{ meta.label }}</option>
+        <option value="{{ chave }}" data-color="{{ meta.cor }}" {{ 'selected' if projeto.get('ritmo_manual') == chave else '' }}>{{ meta.label }}</option>
         {% endfor %}
       </select>
     </div>

@@ -1,36 +1,76 @@
-{% from "painel_tech/_macros.html" import estado_vazio, paginacao, barra %}
+{% from "painel_tech/_macros.html" import estado_vazio, paginacao, barra, avatar_pessoa %}
+{% macro pessoa_relatorio(nome, rotulo_vazio='Não atribuído') %}
+  {% set nome_limpo = (nome or '')|trim %}
+  {% if nome_limpo and nome_limpo != '—' %}
+  <span class="report-person">
+    {{ avatar_pessoa(nome_limpo, emails_por_nome.get(nome_limpo, ''), 'report-person-avatar') }}
+    <span>{{ nome_limpo }}</span>
+  </span>
+  {% else %}
+  <span class="report-person report-person-unassigned">
+    <span class="report-unassigned-mark" aria-hidden="true">—</span>
+    <span>{{ rotulo_vazio }}</span>
+  </span>
+  {% endif %}
+{% endmacro %}
 {% include "painel_tech/partials/_relatorios_tabs.html" %}
 
-<div class="relatorio-secao">
+<div class="relatorio-secao report-view">
   {% if aba == 'resumo' %}
-  <section class="secao">
-    <div class="secao-cabecalho">
-      <h2 class="secao-titulo">Resumo do período</h2>
-      <span class="chip-periodo">📅 {{ de_data.strftime('%d/%m/%Y') }} — {{ ate_data.strftime('%d/%m/%Y') }}</span>
-    </div>
-    <div class="relatorio-grupos">
+  {% set ICONES_RESUMO = {
+    'Volume': 'fa-solid fa-layer-group',
+    'Tempo': 'fa-regular fa-clock',
+    'SLA e prazo': 'fa-solid fa-bullseye',
+    'Eventos': 'fa-regular fa-rectangle-list'
+  } %}
+  <section class="report-panel report-summary-panel" aria-labelledby="report-summary-title">
+    <header class="report-panel-heading">
+      <div>
+        <span class="report-eyebrow">Visão consolidada</span>
+        <h2 id="report-summary-title">Resumo do período</h2>
+        <p>Os principais números de atividade e entrega em uma leitura rápida.</p>
+      </div>
+      <span class="report-period-chip">
+        <i class="fa-regular fa-calendar" aria-hidden="true"></i>
+        {{ de_data.strftime('%d/%m/%Y') }} — {{ ate_data.strftime('%d/%m/%Y') }}
+      </span>
+    </header>
+
+    <div class="report-summary-groups">
       {% for grupo in relatorio.resumo_grupos %}
-      <div class="relatorio-grupo">
-        <h3 class="grupo-titulo">{{ grupo.icone }} {{ grupo.titulo }}</h3>
-        <div class="relatorio-resumo">
+      <section class="report-kpi-group" data-report-kpi-count="{{ grupo.itens|length }}" aria-labelledby="report-group-{{ loop.index }}">
+        <header>
+          <span class="report-group-icon" aria-hidden="true"><i class="{{ ICONES_RESUMO.get(grupo.titulo, 'fa-solid fa-chart-simple') }}"></i></span>
+          <h3 id="report-group-{{ loop.index }}">{{ grupo.titulo }}</h3>
+        </header>
+        <div class="report-kpi-grid">
           {% for item in grupo.itens %}
-          <div class="relatorio-resumo-item{% if item.destaque %} destaque-{{ item.destaque }}{% endif %}">
-            <span class="rotulo">{{ item.rotulo }}</span>
-            <span class="valor">{{ item.valor }}</span>
+          <div class="report-kpi{% if item.destaque %} report-kpi-{{ item.destaque }}{% endif %}">
+            <span class="report-kpi-label">{{ item.rotulo }}</span>
+            <strong class="report-kpi-value">{{ item.valor }}</strong>
           </div>
           {% endfor %}
         </div>
-      </div>
+      </section>
       {% endfor %}
     </div>
   </section>
 
   {% elif aba == 'projetos' %}
-  <section class="secao">
-    <h2 class="secao-titulo">Projetos ({{ secao.pag.total }})</h2>
+  <section class="report-panel" aria-labelledby="report-projects-title">
+    <header class="report-panel-heading">
+      <div>
+        <span class="report-eyebrow">Portfólio</span>
+        <h2 id="report-projects-title">Projetos com atividade</h2>
+        <p>Status, prioridade, avanço e tempo registrado no período.</p>
+      </div>
+      <span class="report-count">{{ secao.pag.total }} {{ 'projeto' if secao.pag.total == 1 else 'projetos' }}</span>
+    </header>
+
     {% if secao.itens %}
-    <div class="tabela-wrapper">
-      <table class="tabela">
+    <div class="tabela-wrapper report-table-shell">
+      <table class="tabela report-table report-projects-table">
+        <caption class="sr-only">Projetos com atividade no período selecionado</caption>
         <thead>
           <tr>
             <th>Projeto</th>
@@ -46,18 +86,18 @@
         <tbody>
           {% for linha in secao.itens %}
           <tr>
-            <td data-label="Projeto">{{ linha.nome }}</td>
+            <td data-label="Projeto"><strong class="report-primary-cell">{{ linha.nome }}</strong></td>
             <td data-label="Status"><span class="badge badge-{{ linha.status_cor }}"><span class="dot"></span>{{ linha.status }}</span></td>
-            <td data-label="Responsável">{{ linha.responsavel }}</td>
+            <td data-label="Responsável">
+              {{ pessoa_relatorio(linha.responsavel) }}
+            </td>
             <td data-label="Prioridade">
-              <span class="badge badge-{{ linha.prioridade_cor }}"><span class="dot"></span>{{ linha.prioridade }}</span>
-              <span class="indice-min">{{ "%.2f"|format(linha.indice) }}</span>
+              <span class="report-priority"><span class="badge badge-{{ linha.prioridade_cor }}"><span class="dot"></span>{{ linha.prioridade }}</span><small>Índice {{ "%.2f"|format(linha.indice) }}</small></span>
             </td>
-            <td data-label="Progresso" class="celula-progresso">
-              {{ barra(linha.progresso) }}
-              <span class="progresso-texto">{{ linha.progresso }}% ({{ linha.concluidas }}/{{ linha.total_etapas }})</span>
+            <td data-label="Progresso">
+              <span class="report-progress">{{ barra(linha.progresso) }}<small>{{ linha.progresso }}% · {{ linha.concluidas }}/{{ linha.total_etapas }}</small></span>
             </td>
-            <td data-label="Tempo gasto">{{ linha.tempo | duracao_br }}</td>
+            <td data-label="Tempo gasto"><strong>{{ linha.tempo | duracao_br }}</strong></td>
             <td data-label="Sessões">{{ linha.sessoes }}</td>
             <td data-label="Lead time">{% if linha.lead_dias is not none %}{{ linha.lead_dias }}d{% else %}—{% endif %}</td>
           </tr>
@@ -66,23 +106,32 @@
       </table>
     </div>
     {% else %}
-    {{ estado_vazio('📭', 'Nenhum projeto com atividade no período') }}
+    {{ estado_vazio('📭', 'Nenhum projeto com atividade no período', 'Altere as datas acima para consultar outro intervalo.') }}
     {% endif %}
     {{ paginacao(secao.pag, 'painel_tech.relatorios_pagina', parametros_base, por_pagina_opcoes) }}
   </section>
 
   {% elif aba == 'sla' %}
-  <section class="secao">
-    <h2 class="secao-titulo">Checklists concluídos / SLA ({{ secao.pag.total }})</h2>
+  <section class="report-panel" aria-labelledby="report-sla-title">
+    <header class="report-panel-heading">
+      <div>
+        <span class="report-eyebrow">Cumprimento de prazo</span>
+        <h2 id="report-sla-title">Checklists concluídos</h2>
+        <p>Compare a data prevista com a conclusão e acompanhe o ciclo de cada etapa.</p>
+      </div>
+      <span class="report-count">{{ secao.pag.total }} {{ 'conclusão' if secao.pag.total == 1 else 'conclusões' }}</span>
+    </header>
+
     {% if secao.itens %}
-    <div class="tabela-wrapper">
-      <table class="tabela">
+    <div class="tabela-wrapper report-table-shell">
+      <table class="tabela report-table report-sla-table">
+        <caption class="sr-only">Checklists concluídos e cumprimento de SLA</caption>
         <thead>
           <tr>
             <th>Projeto</th>
             <th>Etapa</th>
             <th>Responsável</th>
-            <th>Prevista</th>
+            <th>Data prevista</th>
             <th>Concluída em</th>
             <th>Atraso</th>
             <th>Intervalo anterior</th>
@@ -92,50 +141,66 @@
         <tbody>
           {% for linha in secao.itens %}
           <tr>
-            <td data-label="Projeto">{{ linha.projeto }}</td>
+            <td data-label="Projeto"><strong class="report-primary-cell">{{ linha.projeto }}</strong></td>
             <td data-label="Etapa">{{ linha.etapa }}</td>
-            <td data-label="Responsável">{{ linha.responsavel }}</td>
-            <td data-label="Prevista">{{ linha.prevista | data_br if linha.prevista else '—' }}</td>
+            <td data-label="Responsável">{{ pessoa_relatorio(linha.responsavel) }}</td>
+            <td data-label="Data prevista">{{ linha.prevista | data_br if linha.prevista else '—' }}</td>
             <td data-label="Concluída em">{{ linha.concluida_em.strftime('%d/%m/%Y %H:%M') }}</td>
-            <td data-label="Atraso"{% if linha.atraso and linha.atraso > 0 %} class="atraso"{% elif linha.atraso is not none %} class="atraso-ok"{% endif %}>{% if linha.atraso is not none %}{{ linha.atraso }}d{% else %}—{% endif %}</td>
+            <td data-label="Atraso"{% if linha.atraso and linha.atraso > 0 %} class="atraso"{% elif linha.atraso is not none %} class="atraso-ok"{% endif %}>
+              {% if linha.atraso is not none %}<span class="report-delay {{ 'is-late' if linha.atraso > 0 else 'is-on-time' }}">{{ linha.atraso }}d</span>{% else %}—{% endif %}
+            </td>
             <td data-label="Intervalo anterior">{{ linha.cadencia | duracao_br }}</td>
-            <td data-label="Ciclo">{{ linha.ciclo | duracao_br }}</td>
+            <td data-label="Ciclo"><strong>{{ linha.ciclo | duracao_br }}</strong></td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
     {% else %}
-    {{ estado_vazio('☑️', 'Nenhum checklist concluído no período') }}
+    {{ estado_vazio('☑️', 'Nenhum checklist concluído no período', 'Altere as datas acima para consultar outro intervalo.') }}
     {% endif %}
     {{ paginacao(secao.pag, 'painel_tech.relatorios_pagina', parametros_base, por_pagina_opcoes) }}
   </section>
 
   {% elif aba == 'tempo' %}
-  <section class="secao">
-    <h2 class="secao-titulo">Tempo por membro</h2>
-    {% if relatorio.membros %}
-    <div class="tabela-wrapper relatorio-tempo">
-      <div class="distribuicao">
-        {% for linha in relatorio.membros %}
-        <div class="dist-linha">
-          <span class="dist-nome">{{ linha.membro }}</span>
-          <div class="dist-barra"><span style="width: {{ linha.pct }}%"></span></div>
-          <span class="dist-total">{{ linha.tempo | duracao_br }} · {{ linha.pct }}%</span>
-        </div>
-        {% endfor %}
+  <section class="report-panel report-time-summary" aria-labelledby="report-time-summary-title">
+    <header class="report-panel-heading">
+      <div>
+        <span class="report-eyebrow">Distribuição do esforço</span>
+        <h2 id="report-time-summary-title">Tempo por membro</h2>
+        <p>Participação de cada pessoa no total de horas registradas.</p>
       </div>
+    </header>
+
+    {% if relatorio.membros %}
+    <div class="report-distribution">
+      {% for linha in relatorio.membros %}
+      <div class="report-distribution-row">
+        <span class="report-distribution-person">{{ pessoa_relatorio(linha.membro) }}</span>
+        <div class="report-distribution-track" aria-label="{{ linha.pct }}% do tempo registrado"><span style="width: {{ linha.pct }}%"></span></div>
+        <span class="report-distribution-total"><strong>{{ linha.tempo | duracao_br }}</strong><small>{{ linha.pct }}%</small></span>
+      </div>
+      {% endfor %}
     </div>
     {% else %}
-    {{ estado_vazio('⏱️', 'Sem sessões no período') }}
+    {{ estado_vazio('⏱️', 'Sem sessões no período', 'Altere as datas acima para consultar outro intervalo.') }}
     {% endif %}
   </section>
 
-  <section class="secao">
-    <h2 class="secao-titulo">Sessões de tempo ({{ secao.pag.total }})</h2>
+  <section class="report-panel" aria-labelledby="report-sessions-title">
+    <header class="report-panel-heading">
+      <div>
+        <span class="report-eyebrow">Registro detalhado</span>
+        <h2 id="report-sessions-title">Sessões de tempo</h2>
+        <p>Início, fim e duração considerada dentro do período.</p>
+      </div>
+      <span class="report-count">{{ secao.pag.total }} {{ 'sessão' if secao.pag.total == 1 else 'sessões' }}</span>
+    </header>
+
     {% if secao.itens %}
-    <div class="tabela-wrapper">
-      <table class="tabela">
+    <div class="tabela-wrapper report-table-shell">
+      <table class="tabela report-table report-time-table">
+        <caption class="sr-only">Sessões de tempo registradas</caption>
         <thead>
           <tr>
             <th>Projeto</th>
@@ -148,28 +213,37 @@
         <tbody>
           {% for linha in secao.itens %}
           <tr>
-            <td data-label="Projeto">{{ linha.projeto }}</td>
-            <td data-label="Membro">{{ linha.membro }}</td>
+            <td data-label="Projeto"><strong class="report-primary-cell">{{ linha.projeto }}</strong></td>
+            <td data-label="Membro">{{ pessoa_relatorio(linha.membro) }}</td>
             <td data-label="Início">{{ linha.inicio.strftime('%d/%m/%Y %H:%M') }}</td>
             <td data-label="Fim">{{ linha.fim.strftime('%d/%m/%Y %H:%M') }}</td>
-            <td data-label="Duração">{{ linha.duracao | duracao_br }}</td>
+            <td data-label="Duração"><strong>{{ linha.duracao | duracao_br }}</strong></td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
     {% else %}
-    {{ estado_vazio('⏱️', 'Sem sessões no período') }}
+    {{ estado_vazio('⏱️', 'Sem sessões no período', 'Altere as datas acima para consultar outro intervalo.') }}
     {% endif %}
     {{ paginacao(secao.pag, 'painel_tech.relatorios_pagina', parametros_base, por_pagina_opcoes) }}
   </section>
 
   {% elif aba == 'eventos' %}
-  <section class="secao">
-    <h2 class="secao-titulo">Eventos ({{ secao.pag.total }})</h2>
+  <section class="report-panel" aria-labelledby="report-events-title">
+    <header class="report-panel-heading">
+      <div>
+        <span class="report-eyebrow">Histórico do período</span>
+        <h2 id="report-events-title">Eventos dos projetos</h2>
+        <p>Alterações e registros feitos nas frentes com atividade.</p>
+      </div>
+      <span class="report-count">{{ secao.pag.total }} {{ 'evento' if secao.pag.total == 1 else 'eventos' }}</span>
+    </header>
+
     {% if secao.itens %}
-    <div class="tabela-wrapper">
-      <table class="tabela">
+    <div class="tabela-wrapper report-table-shell">
+      <table class="tabela report-table report-events-table">
+        <caption class="sr-only">Eventos registrados no período</caption>
         <thead>
           <tr>
             <th>Data</th>
@@ -182,18 +256,18 @@
         <tbody>
           {% for linha in secao.itens %}
           <tr>
-            <td data-label="Data">{{ linha.quando.strftime('%d/%m/%Y %H:%M') }}</td>
-            <td data-label="Projeto">{{ linha.projeto }}</td>
-            <td data-label="Tipo"><span class="badge">{{ linha.tipo }}</span></td>
-            <td data-label="Descrição">{{ linha.descricao or '—' }}</td>
-            <td data-label="Autor">{{ linha.autor }}</td>
+            <td data-label="Data"><time>{{ linha.quando.strftime('%d/%m/%Y %H:%M') }}</time></td>
+            <td data-label="Projeto"><strong class="report-primary-cell">{{ linha.projeto }}</strong></td>
+            <td data-label="Tipo"><span class="report-event-type">{{ linha.tipo }}</span></td>
+            <td data-label="Descrição" class="report-description">{{ linha.descricao or '—' }}</td>
+            <td data-label="Autor">{{ pessoa_relatorio(linha.autor, 'Sistema') }}</td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
     {% else %}
-    {{ estado_vazio('🗂️', 'Nenhum evento no período') }}
+    {{ estado_vazio('🗂️', 'Nenhum evento no período', 'Altere as datas acima para consultar outro intervalo.') }}
     {% endif %}
     {{ paginacao(secao.pag, 'painel_tech.relatorios_pagina', parametros_base, por_pagina_opcoes) }}
   </section>

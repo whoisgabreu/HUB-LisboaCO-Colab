@@ -1,39 +1,83 @@
 {% extends "painel_tech/base.html" %}
 {% block title %}Relatórios — Painel Gerencial TECH{% endblock %}
 {% block cabecalho %}Relatórios{% endblock %}
+{% block subtitulo %}Consulte os resultados do time, confira os detalhes e exporte o período em Excel.{% endblock %}
+
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('painel_tech.static', filename='css/relatorios.css') }}">
+{% endblock %}
 
 {% block conteudo %}
-<section class="secao">
-  <div class="filtros relatorio-barra">
-    <form class="filtros-corpo" method="get" action="{{ url_for('painel_tech.relatorios_pagina') }}"
+<div class="report-page">
+  <section class="report-toolbar" aria-labelledby="report-period-title">
+    <div class="report-toolbar-heading">
+      <span class="report-toolbar-icon" aria-hidden="true"><i class="fa-regular fa-calendar-days"></i></span>
+      <div>
+        <h2 id="report-period-title">Período do relatório</h2>
+        <p>Escolha as datas para atualizar todos os indicadores e tabelas abaixo.</p>
+      </div>
+      <span class="report-current-period">
+        {{ de_data.strftime('%d/%m/%Y') }} <i class="fa-solid fa-arrow-right" aria-hidden="true"></i> {{ ate_data.strftime('%d/%m/%Y') }}
+      </span>
+    </div>
+
+    <form class="report-period-form" method="get" action="{{ url_for('painel_tech.relatorios_pagina') }}"
           hx-get="{{ url_for('painel_tech.relatorios_pagina') }}"
-          hx-target="#relatorio-conteudo" hx-swap="innerHTML" hx-push-url="true">
+          hx-target="#relatorio-conteudo" hx-swap="innerHTML" hx-push-url="true"
+          hx-indicator="#report-loading">
       <input type="hidden" name="aba" value="{{ aba }}" data-rel-aba-campo>
       <input type="hidden" name="por_pagina" value="{{ por_pagina }}">
-      <div class="campo">
-        <label for="rel-de">De</label>
-        <input id="rel-de" type="date" name="de" value="{{ de_data.isoformat() }}">
-      </div>
-      <div class="campo">
-        <label for="rel-ate">Até</label>
-        <input id="rel-ate" type="date" name="ate" value="{{ ate_data.isoformat() }}">
-      </div>
-      <div class="relatorio-acoes">
-        <button class="btn btn-primario" type="submit">Atualizar prévia</button>
-        <a class="btn btn-secundario" href="{{ url_export }}">Baixar planilha (XLSX)</a>
+
+      <fieldset class="report-date-fields">
+        <legend class="sr-only">Intervalo de datas</legend>
+        <label class="report-date-field" for="rel-de">
+          <span>De</span>
+          <span class="report-date-control">
+            <i class="fa-regular fa-calendar" aria-hidden="true"></i>
+            <input id="rel-de" type="date" name="de" value="{{ de_data.isoformat() }}">
+          </span>
+        </label>
+        <label class="report-date-field" for="rel-ate">
+          <span>Até</span>
+          <span class="report-date-control">
+            <i class="fa-regular fa-calendar-check" aria-hidden="true"></i>
+            <input id="rel-ate" type="date" name="ate" value="{{ ate_data.isoformat() }}">
+          </span>
+        </label>
+      </fieldset>
+
+      <div class="report-period-actions">
+        <button class="btn-primary report-action" type="submit">
+          <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i>
+          Aplicar período
+        </button>
+        <a class="btn-secondary report-action" href="{{ url_export }}">
+          <i class="fa-solid fa-file-excel" aria-hidden="true"></i>
+          Exportar Excel
+        </a>
       </div>
     </form>
-  </div>
-  <p class="relatorio-nota">
-    Considera os projetos <strong>com atividade</strong> no período (sessões de tempo, eventos ou checklists concluídos).
-    <details class="relatorio-ajuda">
-      <summary>O que vem no arquivo XLSX?</summary>
-      Abas <strong>Resumo</strong>, Projetos, Checklists (SLA), Tempo, Tempo por membro e Eventos.
-    </details>
-  </p>
-</section>
 
-<div id="relatorio-conteudo">
-  {% include "painel_tech/partials/_relatorio_secao.html" %}
+    <div class="report-scope-note">
+      <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+      <div>
+        <strong>O que entra neste relatório?</strong>
+        <p>Projetos com sessões de tempo, eventos ou checklists concluídos dentro do período aplicado.</p>
+      </div>
+      <details>
+        <summary>Conteúdo da planilha</summary>
+        <p>Resumo, Projetos, Checklists (SLA), Tempo, Tempo por membro e Eventos.</p>
+      </details>
+    </div>
+
+    <div class="report-loading htmx-indicator" id="report-loading" role="status" aria-live="polite">
+      <i class="fa-solid fa-circle-notch fa-spin" aria-hidden="true"></i>
+      Atualizando relatório…
+    </div>
+  </section>
+
+  <div id="relatorio-conteudo" aria-live="polite">
+    {% include "painel_tech/partials/_relatorio_secao.html" %}
+  </div>
 </div>
 {% endblock %}

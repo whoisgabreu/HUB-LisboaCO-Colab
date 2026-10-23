@@ -1,8 +1,16 @@
 {% extends "painel_tech/base.html" %}
 {% block title %}Projetos — Kanban — Painel Gerencial TECH{% endblock %}
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('painel_tech.static', filename='css/kanban.css') }}">
+{% endblock %}
 {% block classe_conteudo %}conteudo-kanban{% endblock %}
 {% block cabecalho %}Projetos{% endblock %}
 {% block acoes %}
+{% if pode_editar %}
+<button type="button" class="btn btn-secundario kanban-editor-trigger" data-kanban-editor-open>
+  <i class="fa-solid fa-sliders" aria-hidden="true"></i> Editar colunas
+</button>
+{% endif %}
 <a class="btn btn-secundario" href="{{ url_export }}">Exportar CSV</a>
 <a class="btn btn-primario" href="{{ url_for('painel_tech.projetos_novo') }}">+ Novo projeto</a>
 {% endblock %}
@@ -12,6 +20,96 @@
 {% include "painel_tech/partials/_projetos_filtros.html" %}
 {% include "painel_tech/partials/_chips_filtros.html" %}
 {% include "painel_tech/partials/_kanban.html" %}
+
+{% if pode_editar %}
+<dialog id="kanban-editor" class="modal kanban-editor" aria-labelledby="kanban-editor-titulo"
+        data-save-url="{{ url_for('painel_tech.kanban_layout_salvar') }}"
+        data-status-obrigatorios="{{ kanban_status|map(attribute='chave')|join(',') }}">
+  <form class="kanban-editor-form" data-kanban-editor-form>
+    <header class="modal-cabecalho kanban-editor-cabecalho">
+      <div>
+        <h2 class="secao-titulo" id="kanban-editor-titulo">Colunas do Kanban</h2>
+        <p class="kanban-editor-intro">Organize o fluxo visual sem alterar as regras dos projetos.</p>
+      </div>
+      <button type="button" class="btn-icone kanban-editor-fechar" data-kanban-editor-close aria-label="Fechar">✕</button>
+    </header>
+
+    <div class="modal-corpo kanban-editor-corpo">
+      <div class="kanban-editor-legenda" aria-hidden="true">
+        <span>Coluna</span>
+        <span>Cor</span>
+        <span>Comportamento</span>
+        <span></span>
+      </div>
+      <div class="kanban-editor-lista" data-kanban-editor-lista>
+        {% for coluna in kanban_colunas %}
+        <div class="kanban-editor-linha" data-kanban-editor-linha data-coluna-id="{{ coluna.id }}">
+          <button type="button" class="kanban-editor-arrastar" data-kanban-editor-handle aria-label="Reordenar {{ coluna.nome }}" title="Arraste para reordenar">
+            <i class="fa-solid fa-grip-vertical" aria-hidden="true"></i>
+          </button>
+          <label class="kanban-editor-campo kanban-editor-campo-nome">
+            <span class="sr-only">Nome da coluna</span>
+            <input type="text" value="{{ coluna.nome }}" maxlength="48" required data-kanban-coluna-nome>
+          </label>
+          <label class="kanban-editor-campo kanban-editor-campo-cor">
+            <span class="sr-only">Cor da coluna</span>
+            <input type="color" value="{{ coluna.cor }}" data-kanban-coluna-cor aria-label="Cor de {{ coluna.nome }}">
+          </label>
+          <label class="kanban-editor-campo kanban-editor-campo-status">
+            <span class="sr-only">Comportamento da coluna</span>
+            <select data-kanban-coluna-status aria-label="Comportamento de {{ coluna.nome }}" required>
+              {% for status in kanban_status %}
+              <option value="{{ status.chave }}" {{ 'selected' if coluna.status_base == status.chave else '' }}>{{ status.label }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <button type="button" class="kanban-editor-remover" data-kanban-coluna-remover aria-label="Excluir coluna {{ coluna.nome }}" title="Excluir coluna">
+            <i class="fa-regular fa-trash-can" aria-hidden="true"></i>
+          </button>
+        </div>
+        {% endfor %}
+      </div>
+
+      <button type="button" class="btn btn-secundario kanban-editor-adicionar" data-kanban-coluna-adicionar>
+        <i class="fa-solid fa-plus" aria-hidden="true"></i> Nova coluna
+      </button>
+
+      <template id="kanban-coluna-template">
+        <div class="kanban-editor-linha" data-kanban-editor-linha data-coluna-id="">
+          <button type="button" class="kanban-editor-arrastar" data-kanban-editor-handle aria-label="Reordenar coluna" title="Arraste para reordenar">
+            <i class="fa-solid fa-grip-vertical" aria-hidden="true"></i>
+          </button>
+          <label class="kanban-editor-campo kanban-editor-campo-nome">
+            <span class="sr-only">Nome da coluna</span>
+            <input type="text" value="" maxlength="48" required data-kanban-coluna-nome placeholder="Nome da coluna">
+          </label>
+          <label class="kanban-editor-campo kanban-editor-campo-cor">
+            <span class="sr-only">Cor da coluna</span>
+            <input type="color" value="#D61616" data-kanban-coluna-cor aria-label="Cor da coluna">
+          </label>
+          <label class="kanban-editor-campo kanban-editor-campo-status">
+            <span class="sr-only">Comportamento da coluna</span>
+            <select data-kanban-coluna-status aria-label="Comportamento da coluna" required>
+              <option value="" selected disabled>Escolha o comportamento</option>
+              {% for status in kanban_status %}
+              <option value="{{ status.chave }}">{{ status.label }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <button type="button" class="kanban-editor-remover" data-kanban-coluna-remover aria-label="Excluir coluna" title="Excluir coluna">
+            <i class="fa-regular fa-trash-can" aria-hidden="true"></i>
+          </button>
+        </div>
+      </template>
+    </div>
+
+    <footer class="kanban-editor-rodape">
+      <button type="button" class="btn btn-secundario" data-kanban-editor-close>Cancelar</button>
+      <button type="submit" class="btn btn-primario" data-kanban-editor-salvar>Salvar colunas</button>
+    </footer>
+  </form>
+</dialog>
+{% endif %}
 {% endblock %}
 
 {% block scripts %}

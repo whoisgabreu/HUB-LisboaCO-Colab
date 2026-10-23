@@ -2,7 +2,7 @@ from datetime import date, datetime, timedelta
 
 from flask import Response, render_template, request, url_for
 
-from .. import bp, view_utils
+from .. import bp, db, view_utils
 from .. import relatorios as rel
 from ..config import get_config
 
@@ -67,6 +67,11 @@ def relatorios_pagina():
     pagina = _int_arg(request.args, "pagina", 1)
     relatorio = rel.construir_relatorio(de, ate, request.args, get_config())
     secao = rel.preparar_secao(relatorio, aba, pagina, por_pagina)
+    emails_por_nome = {
+        str(membro.get("nome") or "").strip(): str(membro.get("email") or "").strip()
+        for membro in db.listar_membros()
+        if membro.get("nome") and membro.get("email")
+    }
     contexto = {
         "relatorio": relatorio,
         "secao": secao,
@@ -75,6 +80,7 @@ def relatorios_pagina():
         "por_pagina_opcoes": rel.POR_PAGINA_OPCOES,
         "de_data": de_data,
         "ate_data": ate_data,
+        "emails_por_nome": emails_por_nome,
         "parametros_base": {
             "de": de_data.isoformat(),
             "ate": ate_data.isoformat(),

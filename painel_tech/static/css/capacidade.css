@@ -1,0 +1,284 @@
+.tech-capacity-overview {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+  gap: 1rem;
+}
+
+.tech-capacity-card {
+  display: flex;
+  min-height: 245px;
+  flex-direction: column;
+  padding: 1.2rem;
+  color: var(--text-main);
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  box-shadow: var(--card-shadow);
+  text-decoration: none;
+  transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.tech-capacity-card:hover {
+  color: var(--text-main);
+  border-color: color-mix(in srgb, var(--accent-red) 28%, var(--border-color));
+  box-shadow: var(--shadow-md);
+  text-decoration: none;
+  transform: translateY(-2px);
+}
+
+.tech-capacity-person {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.tech-capacity-avatar {
+  width: 46px;
+  height: 46px;
+  font-size: 0.82rem;
+}
+
+.tech-capacity-avatar-large {
+  width: 68px;
+  height: 68px;
+  font-size: 1.05rem;
+}
+
+.tech-capacity-person-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.tech-capacity-person-copy strong,
+.tech-capacity-person-copy small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tech-capacity-person-copy strong {
+  font-size: 0.9rem;
+}
+
+.tech-capacity-person-copy small {
+  margin-top: 0.15rem;
+  color: var(--text-muted);
+  font-size: 0.67rem;
+}
+
+.tech-capacity-score {
+  display: flex;
+  align-items: baseline;
+  gap: 0.3rem;
+  margin: 1.5rem 0 0.8rem;
+}
+
+.tech-capacity-score strong {
+  font-size: 2.45rem;
+  line-height: 1;
+}
+
+.tech-capacity-score > span {
+  color: var(--text-muted);
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.tech-capacity-score small {
+  margin-left: 0.3rem;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+}
+
+.tech-capacity-card .capacidade-barra,
+.tech-capacity-hero .capacidade-barra {
+  width: 100%;
+  height: 8px;
+  overflow: hidden;
+  background: var(--color-track);
+  border-radius: 999px;
+}
+
+.tech-capacity-card .capacidade-preenchimento,
+.tech-capacity-hero .capacidade-preenchimento {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+}
+
+.tech-capacity-card .cap-ok,
+.tech-capacity-hero .cap-ok { background: #159766; }
+.tech-capacity-card .cap-proximo,
+.tech-capacity-hero .cap-proximo { background: #3478f6; }
+.tech-capacity-card .cap-cheio,
+.tech-capacity-hero .cap-cheio { background: #d99308; }
+.tech-capacity-card .cap-acima,
+.tech-capacity-hero .cap-acima { background: #d61616; }
+
+.tech-capacity-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: auto;
+  padding-top: 1.2rem;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+}
+
+.tech-capacity-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--text-main);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.tech-capacity-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 1.1rem 2rem;
+  padding: 1.35rem;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  box-shadow: var(--card-shadow);
+}
+
+.tech-capacity-hero-person {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 1rem;
+}
+
+.tech-capacity-eyebrow {
+  color: var(--accent-red);
+  font-size: 0.62rem;
+  font-weight: 750;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.tech-capacity-hero-person h2 {
+  margin: 0.15rem 0;
+  color: var(--text-main);
+  font-size: 1.15rem;
+}
+
+.tech-capacity-hero-person p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+}
+
+.tech-capacity-hero-status {
+  display: grid;
+  justify-items: end;
+}
+
+.tech-capacity-hero-status strong {
+  margin-top: 0.5rem;
+  font-size: 1.8rem;
+  line-height: 1;
+}
+
+.tech-capacity-hero-status strong span {
+  color: var(--text-muted);
+  font-size: 1rem;
+}
+
+.tech-capacity-hero-status small {
+  margin-top: 0.25rem;
+  color: var(--text-muted);
+  font-size: 0.68rem;
+}
+
+.tech-capacity-hero > .capacidade-barra {
+  grid-column: 1 / -1;
+}
+
+.tech-member-projects {
+  margin-top: 1.5rem;
+}
+
+.tech-section-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.8rem;
+}
+
+.tech-section-head h2 {
+  margin: 0;
+  color: var(--text-main);
+  font-size: 1rem;
+}
+
+.tech-section-head p {
+  margin: 0.25rem 0 0;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+}
+
+.tech-member-table {
+  overflow-x: auto;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  box-shadow: var(--card-shadow);
+}
+
+.tech-member-table .tabela {
+  min-width: 900px;
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.tech-member-table th,
+.tech-member-table td {
+  height: 50px;
+  border-right: 1px solid var(--border-color);
+}
+
+.tech-member-table th:last-child,
+.tech-member-table td:last-child { border-right: 0; }
+
+.tech-member-status {
+  color: #fff;
+  text-align: center !important;
+  font-size: 0.72rem !important;
+  font-weight: 750;
+}
+
+.tech-member-status-fila { background: #d99308; }
+.tech-member-status-ativo { background: #3478f6; }
+.tech-member-status-pausado { background: #7b8798; }
+
+@media (max-width: 720px) {
+  .tech-capacity-overview { grid-template-columns: 1fr; }
+  .tech-capacity-person { grid-template-columns: auto minmax(0, 1fr); }
+  .tech-capacity-person .badge { grid-column: 2; justify-self: start; }
+  .tech-capacity-hero { grid-template-columns: 1fr; }
+  .tech-capacity-hero-status { justify-items: start; }
+  .tech-capacity-hero > .capacidade-barra { grid-column: auto; }
+  .tech-member-table .tabela { display: table; }
+  .tech-member-table .tabela thead { display: table-header-group; }
+  .tech-member-table .tabela tbody { display: table-row-group; }
+  .tech-member-table .tabela tr { display: table-row; padding: 0; background: transparent; border: 0; box-shadow: none; }
+  .tech-member-table .tabela th,
+  .tech-member-table .tabela td { display: table-cell; width: auto; }
+  .tech-member-table .tabela td::before { content: none; }
+}
+
+@media (max-width: 520px) {
+  .tech-capacity-footer { align-items: flex-start; flex-direction: column; }
+  .tech-capacity-hero-person { align-items: flex-start; }
+  .tech-capacity-avatar-large { width: 56px; height: 56px; }
+}

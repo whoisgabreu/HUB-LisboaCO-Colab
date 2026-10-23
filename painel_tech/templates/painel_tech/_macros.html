@@ -10,6 +10,35 @@
 <span class="badge badge-{{ cor }}"><span class="dot"></span>{{ texto }}</span>
 {% endmacro %}
 
+{% macro avatar_pessoa(nome, email='', classe='') %}
+{% set nome_bruto = (nome or '')|trim %}
+{% set nome_seguro = '' if nome_bruto in ['—', '-'] else nome_bruto %}
+{% set partes = nome_seguro.split() %}
+{% set iniciais = ((partes[0][0] if partes else '') ~ (partes[-1][0] if partes|length > 1 else '')) | upper %}
+<span class="tech-avatar {{ 'tech-avatar-empty' if not nome_seguro else '' }} {{ classe }}"
+      {% if email %}data-tech-avatar-email="{{ email }}"{% endif %}
+      title="{{ nome_seguro or 'Não atribuído' }}" aria-label="{{ nome_seguro or 'Não atribuído' }}">
+  {% if nome_seguro %}{{ iniciais }}{% else %}<i class="fa-solid fa-minus" aria-hidden="true"></i>{% endif %}
+</span>
+{% endmacro %}
+
+{% macro avatar_responsavel(projeto, membros, classe="") %}
+{% set pessoa = namespace(nome=projeto.responsavel_nome or '', email='') %}
+{% for membro in membros %}
+  {% if projeto.responsavel_id and membro.id == projeto.responsavel_id %}
+    {% set pessoa.nome = membro.nome or pessoa.nome %}
+    {% set pessoa.email = membro.email or '' %}
+  {% endif %}
+{% endfor %}
+{% set partes = pessoa.nome.split() %}
+{% set iniciais = ((partes[0][0] if partes else '') ~ (partes[-1][0] if partes|length > 1 else '')) | upper %}
+<span class="tech-avatar {{ 'tech-avatar-empty' if not pessoa.nome else '' }} {{ classe }}"
+      {% if pessoa.email %}data-tech-avatar-email="{{ pessoa.email }}"{% endif %}
+      title="{{ pessoa.nome or 'Não atribuído' }}" aria-label="{{ pessoa.nome or 'Não atribuído' }}">
+  {% if pessoa.nome %}{{ iniciais }}{% else %}<i class="fa-solid fa-minus" aria-hidden="true"></i>{% endif %}
+</span>
+{% endmacro %}
+
 {% macro indicador_linha(label, meta, maximo=4) %}
 <div class="ind-linha">
   <span class="ind-nome">{{ label }}</span>
@@ -60,7 +89,7 @@
        {% if pag.tem_proxima %}href="{{ url_pagina(endpoint, parametros, pag.pagina + 1) }}"
        hx-get="{{ url_pagina(endpoint, parametros, pag.pagina + 1) }}"
        hx-target="#relatorio-conteudo" hx-swap="innerHTML" hx-push-url="true"{% else %}aria-disabled="true"{% endif %}>›</a>
-  </div>
+  </nav>
   {% endif %}
   <label class="por-pagina">
     <span>Por página</span>

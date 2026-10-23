@@ -1,17 +1,22 @@
 {% set abas_relatorio = [
-  ('resumo', 'Resumo'),
-  ('projetos', 'Projetos'),
-  ('sla', 'Checklists (SLA)'),
-  ('tempo', 'Tempo'),
-  ('eventos', 'Eventos'),
+  ('resumo', 'fa-table-cells-large', 'Resumo'),
+  ('projetos', 'fa-diagram-project', 'Projetos'),
+  ('sla', 'fa-list-check', 'Checklists'),
+  ('tempo', 'fa-clock', 'Tempo'),
+  ('eventos', 'fa-clock-rotate-left', 'Eventos'),
 ] %}
-<div class="abas" role="tablist">
-  {% for chave, rotulo in abas_relatorio %}
+<nav class="report-tabs" aria-label="Seções do relatório" role="tablist">
+  {% for chave, icone, rotulo in abas_relatorio %}
   {% set url = url_for('painel_tech.relatorios_pagina', aba=chave, de=de_data.isoformat(), ate=ate_data.isoformat(), por_pagina=por_pagina) %}
-  <a class="aba {{ 'ativa' if aba == chave else '' }}" role="tab"
+  <a class="report-tab {{ 'active' if aba == chave else '' }}" role="tab"
      aria-selected="{{ 'true' if aba == chave else 'false' }}"
      href="{{ url }}"
      hx-get="{{ url }}" hx-target="#relatorio-conteudo" hx-swap="innerHTML" hx-push-url="true"
-     data-rel-aba="{{ chave }}">{{ rotulo }}</a>
+     hx-indicator="#report-loading"
+     data-rel-aba="{{ chave }}">
+    <i class="fa-solid {{ icone }}" aria-hidden="true"></i>
+    <span>{{ rotulo }}</span>
+    {% if chave == 'sla' %}<small>SLA</small>{% endif %}
+  </a>
   {% endfor %}
-</div>
+</nav>

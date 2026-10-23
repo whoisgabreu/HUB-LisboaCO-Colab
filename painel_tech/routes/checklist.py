@@ -4,15 +4,24 @@ from flask import abort, flash, redirect, request, url_for
 
 from .. import bp, db, view_utils
 from ..domain import label_etapa_status
+from ..task_hierarchy import (
+    arrange_stages,
+    merge_observation,
+    reorder_stage_ids,
+    split_observation,
+    validate_parent,
+)
 
 
-def _dados_etapa(form):
+def _dados_etapa(form, parent_id=None):
     return {
         "nome": form.get("nome", "").strip(),
         "responsavel_id": form.get("responsavel_id") or None,
         "status": form.get("status", "pendente"),
         "data_prevista": form.get("data_prevista") or None,
-        "observacao": form.get("observacao", "").strip() or None,
+        "observacao": merge_observation(
+            form.get("observacao", "").strip(), parent_id
+        ),
         "bloqueada": form.get("bloqueada") == "on",
         "bloqueio_motivo": form.get("bloqueio_motivo") or None,
         "bloqueio_descricao": form.get("bloqueio_descricao") or None,
@@ -38,7 +47,14 @@ def etapa_criar(projeto_id):
     if not nome:
         _flash("Informe o nome da etapa.", "erro")
         return view_utils.resposta_projeto(projeto_id)
-    dados = _dados_etapa(request.form)
+    try:
+        parent_id = validate_parent(
+            db.listar_etapas(projeto_id), request.form.get("parent_id")
+        )
+    except ValueError as exc:
+        _flash(str(exc), "erro")
+        return view_utils.resposta_projeto(projeto_id)
+    dados = _dados_etapa(request.form, parent_id)
     dados["nome"] = nome
     dados["ordem"] = db.proxima_ordem_etapa(projeto_id)
     db.criar_etapa(projeto_id, dados)
@@ -53,7 +69,16 @@ def etapa_editar(etapa_id):
     etapa = db.obter_etapa(etapa_id)
     if not etapa:
         abort(404)
-    dados = _dados_etapa(request.form)
+    try:
+        parent_id = validate_parent(
+            db.listar_etapas(etapa["projeto_id"]),
+            request.form.get("parent_id"),
+            stage_id=etapa_id,
+        )
+    except ValueError as exc:
+        _flash(str(exc), "erro")
+        return view_utils.resposta_projeto(etapa["projeto_id"])
+    dados = _dados_etapa(request.form, parent_id)
     if not dados["nome"]:
         _flash("Informe o nome da etapa.", "erro")
         return view_utils.resposta_projeto(etapa["projeto_id"])
@@ -179,7 +204,25 @@ def etapa_mover(etapa_id):
     etapa = db.obter_etapa(etapa_id)
     if not etapa:
         abort(404)
-    db.mover_etapa(etapa_id, request.form.get("direcao", "cima"))
+    direcao = request.form.get("direcao", "cima")
+    etapas = db.listar_etapas(etapa["projeto_id"])
+    hierarquia_ativa = any(
+        item.get("_parent_id") for item in arrange_stages(etapas)
+    )
+    if hierarquia_ativa:
+        ordem_atual = [item["id"] for item in etapas]
+        ordem_desejada = reorder_stage_ids(etapas, etapa_id, direcao)
+        for indice_desejado, item_id in enumerate(ordem_desejada):
+            indice_atual = ordem_atual.index(item_id)
+            while indice_atual > indice_desejado:
+                db.mover_etapa(item_id, "cima")
+                ordem_atual[indice_atual - 1], ordem_atual[indice_atual] = (
+                    ordem_atual[indice_atual],
+                    ordem_atual[indice_atual - 1],
+                )
+                indice_atual -= 1
+    else:
+        db.mover_etapa(etapa_id, direcao)
     db.tocar_projeto(etapa["projeto_id"])
     return view_utils.resposta_projeto(etapa["projeto_id"])
 
@@ -190,7 +233,14 @@ def etapa_excluir(etapa_id):
     if not etapa:
         abort(404)
     projeto_id = etapa["projeto_id"]
+    filhas = []
+    for relacionada in db.listar_etapas(projeto_id):
+        parent_id, observacao_visivel = split_observation(relacionada.get("observacao"))
+        if relacionada.get("id") != etapa_id and parent_id == etapa_id:
+            filhas.append((relacionada["id"], observacao_visivel))
     db.excluir_etapa(etapa_id)
+    for filha_id, observacao_visivel in filhas:
+        db.atualizar_etapa(filha_id, {"observacao": observacao_visivel})
     db.tocar_projeto(projeto_id)
     view_utils.registrar_evento(projeto_id, "etapa_excluida", f"Etapa removida: {etapa['nome']}")
     _flash("Etapa removida.")

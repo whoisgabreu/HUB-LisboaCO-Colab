@@ -1,7 +1,18 @@
-<ul class="eventos">
+<ul class="eventos project-history-list">
   {% for evento in eventos %}
-  <li><span class="evento-data">{{ evento.created_at.strftime('%d/%m/%Y %H:%M') }}</span> {{ evento.descricao }}{% if evento.autor_nome %} <span class="evento-autor">por {{ evento.autor_nome }}</span>{% endif %}</li>
+  <li>
+    <span class="project-history-marker" aria-hidden="true"><i class="fa-solid fa-circle"></i></span>
+    <div class="project-history-content">
+      <span class="evento-data"><i class="fa-regular fa-clock" aria-hidden="true"></i> {{ evento.created_at.strftime('%d/%m/%Y às %H:%M') }}</span>
+      <p>{{ evento.descricao }}</p>
+      {% if evento.autor_nome %}<span class="evento-autor">por {{ evento.autor_nome }}</span>{% endif %}
+    </div>
+  </li>
   {% else %}
-  <li class="vazio">Sem eventos.</li>
+  <li class="project-empty-state project-history-empty">
+    <span class="project-empty-icon" aria-hidden="true"><i class="fa-solid fa-clock-rotate-left"></i></span>
+    <strong>Nenhuma movimentação registrada</strong>
+    <p>As próximas alterações deste projeto aparecerão aqui.</p>
+  </li>
   {% endfor %}
 </ul>

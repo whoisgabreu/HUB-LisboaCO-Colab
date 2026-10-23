@@ -2,8 +2,17 @@ import json
 
 from flask import flash, redirect, render_template, request, url_for
 
-from .. import bp, db, view_utils
+from .. import bp, db, member_photos, view_utils
 from ..config import get_config, reset_config, save_config, validar_config
+
+
+def _membros_para_template():
+    membros = []
+    for registro in db.listar_membros():
+        membro = dict(registro)
+        membro["foto_tech_url"] = member_photos.foto_url(membro.get("email"))
+        membros.append(membro)
+    return membros
 
 
 @bp.route("/configuracoes", methods=["GET", "POST"])
@@ -27,14 +36,14 @@ def configuracoes():
             "painel_tech/configuracoes.html",
             config=get_config(),
             config_json=bruto,
-            membros=db.listar_membros(),
+            membros=_membros_para_template(),
             usuarios_tech=db.listar_usuarios_tech(),
         )
     return render_template(
         "painel_tech/configuracoes.html",
         config=get_config(),
         config_json=json.dumps(get_config(), ensure_ascii=False, indent=2),
-        membros=db.listar_membros(),
+        membros=_membros_para_template(),
         usuarios_tech=db.listar_usuarios_tech(),
     )
 
@@ -143,7 +152,11 @@ def _resposta_membros(mensagem, tipo="ok"):
     if view_utils.quer_fragmento():
         view_utils.enfileirar_toast(mensagem, tipo)
         return view_utils.anexar_toasts(
-            render_template("painel_tech/partials/_membros.html", membros=db.listar_membros(), usuarios_tech=db.listar_usuarios_tech())
+            render_template(
+                "painel_tech/partials/_membros.html",
+                membros=_membros_para_template(),
+                usuarios_tech=db.listar_usuarios_tech(),
+            )
         )
     flash(mensagem, tipo)
     return redirect(request.referrer or url_for("painel_tech.configuracoes"))
@@ -160,6 +173,23 @@ def membro_criar():
         )
     db.criar_membro(escolhido["nome"], escolhido.get("email"), escolhido.get("id"))
     return _resposta_membros(f"{escolhido['nome']} adicionado como membro.", "ok")
+
+
+@bp.route("/membros/<int:membro_id>/foto", methods=["POST"])
+def membro_foto(membro_id):
+    membro = next(
+        (item for item in db.listar_membros() if item.get("id") == membro_id),
+        None,
+    )
+    if not membro:
+        return _resposta_membros("Membro não encontrado.", "erro")
+
+    try:
+        member_photos.salvar_foto(membro.get("email"), request.files.get("foto"))
+    except member_photos.FotoMembroInvalida as erro:
+        return _resposta_membros(str(erro), "erro")
+
+    return _resposta_membros(f"Foto de {membro['nome']} atualizada.", "ok")
 
 
 @bp.route("/membros/<int:membro_id>/capacidade", methods=["POST"])

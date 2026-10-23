@@ -1,12 +1,13 @@
-<section class="detalhe-topo card" id="projeto-resumo" hx-swap-oob="true">
+<article class="metric-card project-hub-card project-summary-card" id="projeto-resumo" hx-swap-oob="true">
   {% include "painel_tech/partials/_projeto_resumo.html" %}
-</section>
-<section class="card" id="projeto-indicadores" hx-swap-oob="true">
+</article>
+<article class="metric-card project-hub-card project-health-card" id="projeto-indicadores" hx-swap-oob="true">
   {% include "painel_tech/partials/_projeto_indicadores.html" %}
-</section>
-<section id="eventos" class="modal-corpo" hx-swap-oob="true">
+</article>
+<section id="eventos" class="modal-corpo project-history-body" hx-swap-oob="true">
   {% include "painel_tech/partials/_eventos.html" %}
 </section>
+<span class="project-section-count" id="project-tab-stage-count" hx-swap-oob="true">{{ resumo_checklist.total }} task{{ 's' if resumo_checklist.total != 1 else '' }}</span>
 <section id="checklist">
   {% include "painel_tech/partials/_checklist.html" %}
 </section>

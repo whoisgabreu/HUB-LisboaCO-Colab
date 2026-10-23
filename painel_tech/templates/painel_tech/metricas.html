@@ -1,62 +1,259 @@
 {% extends "painel_tech/base.html" %}
-{% from "painel_tech/_macros.html" import barra, dot, estado_vazio %}
-{% block title %}Métricas — Painel Gerencial TECH{% endblock %}
+{% block title %}Métricas — Painel TECH{% endblock %}
 {% block cabecalho %}Métricas{% endblock %}
+{% block subtitulo %}Indicadores visuais para entender volume, saúde, prioridade e equilíbrio do portfólio.{% endblock %}
+
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('painel_tech.static', filename='css/metricas.css') }}">
+{% endblock %}
 
 {% block conteudo %}
 {% include "painel_tech/partials/_filtros_dashboard.html" %}
 {% include "painel_tech/partials/_chips_filtros.html" %}
 
-<div class="grade-dupla">
-  <section class="secao">
-    <h2 class="secao-titulo">Distribuição dos projetos</h2>
-    <div class="distribuicao">
-      {% set maximo = [contagem.ativo, contagem.fila, contagem.pausado, contagem.finalizado, 1] | max %}
-      {% for chave, meta in STATUS.items() %}
-      {% set total = contagem[chave] %}
-      <div class="dist-linha">
-        <span class="dist-nome">{{ dot(meta.cor) }} {{ meta.label }}</span>
-        <div class="dist-barra"><span style="width: {{ (total / maximo * 100) | round }}%"></span></div>
-        <span class="dist-total">{{ total }}</span>
-      </div>
-      {% endfor %}
+<div class="tech-metric-kpis" aria-label="Resumo do recorte atual">
+  <article class="tech-metric-kpi">
+    <span class="tech-metric-kpi-icon" aria-hidden="true"><i class="fa-solid fa-layer-group"></i></span>
+    <div><span>Projetos no recorte</span><strong>{{ metricas.summary.total }}</strong></div>
+  </article>
+  <article class="tech-metric-kpi">
+    <span class="tech-metric-kpi-icon" aria-hidden="true"><i class="fa-solid fa-spinner"></i></span>
+    <div><span>Ativos</span><strong>{{ metricas.summary.active }}</strong></div>
+  </article>
+  <article class="tech-metric-kpi">
+    <span class="tech-metric-kpi-icon" aria-hidden="true"><i class="fa-solid fa-chart-simple"></i></span>
+    <div><span>Progresso médio dos ativos</span><strong>{{ metricas.summary.averageProgress }}%</strong></div>
+  </article>
+  <article class="tech-metric-kpi">
+    <span class="tech-metric-kpi-icon tech-metric-kpi-icon-alert" aria-hidden="true"><i class="fa-solid fa-triangle-exclamation"></i></span>
+    <div><span>Precisam de atenção</span><strong>{{ metricas.summary.attention }}</strong></div>
+  </article>
+</div>
+
+<div id="tech-chart-runtime-error" class="tech-chart-runtime-error" role="alert" hidden>
+  Não foi possível carregar os gráficos agora. Atualize a página para tentar novamente.
+</div>
+
+<div class="tech-metrics-grid">
+  <section class="tech-chart-card tech-chart-card-third" data-tech-chart-card data-chart-key="fixed:status" data-default-span="7" data-default-height="280" style="--tech-chart-span: 7; --tech-chart-height: 280px;" aria-labelledby="tech-status-title">
+    <header class="tech-chart-head">
+      <div><h2 id="tech-status-title">Distribuição do portfólio</h2><p>Projetos por status atual.</p></div>
+      <strong class="tech-chart-total" aria-label="{{ metricas.summary.total }} projetos">{{ metricas.summary.total }}</strong>
+    </header>
+    <div class="tech-chart-wrap tech-chart-wrap-doughnut">
+      <canvas id="tech-status-chart" role="img" aria-labelledby="tech-status-title">Distribuição dos projetos por status.</canvas>
     </div>
+    <details class="tech-chart-data">
+      <summary>Ver dados</summary>
+      <ul>{% for item in metricas.status %}<li><span>{{ item.label }}</span><strong>{{ item.value }}</strong></li>{% endfor %}</ul>
+    </details>
   </section>
 
-  <section class="secao">
-    <h2 class="secao-titulo">Progresso dos ativos</h2>
-    {% if ativos %}
-    <div class="progresso-lista">
-      {% for linha in ativos %}
-      <div class="progresso-item">
-        <a href="{{ url_for('painel_tech.projeto_detalhe', projeto_id=linha.projeto.id) }}">{{ linha.projeto.nome }}</a>
-        <div class="progresso-barra">
-          {{ barra(linha.analise.saude.progresso_pct) }}
-          <span>{{ linha.analise.saude.progresso_pct }}% {{ dot(ritmo_meta(linha.analise.saude.ritmo).cor) }}</span>
-        </div>
-      </div>
-      {% endfor %}
+  <section class="tech-chart-card tech-chart-card-third" data-tech-chart-card data-chart-key="fixed:health" data-default-span="7" data-default-height="280" style="--tech-chart-span: 7; --tech-chart-height: 280px;" aria-labelledby="tech-health-title">
+    <header class="tech-chart-head">
+      <div><h2 id="tech-health-title">Saúde do portfólio</h2><p>Nível de intervenção calculado no recorte.</p></div>
+    </header>
+    <div class="tech-chart-wrap tech-chart-wrap-doughnut">
+      <canvas id="tech-health-chart" role="img" aria-labelledby="tech-health-title">Saúde dos projetos.</canvas>
     </div>
+    <details class="tech-chart-data">
+      <summary>Ver dados</summary>
+      <ul>{% for item in metricas.health %}<li><span>{{ item.label }}</span><strong>{{ item.value }}</strong></li>{% endfor %}</ul>
+    </details>
+  </section>
+
+  <section class="tech-chart-card tech-chart-card-third" data-tech-chart-card data-chart-key="fixed:priority" data-default-span="6" data-default-height="280" style="--tech-chart-span: 6; --tech-chart-height: 280px;" aria-labelledby="tech-priority-title">
+    <header class="tech-chart-head">
+      <div><h2 id="tech-priority-title">Faixas de prioridade</h2><p>Concentração por classificação gerencial.</p></div>
+    </header>
+    <div class="tech-chart-wrap tech-chart-wrap-doughnut">
+      <canvas id="tech-priority-chart" role="img" aria-labelledby="tech-priority-title">Projetos por faixa de prioridade.</canvas>
+    </div>
+    <details class="tech-chart-data">
+      <summary>Ver dados</summary>
+      <ul>{% for item in metricas.priority %}<li><span>{{ item.label }}</span><strong>{{ item.value }}</strong></li>{% endfor %}</ul>
+    </details>
+  </section>
+
+  <section class="tech-chart-card tech-chart-card-half" data-tech-chart-card data-chart-key="fixed:progress" data-default-span="10" data-default-height="340" style="--tech-chart-span: 10; --tech-chart-height: 340px;" aria-labelledby="tech-progress-title">
+    <header class="tech-chart-head">
+      <div><h2 id="tech-progress-title">Progresso dos ativos</h2><p>Percentual concluído de cada projeto em andamento.</p></div>
+      <strong class="tech-chart-total" aria-label="{{ metricas.activeProjects|length }} projetos ativos">{{ metricas.activeProjects|length }}</strong>
+    </header>
+    {% if metricas.activeProjects %}
+    <div class="tech-chart-wrap tech-chart-wrap-dynamic" data-active-chart-wrap>
+      <canvas id="tech-progress-chart" role="img" aria-labelledby="tech-progress-title">Progresso dos projetos ativos.</canvas>
+    </div>
+    <details class="tech-chart-data">
+      <summary>Ver dados</summary>
+      <ul>{% for item in metricas.activeProjects %}<li><span>{{ item.name }} · {{ item.rhythm }}</span><strong>{{ item.value }}%</strong></li>{% endfor %}</ul>
+    </details>
     {% else %}
-    {{ estado_vazio('', 'Nenhum projeto ativo') }}
+    <div class="tech-chart-empty"><i class="fa-regular fa-chart-bar" aria-hidden="true"></i><span>Nenhum projeto ativo com os filtros atuais.</span></div>
+    {% endif %}
+  </section>
+
+  <section class="tech-chart-card tech-chart-card-half" data-tech-chart-card data-chart-key="fixed:workload" data-default-span="10" data-default-height="340" style="--tech-chart-span: 10; --tech-chart-height: 340px;" aria-labelledby="tech-workload-title">
+    <header class="tech-chart-head">
+      <div><h2 id="tech-workload-title">Carga por responsável</h2><p>Projetos ativos no recorte comparados ao limite individual.</p></div>
+    </header>
+    {% if metricas.workload %}
+    <div class="tech-chart-wrap tech-chart-wrap-dynamic" data-workload-chart-wrap>
+      <canvas id="tech-workload-chart" role="img" aria-labelledby="tech-workload-title">Carga ativa e limite por responsável.</canvas>
+    </div>
+    <details class="tech-chart-data">
+      <summary>Ver dados</summary>
+      <ul>{% for item in metricas.workload %}<li><span>{{ item.name }}</span><strong>{{ item.active }} / {{ item.limit }}</strong></li>{% endfor %}</ul>
+    </details>
+    {% else %}
+    <div class="tech-chart-empty"><i class="fa-solid fa-users" aria-hidden="true"></i><span>Nenhum membro cadastrado.</span></div>
+    {% endif %}
+  </section>
+
+  <section class="tech-chart-card tech-chart-card-half" data-tech-chart-card data-chart-key="fixed:trend" data-default-span="10" data-default-height="320" style="--tech-chart-span: 10; --tech-chart-height: 320px;" aria-labelledby="tech-trend-title">
+    <header class="tech-chart-head">
+      <div><h2 id="tech-trend-title">Evolução em 6 meses</h2><p>Criados e atualmente finalizados, agrupados por mês.</p></div>
+    </header>
+    <div class="tech-chart-wrap">
+      <canvas id="tech-trend-chart" role="img" aria-labelledby="tech-trend-title">Projetos criados e finalizados nos últimos seis meses.</canvas>
+    </div>
+    <details class="tech-chart-data">
+      <summary>Ver dados</summary>
+      <div class="tech-chart-data-table" role="table" aria-label="Evolução mensal">
+        {% for item in metricas.trend %}<div role="row"><span role="cell">{{ item.label }}</span><span role="cell">{{ item.created }} criados</span><span role="cell">{{ item.finished }} finalizados</span></div>{% endfor %}
+      </div>
+    </details>
+  </section>
+
+  <section class="tech-chart-card tech-chart-card-half" data-tech-chart-card data-chart-key="fixed:matrix" data-default-span="10" data-default-height="320" style="--tech-chart-span: 10; --tech-chart-height: 320px;" aria-labelledby="tech-matrix-title">
+    <header class="tech-chart-head">
+      <div><h2 id="tech-matrix-title">Matriz impacto × esforço</h2><p>Bolhas maiores representam mais projetos na mesma combinação.</p></div>
+    </header>
+    {% if metricas.rows %}
+    <div class="tech-chart-wrap">
+      <canvas id="tech-impact-effort-chart" role="img" aria-labelledby="tech-matrix-title">Matriz de impacto e esforço dos projetos.</canvas>
+    </div>
+    <details class="tech-chart-data">
+      <summary>Ver projetos</summary>
+      <div class="tech-chart-data-table" role="table" aria-label="Impacto e esforço por projeto">
+        {% for item in metricas.rows %}<div role="row"><span role="cell">{{ item.name }}</span><span role="cell">Impacto {{ item.impact }}</span><span role="cell">Esforço {{ item.effort }}</span></div>{% endfor %}
+      </div>
+    </details>
+    {% else %}
+    <div class="tech-chart-empty"><i class="fa-solid fa-braille" aria-hidden="true"></i><span>Nenhum projeto no recorte atual.</span></div>
     {% endif %}
   </section>
 </div>
 
-<section class="secao">
-  <h2 class="secao-titulo">Tendência (últimos 6 meses)</h2>
-  <div class="tendencia">
-    {% for mes in tendencia.meses %}
-    <div class="tend-mes">
-      <span class="tend-rotulo">{{ mes.rotulo }}</span>
-      <div class="tend-grupo">
-        <div class="tend-barra tend-criados" style="height: {{ (mes.criados / tendencia.max * 100) | round }}%"></div>
-        <div class="tend-barra tend-finalizados" style="height: {{ (mes.finalizados / tendencia.max * 100) | round }}%"></div>
-      </div>
-      <span class="tend-numeros"><span class="tend-n-criados">{{ mes.criados }}</span><span class="tend-n-finalizados">{{ mes.finalizados }}</span></span>
+<section class="tech-chart-builder" aria-labelledby="tech-chart-builder-title">
+  <header class="tech-chart-builder-head">
+    <div>
+      <span class="tech-chart-builder-eyebrow"><i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i> Laboratório visual</span>
+      <h2 id="tech-chart-builder-title">Crie seu próprio gráfico</h2>
+      <p>Escolha como agrupar e medir o recorte atual. Seus gráficos ficam salvos somente neste navegador.</p>
     </div>
-    {% endfor %}
-  </div>
-  <div class="legenda"><span><span class="dot dot-azul"></span> Criados</span><span><span class="dot dot-verde"></span> Finalizados</span></div>
+    <span class="tech-chart-builder-local"><i class="fa-solid fa-lock" aria-hidden="true"></i> Sem alteração no banco</span>
+  </header>
+
+  <form id="tech-chart-builder-form" class="tech-chart-builder-form">
+    <label class="tech-chart-builder-field tech-chart-builder-title-field">
+      <span>Título</span>
+      <input type="text" name="title" maxlength="80" placeholder="Ex.: Projetos por responsável" required>
+    </label>
+    <label class="tech-chart-builder-field tech-chart-builder-type-field">
+      <span>Tipo</span>
+      <select name="type" data-tech-rich-select aria-label="Tipo de gráfico">
+        <option value="bar">Barras verticais</option>
+        <option value="horizontalBar">Barras horizontais</option>
+        <option value="line">Linha</option>
+        <option value="area">Linha com área</option>
+        <option value="doughnut">Rosca</option>
+        <option value="pie">Pizza</option>
+        <option value="polarArea">Área polar</option>
+        <option value="radar">Radar</option>
+      </select>
+    </label>
+    <label class="tech-chart-builder-field tech-chart-builder-dimension-field">
+      <span class="tech-chart-builder-label"><strong>1. Separar os dados por</strong><small>Cria um grupo para cada status, pessoa ou prioridade.</small></span>
+      <select name="dimension" data-tech-rich-select aria-label="Separar os dados por">
+        <option value="status">Status</option>
+        <option value="owner">Responsável</option>
+        <option value="priority">Prioridade</option>
+        <option value="intervention">Intervenção</option>
+        <option value="impact">Impacto</option>
+        <option value="urgency">Urgência</option>
+        <option value="risk">Risco</option>
+        <option value="effort">Esforço</option>
+        <option value="rhythm">Ritmo</option>
+        <option value="deadlineState">Estado do prazo</option>
+        <option value="progressBand">Faixa de progresso</option>
+        <option value="assignment">Atribuição</option>
+        <option value="overdueState">Etapas vencidas</option>
+        <option value="blockageState">Bloqueios</option>
+        <option value="createdMonth">Mês de criação</option>
+      </select>
+    </label>
+    <label class="tech-chart-builder-field tech-chart-builder-measure-field">
+      <span class="tech-chart-builder-label"><strong>2. O que contar ou calcular</strong><small>Ex.: quantidade de projetos ou progresso médio.</small></span>
+      <select name="measure" data-tech-rich-select aria-label="O que contar ou calcular">
+        <option value="count">Quantidade de projetos</option>
+        <option value="averageProgress">Progresso médio</option>
+        <option value="averagePriority">Índice médio de prioridade</option>
+        <option value="totalSteps">Total de etapas</option>
+        <option value="completedSteps">Etapas concluídas</option>
+        <option value="pendingSteps">Etapas pendentes</option>
+        <option value="overdueSteps">Etapas vencidas</option>
+        <option value="blockedSteps">Etapas bloqueadas</option>
+        <option value="completionRate">Taxa de conclusão das etapas</option>
+      </select>
+    </label>
+    <label class="tech-chart-builder-field tech-chart-color-field">
+      <span>Cor</span>
+      <input type="color" name="color" value="#d61616" aria-label="Cor principal do gráfico">
+    </label>
+    <details class="tech-chart-builder-advanced">
+      <summary><i class="fa-solid fa-sliders" aria-hidden="true"></i><span><strong>Ajustes opcionais</strong><small>Ordenação, Top N e categorias zeradas</small></span></summary>
+      <div class="tech-chart-builder-advanced-grid">
+        <label class="tech-chart-builder-field tech-chart-builder-sort-field">
+          <span>Ordenação</span>
+          <select name="sort" data-tech-rich-select aria-label="Ordenação do gráfico">
+            <option value="domain">Ordem natural</option>
+            <option value="valueDesc">Maior valor primeiro</option>
+            <option value="valueAsc">Menor valor primeiro</option>
+            <option value="labelAsc">Nome de A a Z</option>
+            <option value="labelDesc">Nome de Z a A</option>
+          </select>
+        </label>
+        <label class="tech-chart-builder-field tech-chart-builder-top-field">
+          <span>Top N</span>
+          <input type="number" name="topN" value="0" min="0" max="30" step="1" inputmode="numeric" aria-describedby="tech-chart-top-hint">
+          <small id="tech-chart-top-hint">0 exibe todos</small>
+        </label>
+        <label class="tech-chart-builder-check tech-chart-builder-zeros-field">
+          <input type="checkbox" name="showZeros" checked>
+          <span><strong>Exibir categorias zeradas</strong><small>Mantém todas as faixas visíveis.</small></span>
+        </label>
+      </div>
+    </details>
+    <button type="submit" class="btn btn-primario tech-chart-create-btn"><i class="fa-solid fa-plus" aria-hidden="true"></i> Criar gráfico</button>
+  </form>
+  <p id="tech-chart-builder-preview" class="tech-chart-builder-preview" aria-live="polite"><i class="fa-regular fa-eye" aria-hidden="true"></i><span><strong>Exemplo:</strong> quantidade de projetos em cada status.</span></p>
+  <p class="tech-chart-builder-note">Os filtros acima também valem para os gráficos personalizados.</p>
 </section>
+
+<section id="tech-custom-section" class="tech-custom-section" aria-labelledby="tech-custom-title" hidden>
+  <header class="tech-custom-head">
+    <div><h2 id="tech-custom-title">Meus gráficos</h2><p>Configurações armazenadas localmente neste dispositivo.</p></div>
+    <span id="tech-custom-count" class="tech-chart-total" aria-live="polite"></span>
+  </header>
+  <div id="tech-custom-charts" class="tech-custom-grid"></div>
+</section>
+<div id="tech-chart-announcer" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+
+<script type="application/json" id="tech-metrics-data">{{ metricas|tojson }}</script>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script src="{{ url_for('painel_tech.static', filename='js/metricas.js') }}"></script>
 {% endblock %}

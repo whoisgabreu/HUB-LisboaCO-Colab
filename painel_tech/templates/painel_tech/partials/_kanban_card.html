@@ -1,4 +1,4 @@
-{% from "painel_tech/_macros.html" import barra, tag, dot %}
+{% from "painel_tech/_macros.html" import barra, tag, dot, avatar_responsavel %}
 {% set p = linha.projeto %}
 {% set a = linha.analise %}
 <article class="kanban-card card-{{ a.intervencao.nivel }}" data-projeto-id="{{ p.id }}">
@@ -9,7 +9,7 @@
   </div>
   <div class="kanban-card-meta">
     <span>{{ dot(ritmo_meta(a.saude.ritmo).cor) }} {{ ritmo_meta(a.saude.ritmo).label }}</span>
-    <span>{{ p.responsavel_nome or '—' }}</span>
+    {{ avatar_responsavel(p, membros) }}
   </div>
   <div class="kanban-card-progresso">
     {{ barra(a.saude.progresso_pct) }}

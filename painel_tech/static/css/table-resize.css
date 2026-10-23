@@ -1,0 +1,87 @@
+/* Redimensionamento progressivo de tabelas: sem efeito no conteudo ou nos dados. */
+.tech-resizable-table > thead > tr > th {
+  position: sticky;
+}
+
+.tech-column-resizer {
+  position: absolute;
+  top: 6px;
+  right: -5px;
+  bottom: 6px;
+  z-index: 5;
+  width: 11px;
+  min-width: 11px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.tech-column-resizer::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 5px;
+  bottom: 0;
+  width: 2px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--border-color, #d8dee8) 78%, transparent);
+  transition: background-color 120ms ease, box-shadow 120ms ease;
+}
+
+.tech-column-resizer:hover::after,
+.tech-column-resizer:focus-visible::after,
+.tech-column-resizer.is-active::after {
+  background: var(--accent-red, #d61616);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-red, #d61616) 14%, transparent);
+}
+
+.tech-column-resizer:focus-visible {
+  outline: none;
+}
+
+body.tech-is-resizing-column,
+body.tech-is-resizing-column * {
+  cursor: col-resize !important;
+  user-select: none !important;
+}
+
+.tech-resizable-table.tech-columns-sized {
+  table-layout: fixed;
+}
+
+.tech-resizable-table.tech-columns-sized th,
+.tech-resizable-table.tech-columns-sized td {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 760px) {
+  .tech-column-resizer {
+    display: none;
+  }
+
+  .tabela-wrapper .tech-resizable-table.tech-columns-sized {
+    width: 100% !important;
+    min-width: 0 !important;
+    table-layout: auto;
+  }
+
+  /* As tabelas estilo board continuam horizontais no celular, como no layout original. */
+  .tech-board-table .tech-resizable-table.tech-columns-sized {
+    min-width: 1080px !important;
+    table-layout: fixed;
+  }
+}
+
+@media (pointer: coarse) {
+  .tech-column-resizer {
+    width: 16px;
+    right: -8px;
+  }
+
+  .tech-column-resizer::after {
+    right: 7px;
+  }
+}

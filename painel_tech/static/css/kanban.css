@@ -1,0 +1,15 @@
+.kanban-coluna-status-finalizado {
+  display: flex;
+}
+
+.kanban-coluna-status-finalizado .kanban-cabecalho {
+  background: color-mix(
+    in srgb,
+    var(--kanban-coluna-cor, #159766) 9%,
+    var(--card-bg)
+  );
+}
+
+.kanban-coluna-status-finalizado .kanban-contagem {
+  color: color-mix(in srgb, var(--kanban-coluna-cor, #159766) 78%, var(--text-main));
+}

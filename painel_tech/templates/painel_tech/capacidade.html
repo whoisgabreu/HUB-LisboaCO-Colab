@@ -1,25 +1,44 @@
 {% extends "painel_tech/base.html" %}
-{% from "painel_tech/_macros.html" import tag %}
-{% block title %}Capacidade — Painel Gerencial TECH{% endblock %}
+{% from "painel_tech/_macros.html" import tag, avatar_pessoa %}
+{% block title %}Capacidade — Painel TECH{% endblock %}
 {% block cabecalho %}Capacidade do time{% endblock %}
+{% block head_extra %}<link rel="stylesheet" href="{{ url_for('painel_tech.static', filename='css/capacidade.css') }}">{% endblock %}
 
 {% block conteudo %}
-<section class="secao">
-  <div class="capacidade-grid">
-    {% for cap in capacidade %}
-    <a class="card capacidade-card" href="{{ url_for('painel_tech.capacidade_membro', membro_id=cap.id) }}">
-      <div class="capacidade-topo">
-        <span class="capacidade-nome">{{ cap.nome }}</span>
-        {{ tag(cap.cor, cap.rotulo) }}
-      </div>
-      <div class="capacidade-numeros">{{ cap.ativos }} / {{ cap.limite }} ativos</div>
-      <div class="capacidade-barra">
-        {% set pct = (cap.ativos / cap.limite * 100) | round if cap.limite else 0 %}
-        <span class="capacidade-preenchimento cap-{{ cap.situacao }}" style="width: {{ [pct, 100] | min }}%"></span>
-      </div>
-      <span class="capacidade-ver">Ver projetos →</span>
-    </a>
-    {% endfor %}
-  </div>
+<section class="tech-capacity-overview" aria-label="Capacidade dos membros do time">
+  {% for cap in capacidade %}
+  {% set pct = (cap.ativos / cap.limite * 100) | round if cap.limite else 0 %}
+  {% set vagas = [cap.limite - cap.ativos, 0] | max %}
+  <a class="tech-capacity-card tech-capacity-{{ cap.situacao }}" href="{{ url_for('painel_tech.capacidade_membro', membro_id=cap.id) }}">
+    <header class="tech-capacity-person">
+      {{ avatar_pessoa(cap.nome, cap.email or '', 'tech-capacity-avatar') }}
+      <span class="tech-capacity-person-copy">
+        <strong>{{ cap.nome }}</strong>
+        <small>{{ cap.email or 'Membro TECH' }}</small>
+      </span>
+      {{ tag(cap.cor, cap.rotulo) }}
+    </header>
+
+    <div class="tech-capacity-score">
+      <strong>{{ cap.ativos }}</strong><span>/ {{ cap.limite }}</span>
+      <small>projetos ativos</small>
+    </div>
+    <div class="capacidade-barra" role="progressbar" aria-label="Uso da capacidade de {{ cap.nome }}" aria-valuenow="{{ [pct, 100] | min }}" aria-valuemin="0" aria-valuemax="100">
+      <span class="capacidade-preenchimento cap-{{ cap.situacao }}" style="width: {{ [pct, 100] | min }}%"></span>
+    </div>
+
+    <footer class="tech-capacity-footer">
+      <span>
+        {% if cap.situacao == 'acima' %}{{ cap.ativos - cap.limite }} acima do limite
+        {% elif vagas == 0 %}Sem vagas disponíveis
+        {% elif vagas == 1 %}1 vaga disponível
+        {% else %}{{ vagas }} vagas disponíveis{% endif %}
+      </span>
+      <span class="tech-capacity-open">Ver projetos <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></span>
+    </footer>
+  </a>
+  {% else %}
+  <div class="vazio">Nenhum membro cadastrado no time TECH.</div>
+  {% endfor %}
 </section>
 {% endblock %}

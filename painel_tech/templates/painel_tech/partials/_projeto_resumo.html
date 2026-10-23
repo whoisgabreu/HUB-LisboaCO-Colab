@@ -1,22 +1,75 @@
-{% from "painel_tech/_macros.html" import barra, alertas_lista, tag %}
+{% from "painel_tech/_macros.html" import barra, alertas_lista, avatar_responsavel, tag %}
 {% set a = analise %}
-<div class="detalhe-meta">
+
+<header class="project-card-heading">
+  <h3>Resumo do projeto</h3>
   {{ tag(a.intervencao.cor, a.intervencao.label) }}
-  <span>Status: {{ tag(status_meta(projeto.status).cor, status_meta(projeto.status).label) }}</span>
-  <span>Responsável: {{ projeto.responsavel_nome or '—' }}</span>
-  <span>Prioridade: {{ tag(a.prioridade.cor, a.prioridade.label) }} (índice {{ a.prioridade.indice }})</span>
+</header>
+
+<div class="project-profile">
+  <div class="project-profile-person">
+    {{ avatar_responsavel(projeto, membros, 'project-owner-avatar') }}
+    <div class="project-profile-copy">
+      <small>Responsável</small>
+      <strong>{{ projeto.responsavel_nome or 'Não atribuído' }}</strong>
+      {% if projeto.descricao %}<p class="project-description">{{ projeto.descricao }}</p>{% endif %}
+    </div>
+  </div>
 </div>
-{% if projeto.descricao %}<p class="detalhe-descricao">{{ projeto.descricao }}</p>{% endif %}
+
 {{ alertas_lista(a.alertas) }}
-<div class="detalhe-progresso">
-  <span>Progresso {{ a.saude.progresso_pct }}% ({{ a.saude.concluidas }}/{{ a.saude.total }} etapas)</span>
-  {{ barra(a.saude.progresso_pct) }}
+
+<div class="project-summary-management">
+  <div class="project-summary-details">
+    <div class="project-summary-detail">
+      <small>Prioridade</small>
+      <strong>{{ tag(a.prioridade.cor, a.prioridade.label) }} <em>índice {{ a.prioridade.indice }}</em></strong>
+    </div>
+    <div class="project-summary-detail">
+      <small>Prazo planejado</small>
+      <strong><i class="fa-regular fa-calendar" aria-hidden="true"></i> {{ projeto.data_prevista_fim|data_br if projeto.data_prevista_fim else 'Sem prazo definido' }}</strong>
+    </div>
+  </div>
+
+  <div class="project-status-area">
+    <div class="project-status-readonly" aria-label="Status do projeto">
+      <small>Status do projeto</small>
+      {{ tag(status_meta(projeto.status).cor, status_meta(projeto.status).label) }}
+    </div>
+
+    <form class="project-status-form" method="post"
+          action="{{ url_for('painel_tech.projeto_status', projeto_id=projeto.id) }}"
+          hx-post="{{ url_for('painel_tech.projeto_status', projeto_id=projeto.id) }}"
+          hx-target="#checklist" hx-swap="outerHTML" hx-indicator="#checklist">
+      <label for="project-status">Status do projeto</label>
+      <div class="project-status-controls">
+        <select id="project-status" name="status" aria-label="Status do projeto" data-tech-rich-select>
+          {% for chave, meta in STATUS.items() %}
+          <option value="{{ chave }}" data-color="{{ meta.cor }}" {{ 'selected' if projeto.status == chave else '' }}>{{ meta.label }}</option>
+          {% endfor %}
+        </select>
+        <button class="btn btn-secundario" type="submit" hx-disabled-elt="this" aria-label="Salvar status">Salvar</button>
+      </div>
+    </form>
+  </div>
 </div>
-<div class="detalhe-tempo">
+
+<div class="project-progress" aria-label="Progresso do projeto: {{ a.saude.progresso_pct }}%">
+  <div class="project-progress-head">
+    <span><strong>Progresso geral</strong> · {{ a.saude.concluidas }}/{{ a.saude.total }} etapas</span>
+    <strong>{{ a.saude.progresso_pct }}%</strong>
+  </div>
+  {{ barra(a.saude.progresso_pct, 'project-progress-bar') }}
+</div>
+
+<footer class="project-timer">
   <div class="tempo-info">
-    <span class="tempo-titulo">⏱️ Tempo do time</span>
-    <span class="tempo-valor" data-tempo-total="{{ tempo.total }}" data-tempo-inicios="{{ tempo.inicios }}">{{ tempo.total | tempo_br }}</span>
-    {% if tempo.ativo %}<span class="tempo-badge tempo-ativo">▶ rodando</span>{% endif %}
+    <i class="fa-regular fa-clock" aria-hidden="true"></i>
+    <span class="project-time-copy">
+      <small>Tempo do time</small>
+      <strong class="tempo-valor" data-tempo-total="{{ tempo.total }}" data-tempo-inicios="{{ tempo.inicios }}">{{ tempo.total | tempo_br }}</strong>
+    </span>
+    {% if tempo.ativo %}<span class="tempo-badge tempo-ativo"><span class="project-live-dot"></span>Em andamento</span>{% endif %}
   </div>
   <div class="tempo-acoes">
     {% if tempo.ativo %}
@@ -24,28 +77,15 @@
           action="{{ url_for('painel_tech.projeto_tempo_pause', projeto_id=projeto.id) }}"
           hx-post="{{ url_for('painel_tech.projeto_tempo_pause', projeto_id=projeto.id) }}"
           hx-target="#checklist" hx-swap="outerHTML" hx-indicator="#checklist">
-      <button class="btn btn-secundario" type="submit" hx-disabled-elt="this">⏸ Pausar</button>
+      <button class="btn btn-secundario" type="submit" hx-disabled-elt="this"><i class="fa-solid fa-pause" aria-hidden="true"></i> Pausar</button>
     </form>
     {% else %}
     <form class="inline" method="post"
           action="{{ url_for('painel_tech.projeto_tempo_play', projeto_id=projeto.id) }}"
           hx-post="{{ url_for('painel_tech.projeto_tempo_play', projeto_id=projeto.id) }}"
           hx-target="#checklist" hx-swap="outerHTML" hx-indicator="#checklist">
-      <button class="btn btn-primario" type="submit" hx-disabled-elt="this">▶ Iniciar</button>
+      <button class="btn btn-primario" type="submit" hx-disabled-elt="this"><i class="fa-solid fa-play" aria-hidden="true"></i> Iniciar</button>
     </form>
     {% endif %}
   </div>
-</div>
-<div class="detalhe-acoes">
-  <form class="inline" method="post"
-        action="{{ url_for('painel_tech.projeto_status', projeto_id=projeto.id) }}"
-        hx-post="{{ url_for('painel_tech.projeto_status', projeto_id=projeto.id) }}"
-        hx-target="#checklist" hx-swap="outerHTML" hx-indicator="#checklist">
-    <select name="status">
-      {% for chave, meta in STATUS.items() %}
-      <option value="{{ chave }}" {{ 'selected' if projeto.status == chave else '' }}>{{ meta.label }}</option>
-      {% endfor %}
-    </select>
-    <button class="btn btn-secundario" type="submit" hx-disabled-elt="this">Alterar status</button>
-  </form>
-</div>
+</footer>

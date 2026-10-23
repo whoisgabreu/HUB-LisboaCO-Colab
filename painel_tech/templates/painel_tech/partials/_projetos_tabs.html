@@ -1,4 +1,8 @@
-<div class="abas">
-  <a class="aba {{ 'ativa' if aba != 'kanban' else '' }}" href="{{ url_geral }}">Visão Geral</a>
-  <a class="aba {{ 'ativa' if aba == 'kanban' else '' }}" href="{{ url_kanban }}">Kanban</a>
+<div class="tabs-container tech-secondary-tabs" aria-label="Visualização dos projetos">
+  <a class="tab-btn {{ 'active' if aba != 'kanban' else '' }}" href="{{ url_geral }}">
+    <i class="fa-solid fa-table-list" aria-hidden="true"></i> Visão geral
+  </a>
+  <a class="tab-btn {{ 'active' if aba == 'kanban' else '' }}" href="{{ url_kanban }}">
+    <i class="fa-solid fa-table-columns" aria-hidden="true"></i> Kanban
+  </a>
 </div>
