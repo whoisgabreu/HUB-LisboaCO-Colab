@@ -9,8 +9,10 @@
     ];
 
     function toast(msg, erro) {
-        if (typeof window.toast !== "undefined" && toast[erro ? "error" : "success"]) {
-            toast[erro ? "error" : "success"](msg);
+        if (typeof window.showToast === "function") {
+            window.showToast(msg, erro ? "error" : "success");
+        } else {
+            alert(msg);
         }
     }
 
@@ -46,6 +48,12 @@
             if (t.grupo !== grupoAtual) {
                 grupoAtual = t.grupo;
                 html += `<tr class="grupo"><td colspan="2">${grupoAtual || ""}</td></tr>`;
+            }
+            if (t.admin_only) {
+                html += `<tr><td>${t.nome}</td><td class="nivel">
+                    <span class="adm-lock"><i class="fa-solid fa-lock"></i> Admin</span>
+                </td></tr>`;
+                return;
             }
             const nivel = mapa[t.codigo] || "nenhum";
             const opts = NIVEIS.map(([v, l]) => `<option value="${v}" ${v === nivel ? "selected" : ""}>${l}</option>`).join("");
@@ -111,7 +119,7 @@
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
         });
-        if (r.ok) toast("Acessos salvos.");
+        if (r.ok) toast("Acessos salvos. As alterações valem após novo login dos usuários afetados.");
         else toast("Erro ao salvar acessos.", true);
     }
 

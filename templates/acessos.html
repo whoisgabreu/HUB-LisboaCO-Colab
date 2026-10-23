@@ -27,6 +27,7 @@
         .matrix td.nivel { text-align: right; }
         .matrix .grupo td { background: rgba(255,255,255,.03); font-weight: 700; font-size: .74rem; text-transform: uppercase; color: var(--text-muted); }
         .info-banner { background: rgba(59,130,246,.08); border: 1px solid rgba(59,130,246,.25); border-radius: 10px; padding: 12px 14px; font-size: .84rem; color: var(--text-main); margin-top: 10px; }
+        .adm-lock { display: inline-flex; align-items: center; gap: 6px; color: var(--text-muted); font-size: .78rem; font-weight: 600; }
     </style>
     {% include "components/icon_title.html" %}
 </head>
@@ -44,6 +45,7 @@
                     <p>Defina os acessos padrão por <strong>cargo</strong> e <strong>posição</strong>. O acesso individual do usuário (em Gerenciar Usuários) sobrescreve esses padrões.</p>
                     <div class="info-banner">
                         Níveis: <strong>Ver</strong> (abre a tela) e <strong>Editar</strong> (pode salvar). O acesso definido no usuário tem prioridade sobre cargo/posição. A regra de negócio (capacidades) continua em <a href="/capacidades" style="color:inherit;text-decoration:underline;">Matriz de Capacidades</a>.
+                        <br><strong>Importante:</strong> as alterações passam a valer após o próximo login dos usuários afetados. Telas marcadas como <strong>Admin</strong> são exclusivas de administradores.
                     </div>
                 </section>
 

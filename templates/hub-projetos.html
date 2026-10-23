@@ -16,7 +16,8 @@
         window.APP_CONFIG = {
             userEmail: "{{ session.email }}",
             userToken: "{{ session.token }}",
-            nivelAcesso: "{{ session.nivel_acesso }}"
+            nivelAcesso: "{{ session.nivel_acesso }}",
+            acessosTelas: {{ session.get('acessos_telas', {}) | tojson }}
         };
     </script>
     {% include "components/icon_title.html" %}
@@ -654,15 +655,14 @@
 
                             <!-- ✅ Agora o mesmo botão vira Editar/Cancelar -->
 
-                            {% if session.nivel_acesso != "Usuário" %}
-                            <button type="button" class="btn-edit" id="editBtn" onclick="toggleEditMode()">
+                            <button type="button" class="btn-edit" id="editBtn" onclick="toggleEditMode()"
+                                style="display: none;">
                                 <i class="fa-solid fa-pen-to-square"></i> Editar
                             </button>
 
                             <button type="submit" class="btn-primary" id="saveBtn" style="display: none;">
                                 <i class="fa-solid fa-floppy-disk"></i> Salvar
                             </button>
-                            {% endif %}
 
                         </div>
 

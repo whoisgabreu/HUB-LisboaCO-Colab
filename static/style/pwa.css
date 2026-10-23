@@ -172,12 +172,7 @@
     body,
     .app-shell { min-height: 100dvh; }
     .main-content { min-height: calc(100dvh - var(--header-height)); }
-    .sidebar { height: calc(100dvh - var(--header-height)); }
     .login-layout { min-height: 100dvh; }
-
-    @media (max-width: 768px) {
-        .sidebar { height: auto; }
-    }
 }
 
 @media (max-width: 480px) {
