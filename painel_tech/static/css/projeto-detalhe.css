@@ -1792,10 +1792,19 @@ body.somente-leitura .tech-project-detail-page .project-status-readonly {
   line-height: 1.45;
 }
 
-.tech-project-detail-page .project-plan-card,
 .tech-project-detail-page .project-comments-card {
   padding: 1.5rem;
   gap: 0;
+}
+
+.tech-project-detail-page .project-plan-card {
+  padding: 0;
+  gap: 0;
+  overflow: visible;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .tech-project-detail-page #checklist {
@@ -1810,15 +1819,12 @@ body.somente-leitura .tech-project-detail-page .project-status-readonly {
 }
 
 .tech-project-detail-page .project-plan-card .project-checklist-toolbar {
-  margin: 0;
+  margin: 0 0 0.75rem;
   padding: 0;
 }
 
 .tech-project-detail-page .project-checklist-actions {
-  position: absolute;
-  z-index: 4;
-  top: 0;
-  right: 0;
+  position: static;
   display: flex;
   flex: none;
   flex-wrap: wrap;
@@ -1850,22 +1856,22 @@ body.somente-leitura .tech-project-detail-page .project-status-readonly {
 .tech-project-detail-page .project-plan-card .project-task-list {
   display: flex;
   flex-direction: column;
-  gap: 0;
+  gap: 1rem;
 }
 
 .tech-project-detail-page .project-plan-card .project-task-group {
   position: relative;
   min-width: 0;
   overflow: visible;
-  background: transparent;
-  border: 0;
-  border-radius: 0;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
 }
 
 .tech-project-detail-page .project-plan-card .project-task-group + .project-task-group {
-  margin-top: 1.25rem;
-  padding-top: 1.25rem;
-  border-top: 1px solid var(--border-color);
+  margin-top: 0;
+  padding-top: 0;
 }
 
 .tech-project-detail-page .project-plan-card .project-task-group > .project-task.project-task-group-head {
@@ -1880,11 +1886,7 @@ body.somente-leitura .tech-project-detail-page .project-status-readonly {
 }
 
 .tech-project-detail-page .project-plan-card .project-task-group-head .project-task-row {
-  padding: 0 0 0.75rem;
-}
-
-.tech-project-detail-page .project-plan-card .project-task-group:first-child > .project-task-group-head .project-task-row {
-  grid-template-columns: 38px minmax(0, 1fr) 42px 170px;
+  padding: 1rem 1rem 0.75rem;
 }
 
 .tech-project-detail-page .project-plan-card .project-task-group-head .etapa-nome {
@@ -1893,9 +1895,9 @@ body.somente-leitura .tech-project-detail-page .project-status-readonly {
 }
 
 .tech-project-detail-page .project-plan-card .project-task-group-head .project-task-comments {
-  margin-right: 0;
-  margin-left: calc(38px + 0.75rem);
-  padding: 0 0 0.75rem;
+  margin-right: 1rem;
+  margin-left: calc(38px + 1.75rem);
+  padding: 0 0 0.85rem;
 }
 
 .tech-project-detail-page .project-plan-card .project-subtask-list {
@@ -1931,7 +1933,7 @@ body.somente-leitura .tech-project-detail-page .project-status-readonly {
   min-height: 0;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.85rem 0 0.85rem calc(38px + 0.75rem);
+  padding: 0.85rem 1rem 0.85rem calc(38px + 1.75rem);
   color: var(--text-muted);
   font-size: 0.72rem;
 }
@@ -1944,7 +1946,7 @@ body.somente-leitura .tech-project-detail-page .project-status-readonly {
   display: flex;
   min-width: 0;
   align-items: center;
-  padding: 0.7rem 0 0 calc(38px + 0.75rem);
+  padding: 0.75rem 1rem 1rem calc(38px + 1.75rem);
   border-top: 0;
   border-radius: 0;
 }
@@ -1956,6 +1958,12 @@ body.somente-leitura .tech-project-detail-page .project-status-readonly {
 .tech-project-detail-page .project-plan-card .project-task:hover,
 .tech-project-detail-page .project-plan-card .project-task:focus-within {
   background: color-mix(in srgb, var(--accent-red) 3%, transparent);
+}
+
+.tech-project-detail-page .project-plan-card .project-empty-state {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
 }
 
 .tech-project-detail-page .project-plan-card .project-task-row {
@@ -2380,6 +2388,10 @@ body.somente-leitura .tech-project-detail-page .project-status-readonly {
   .tech-project-detail-page .project-plan-card,
   .tech-project-detail-page .project-comments-card {
     padding: 1.2rem;
+  }
+
+  .tech-project-detail-page .project-plan-card.project-hub-card {
+    padding: 0;
   }
 
   .tech-project-detail-page .project-owner-avatar {
