@@ -1,5 +1,6 @@
 {% set acessos = session.get('acessos_telas', {}) or {} %}
 {% set pode_projetos = acessos.get('projetos', 'ver') in ('ver', 'editar') %}
+{% set pode_desabafo = acessos.get('desabafo', 'ver') in ('ver', 'editar') %}
 {% set path = request.path %}
 <nav class="bottom-nav" aria-label="Navegação principal">
     <a href="/feed"
@@ -7,11 +8,13 @@
         {% if path == '/feed' or path.startswith('/feed/') %}aria-current="page"{% endif %}>
         <i class="fa-solid fa-newspaper"></i><span>Feed</span>
     </a>
+    {% if pode_desabafo %}
     <a href="/desabafo"
         class="bottom-nav-item {% if path == '/desabafo' or path.startswith('/desabafo/') %}ativo{% endif %}"
         {% if path == '/desabafo' or path.startswith('/desabafo/') %}aria-current="page"{% endif %}>
         <i class="fa-solid fa-user-secret"></i><span>Desabafo</span>
     </a>
+    {% endif %}
     {% if pode_projetos %}
     <a href="/hub-projetos"
         class="bottom-nav-item {% if path == '/hub-projetos' or path.startswith('/hub-projetos/') %}ativo{% endif %}"

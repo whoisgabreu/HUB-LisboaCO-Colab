@@ -395,6 +395,11 @@ function renderTelasMatriz(overrides) {
             grupoAtual = t.grupo;
             html += `<div class="telas-grupo">${grupoAtual || ''}</div>`;
         }
+        if (t.admin_only) {
+            html += `<div class="telas-linha"><span>${t.nome}</span>
+                <span class="telas-lock"><i class="fa-solid fa-lock"></i> Admin</span></div>`;
+            return;
+        }
         const v = ov[t.codigo] || '';
         const sel = (val, label) => `<option value="${val}" ${v === val ? 'selected' : ''}>${label}</option>`;
         html += `<div class="telas-linha"><span>${t.nome}</span>

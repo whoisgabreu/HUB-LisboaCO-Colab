@@ -1,52 +1,79 @@
 <nav class="sidebar">
 
     <div class="sidebar-nav">
+        {% set caps = session.get('capacidades', []) or [] %}
+        {% set is_admin = (session.nivel_acesso == 'Admin') %}
+        {% set is_gestao_ampla = ('gestao_ampla' in caps) or is_admin %}
+        {% set is_gestao_squad = ('gestao_squad' in caps) %}
+        {% set acessos = session.get('acessos_telas', {}) or {} %}
+        {% set pode_desabafo = acessos.get('desabafo', 'ver') != 'nenhum' %}
+        {% set pode_metricas = acessos.get('metricas', 'ver') != 'nenhum' %}
+        {% set pode_ranking = acessos.get('ranking', 'ver') != 'nenhum' %}
+        {% set pode_projetos = acessos.get('projetos', 'ver') != 'nenhum' %}
+        {% set pode_kanban = acessos.get('kanban', 'ver') != 'nenhum' %}
+        {% set pode_tech = acessos.get('tech', 'ver') != 'nenhum' or ('tech' in caps) or is_gestao_ampla %}
+        {% set pode_grupos = (acessos.get('grupos') if 'grupos' in acessos else ('ver' if (is_gestao_ampla or is_gestao_squad) else 'nenhum')) != 'nenhum' %}
+        {% set pode_nomenclaturas = acessos.get('nomenclaturas', 'ver') != 'nenhum' %}
+        {% set pode_prompts = acessos.get('prompts', 'ver') != 'nenhum' %}
+        {% set pode_mrr = (acessos.get('mrr_historico') if 'mrr_historico' in acessos else ('editar' if is_gestao_ampla else 'nenhum')) != 'nenhum' %}
+
         <a href="/feed" class="nav-item">
             <i class="fas fa-newspaper"></i>
             <span>Feed</span>
         </a>
+        {% if pode_desabafo %}
         <a href="/desabafo" class="nav-item">
             <i class="fas fa-user-secret"></i>
             <span>Desabafo</span>
         </a>
+        {% endif %}
 
         <!-- Grupo Dashboard -->
+        {% if pode_metricas or pode_ranking or pode_projetos or pode_kanban or pode_tech %}
         <div class="nav-group">
             <div class="nav-group-header">
                 <span>Dashboard</span>
                 <i class="fas fa-chevron-right toggle-icon"></i>
             </div>
             <div class="nav-group-items">
+                {% if pode_metricas %}
                 <a href="/hub-metricas" class="nav-item">
                     <i class="fas fa-chart-line"></i>
                     <span>Métricas &amp; Evolução</span>
                 </a>
+                {% endif %}
+                {% if pode_ranking %}
                 <a href="/painel-ranking" class="nav-item">
                     <i class="fas fa-trophy"></i>
                     <span>Painel de Ranking</span>
                 </a>
+                {% endif %}
+                {% if pode_projetos %}
                 <a href="/hub-projetos" class="nav-item">
                     <i class="fas fa-project-diagram"></i>
                     <span>Hub de Projetos</span>
                 </a>
+                {% endif %}
+                {% if pode_kanban %}
                 <a href="/kanban" class="nav-item">
                     <i class="fas fa-columns"></i>
                     <span>Kanban Operacional</span>
                 </a>
+                {% endif %}
+                {% if pode_tech %}
                 <a href="/tech/" class="nav-item">
                     <i class="fas fa-microchip"></i>
                     <span>Painel TECH</span>
                 </a>
+                {% endif %}
             </div>
         </div>
+        {% endif %}
 
         <!-- Grupo Operação -->
-        {% set caps = session.get('capacidades', []) or [] %}
-        {% set is_gestao_ampla = ('gestao_ampla' in caps) or (session.nivel_acesso == 'Admin') %}
-        {% set is_gestao_squad = ('gestao_squad' in caps) %}
         {% set can_see_operacao = is_gestao_ampla or is_gestao_squad or ('operacao_account' in caps) or ('operacao_gt' in caps) %}
         {% set can_see_criativa = is_gestao_ampla or is_gestao_squad or ('criativa' in caps) or ('operacao_account' in caps) or ('operacao_gt' in caps) %}
-        
+
         {# Grupo Entregas oculto (sem uso); reativar removendo o comentário:
         {% if can_see_operacao or can_see_criativa %}
         <div class="nav-group">
@@ -74,7 +101,7 @@
 #}
 
         <!-- Grupo Gestão & CS -->
-        {% if is_gestao_ampla or is_gestao_squad %}
+        {% if pode_grupos %}
         <div class="nav-group">
             <div class="nav-group-header">
                 <span>Gestão & CS</span>
@@ -90,32 +117,38 @@
         {% endif %}
 
         <!-- Grupo Ferramentas -->
+        {% if pode_nomenclaturas or pode_prompts %}
         <div class="nav-group">
             <div class="nav-group-header">
                 <span>Ferramentas</span>
                 <i class="fas fa-chevron-right toggle-icon"></i>
             </div>
             <div class="nav-group-items">
+                {% if pode_nomenclaturas %}
                 <a href="/padrao-nomenclaturas" class="nav-item">
                     <i class="fas fa-tag"></i>
                     <span>Padrão Nomenclaturas</span>
                 </a>
+                {% endif %}
+                {% if pode_prompts %}
                 <a href="/prompts-gt-ia" class="nav-item">
                     <i class="fas fa-robot"></i>
                     <span>Prompts GT IA</span>
                 </a>
+                {% endif %}
             </div>
         </div>
+        {% endif %}
 
         <!-- Grupo Administração / Gestão -->
-        {% if is_gestao_ampla %}
+        {% if is_admin or pode_mrr %}
         <div class="nav-group">
             <div class="nav-group-header">
                 <span>Administração</span>
                 <i class="fas fa-chevron-right toggle-icon"></i>
             </div>
             <div class="nav-group-items">
-                {% if session.nivel_acesso == "Admin" %}
+                {% if is_admin %}
                 <a href="/gerenciar-usuarios" class="nav-item">
                     <i class="fas fa-users-cog"></i>
                     <span>Gerenciar Usuários</span>
@@ -133,10 +166,12 @@
                     <span>Configurações do Feed</span>
                 </a>
                 {% endif %}
+                {% if pode_mrr %}
                 <a href="/admin/mrr-historico" class="nav-item">
                     <i class="fas fa-clock-rotate-left"></i>
                     <span>Histórico de MRR</span>
                 </a>
+                {% endif %}
             </div>
         </div>
         {% endif %}

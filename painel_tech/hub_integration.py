@@ -20,6 +20,12 @@ def _pode_editar() -> bool:
     )
 
 
+def _pode_ver() -> bool:
+    import permissions
+
+    return _pode_editar() or permissions.pode_tela("tech", "ver")
+
+
 def register(app):
     """Registra o painel no app do HUB. Idempotente."""
     if "painel_tech" in app.blueprints:
@@ -32,6 +38,8 @@ def register(app):
     def _guard():
         if "nome" not in session:
             return redirect(url_for("login"))
+        if request.method not in ESCRITA and not _pode_ver():
+            return redirect(url_for("feed"))
         if request.method in ESCRITA:
             if not _pode_editar():
                 abort(403)

@@ -13,6 +13,13 @@ from sqlalchemy import text
 
 SCHEMA = "plataforma_geral"
 
+# Telas administrativas/de segurança: permanecem Admin-only (não configuráveis
+# para cargos/posições/usuários comuns).
+TELAS_ADMIN_ONLY = {"usuarios", "squads", "acessos", "feed_config"}
+
+# Telas sempre liberadas ou sem rota: não entram na matriz de acessos.
+TELAS_FORA_DA_MATRIZ = {"feed", "perfil", "minha_agenda"}
+
 # Todos os códigos de capacidade conhecidos pela aplicação.
 CAP_ADMIN = "admin"
 CAP_GESTAO_AMPLA = "gestao_ampla"
@@ -447,7 +454,14 @@ def listar_telas(db) -> List[Dict[str, Any]]:
         )
     ).all()
     return [
-        {"codigo": r[0], "nome": r[1], "grupo": r[2], "ordem": r[3], "acesso_padrao": r[4]}
+        {
+            "codigo": r[0],
+            "nome": r[1],
+            "grupo": r[2],
+            "ordem": r[3],
+            "acesso_padrao": r[4],
+            "admin_only": r[0] in TELAS_ADMIN_ONLY,
+        }
         for r in rows
     ]
 
