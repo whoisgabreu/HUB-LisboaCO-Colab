@@ -1,0 +1,1011 @@
+================================================================================
+                  DOCUMENTAÇÃO COMPLETA — HUB LISBOA&CO / COLAB
+================================================================================
+Plataforma interna de gestão de operação, remuneração variável, entregas,
+Kanban de projetos e automações da squad/agência (V4 Company — Lisboa&CO).
+
+Gerado em: 2026-06-11
+Branch documentada: correcao_entregas
+Aplicação principal: app.py (Flask)  |  ~5.660 linhas
+Linguagem: Python 3 + Flask + SQLAlchemy + PostgreSQL
+
+
+================================================================================
+ÍNDICE
+================================================================================
+ 1.  Visão geral do produto
+ 2.  Stack tecnológica e dependências
+ 3.  Estrutura de pastas
+ 4.  Configuração e variáveis de ambiente (.env)
+ 5.  Como rodar / deploy
+ 6.  Banco de dados — schema "plataforma_geral" (todas as tabelas)
+ 7.  Autenticação e controle de acesso
+ 8.  Conceitos centrais de negócio (MRR, Entregas, Flags, Remuneração)
+ 9.  Módulo Remuneração (services/remuneracao.py)
+10.  Módulo Participação / Proporcional / Cientista
+11.  Módulo Operação (snapshot, check-in, otimização, plano de mídia, tarefas)
+12.  Módulo Criativa (entregas de Designers/WebDesigners)
+13.  Motor de entregas (delivery_engine / delivery_service)
+14.  Faturamento variável
+15.  Kanban de projetos
+16.  Automações (motor de webhooks por gatilho)
+17.  Biometria facial (login por reconhecimento facial)
+18.  Cotação de moeda (USD→BRL)
+19.  Jobs agendados (APScheduler)
+20.  Referência completa da API REST (rotas)
+21.  Telas / Templates
+22.  Scripts, migrations e utilitários
+23.  Integrações externas (n8n, Pipefy, AwesomeAPI, Google OAuth)
+24.  Observações, regras especiais e dívidas técnicas
+
+
+================================================================================
+1. VISÃO GERAL DO PRODUTO
+================================================================================
+O HUB é uma plataforma web interna que centraliza:
+
+ • Gestão de PROJETOS (clientes) e seus vínculos com INVESTIDORES (colaboradores).
+ • Cálculo de REMUNERAÇÃO VARIÁVEL mensal baseada em performance:
+     - MRR trabalhado (entregue) vs. MRR total da carteira
+     - Churn
+     - Flags de performance (GREEN / YELLOW) e streaks
+ • Controle de ENTREGAS mensais por cargo:
+     - Operação (Account / Gestor de Tráfego / Cientista)
+     - Criativa (Designer / WebDesigner)
+ • Painel de OPERAÇÃO por cliente: plano de mídia, otimizações, check-ins
+   semanais, relatórios, KPIs, forecasting, links úteis e tarefas.
+ • KANBAN configurável de fluxo de projetos (fases → status do projeto).
+ • AUTOMAÇÕES disparadas por eventos do Kanban ou por datas do projeto
+   (ação = webhook, ex.: Google Chat).
+ • RANKING de performance dos colaboradores.
+ • Login por e-mail/senha, Google OAuth e BIOMETRIA FACIAL.
+
+Público: colaboradores da agência, organizados por SQUAD, com CARGOS (funcao)
+e POSIÇÕES hierárquicas (Sócio, Gerência, Coordenador, etc.).
+
+
+================================================================================
+2. STACK TECNOLÓGICA E DEPENDÊNCIAS
+================================================================================
+Backend:
+ • Python 3 / Flask 3.1.x          — framework web
+ • SQLAlchemy 2.0.x                — ORM
+ • psycopg2-binary                 — driver PostgreSQL
+ • Flask-APScheduler / APScheduler — jobs agendados (cron)
+ • Werkzeug                        — hash de senha (generate/check_password_hash)
+ • requests-oauthlib               — Google OAuth
+ • python-dotenv                   — carregamento do .env
+ • gunicorn                        — WSGI server de produção
+ • ProxyFix (Werkzeug middleware)  — atrás de proxy reverso (X-Forwarded-*)
+
+Biometria facial (visão computacional):
+ • insightface (buffalo_l)         — detecção e embedding facial (512 dims)
+ • onnx / onnxruntime              — inferência do modelo
+ • opencv-python-headless          — decode/processamento de frames
+ • numpy, scikit-learn             — cosine similarity / média de embeddings
+ • pillow                          — manipulação de imagem
+
+Frontend:
+ • Jinja2 templates (server-side rendering) em templates/
+ • CSS/JS estáticos em static/
+ • Fontawesome (ícones, ex.: "fa-link")
+
+Banco de dados: PostgreSQL, schema padrão "plataforma_geral".
+
+NOTA: requirements.txt também lista PyAutoGUI/Pillow/pyscreeze etc. (deps
+transitivas de automação de tela), mas o núcleo runtime é o descrito acima.
+
+
+================================================================================
+3. ESTRUTURA DE PASTAS
+================================================================================
+HUB-LisboaCO-Colab/
+├── app.py                    # Aplicação Flask (rotas, helpers, views, API)
+├── database.py               # Engine SQLAlchemy + Session + Base
+├── models.py                 # Modelos ORM (tabelas plataforma_geral.*)
+├── requirements.txt          # Dependências Python
+│
+├── services/                 # Lógica de negócio (camada de serviço)
+│   ├── remuneracao.py             # Motor de métricas mensais / flags / MRR
+│   ├── projeto_participacao_service.py # Proporcional por dias + cientista 1.5x
+│   ├── operacao_service.py        # Projetos da operação + snapshot "operacao"
+│   ├── delivery_engine.py         # Gatilhos de entregas → monthly_deliveries
+│   ├── delivery_service.py        # Camada auxiliar de entregas
+│   ├── faturamento_variavel.py    # Faturamento variável (% sobre faturamento)
+│   ├── kanban_service.py          # Kanban (config, cards, transições de fase)
+│   ├── automacao_service.py       # Automações (gatilhos + webhooks + logs)
+│   └── currency.py                # Cotação USD→BRL (AwesomeAPI, cache 1h)
+│
+├── face_auth/                # Reconhecimento facial
+│   ├── __init__.py
+│   └── face_service.py            # decode/extract/match de embeddings + liveness
+│
+├── templates/                # Telas (Jinja2)
+│   ├── index.html, login.html, operacao.html, criativa.html, kanban.html,
+│   │   automacoes.html, vendas.html, cockpit.html, gerenciar-usuarios.html,
+│   │   hub-projetos.html, hub-remuneracao.html, hub-cs-cx.html,
+│   │   cs_dashboard.html, cs_client_detail.html, painel-atribuicao.html,
+│   │   painel-ranking.html, form_card.html
+│   └── components/                # header, sidebar, loader, modal, up-button...
+│
+├── static/                   # CSS, JS, imagens, fotos de perfil
+│   ├── css/kanban.css
+│   └── images/ (V4.png, profile_pictures/<email>.png)
+│
+├── estrutura/                # Documentação de schema + diagramas
+│   ├── queries/*.sql              # DDL/queries das tabelas (auth, projetos,
+│   │                              # investidores, squads, métricas, operação...)
+│   ├── Tabela_metricas_mensais.md # Fórmulas de remuneração variável
+│   └── *.excalidraw / *.png/.svg  # Diagramas da estrutura
+│
+├── mockups/                  # Mockups de entregas-operação (HTML/JSON)
+├── Kanban MVP/               # Protótipo standalone (FastAPI + JSON store) — legado
+├── N8N Fluxo/                # Exports de fluxos n8n (Autenticação, CRUD, Remuneração)
+├── chip_input/               # Componente HTML auxiliar
+├── scripts/                  # Migrations "oficiais" (face_auth, kanban, automações)
+├── scratch/                  # Scripts de investigação/diagnóstico/testes ad-hoc
+│
+├── logica_entregas.md        # Doc da lógica de entregas/MRR (referência)
+├── plano_de_atualizacao.md   # Notas de planejamento
+├── github-tutorial.md / ollama.md
+└── migrate_*.py / check_*.py / diagnose_*.py  # utilitários soltos na raiz
+
+Observação: a pasta "scratch/" contém ~100 scripts de diagnóstico de um único
+problema/colaborador (ex.: check_otavio, investigar_wemerson). NÃO fazem parte
+do runtime — são ferramentas de investigação pontual.
+
+
+================================================================================
+4. CONFIGURAÇÃO E VARIÁVEIS DE AMBIENTE (.env)
+================================================================================
+O arquivo .env (carregado por python-dotenv) deve conter:
+
+  # Banco de dados PostgreSQL
+  DB_HOST=...
+  DB_PORT=5432
+  DB_DATABASE=...
+  DB_USERNAME=...
+  DB_PASSWORD=...
+
+  # Flask
+  SECRET_KEY=...            # chave de sessão (fallback: os.urandom se ausente)
+
+  # Google OAuth (login com Google)
+  GOOGLE_CLIENT_ID=...
+  GOOGLE_CLIENT_SECRET=...
+  REDIRECT_URI=...          # ex.: https://seu-dominio/login/callback
+
+  # Biometria facial (opcional)
+  FACE_MATCH_THRESHOLD=0.75 # similaridade mínima para aceitar o rosto
+
+A connection string é montada em database.py:
+  postgresql+psycopg2://{DB_USERNAME}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_DATABASE}
+
+Pool de conexões: pool_pre_ping=True, pool_recycle=300s (recicla a cada 5 min).
+Sessão Flask: dura 7 dias (permanent_session_lifetime).
+
+
+================================================================================
+5. COMO RODAR / DEPLOY
+================================================================================
+Desenvolvimento:
+  1. python -m venv venv  &&  ativar  &&  pip install -r requirements.txt
+  2. Criar .env (ver seção 4)
+  3. Garantir que o schema "plataforma_geral" e as tabelas existem no Postgres
+     (DDL em estrutura/queries/*.sql).
+  4. python app.py        # sobe o Flask em modo dev
+
+Produção:
+  • gunicorn app:app  (atrás de proxy reverso; ProxyFix já está configurado)
+  • O APScheduler inicia junto com o app (scheduler.start()).
+
+Rota de atalho dev: GET /dev-login  → loga como usuário fixo de teste
+(ronaldo.teixeira@v4company.com) e cai no Kanban. Remover/desabilitar em prod.
+
+
+================================================================================
+6. BANCO DE DADOS — SCHEMA "plataforma_geral"
+================================================================================
+Todas as tabelas vivem no schema "plataforma_geral". Modelos em models.py.
+
+------------------------------------------------------------------------------
+6.1 investidores            (colaboradores / "investidores")
+------------------------------------------------------------------------------
+  id (PK), nome, email, funcao, senioridade, squad, senha (hash),
+  nivel_acesso, ativo (bool), pode_editar_kanban (bool), cpf, telefone,
+  nivel (Text), profile_picture, posicao
+  • "funcao"  = cargo operacional (Account, Gestor de Tráfego, Designer,
+                WebDesigner, Cientista, Coordenador de CX, Desenvolvedor...)
+  • "posicao" = nível hierárquico (Sócio, Gerência, Coordenador...) — usado
+                no controle de acesso de alto nível.
+  • "nivel"   = level usado na chave de remuneracao_cargos.
+
+------------------------------------------------------------------------------
+6.2 auth                    (token de sessão por e-mail)
+------------------------------------------------------------------------------
+  id, email (PK), token
+  • Reproduz o comportamento do fluxo n8n: upsert de token no login.
+
+------------------------------------------------------------------------------
+6.3 projetos                (tabela UNIFICADA de clientes)
+------------------------------------------------------------------------------
+  pipefy_id (PK), id, nome, documento, fee (DECIMAL), moeda (BRL/USD),
+  squad_atribuida, produto_contratado, data_de_inicio, cohort,
+  meta_account_id, google_account_id, fase_do_pipefy, url_webhook_gchat,
+  step, informacoes_gerais, orcamento_midia_meta, orcamento_midia_google,
+  data_fim, extra (JSONB), notas (JSONB), ekyte_workspace, status,
+  kanban_dados (JSONB)
+  • "status"        = Ativo / Inativo / Onetime (define MRR recorrente).
+  • "extra" JSONB   = guarda flags como contrato_variavel e
+                      investidores_metadata (datas de cientista por e-mail).
+  • "kanban_dados"  = posição no board (_board_slug, _fase_atual) + campos
+                      dinâmicos da fase atual.
+  • "url_webhook_gchat" = webhook do Google Chat do cliente.
+
+------------------------------------------------------------------------------
+6.4 investidores_projetos   (VÍNCULO investidor ↔ projeto — fonte de verdade)
+------------------------------------------------------------------------------
+  id, email_investidor (PK), pipefy_id_projeto, active (bool),
+  inactivated_at, created_at, cientista (bool), nome_projeto,
+  fee_projeto (DECIMAL), fee_contribuicao (DECIMAL)
+  • É a FONTE DE VERDADE de quem trabalha em qual cliente.
+  • "cientista" = recebe multiplicador 1.5x sobre o fee.
+  • "fee_contribuicao" = parte do fee atribuída ao colaborador
+                         (atualizada pelos motores de entrega).
+  • inactivated_at = data do churn do vínculo (proporcionalidade de churn).
+
+------------------------------------------------------------------------------
+6.5 remuneracao_cargos      (tabela de PARÂMETROS por cargo/senioridade/level)
+------------------------------------------------------------------------------
+  Chave composta: fixo_cargo + fixo_senioridade + fixo_level
+  Campos fixos:  fixo_ticket_medio, fixo_mrr_esperado, fixo_mrr_teto,
+                 fixo_remuneracao_fixa, fixo_churn_maximo_percentual
+  Campos calc.:  calc_mrr_minima, calc_remuneracao_minima,
+                 calc_remuneracao_maxima, calc_csp_esperado,
+                 calc_churn_maximo_valor
+  • Define os limites (mínimo/esperado/teto) que determinam a Flag e a faixa
+    de remuneração de cada cargo.
+
+------------------------------------------------------------------------------
+6.6 investidores_metricas_mensais_novo  (MÉTRICA MENSAL por colaborador)
+------------------------------------------------------------------------------
+  Chave composta: email_investidor + mes + ano
+  ativo, detalhes (JSONB), cargo, senioridade, level, flag, motivo_flag,
+  green_streak, yellow_streak,
+  fixo_mrr_atual, fixo_mrr_entrega, fixo_churn_atual, fixo_remuneracao_fixa,
+  fixo_csp_esperado, fixo_churn_maximo_percentual, fixo_mrr_minimo,
+  fixo_mrr_esperado, fixo_mrr_teto, fixo_churn_maximo_valor,
+  fixo_remuneracao_minima, fixo_remuneracao_maxima, fixo_mrr_projeto_total,
+  historico_projetos (JSONB), entregas_criativos (JSONB),
+  entregas_operacao (JSONB),
+  -- Colunas GENERATED (calculadas pelo PostgreSQL, FetchedValue):
+  calc_churn_real_percentual, calc_delta_churn_percentual,
+  calc_delta_churn_valor, calc_variavel_churn, calc_delta_csp,
+  calc_variavel_csp, calc_variavel_total, calc_remuneracao_total
+
+  • É o "extrato" mensal de cada colaborador. As colunas calc_* são GENERATED
+    ALWAYS AS STORED no banco — Python só grava as colunas fixo_*; o banco
+    deriva as variáveis. (Por isso db.flush() individual em vez de bulk.)
+  • Fórmulas (ver estrutura/Tabela_metricas_mensais.md):
+      Churn Real %     = Churn Atual / MRR Atual
+      Delta Churn %    = Churn Máximo % − Churn Real %
+      Delta Churn $    = Delta Churn % × MRR Atual
+      Variável Churn   = Delta Churn $ × CSP Esperado
+      Delta CSP        = CSP Esperado − (Remuneração Fixa / MRR Atual)
+      Variável CSP     = Delta CSP × MRR Atual
+      Variável Total   = Variável CSP + Variável Churn
+      Remuneração Total= Remuneração Fixa + Variável Total
+  • IMPORTANTE: fixo_mrr_atual é o DENOMINADOR das colunas GENERATED. Gravar
+    um valor proporcional baixo com churn alto pode estourar NUMERIC(8,7).
+    Por isso a sincronização proporcional grava só fixo_mrr_projeto_total.
+
+------------------------------------------------------------------------------
+6.7 operacao  (SNAPSHOT consolidado de entregas por projeto+mês)
+------------------------------------------------------------------------------
+  Acessada via SQL PURO (não tem model ORM) — OperacaoSnapshotService.
+  Colunas: id, id_projeto (text), mes, ano, nome, entregas (JSONB)
+  Estrutura do JSONB "entregas" (_EMPTY):
+    plano_midia      : {budget_total, planos:[]}
+    otimizacoes      : []
+    forecasting      : {link}
+    kpis             : {link}
+    checkin_semanal  : []
+    relatorio_mensal : {link}
+    relatorio_account: {link}
+    relatorio_gt     : {link}
+    metas            : {}
+    tarefas_semanais : []
+    faturamento_variavel : []   (adicionado pelo módulo de faturamento variável)
+  • É a tabela que a tela /operacao alimenta. O OperacaoSnapshotService faz
+    upsert por seção e sincroniza para entregas_operacao da MetricaMensal.
+
+------------------------------------------------------------------------------
+6.8 operacao_tarefas  (Planner — tarefas semanais e de quarter)
+------------------------------------------------------------------------------
+  id, projeto_pipefy_id, tipo ('semanal'|'quarter'), descricao,
+  concluida (bool), referencia ('2026-W08'|'2026-Q1'), ano, created_at
+
+------------------------------------------------------------------------------
+6.9 operacao_entregas_mensais  (registro de 4 milestones por projeto/mês)
+------------------------------------------------------------------------------
+  id, investidor_email, projeto_pipefy_id, mes, ano,
+  entrega_1..entrega_4 (bool), percentual_calculado (0.00–1.00),
+  valor_fee_original, valor_contribuicao_mrr, created_at, updated_at
+  UNIQUE(investidor_email, projeto_pipefy_id, mes, ano)
+  • Cada entrega = 25% (0.25). Soma → percentual_calculado → contribuição MRR.
+
+------------------------------------------------------------------------------
+6.10 operacao_planos_midia
+------------------------------------------------------------------------------
+  id, projeto_pipefy_id, mes, ano, investidor_email,
+  dados_plano (JSONB: canais/campanhas/orçamentos), created_at, updated_at
+
+------------------------------------------------------------------------------
+6.11 operacao_otimizacoes
+------------------------------------------------------------------------------
+  id, projeto_pipefy_id, investidor_email, tipo (Campanha/Criativo/GTM...),
+  canal (Meta/Google...), data_otimizacao, detalhes, created_at
+
+------------------------------------------------------------------------------
+6.12 operacao_checkins  (check-in semanal — saúde do cliente)
+------------------------------------------------------------------------------
+  id, projeto_pipefy_id, investidor_email, semana_ano ('2026-W09'),
+  compareceu, campanhas_ativas, gap_comunicacao, cliente_reclamou (V8.0),
+  satisfeito, csat_pontuacao, observacoes, created_at
+
+------------------------------------------------------------------------------
+6.13 operacao_links_uteis
+------------------------------------------------------------------------------
+  id, projeto_pipefy_id, titulo, url, descricao, icone (fa-*), criado_por,
+  created_at
+
+------------------------------------------------------------------------------
+6.14 monthly_deliveries  (entregas mensais idempotentes por cargo)
+------------------------------------------------------------------------------
+  id, user_id, client_id, email, role ('Account'|'Gestor de Tráfego'),
+  delivery_type ('checkin','plano_midia'...), month, year,
+  status ('pending'|'completed'), completed_at, fee_snapshot,
+  mrr_contribution (= fee_snapshot × 0.25), created_at
+  UNIQUE(email, client_id, role, delivery_type, month, year)
+  • Garante idempotência. Alimentada pelo delivery_engine.
+
+------------------------------------------------------------------------------
+6.15 investidores_entregas_mensais_novos  (entregas CRIATIVAS — model EntregaCriativa)
+------------------------------------------------------------------------------
+  email_investidor + mes + ano (PK), entregas_criativos (JSONB), updated_at
+  • Array por projeto: [{cliente, projeto_id, criativos{}, videos{}, lp{}}]
+
+------------------------------------------------------------------------------
+6.16 kanban_config / kanban_historico
+------------------------------------------------------------------------------
+  kanban_config:    id, slug (unique), configuracao (JSONB), criado_em
+  kanban_historico: id, projeto_id, data_evento, usuario_email, snapshot(JSONB)
+
+------------------------------------------------------------------------------
+6.17 automacoes / automacoes_log
+------------------------------------------------------------------------------
+  automacoes:     id, nome, descricao, ativa, trigger_type, trigger_config(JSONB),
+                  action_type ('webhook'), action_config(JSONB),
+                  created_at, updated_at
+  automacoes_log: id, automacao_id, automacao_nome, event_type, card_id,
+                  project_id, url_chamada, http_status, status('success'|'failure'),
+                  error_message, executed_at
+
+------------------------------------------------------------------------------
+6.18 user_faces / face_auth_log  (biometria facial)
+------------------------------------------------------------------------------
+  user_faces:    id, user_id (FK investidores.id, ON DELETE CASCADE),
+                 embedding(JSONB, 512 dims), is_active, samples,
+                 created_at, updated_at
+  face_auth_log: id, user_id, email, event_type, status, similarity, samples,
+                 ip_address, user_agent, error_message, created_at
+
+
+================================================================================
+7. AUTENTICAÇÃO E CONTROLE DE ACESSO
+================================================================================
+7.1 Métodos de login
+ a) E-mail + senha (POST /login): valida em investidores, checa ativo=True e
+    check_password_hash; gera token (os.urandom) e faz upsert em auth; popula
+    a sessão Flask (nome, email, token, funcao, posicao, senioridade, squad,
+    nivel_acesso, pode_editar_kanban, profile_picture).
+ b) Google OAuth (/login/google → /login/callback): autentica via Google,
+    busca o e-mail em investidores (precisa existir e estar ativo), cria token
+    e sessão. Usa requests-oauthlib (scopes: email, profile).
+ c) Biometria facial (/api/face/login/*): ver seção 17.
+ d) /dev-login: atalho de desenvolvimento (usuário fixo).
+
+7.2 Decorators de proteção
+ • @check_session  → exige "nome" na sessão; senão redireciona para /login.
+ • @check_access(roles) → exige que session["funcao"] esteja em `roles`,
+   OU que session["posicao"] seja de alto nível (Gerência / Sócio /
+   Coordenador). Normaliza Unicode (NFC) para comparar cargos com acento.
+   Acesso negado → renderiza index.html com error="Acesso restrito.".
+
+7.3 Hierarquia de visibilidade (padrão recorrente nas telas)
+ • Admin / Sócio / Gerência → enxergam TUDO (acesso global).
+ • Coordenador             → enxerga apenas a própria SQUAD.
+ • Demais cargos           → enxergam apenas a si mesmos / seus vínculos.
+
+7.4 Senha
+ • Hash com werkzeug (generate_password_hash / check_password_hash).
+ • Troca via POST /alterar-senha (valida senha atual + confirmação).
+ • Reset administrativo via POST /api/admin/usuarios/reset-password.
+
+
+================================================================================
+8. CONCEITOS CENTRAIS DE NEGÓCIO
+================================================================================
+8.1 MRR Total vs. MRR Trabalhado (Entregue)
+ • MRR Total (fixo_mrr_projeto_total): soma dos FEES BRUTOS de todos os
+   projetos ativos vinculados ao colaborador. É o potencial máximo da carteira.
+ • MRR Trabalhado / Entregue (fixo_mrr_entrega / fixo_mrr_atual): valor que o
+   colaborador efetivamente "ganhou", proporcional ao cumprimento das entregas
+   de cada projeto. É a base da remuneração variável.
+
+8.2 Proporcionalidade por dias
+ • Quando um vínculo entra/sai no meio do mês, o fee é proporcional aos dias:
+       valor_proporcional = (dias_trabalhados × fee) / dias_no_mês
+ • Calculado em ProjetoParticipacaoService.calcular_valor_proporcional.
+
+8.3 Cientista (multiplicador 1.5x)
+ • Vínculo com cientista=True recebe fee × 1.5.
+ • O período de cientista pode ser parcial (cientista_entrada/saida no metadata
+   extra do projeto). O cálculo separa: dias como cientista (1.5x) + dias como
+   investidor puro (1.0x), via interseção de intervalos.
+
+8.4 As 4 entregas (milestones) — cada uma vale 25%
+ • OPERAÇÃO (Account/GT): conjunto de entregas por cargo (ver 8.5).
+ • CRIATIVA (Designer): criativos + vídeos + LP (contratados vs. entregues).
+ • progresso_projeto = entregues / contratados (com cap por categoria).
+ • Contribuição do projeto ao MRR = fee_proporcional × progresso_projeto.
+
+8.5 Entregas por cargo (templates)
+ ACCOUNT (_ENTREGAS_ACCOUNT_TPL):
+   relatorio_account (meta 1), planner_monday (meta 4), csat_checkin (meta 4),
+   forecasting (meta 1)
+ GESTOR DE TRÁFEGO (_ENTREGAS_GT_TPL):
+   kpis (1), plano_de_midia (1), documento_de_otimizacao (4), relatorio_gt (1)
+ CIENTISTA: união de Account + GT, com relatórios unificados em
+   "relatorio_mensal".
+
+8.6 Flags de performance (GREEN / YELLOW)
+ Avaliadas sobre o MRR DO PORTFÓLIO (mrr_portfolio_total) e o churn:
+   • GREEN  → churn ≤ churn_máximo E mrr_mínimo ≤ portfolio ≤ mrr_teto.
+   • GREEN PDC (direto) → ultrapassou o teto de MRR com churn OK
+     (garante streak mínimo de 3).
+   • YELLOW → caso contrário (motivo_flag detalha o porquê).
+   • Sócio sem cargo operacional → GREEN automático.
+
+8.7 Streaks
+ • green_streak / yellow_streak contam meses CONSECUTIVOS na mesma flag.
+ • Mês anterior precisa ser imediatamente consecutivo; senão reinicia.
+
+8.8 Faturamento variável
+ • Projetos com extra.contrato_variavel=True somam um valor variável
+   (% sobre faturamento do cliente) ao MRR — somado DEPOIS do multiplicador
+   cientista: resultado = (fee × 1.5) + valor_variavel.
+
+8.9 Regras temporais especiais (hardcoded)
+ • Meses 02/2026 e 03/2026: progresso = 0 para todos (nenhuma entrega contada).
+ • Baseline de início para população inicial: 01/03/2026.
+ • Sincronização/recalculo só ocorre para o mês CORRENTE ou futuro — meses
+   fechados (anteriores) são protegidos contra recálculo.
+
+
+================================================================================
+9. MÓDULO REMUNERAÇÃO — services/remuneracao.py
+================================================================================
+Função principal: calcular_metricas_mensais(mes, ano)
+
+Fluxo:
+ 0. Bulk UPDATE: sincroniza MetricaMensal.ativo com Investidor.ativo.
+ 1. Busca investidores ATIVOS com funcao preenchida.
+ 2. Indexa remuneracao_cargos por (cargo, senioridade, level).
+ 3. Para cada investidor:
+    • Carrega a MetricaMensal do mês (e historico_projetos).
+    • Soma o MRR do portfólio (fees completos dos vínculos ativos), converte
+      USD→BRL, aplica cientista 1.5x.
+    • Calcula churn proporcional dos vínculos inativados NO MÊS corrente.
+    • Determina a Flag (GREEN/YELLOW), motivo e streaks.
+    • Calcula o MRR ENTREGUE por projeto:
+        progresso × fee_proporcional, somando todos os projetos.
+        - Criativo: (criativos+videos+lp) entregues/contratados, cap por categoria.
+        - Operação: soma metas vs. entregues do checklist.
+        - Meses 02/03 de 2026 → progresso 0.
+    • Grava fixo_mrr_atual = fixo_mrr_entrega = novo_mrr; demais fixo_* do cargo.
+    • db.flush() individual (por causa das colunas GENERATED).
+ 4. db.commit().
+ 5. Pós-processamento: aplica faturamento variável (idempotente).
+
+Recálculo é exposto por:
+ • GET  /api/remuneracao/processar
+ • GET  /api/remuneracao/recalcular-historico
+ • POST /api/remuneracao/recalcular-investidor/<email>/<mes>/<ano>
+ • Job diário (00:00) — ver seção 19.
+
+
+================================================================================
+10. MÓDULO PARTICIPAÇÃO / PROPORCIONAL — services/projeto_participacao_service.py
+================================================================================
+ProjetoParticipacaoService:
+ • get_total_days_in_month(mes, ano) — dias no mês (calendar).
+ • calcular_valor_proporcional(fee, data_inicio, data_fim, mes, ano)
+       X = (dias_trabalhados × fee) / dias_no_mês  (quantize 0.01)
+ • sincronizar_remuneracao(mes, ano):
+     - investidores_projetos é a FONTE DE VERDADE.
+     - Considera vínculos ativos OU inativados no mês corrente.
+     - Constrói/reconcilia historico_projetos (JSONB) por colaborador:
+         {projeto_id, fee_projeto, moeda, valor_proporcional, data_inicio,
+          data_fim, ativo, cientista, cientista_entrada, cientista_saida...}
+     - Calcula proporcional com regra de cientista parcial (interseção de
+       períodos: parte 1.5x + parte 1.0x).
+     - Reconcilia projetos REMOVIDOS via UI (marca data_fim, recalcula).
+     - Grava fixo_mrr_projeto_total (USD→BRL). NÃO grava fixo_mrr_atual aqui
+       (proteção contra overflow das colunas GENERATED).
+
+OperacaoService.get_projetos_operacao(db, email, squad, posicao):
+ • Retorna projetos visíveis na tela /operacao conforme hierarquia
+   (Gerência/Sócio → todos; Coordenador → squad; demais → vínculos ativos).
+
+
+================================================================================
+11. MÓDULO OPERAÇÃO — services/operacao_service.py
+================================================================================
+OperacaoSnapshotService (tabela "operacao", SQL puro):
+ • update_section(db, id_projeto, mes, ano, section_key, new_data, append, nome)
+     Upsert da seção dentro do JSONB "entregas" (cria a linha se não existir).
+ • get_snapshot(db, id_projeto, mes, ano) — retorna o dict de entregas.
+ • sync_to_metrica(db, email, id_projeto, mes, ano):
+     Lê o snapshot e atualiza MetricaMensal.entregas_operacao do colaborador.
+     - Detecta se é GT, Account ou Cientista (no projeto).
+     - Mapeia entregas a partir do snapshot:
+         GT:      plano_de_midia (1 se há plano), documento_de_otimizacao
+                  (min(otims,4)), kpis (1 se link).
+         Account: csat_checkin (min(checkins,4)), forecasting (1 se link),
+                  planner_monday (min(tarefas_semanais_do_mês, 4)).
+         relatorio_mensal: a partir de relatorio_gt/account/mensal.
+     - REGRA: auto-sync só SOBE o valor (max) — nunca derruba o que o usuário
+       marcou manualmente em /criativa.
+     - Planner Monday lido com SAVEPOINT (begin_nested) — tabela pode não existir.
+
+Telas/fluxos de operação:
+ • Plano de mídia (POST /api/operacao/plano-midia) — salva canais/campanhas.
+ • Otimizações (POST /api/operacao/otimizacao) — ≥4 conta como entrega.
+ • Check-in semanal (POST /api/operacao/checkin) — saúde do cliente / CSAT.
+ • Tarefas semanais/quarter (POST/DELETE /api/operacao/tarefas) — Planner.
+ • Links úteis (POST/DELETE /api/operacao/links).
+ • Snapshot de links (PUT /api/operacao/snapshot/links).
+
+
+================================================================================
+12. MÓDULO CRIATIVA  (GET /criativa)
+================================================================================
+Tela de gestão de entregas criativas por Designer/WebDesigner (e também
+Account/GT, por extensão). Acesso: Designer, WebDesigner, Account, Gestor de
+Tráfego, Coordenador (+ alto nível).
+
+ • Lista os colaboradores conforme hierarquia (todos / squad / só você).
+ • Lista os CLIENTES ativos durante o mês selecionado (considera created_at e
+   churn dentro do mês), com fee e moeda.
+ • Carrega entregas_criativos (JSONB) de cada colaborador para o mês/ano.
+ • Estrutura de entrega criativa por projeto:
+     {cliente, projeto_id, criativos{contratados,entregues},
+      videos{...}, lp{...}}
+ • Progresso criativo = (entregues por categoria, com cap no contratado) /
+   (total contratado). Se meta = 0 → 100%.
+
+APIs Criativa:
+ • GET  /api/criativa/clientes/<email>/<mes>/<ano>
+ • GET  /api/criativa/entregas/<email>/<mes>/<ano>
+ • PUT  /api/criativa/entregas/contratados
+ • PUT  /api/criativa/entregas/entregues
+ • PUT  /api/criativa/entregas/link
+ • GET  /api/criativa/op-deliveries/<email>/<mes>/<ano>   (entregas de operação)
+ • PUT  /api/criativa/op-deliveries
+
+
+================================================================================
+13. MOTOR DE ENTREGAS — services/delivery_engine.py
+================================================================================
+Define DELIVERY_TYPES por cargo e verifica GATILHOS automáticos, gravando em
+monthly_deliveries de forma idempotente.
+
+DELIVERY_TYPES:
+  Account:           checkin, relatorio_account, planner_monday, forecasting
+  Gestor de Tráfego: plano_midia, otimizacao, relatorio_gt, config_conta
+
+Gatilhos (_check_trigger):
+  checkin            → ≥1 OperacaoCheckin no mês/ano
+  relatorio_*        → ≥1 OperacaoTarefa quarter CONCLUÍDA no quarter do mês
+  planner_monday /
+  config_conta       → ≥4 tarefas semanais (referência -W) que caem no mês
+  forecasting        → ≥1 tarefa quarter (concluída ou não)
+  plano_midia        → ≥1 OperacaoPlanoMidia no mês/ano
+  otimizacao         → ≥1 OperacaoOtimizacao no mês/ano
+
+process_deliveries(email, pipefy_id, mes, ano):
+ • Protege meses fechados (não recalcula meses anteriores).
+ • fee base = fee_contribuicao (fallback fee_projeto); mrr_por_entrega = fee×0.25.
+ • Upsert idempotente por entrega; status completed/pending; recalcula
+   fixo_mrr_entrega = Σ(mrr_contribution das entregas completed).
+process_all_deliveries_for_project(pipefy_id, mes, ano):
+ • Roda para todos os vínculos ativos do projeto.
+
+NOTA: este motor (monthly_deliveries) coexiste com o cálculo principal de
+remuneracao.py (que usa entregas_operacao/entregas_criativos da MetricaMensal).
+São duas abordagens de "entrega" presentes no código — a fonte canônica do MRR
+exibido vem de remuneracao.py + faturamento_variavel.
+
+
+================================================================================
+14. FATURAMENTO VARIÁVEL — services/faturamento_variavel.py
+================================================================================
+Para projetos com extra.contrato_variavel=True, registra um valor variável
+(% sobre o faturamento do cliente) no JSONB operacao.entregas["faturamento_variavel"].
+
+ • valor_variavel = faturamento_cliente × (percentual / 100)
+ • aplicar_faturamento_variavel(mes, ano): soma o variável por colaborador e
+   grava fixo_mrr_atual = fixo_mrr_entrega + variável (idempotente — usa
+   fixo_mrr_entrega como base limpa; NÃO o sobrescreve).
+ • Regra cientista: o 1.5x já está no fee_fixo; o variável é somado DEPOIS.
+
+APIs:
+ • GET    /api/projetos/<pipefy_id>/faturamento-variavel
+ • POST   /api/projetos/<pipefy_id>/faturamento-variavel
+ • PUT    /api/projetos/<pipefy_id>/faturamento-variavel/<mes>/<ano>
+ • DELETE /api/projetos/<pipefy_id>/faturamento-variavel/<mes>/<ano>
+
+
+================================================================================
+15. KANBAN DE PROJETOS — services/kanban_service.py  (GET /kanban)
+================================================================================
+Board configurável onde cada PROJETO é um card e cada FASE define o status do
+projeto. Config persistida em kanban_config (por slug; padrão "fluxo-projetos").
+
+Config padrão (_seed_default_config):
+  Fases: Onboarding (Ativo) → Execução (Ativo) → Concluído (Ativo) →
+         Churn (Inativo). Cada fase tem cor, ordem, status_do_projeto e
+         campos dinâmicos (string/date/select/text, obrigatórios ou não).
+
+Conceitos:
+ • Mapeamento de campos: um campo da fase pode mapear para uma coluna real de
+   projetos (whitelist mappable_columns: nome, fee, moeda, squad_atribuida,
+   datas, contas Meta/Google, etc.). Sincronização inversa: o valor da coluna
+   real do banco prevalece.
+ • kanban_dados (JSONB) no projeto guarda _board_slug + campos da fase atual.
+ • kanban_historico registra snapshots por evento (movimentações).
+ • PhaseTransitionError: erro de transição que viola regras de negócio.
+ • Mover um card para fase com status_do_projeto diferente altera o status do
+   projeto (ex.: Churn → Inativo).
+
+APIs Kanban:
+  GET/POST /api/kanban/config        GET  /api/kanban/cards
+  GET  /api/kanban/cards/<id>        POST /api/kanban/cards/<id>/update
+  POST /api/kanban/history/<id>/update
+  POST /api/kanban/move             POST /api/kanban/cards
+  POST /api/kanban/cards/clone-from-history
+  GET/POST /api/kanban/boards       POST /api/kanban/cards/migrate-board
+
+
+================================================================================
+16. AUTOMAÇÕES — services/automacao_service.py  (GET /automacoes)
+================================================================================
+Motor de automações: GATILHO (evento) → AÇÃO (webhook).
+
+TRIGGER_TYPES:
+  Kanban : card_entered_phase, card_left_phase, card_moved, card_created,
+           card_archived
+  Projeto: project_days_before, project_date_today, project_days_after
+           (avaliados pelo job diário check_project_date_triggers)
+
+VARIÁVEIS interpoláveis no payload do webhook:
+  {{card_id}}, {{card_title}}, {{phase_id}}, {{phase_name}}, {{project_id}},
+  {{project_name}}, {{project_date}}, {{current_date}}
+
+ • Ação atual: action_type="webhook" (HTTP, ex.: Google Chat).
+ • Toda execução é registrada em automacoes_log (url, http_status, success/failure).
+ • CRUD + toggle (ativar/desativar) via API.
+
+APIs:
+  GET/POST   /api/automacoes
+  PUT/DELETE /api/automacoes/<id>          POST /api/automacoes/<id>/toggle
+  GET /api/automacoes/logs                 GET /api/automacoes/triggers
+  GET /api/automacoes/variables            GET /api/automacoes/kanban-config
+
+
+================================================================================
+17. BIOMETRIA FACIAL — face_auth/face_service.py
+================================================================================
+Login e cadastro por reconhecimento facial usando insightface (modelo buffalo_l,
+embeddings de 512 dimensões), carregado lazily (CPUExecutionProvider).
+
+Pipeline:
+ • decode_frame(base64) → OpenCV frame.
+ • detect_and_extract(frame) → embedding normalizado + bbox + (opcional)
+   landmarks/head_pose/det_score.
+ • process_frames_for_biometric_registration(frames) → média de embeddings
+   (mín. 3 rostos detectados) → vetor de 512 salvo em user_faces.embedding.
+ • compare_embeddings / match_face → cosine similarity ≥ FACE_MATCH_THRESHOLD
+   (default 0.75) determina o match.
+
+Liveness (anti-spoofing, helpers disponíveis):
+ • validate_blink (EAR — eye aspect ratio < 0.18)
+ • check_liveness_movement (deslocamento médio do bbox)
+ • check_liveness_head_pose (variação de yaw)
+
+APIs Face:
+  GET  /api/face/biometry/status      POST /api/face/biometry/register
+  POST /api/face/biometry/update      POST /api/face/biometry/delete
+  POST /api/face/login/check          POST /api/face/login/authenticate
+  POST /api/face/login/capture-and-auth
+Todas as tentativas são auditadas em face_auth_log (status, similarity, IP, UA).
+
+
+================================================================================
+18. COTAÇÃO DE MOEDA — services/currency.py
+================================================================================
+CurrencyService.get_usd_to_brl_rate():
+ • Fonte: AwesomeAPI (https://economia.awesomeapi.com.br/last/USD-BRL), valor "bid".
+ • Cache em memória de 1 hora (_CACHE_DURATION = 3600s).
+ • Fallback: última cotação em cache; hard fallback = 5.0.
+ • Usada em todo cálculo que envolve projetos em USD (portfolio, proporcional,
+   home MRR global, criativa).
+
+
+================================================================================
+19. JOBS AGENDADOS — APScheduler (app.py)
+================================================================================
+O scheduler inicia junto com o app (scheduler.init_app + scheduler.start()).
+
+ • do_remuneracao_daily        — cron diário 00:00
+     → ProjetoParticipacaoService.sincronizar_remuneracao(hoje)
+     → calcular_metricas_mensais(hoje)
+   (Recalcula proporcional + métricas/flags/remuneração do mês corrente.)
+
+ • do_automacoes_project_date_daily — cron diário 01:00
+     → AutomacaoService.check_project_date_triggers()
+   (Dispara automações baseadas em datas do projeto: dias antes/depois/hoje.)
+
+
+================================================================================
+20. REFERÊNCIA COMPLETA DA API REST
+================================================================================
+Legenda: [GET] [POST] [PUT] [DELETE]
+
+— AUTENTICAÇÃO / SESSÃO —
+  [GET/POST] /login                       Login por e-mail+senha
+  [GET]      /login/google                Inicia OAuth Google
+  [GET]      /login/callback              Callback OAuth Google
+  [GET]      /dev-login                   Atalho de desenvolvimento
+  [POST]     /alterar-senha               Troca de senha (autenticado)
+  [GET/POST] /logout                      Encerra sessão
+  [POST]     /upload-profile-picture      Upload de foto de perfil
+
+— PÁGINAS (views HTML) —
+  [GET] /                  Home/Dashboard (MRR global + minha remuneração)
+  [GET] /hub-projetos      Hub de projetos
+  [GET] /hub-remuneracao   Hub de remuneração
+  [GET] /gerenciar-usuarios
+  [GET] /painel-atribuicao
+  [GET] /painel-ranking
+  [GET] /vendas
+  [GET] /operacao          Painel de operação por cliente
+  [GET] /criativa          Entregas criativas
+  [GET] /kanban            Board Kanban
+  [GET] /automacoes        Editor de automações
+  [GET] /hub-cs-cx         CS/CX
+  [GET] /cockpit
+  [GET/POST] /form-card/<token>   Formulário público por token
+
+— ADMIN / USUÁRIOS —
+  [GET]  /api/usuarios/<email>/foto
+  [GET]  /api/admin/usuarios
+  [POST] /api/admin/usuarios
+  [PUT]  /api/admin/usuarios/<email>
+  [POST] /api/admin/usuarios/reset-password
+  [GET]  /api/admin/investidores-ativos
+
+— CRIATIVA —
+  [GET] /api/criativa/clientes/<email>/<mes>/<ano>
+  [GET] /api/criativa/entregas/<email>/<mes>/<ano>
+  [PUT] /api/criativa/entregas/contratados
+  [PUT] /api/criativa/entregas/entregues
+  [PUT] /api/criativa/entregas/link
+  [GET] /api/criativa/op-deliveries/<email>/<mes>/<ano>
+  [PUT] /api/criativa/op-deliveries
+
+— OPERAÇÃO —
+  [GET]    /api/operacao/tarefas/<pipefy_id>
+  [POST]   /api/operacao/tarefas
+  [DELETE] /api/operacao/tarefas
+  [GET]    /api/operacao/entregas-op/<email>/<mes>/<ano>
+  [PUT]    /api/operacao/entregas-op/entregues
+  [PUT]    /api/operacao/entregas-op/links
+  [GET]    /api/operacao/entregas/<pipefy_id>/<mes>/<ano>
+  [GET]    /api/operacao/monthly-deliveries/<pipefy_id>/<mes>/<ano>
+  [POST]   /api/operacao/entregas
+  [POST]   /api/operacao/plano-midia
+  [GET]    /api/operacao/planos-midia/<pipefy_id>
+  [GET]    /api/operacao/plano-midia/<pipefy_id>/<mes>/<ano>
+  [DELETE] /api/operacao/plano-midia/<pipefy_id>/<mes>/<ano>
+  [GET]    /api/operacao/test-db
+  [GET]    /api/operacao/snapshot/<pipefy_id>/<mes>/<ano>
+  [PUT]    /api/operacao/snapshot/links
+  [POST]   /api/operacao/otimizacao
+  [POST]   /api/operacao/checkin
+  [GET]    /api/operacao/checkins/<pipefy_id>
+  [GET]    /api/operacao/otimizacoes/<pipefy_id>
+  [GET]    /api/operacao/links/<pipefy_id>
+  [POST]   /api/operacao/links
+  [DELETE] /api/operacao/links/<link_id>
+  [DELETE] /api/operacao/checkin/<pipefy_id>/<mes>/<ano>/<index>
+  [DELETE] /api/operacao/otimizacao/<pipefy_id>/<mes>/<ano>/<index>
+
+— REMUNERAÇÃO —
+  [GET]  /api/remuneracao/processar
+  [GET]  /api/remuneracao/recalcular-historico
+  [POST] /api/remuneracao/recalcular-investidor/<email>/<mes>/<ano>
+
+— PROJETOS / VÍNCULOS / FATURAMENTO VARIÁVEL —
+  [GET]    /api/projetos/listar
+  [GET]    /api/projetos/<pipefy_id>/vinculos
+  [POST]   /api/projetos/vincular
+  [PUT]    /api/projetos/<pipefy_id>
+  [GET]    /api/projetos/<pipefy_id>/faturamento-variavel
+  [POST]   /api/projetos/<pipefy_id>/faturamento-variavel
+  [PUT]    /api/projetos/<pipefy_id>/faturamento-variavel/<mes>/<ano>
+  [DELETE] /api/projetos/<pipefy_id>/faturamento-variavel/<mes>/<ano>
+
+— KANBAN —
+  [GET/POST] /api/kanban/config
+  [GET]      /api/kanban/cards
+  [GET]      /api/kanban/cards/<card_id>
+  [POST]     /api/kanban/cards/<card_id>/update
+  [POST]     /api/kanban/history/<history_id>/update
+  [POST]     /api/kanban/move
+  [POST]     /api/kanban/cards
+  [POST]     /api/kanban/cards/clone-from-history
+  [GET/POST] /api/kanban/boards
+  [POST]     /api/kanban/cards/migrate-board
+
+— AUTOMAÇÕES —
+  [GET/POST] /api/automacoes
+  [PUT]      /api/automacoes/<id>
+  [DELETE]   /api/automacoes/<id>
+  [POST]     /api/automacoes/<id>/toggle
+  [GET]      /api/automacoes/logs
+  [GET]      /api/automacoes/triggers
+  [GET]      /api/automacoes/variables
+  [GET]      /api/automacoes/kanban-config
+
+— RANKING —
+  [GET] /api/ranking
+
+— BIOMETRIA FACIAL —
+  [GET]  /api/face/biometry/status
+  [POST] /api/face/biometry/register
+  [POST] /api/face/biometry/update
+  [POST] /api/face/biometry/delete
+  [POST] /api/face/login/check
+  [POST] /api/face/login/authenticate
+  [POST] /api/face/login/capture-and-auth
+
+
+================================================================================
+21. TELAS / TEMPLATES (Jinja2)
+================================================================================
+  index.html ............. Home/Dashboard: MRR global, contagem de clientes/
+                           investidores/squads e card "minha remuneração"
+                           (faixa min/max, flag, streaks, projetos vinculados).
+  login.html ............. Login (senha, Google, facial).
+  operacao.html .......... Painel de operação por cliente.
+  criativa.html .......... Entregas criativas/operação por colaborador/mês.
+  kanban.html ............ Board Kanban de projetos.
+  automacoes.html ........ Editor visual de automações.
+  hub-projetos.html ...... Listagem/gestão de projetos.
+  hub-remuneracao.html ... Histórico de remuneração por colaborador.
+  hub-cs-cx.html /
+  cs_dashboard.html /
+  cs_client_detail.html .. Customer Success / CX.
+  gerenciar-usuarios.html  Admin de usuários.
+  painel-atribuicao.html . Atribuição de colaboradores a projetos.
+  painel-ranking.html .... Ranking de performance.
+  vendas.html ............ Vendas.
+  cockpit.html ........... Cockpit.
+  form_card.html ......... Formulário público (token).
+  components/ ............ header, sidebar, loader, modal-configuracoes,
+                           icon_title, up-button (parciais reutilizáveis).
+
+
+================================================================================
+22. SCRIPTS, MIGRATIONS E UTILITÁRIOS
+================================================================================
+Migrations "oficiais" (scripts/):
+  migrate_to_kanban.py, migrate_automacoes.py, migrate_face_auth.py,
+  populate_kanban_placeholders.py
+
+Migrations soltas na raiz (executar 1x cada, conforme histórico):
+  migrate_checkin.py, migrate_columns.py, migrate_entregas_v2.py,
+  migrate_links_desc.py, migrate_mrr_total.py, migrate_universal_scale.py,
+  force_recreate_deliveries.py
+
+Diagnóstico / inspeção (raiz):
+  check_db.py, check_historico.py, check_schema.py, diagnose_schema.py,
+  inspect_data.py, debug_data.py
+
+scratch/ (NÃO é runtime — investigação pontual):
+  ~100 scripts check_*/investigar_*/test_*/recalc_* usados para depurar casos
+  específicos (ex.: churn do Isaac, proporcional do Wemerson/Otávio, etc.).
+  Podem ser arquivados; servem de referência histórica.
+
+DDL/queries de schema:
+  estrutura/queries/*.sql — definições de auth, investidores, projetos
+  (ativos/inativos/onetime), squads, métricas mensais, remuneração de cargos,
+  e operacao_novas_tabelas.sql (operacao_entregas_mensais, operacao_tarefas).
+
+
+================================================================================
+23. INTEGRAÇÕES EXTERNAS
+================================================================================
+ • Pipefy ............ Origem dos projetos (pipefy_id é a PK de projetos;
+                       fase_do_pipefy). Dados importados para a tabela unificada.
+ • n8n ............... Pasta "N8N Fluxo/" com exports dos fluxos originais
+                       (Autenticação, CRUD, Gerenciamento de Remuneração). O HUB
+                       reimplementa em Flask o comportamento de auth/token do n8n.
+ • Google OAuth ...... Login social (requests-oauthlib).
+ • AwesomeAPI ........ Cotação USD-BRL em tempo real (com cache).
+ • Google Chat ....... Destino dos webhooks de automação (url_webhook_gchat
+                       por projeto / action_config das automações).
+ • ekyte ............. Workspace referenciado em projetos.ekyte_workspace.
+
+
+================================================================================
+24. OBSERVAÇÕES, REGRAS ESPECIAIS E DÍVIDAS TÉCNICAS
+================================================================================
+Pontos de atenção para manutenção:
+
+ 1. COLUNAS GENERATED — investidores_metricas_mensais_novo tem colunas calc_*
+    derivadas pelo Postgres. Nunca tente gravá-las pelo ORM. Use db.flush()
+    individual (não bulk) ao salvar métricas, pois o bulk quebra com FetchedValue.
+
+ 2. fixo_mrr_atual É DENOMINADOR — gravar valores baixos com churn alto estoura
+    NUMERIC(8,7) (calc_churn_real_percentual etc.). A sincronização proporcional
+    propositalmente NÃO grava fixo_mrr_atual.
+
+ 3. DUAS IMPLEMENTAÇÕES DE ENTREGA convivem:
+    (a) remuneracao.py usando entregas_operacao/entregas_criativos (JSONB na
+        MetricaMensal) — fonte canônica do MRR exibido.
+    (b) delivery_engine.py usando a tabela monthly_deliveries.
+    Ao evoluir, alinhar/qual é a oficial para evitar divergência.
+
+ 4. AUTO-SYNC SÓ SOBE (max) — operacao_service.sync_to_metrica nunca derruba o
+    que o usuário marcou manualmente em /criativa. Cuidado ao alterar essa regra.
+
+ 5. REGRAS TEMPORAIS HARDCODED — meses 02/2026 e 03/2026 zerados; baseline
+    01/03/2026. Revisar antes de virar o ano/competência.
+
+ 6. MESES FECHADOS são protegidos contra recálculo (mês < corrente). Recalcular
+    histórico exige rotas específicas.
+
+ 7. /dev-login e /api/operacao/test-db são utilitários de desenvolvimento —
+    avaliar remoção/proteção em produção.
+
+ 8. SQL PURO na tabela "operacao" e em faturamento_variavel — não há model ORM;
+    alterações de schema precisam ser manuais e refletidas nas queries text().
+
+ 9. error_log_home1.txt / error_log_home2.txt — a home grava tracebacks em
+    arquivo quando falha ao montar o dashboard (debug). Limpar em produção.
+
+10. scratch/ e migrations soltas na raiz poluem o repositório — recomendado
+    mover para uma pasta arquivada e manter só o que é runtime.
+
+11. SEGREDOS — manter .env fora do versionamento (já no .gitignore). Conferir
+    que GOOGLE_CLIENT_SECRET / DB_PASSWORD não estão commitados.
+
+--------------------------------------------------------------------------------
+FIM DA DOCUMENTAÇÃO — HUB Lisboa&CO / Colab
+Para detalhes de implementação, consulte:
+  app.py (rotas/views) • services/*.py (lógica) • models.py (schema) •
+  estrutura/Tabela_metricas_mensais.md e logica_entregas.md (fórmulas).
+================================================================================
