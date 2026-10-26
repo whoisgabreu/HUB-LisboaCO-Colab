@@ -1136,6 +1136,11 @@ dialog.modal.project-stage-modal[open] {
   min-height: 42px;
 }
 
+/* O select nativo continua no form para envio, mas somente o controle rico fica visível. */
+.tech-project-detail-page .project-stage-form select.tech-rich-native {
+  display: none !important;
+}
+
 .project-block-heading {
   align-items: center;
   justify-content: space-between;

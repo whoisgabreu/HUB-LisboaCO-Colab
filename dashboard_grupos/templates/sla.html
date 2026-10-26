@@ -58,7 +58,7 @@
   {{ grafico('Tempo de resposta da equipe — distribuição', 'chartHistEquipe', desc='Quantas respostas da equipe entraram em cada faixa de tempo útil. Verde = dentro da meta (' ~ metas.equipe_para_cliente_min ~ ' min); âmbar = faixa que cruza a meta; vermelho = acima.') }}
   {{ grafico('Tempo de resposta do cliente — distribuição', 'chartHistCliente', desc='Quantas respostas do cliente entraram em cada faixa de tempo útil. Verde = dentro da meta (' ~ metas.cliente_para_equipe_min ~ ' min); âmbar = faixa que cruza a meta; vermelho = acima.') }}
 </div>
-<div class="row g-3">
+<div class="row g-3 mb-3">
   {{ grafico('SLA útil por hora (msg do cliente)', 'chartSlaHora', desc='Tempo útil médio de resposta da equipe conforme a hora em que a mensagem do cliente chegou.') }}
   {{ grafico('SLA útil por dia da semana (msg do cliente)', 'chartSlaDia', desc='Tempo útil médio de resposta da equipe por dia da semana em que a mensagem do cliente chegou (a janela de atendimento considera dias úteis).') }}
 </div>

@@ -2,7 +2,7 @@ import csv
 import io
 import json
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from flask import Response, jsonify, redirect, render_template, request, session, url_for
 
@@ -14,11 +14,18 @@ FILTER_KEYS = ("grupo", "dias", "tipo", "papel", "de", "ate")
 PER_PAGE = 50
 
 
+def _filtro_semana_atual():
+    hoje = datetime.now().date()
+    segunda = hoje - timedelta(days=hoje.weekday())
+    return {"de": segunda.isoformat(), "ate": hoje.isoformat()}
+
+
 def _filtros():
     args = request.args
     if args.get("limpar"):
-        session.pop("dg_filtros", None)
-        return {}
+        filtros = {chave: None for chave in FILTER_KEYS}
+        session["dg_filtros"] = filtros
+        return filtros
     if any(k in args for k in FILTER_KEYS):
         novo = {}
         for k in FILTER_KEYS:
@@ -26,7 +33,12 @@ def _filtros():
             novo[k] = int(v) if (k == "dias" and v) else (v or None)
         session["dg_filtros"] = novo
         return novo
-    return session.get("dg_filtros", {}) or {}
+    filtros = session.get("dg_filtros")
+    if filtros is not None:
+        return filtros
+    filtros = _filtro_semana_atual()
+    session["dg_filtros"] = filtros
+    return filtros
 
 
 _carregar_cache = {}
@@ -97,6 +109,21 @@ def visao_geral():
         "comparacao": analise.comparar_periodos(msgs),
         "top_grupos": analise.top_grupos(msgs, 12),
         "top_remetentes": analise.top_remetentes(msgs, 12),
+        "linhas_graficos": [
+            {
+                "grupo": m.get("grupo") or "Sem grupo",
+                "remetente": m.get("nome") or "Não identificado",
+                "tipo": "Equipe" if m.get("tipo") == "equipe" else "Cliente",
+                "papel": m.get("papel") or "Sem papel",
+                "dia": m["ts"].strftime("%d/%m/%Y"),
+                "dia_ordem": m["ts"].strftime("%Y-%m-%d"),
+                "dia_semana": ("Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo")[m["ts"].weekday()],
+                "hora": f'{m["ts"].hour:02d}h',
+                "caracteres": len(m.get("texto") or ""),
+                "com_texto": 1 if (m.get("texto") or "").strip() else 0,
+            }
+            for m in msgs
+        ],
     })
     return render_template("visao_geral.html", **ctx)
 

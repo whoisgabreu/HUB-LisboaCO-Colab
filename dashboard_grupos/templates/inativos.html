@@ -19,9 +19,7 @@
 </div>
 
 <div class="row g-3 mb-3">
-  <div class="col">
-    {{ grafico('Dias sem interação por grupo', 'chartInativos', desc='Dias desde a última mensagem do grupo até o fim do período. Cor: verde = ativo, âmbar = semi-inativo, vermelho = inativo.') }}
-  </div>
+  {{ grafico('Dias sem interação por grupo', 'chartInativos', desc='Dias desde a última mensagem do grupo até o fim do período. Cor: verde = ativo, âmbar = semi-inativo, vermelho = inativo.', span=20, altura=570) }}
 </div>
 
 <div class="card">

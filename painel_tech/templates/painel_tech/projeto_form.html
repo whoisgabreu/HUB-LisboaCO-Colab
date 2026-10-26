@@ -6,7 +6,7 @@
 {% endblock %}
 
 {% block conteudo %}
-<form class="form card" method="post">
+<form class="form card{{ ' tech-project-create-card' if modo != 'editar' else '' }}" method="post">
   <div class="form-linha">
     <div class="campo campo-largo">
       <label for="nome">Nome do projeto *</label>

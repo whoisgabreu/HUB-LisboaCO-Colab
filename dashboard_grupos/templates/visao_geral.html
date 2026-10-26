@@ -16,7 +16,7 @@
 
 <div class="row g-3 mb-3">
   {{ grafico('Mensagens por dia', 'chartDia', desc='Total de mensagens por dia no período filtrado. A linha tracejada azul é a média móvel de 7 dias (tendência).') }}
-  <div class="col">
+  <div class="col dg-chart-item" data-dg-chart-card data-chart-key="fixed:chartComparacao" data-default-span="10" data-default-height="310">
     <div class="card h-100">
       <div class="card-body">
         <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
@@ -55,6 +55,86 @@
   {{ grafico('Mensagens por grupo', 'chartGrupos', desc='Total de mensagens por grupo no período filtrado.') }}
   {{ grafico('Mensagens por remetente', 'chartRemetentes', desc='Total de mensagens por remetente (nome exibido).') }}
 </div>
+
+<section class="dg-chart-builder" aria-labelledby="dgChartBuilderTitle">
+  <header class="dg-chart-builder-head">
+    <div>
+      <span><i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i> Laboratório visual</span>
+      <h2 id="dgChartBuilderTitle">Crie seu próprio gráfico</h2>
+      <p>Escolha como agrupar e medir as mensagens do período filtrado. O gráfico fica salvo apenas neste navegador.</p>
+    </div>
+    <span class="dg-local-badge"><i class="fa-solid fa-lock" aria-hidden="true"></i> Sem alteração no banco</span>
+  </header>
+
+  <form id="dgChartBuilderForm" class="dg-chart-builder-form">
+    <label class="dg-builder-field dg-builder-title">
+      <span>Título</span>
+      <input class="form-control" type="text" name="title" maxlength="80" placeholder="Ex.: Mensagens por grupo" required>
+    </label>
+    <label class="dg-builder-field">
+      <span>Tipo de gráfico</span>
+      <select class="form-select" name="type">
+        <option value="bar">Barras verticais</option>
+        <option value="horizontalBar">Barras horizontais</option>
+        <option value="line">Linha</option>
+        <option value="area">Linha com área</option>
+        <option value="doughnut">Rosca</option>
+        <option value="pie">Pizza</option>
+        <option value="polarArea">Área polar</option>
+        <option value="radar">Radar</option>
+      </select>
+    </label>
+    <label class="dg-builder-field">
+      <span><strong>Separar os dados por</strong><small>Define os grupos exibidos.</small></span>
+      <select class="form-select" name="dimension">
+        <option value="grupo">Grupo</option>
+        <option value="remetente">Remetente</option>
+        <option value="tipo">Equipe ou cliente</option>
+        <option value="papel">Papel</option>
+        <option value="dia">Dia</option>
+        <option value="dia_semana">Dia da semana</option>
+        <option value="hora">Hora do dia</option>
+      </select>
+    </label>
+    <label class="dg-builder-field">
+      <span><strong>O que contar ou calcular</strong><small>Define o valor de cada grupo.</small></span>
+      <select class="form-select" name="measure">
+        <option value="count">Quantidade de mensagens</option>
+        <option value="withText">Mensagens com texto</option>
+        <option value="totalCharacters">Total de caracteres</option>
+        <option value="averageCharacters">Média de caracteres</option>
+      </select>
+    </label>
+    <label class="dg-builder-field dg-builder-color">
+      <span>Cor principal</span>
+      <input type="color" name="color" value="#d61616" aria-label="Cor principal do gráfico">
+    </label>
+    <label class="dg-builder-field">
+      <span>Ordenação</span>
+      <select class="form-select" name="sort">
+        <option value="valueDesc">Maior valor primeiro</option>
+        <option value="valueAsc">Menor valor primeiro</option>
+        <option value="labelAsc">Nome de A a Z</option>
+        <option value="natural">Ordem natural</option>
+      </select>
+    </label>
+    <label class="dg-builder-field">
+      <span>Quantidade exibida</span>
+      <input class="form-control" type="number" name="topN" value="10" min="0" max="40" step="1">
+      <small>Use 0 para exibir tudo.</small>
+    </label>
+    <button class="btn btn-primary dg-builder-create" type="submit"><i class="fa-solid fa-plus" aria-hidden="true"></i> Criar gráfico</button>
+  </form>
+</section>
+
+<section class="dg-custom-section" id="dgCustomSection" aria-labelledby="dgCustomTitle" hidden>
+  <header class="dg-custom-head">
+    <div><h2 id="dgCustomTitle">Meus gráficos</h2><p>Arraste o canto inferior direito de cada card para ajustar largura e altura.</p></div>
+    <span class="dg-custom-count" id="dgCustomCount"></span>
+  </header>
+  <div class="dg-custom-grid" id="dgCustomCharts"></div>
+</section>
+<div class="visually-hidden" id="dgChartAnnouncer" aria-live="polite" aria-atomic="true"></div>
 {% endblock %}
 
 {% block scripts %}
@@ -68,4 +148,5 @@ const remetentes = {{ top_remetentes|tojson }};
 </script>
 <script src="{{ url_for('dashboard_grupos.static', filename='js/visao_geral.js') }}"></script>
 {% endif %}
+<script type="application/json" id="dgChartData">{{ linhas_graficos|tojson }}</script>
 {% endblock %}

@@ -8,44 +8,62 @@
 <div class="alert alert-danger py-2">{{ erro }}</div>
 {% endif %}
 
-<div class="card">
-  <div class="card-body">
-    <h6 class="card-title">Configurações do dashboard</h6>
-    <p class="text-muted small">
-      Janela de atendimento (usada no SLA útil), metas de resposta e limiar de inatividade.
-      As alterações passam a valer imediatamente em todas as telas, sem reiniciar o sistema.
-    </p>
-    <form method="post" class="row g-3">
-      <div class="col-md-3">
-        <label class="form-label small">Início do atendimento</label>
-        <input type="time" name="inicio" class="form-control form-control-sm" value="{{ cfg.atendimento.inicio }}" required>
-      </div>
-      <div class="col-md-3">
-        <label class="form-label small">Fim do atendimento</label>
-        <input type="time" name="fim" class="form-control form-control-sm" value="{{ cfg.atendimento.fim }}" required>
-      </div>
-      <div class="col-md-3">
-        <label class="form-label small">Meta equipe → cliente (min)</label>
-        <input type="number" name="equipe_para_cliente_min" class="form-control form-control-sm" value="{{ cfg.metas.equipe_para_cliente_min }}" min="1" required>
-      </div>
-      <div class="col-md-3">
-        <label class="form-label small">Meta cliente → equipe (min)</label>
-        <input type="number" name="cliente_para_equipe_min" class="form-control form-control-sm" value="{{ cfg.metas.cliente_para_equipe_min }}" min="1" required>
-      </div>
-      <div class="col-md-3">
-        <label class="form-label small">Inatividade (dias)</label>
-        <input type="number" name="inatividade_dias" class="form-control form-control-sm" value="{{ cfg.inatividade_dias }}" min="1" required>
-      </div>
-      <div class="col-md-6 d-flex align-items-end">
-        <div class="form-check">
+<form method="post" class="dg-settings-form">
+  <section class="card dg-settings-section">
+    <div class="card-body">
+      <header class="dg-settings-heading">
+        <span><i class="fa-regular fa-clock" aria-hidden="true"></i></span>
+        <div>
+          <h2>Janela de atendimento</h2>
+          <p>Horário considerado no cálculo do SLA útil das conversas.</p>
+        </div>
+      </header>
+      <div class="dg-settings-grid dg-settings-grid-hours">
+        <div>
+          <label class="form-label" for="configInicio">Início do atendimento</label>
+          <input id="configInicio" type="time" name="inicio" class="form-control" value="{{ cfg.atendimento.inicio }}" required>
+        </div>
+        <div>
+          <label class="form-label" for="configFim">Fim do atendimento</label>
+          <input id="configFim" type="time" name="fim" class="form-control" value="{{ cfg.atendimento.fim }}" required>
+        </div>
+        <label class="dg-settings-check" for="diasUteis">
           <input class="form-check-input" type="checkbox" name="dias_uteis" id="diasUteis" {{ 'checked' if cfg.atendimento.dias_uteis }}>
-          <label class="form-check-label small" for="diasUteis">Contar apenas dias úteis (seg–sex) na janela de atendimento</label>
+          <span><strong>Considerar somente dias úteis</strong><small>Ignora sábados e domingos na janela de atendimento.</small></span>
+        </label>
+      </div>
+    </div>
+  </section>
+
+  <section class="card dg-settings-section">
+    <div class="card-body">
+      <header class="dg-settings-heading">
+        <span><i class="fa-solid fa-bullseye" aria-hidden="true"></i></span>
+        <div>
+          <h2>Metas e monitoramento</h2>
+          <p>Parâmetros usados nos indicadores de resposta e inatividade.</p>
+        </div>
+      </header>
+      <div class="dg-settings-grid">
+        <div>
+          <label class="form-label" for="configMetaEquipe">Meta equipe → cliente</label>
+          <div class="dg-input-unit"><input id="configMetaEquipe" type="number" name="equipe_para_cliente_min" class="form-control" value="{{ cfg.metas.equipe_para_cliente_min }}" min="1" required><span>min</span></div>
+        </div>
+        <div>
+          <label class="form-label" for="configMetaCliente">Meta cliente → equipe</label>
+          <div class="dg-input-unit"><input id="configMetaCliente" type="number" name="cliente_para_equipe_min" class="form-control" value="{{ cfg.metas.cliente_para_equipe_min }}" min="1" required><span>min</span></div>
+        </div>
+        <div>
+          <label class="form-label" for="configInatividade">Limiar de inatividade</label>
+          <div class="dg-input-unit"><input id="configInatividade" type="number" name="inatividade_dias" class="form-control" value="{{ cfg.inatividade_dias }}" min="1" required><span>dias</span></div>
         </div>
       </div>
-      <div class="col-12">
-        <button class="btn btn-sm btn-primary"><i class="bi bi-check2 me-1"></i>Salvar</button>
-      </div>
-    </form>
-  </div>
-</div>
+    </div>
+  </section>
+
+  <footer class="dg-settings-footer">
+    <span><i class="fa-solid fa-circle-info" aria-hidden="true"></i> As alterações passam a valer imediatamente em todas as análises.</span>
+    <button class="btn btn-primary" type="submit"><i class="fa-solid fa-check" aria-hidden="true"></i> Salvar configurações</button>
+  </footer>
+</form>
 {% endblock %}

@@ -43,8 +43,8 @@
 </th>
 {%- endmacro %}
 
-{% macro grafico(titulo, container, desc='') -%}
-<div class="col">
+{% macro grafico(titulo, container, desc='', span=10, altura=310) -%}
+<div class="col dg-chart-item" data-dg-chart-card data-chart-key="fixed:{{ container }}" data-default-span="{{ span }}" data-default-height="{{ altura }}">
   <div class="card h-100">
     <div class="card-body">
       <h6 class="card-title">{{ titulo }}{% if desc %} <span class="desc-icon" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ desc }}" aria-label="{{ desc }}">?</span>{% endif %}</h6>
