@@ -39,13 +39,15 @@
   </div>
 </div>
 <div class="row g-3 mb-3">
-  <div class="col">
+  <div class="col dg-chart-item" data-dg-chart-card data-chart-key="fixed:heatmapAtividade" data-default-span="10" data-default-height="310">
     <div class="card h-100">
       <div class="card-body">
         <h6 class="card-title">Heatmap de atividade (dia da semana × hora)
           <span class="desc-icon" data-bs-toggle="tooltip" data-bs-placement="top" title="Intensidade de mensagens por dia da semana e hora. Células mais intensas = mais atividade.">?</span>
         </h6>
-        {{ heatmap_tabela(heatmap) }}
+        <div class="dg-heatmap-box">
+          {{ heatmap_tabela(heatmap) }}
+        </div>
       </div>
     </div>
   </div>

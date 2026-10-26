@@ -64,12 +64,13 @@
     </thead>
     <tbody>
       {% for linha in grid %}
+      {% set dia = dias[loop.index0] %}
       <tr>
-        <td class="small text-muted">{{ dias[loop.index0] }}</td>
+        <td class="small text-muted">{{ dia }}</td>
         {% for h in range(6, 22) %}
         {% set v = linha[h] %}
-        <td class="heat-cell" data-v="{{ v }}" title="{{ dias[loop.index0] }} {{ h }}h: {{ v }} msgs"
-            style="--v:{{ (v * 100 / maxv)|round }}"></td>
+        <td class="heat-cell" data-v="{{ v }}" title="{{ dia }} {{ h }}h: {{ v }} msgs"
+            style="--heat-alpha:{{ ((0.12 + (v * 0.78 / maxv)) if v else 0)|round(3) }}"></td>
         {% endfor %}
         <td class="small text-muted">{{ linha|sum }}</td>
       </tr>

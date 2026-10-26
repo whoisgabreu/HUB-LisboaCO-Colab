@@ -1492,10 +1492,44 @@ button.dg-kpi:hover {
 }
 
 .heatmap .heat-cell {
+  position: relative;
   min-width: 28px;
   height: 25px;
+  background-color: transparent !important;
   border-color: color-mix(in srgb, var(--dg-border) 76%, transparent);
   border-radius: 4px;
+}
+
+.heatmap .heat-cell::after {
+  position: absolute;
+  z-index: 1;
+  inset: 2px;
+  content: "";
+  background: #d61616;
+  border-radius: 3px;
+  opacity: var(--heat-alpha, 0);
+  pointer-events: none;
+}
+
+:root[data-bs-theme="dark"] .heatmap .heat-cell::after {
+  background: #f87171;
+}
+
+.dg-heatmap-box {
+  display: flex;
+  height: var(--dg-chart-height, 310px);
+  min-height: 0;
+  align-items: stretch;
+  overflow: auto;
+}
+
+.dg-heatmap-box > .table-responsive {
+  width: 100%;
+  min-width: 720px;
+}
+
+.dg-heatmap-box .heatmap {
+  height: 100%;
 }
 
 code {
