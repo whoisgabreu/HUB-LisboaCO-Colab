@@ -5770,6 +5770,11 @@ def view_kanban():
         "kanban.html",
         user_name=session.get("nome"),
         mapping_targets=KanbanService.MAPPING_TARGETS,
+        collection_targets=KanbanService.COLLECTION_TARGETS,
+        kanban_platforms=[
+            {"codigo": codigo, "nome": nome}
+            for codigo, nome in KanbanService.PLATAFORMAS_KANBAN.items()
+        ],
     )
 
 @app.route("/api/kanban/config", methods=["GET"])
@@ -6830,6 +6835,8 @@ def public_form_submit(token):
         dados = {}
         fase_nome = fase['nome']
         for campo in fase.get('campos', []):
+            if campo.get('tipo') == 'incremental':
+                continue
             raw = request.form.get(f"campo_{campo['id']}", "")
             if campo['tipo'] == 'checkbox':
                 # multiple values

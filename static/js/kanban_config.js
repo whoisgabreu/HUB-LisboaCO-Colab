@@ -412,6 +412,7 @@ const kanbanConfig = {
                                                placeholder="Descrição opcional (ex: Informe o valor mensal do contrato)"
                                                value="${campo.descricao || ''}">
                                     </div>
+                                    ${campo.tipo === 'incremental' ? this._incrementalConfigHtml(campo, fIndex, cIndex) : `
                                     <div class="field-sync-row">
                                         <label class="field-sync-toggle-wrap" title="Sincronizar este campo com uma coluna do banco">
                                             <input type="checkbox" class="field-sync-toggle" data-findex="${fIndex}" data-cindex="${cIndex}" ${campo.mapeamento_coluna ? 'checked' : ''}>
@@ -439,6 +440,7 @@ const kanbanConfig = {
                                             </div>
                                         </div>
                                     </div>
+                                    `}
                                     ${['select', 'checkbox', 'radio'].includes(campo.tipo) ? `
                                         <div class="field-options-area">
                                             <label><i class="fas fa-list"></i> Opções disponíveis</label>
@@ -703,7 +705,12 @@ const kanbanConfig = {
         this.body.querySelectorAll('.field-type-select').forEach(sel => {
             sel.onchange = (e) => {
                 const { findex, cindex } = e.target.dataset;
-                this.currentConfig.fases[findex].campos[cindex].tipo = e.target.value;
+                const campo = this.currentConfig.fases[findex].campos[cindex];
+                campo.tipo = e.target.value;
+                if (campo.tipo === 'incremental') {
+                    campo.subcampos = campo.subcampos || [];
+                    campo.subtabela = campo.subtabela || '';
+                }
                 this.render();
             };
         });
@@ -726,6 +733,100 @@ const kanbanConfig = {
             chk.onchange = (e) => {
                 const { findex, cindex } = e.target.dataset;
                 this.currentConfig.fases[findex].campos[cindex].obrigatorio = e.target.checked;
+            };
+        });
+
+        this.body.querySelectorAll('.field-incremental-target').forEach(sel => {
+            sel.onchange = (e) => {
+                const { findex, cindex } = e.target.dataset;
+                const campo = this.currentConfig.fases[findex].campos[cindex];
+                campo.subtabela = e.target.value || '';
+                (campo.subcampos || []).forEach(sub => { sub.coluna = ''; });
+                this.render();
+            };
+        });
+
+        this.body.querySelectorAll('.field-sub-label').forEach(input => {
+            input.onchange = (e) => {
+                const { findex, cindex, sindex } = e.target.dataset;
+                const campo = this.currentConfig.fases[findex].campos[cindex];
+                const sub = (campo.subcampos || [])[sindex];
+                if (sub) sub.label = e.target.value;
+            };
+        });
+
+        this.body.querySelectorAll('.field-sub-type').forEach(sel => {
+            sel.onchange = (e) => {
+                const { findex, cindex, sindex } = e.target.dataset;
+                const campo = this.currentConfig.fases[findex].campos[cindex];
+                const sub = (campo.subcampos || [])[sindex];
+                if (!sub) return;
+                sub.tipo = e.target.value;
+                if (!['select', 'checkbox', 'radio'].includes(sub.tipo)) {
+                    sub.opcoes = [];
+                }
+                if (sub.tipo === 'plataformas' && campo.subtabela === 'projetos_contas') {
+                    sub.coluna = 'plataforma';
+                } else if (sub.coluna === 'plataforma' && sub.tipo !== 'plataformas') {
+                    sub.coluna = '';
+                }
+                this.render();
+            };
+        });
+
+        this.body.querySelectorAll('.field-sub-required').forEach(chk => {
+            chk.onchange = (e) => {
+                const { findex, cindex, sindex } = e.target.dataset;
+                const campo = this.currentConfig.fases[findex].campos[cindex];
+                const sub = (campo.subcampos || [])[sindex];
+                if (sub) sub.obrigatorio = e.target.checked;
+            };
+        });
+
+        this.body.querySelectorAll('.field-sub-options').forEach(input => {
+            input.onchange = (e) => {
+                const { findex, cindex, sindex } = e.target.dataset;
+                const campo = this.currentConfig.fases[findex].campos[cindex];
+                const sub = (campo.subcampos || [])[sindex];
+                if (sub) {
+                    sub.opcoes = e.target.value.split(',').map(v => v.trim()).filter(v => v !== '');
+                }
+            };
+        });
+
+        this.body.querySelectorAll('.field-sub-column').forEach(sel => {
+            sel.onchange = (e) => {
+                const { findex, cindex, sindex } = e.target.dataset;
+                const campo = this.currentConfig.fases[findex].campos[cindex];
+                const sub = (campo.subcampos || [])[sindex];
+                if (sub) sub.coluna = e.target.value;
+            };
+        });
+
+        this.body.querySelectorAll('.field-sub-remove').forEach(btn => {
+            btn.onclick = (e) => {
+                const el = e.target.closest('button');
+                const { findex, cindex, sindex } = el.dataset;
+                const campo = this.currentConfig.fases[findex].campos[cindex];
+                (campo.subcampos || []).splice(Number(sindex), 1);
+                this.render();
+            };
+        });
+
+        this.body.querySelectorAll('.btn-add-subfield').forEach(btn => {
+            btn.onclick = (e) => {
+                const { findex, cindex } = e.target.closest('button').dataset;
+                const campo = this.currentConfig.fases[findex].campos[cindex];
+                campo.subcampos = campo.subcampos || [];
+                campo.subcampos.push({
+                    id: this._novoSubfieldId(),
+                    label: '',
+                    tipo: 'string',
+                    obrigatorio: false,
+                    opcoes: [],
+                    coluna: ''
+                });
+                this.render();
             };
         });
 
@@ -850,24 +951,135 @@ const kanbanConfig = {
         }).join('');
     },
 
-    _platformOptions(selected) {
+    _platformEntries() {
+        if (Array.isArray(window.KANBAN_PLATAFORMAS) && window.KANBAN_PLATAFORMAS.length) {
+            return window.KANBAN_PLATAFORMAS.map(p => [p.codigo, p.nome]);
+        }
         const target = this._mappingTargets()['projetos_contas'] || {};
-        return Object.entries(target.platforms || {}).map(([code, label]) =>
+        return Object.entries(target.platforms || {});
+    },
+
+    _platformOptions(selected) {
+        return this._platformEntries().map(([code, label]) =>
             `<option value="${code}" ${code === selected ? 'selected' : ''}>${label}</option>`
         ).join('');
     },
 
+    _collectionTargets() {
+        return window.KANBAN_COLLECTION_TARGETS || {};
+    },
+
+    _incrementalTargetOptions(selected) {
+        return Object.entries(this._collectionTargets()).map(([code, target]) =>
+            `<option value="${code}" ${code === selected ? 'selected' : ''}>${target.label || code}</option>`
+        ).join('');
+    },
+
+    _incrementalColumnOptions(target, selected) {
+        const def = this._collectionTargets()[target] || {};
+        return Object.entries(def.columns || {}).map(([code, col]) =>
+            `<option value="${code}" ${code === selected ? 'selected' : ''}>${(col && col.label) || code}</option>`
+        ).join('');
+    },
+
+    _subfieldTypes() {
+        return [
+            { v: 'string',      l: 'Linha única',        i: 'fa-i-cursor'      },
+            { v: 'text',        l: 'Parágrafo',          i: 'fa-align-left'    },
+            { v: 'number',      l: 'Número',             i: 'fa-hashtag'       },
+            { v: 'boolean',     l: 'Sim/Não',            i: 'fa-toggle-on'     },
+            { v: 'datetime',    l: 'Data',               i: 'fa-calendar-days' },
+            { v: 'select',      l: 'Opções (escolha 1)', i: 'fa-caret-down'    },
+            { v: 'checkbox',    l: 'Múltipla escolha',   i: 'fa-square-check'  },
+            { v: 'radio',       l: 'Escolha única',      i: 'fa-circle-dot'    },
+            { v: 'link',        l: 'Link / URL',         i: 'fa-link'          },
+            { v: 'plataformas', l: 'Plataformas',        i: 'fa-rectangle-ad'  },
+        ];
+    },
+
+    _subfieldLabel(type) {
+        const t = this._subfieldTypes().find(x => x.v === type);
+        return t ? t.l : type;
+    },
+
+    _novoSubfieldId() {
+        return `sf_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
+    },
+
+    _incrementalConfigHtml(campo, fIndex, cIndex) {
+        const subcampos = campo.subcampos || [];
+        const target = campo.subtabela || '';
+        const targetDef = this._collectionTargets()[target];
+        return `
+            <div class="field-incremental-config">
+                <div class="incremental-config-head">
+                    <span><i class="fas fa-layer-group"></i> Estrutura do incremental</span>
+                    <span class="incremental-count">${subcampos.length} subcampo(s)</span>
+                </div>
+                <div class="incremental-target-row">
+                    <label>Sincronizar com banco</label>
+                    <select class="modern-select field-incremental-target" data-findex="${fIndex}" data-cindex="${cIndex}">
+                        <option value="">Nenhum (somente card)</option>
+                        ${this._incrementalTargetOptions(target)}
+                    </select>
+                </div>
+                ${targetDef ? `<p class="incremental-target-hint">Cada linha será sincronizada com <strong>${targetDef.label}</strong>. Mapeie os subcampos para as colunas desejadas.</p>` : ''}
+                <div class="incremental-subfields">
+                    ${subcampos.map((sub, sIndex) => this._incrementalSubfieldHtml(campo, sub, fIndex, cIndex, sIndex)).join('')}
+                </div>
+                <button type="button" class="btn-add-subfield" data-findex="${fIndex}" data-cindex="${cIndex}">
+                    <i class="fas fa-plus"></i> Adicionar subcampo
+                </button>
+            </div>
+        `;
+    },
+
+    _incrementalSubfieldHtml(campo, sub, fIndex, cIndex, sIndex) {
+        const target = campo.subtabela || '';
+        const targetDef = this._collectionTargets()[target];
+        const tipo = sub.tipo || 'string';
+        const pedeOpcoes = ['select', 'checkbox', 'radio'].includes(tipo);
+        return `
+            <div class="incremental-subfield" data-findex="${fIndex}" data-cindex="${cIndex}" data-sindex="${sIndex}">
+                <input type="text" class="modern-input field-sub-label" data-findex="${fIndex}" data-cindex="${cIndex}" data-sindex="${sIndex}"
+                    value="${sub.label || ''}" placeholder="Nome do subcampo">
+                <select class="modern-select field-sub-type" data-findex="${fIndex}" data-cindex="${cIndex}" data-sindex="${sIndex}">
+                    ${this._subfieldTypes().map(t => `<option value="${t.v}" ${t.v === tipo ? 'selected' : ''}>${t.l}</option>`).join('')}
+                </select>
+                <label class="field-sub-required-wrap" title="Subcampo obrigatório?">
+                    <input type="checkbox" class="field-sub-required" data-findex="${fIndex}" data-cindex="${cIndex}" data-sindex="${sIndex}" ${sub.obrigatorio ? 'checked' : ''}>
+                    <span>Obrigatório</span>
+                </label>
+                ${pedeOpcoes ? `
+                    <input type="text" class="modern-input field-sub-options" data-findex="${fIndex}" data-cindex="${cIndex}" data-sindex="${sIndex}"
+                        value="${(sub.opcoes || []).join(', ')}" placeholder="Opções separadas por vírgula">
+                ` : ''}
+                ${tipo === 'plataformas' ? `<span class="incremental-sub-hint"><i class="fas fa-lock"></i> Opções fixas</span>` : ''}
+                ${targetDef ? `
+                    <select class="modern-select field-sub-column" data-findex="${fIndex}" data-cindex="${cIndex}" data-sindex="${sIndex}">
+                        <option value="">Coluna...</option>
+                        ${this._incrementalColumnOptions(target, sub.coluna)}
+                    </select>
+                ` : ''}
+                <button type="button" class="field-sub-remove" data-findex="${fIndex}" data-cindex="${cIndex}" data-sindex="${sIndex}" title="Remover subcampo">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        `;
+    },
+
     _fieldTypes() {
         return [
-            { v: 'string',   l: 'Linha única',          i: 'fa-i-cursor'      },
-            { v: 'text',     l: 'Parágrafo',            i: 'fa-align-left'    },
-            { v: 'number',   l: 'Número',               i: 'fa-hashtag'       },
-            { v: 'boolean',  l: 'Sim/Não',              i: 'fa-toggle-on'     },
-            { v: 'datetime', l: 'Data',                 i: 'fa-calendar-days' },
-            { v: 'select',   l: 'Opções (escolha 1)',   i: 'fa-caret-down'    },
-            { v: 'checkbox', l: 'Múltipla escolha',     i: 'fa-square-check'  },
-            { v: 'radio',    l: 'Escolha única',        i: 'fa-circle-dot'    },
-            { v: 'link',     l: 'Link / URL',           i: 'fa-link'          }
+            { v: 'string',      l: 'Linha única',          i: 'fa-i-cursor'      },
+            { v: 'text',        l: 'Parágrafo',            i: 'fa-align-left'    },
+            { v: 'number',      l: 'Número',               i: 'fa-hashtag'       },
+            { v: 'boolean',     l: 'Sim/Não',              i: 'fa-toggle-on'     },
+            { v: 'datetime',    l: 'Data',                 i: 'fa-calendar-days' },
+            { v: 'select',      l: 'Opções (escolha 1)',   i: 'fa-caret-down'    },
+            { v: 'checkbox',    l: 'Múltipla escolha',     i: 'fa-square-check'  },
+            { v: 'radio',       l: 'Escolha única',        i: 'fa-circle-dot'    },
+            { v: 'link',        l: 'Link / URL',           i: 'fa-link'          },
+            { v: 'incremental', l: 'Incremental',          i: 'fa-layer-group'   },
         ];
     },
 

@@ -2972,3 +2972,317 @@ body.tema-claro .var-chip {
         min-width: 0;
     }
 }
+
+/* Campo incremental (repetidor configurável) */
+.field-incremental-config {
+    margin-top: 12px;
+    padding: 12px;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 10px;
+    background: rgba(255,255,255,0.02);
+}
+
+.incremental-config-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+.incremental-count {
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+.incremental-target-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.incremental-target-row label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+.incremental-target-row select {
+    flex: 1;
+    min-width: 0;
+}
+
+.incremental-target-hint {
+    margin: 0 0 10px;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+}
+
+.incremental-subfields {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.incremental-subfield {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding: 8px;
+    border-radius: 8px;
+    background: rgba(0,0,0,0.12);
+}
+
+.incremental-subfield .field-sub-label {
+    flex: 1 1 150px;
+    min-width: 120px;
+}
+
+.incremental-subfield .field-sub-type,
+.incremental-subfield .field-sub-column {
+    flex: 0 1 150px;
+    min-width: 120px;
+}
+
+.incremental-subfield .field-sub-options {
+    flex: 1 1 180px;
+    min-width: 140px;
+}
+
+.field-sub-required-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.68rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+.field-sub-required-wrap input {
+    accent-color: var(--kanban-accent);
+}
+
+.incremental-sub-hint {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+.field-sub-remove {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 5px;
+    border-radius: 6px;
+}
+
+.field-sub-remove:hover {
+    color: #e74c3c;
+    background: rgba(231,76,60,0.1);
+}
+
+.btn-add-subfield {
+    margin-top: 8px;
+    background: none;
+    border: 1px dashed rgba(255,255,255,0.18);
+    color: var(--text-muted);
+    border-radius: 8px;
+    padding: 7px 10px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.btn-add-subfield:hover {
+    color: var(--kanban-accent);
+    border-color: var(--kanban-accent);
+}
+
+@media (max-width: 700px) {
+    .incremental-target-row {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .incremental-subfield > * {
+        width: 100%;
+        flex: 1 1 100%;
+    }
+}
+
+/* Campo incremental no card */
+.incremental-card-field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+}
+
+.incremental-card-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.incremental-card-row {
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 9px;
+    background: rgba(255,255,255,0.02);
+    padding: 8px;
+}
+
+.incremental-card-row-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.incremental-row-index {
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: var(--text-muted);
+}
+
+.incremental-row-remove {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: 5px;
+}
+
+.incremental-row-remove:hover {
+    color: #e74c3c;
+    background: rgba(231,76,60,0.1);
+}
+
+.incremental-card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 8px;
+}
+
+.incremental-card-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.incremental-card-cell label {
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.incremental-card-cell .modern-input,
+.incremental-card-cell .modern-select {
+    width: 100%;
+    min-width: 0;
+}
+
+.incremental-card-cell textarea.incremental-subinput {
+    min-height: 44px;
+    resize: vertical;
+}
+
+.incremental-boolean {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    min-height: 34px;
+}
+
+.incremental-boolean input {
+    accent-color: var(--kanban-accent);
+}
+
+.incremental-empty {
+    margin: 0;
+    padding: 8px;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+.btn-add-incremental {
+    align-self: flex-start;
+    background: none;
+    border: 1px dashed rgba(255,255,255,0.2);
+    color: var(--text-muted);
+    border-radius: 7px;
+    padding: 6px 10px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.btn-add-incremental:hover {
+    color: var(--kanban-accent);
+    border-color: var(--kanban-accent);
+}
+
+.incremental-card-field.incremental-invalid {
+    outline: 1px solid rgba(231,76,60,0.5);
+    border-radius: 8px;
+}
+
+.incremental-card-cell.incremental-cell-invalid .modern-input,
+.incremental-card-cell.incremental-cell-invalid .modern-select {
+    border-color: #e74c3c !important;
+}
+
+.incremental-readonly {
+    gap: 6px;
+}
+
+.incremental-readonly-row {
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 8px;
+    padding: 8px;
+    background: rgba(255,255,255,0.02);
+}
+
+.incremental-readonly-title {
+    font-size: 0.67rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    margin-bottom: 5px;
+}
+
+.incremental-readonly-cell {
+    display: flex;
+    gap: 6px;
+    font-size: 0.72rem;
+    padding: 2px 0;
+}
+
+.incremental-readonly-label {
+    color: var(--text-muted);
+    min-width: 90px;
+}
+
+.incremental-readonly-cell span:last-child {
+    color: var(--text-main);
+    word-break: break-word;
+}
+
+@media (max-width: 600px) {
+    .incremental-card-grid {
+        grid-template-columns: 1fr;
+    }
+}

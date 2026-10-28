@@ -20,6 +20,23 @@ PLATAFORMAS_KANBAN = {
 }
 
 
+COLLECTION_TARGETS = {
+    "projetos_contas": {
+        "label": "Contas de Mídia",
+        "columns": {
+            "plataforma": {"label": "Plataforma", "tipo": "plataformas", "obrigatorio": True},
+            "conta_id": {"label": "ID da conta", "tipo": "string", "obrigatorio": True},
+            "frente": {"label": "Frente", "tipo": "string"},
+            "descricao": {"label": "Descrição", "tipo": "text"},
+        },
+        "required_columns": ["plataforma", "conta_id"],
+    },
+}
+
+SUBFIELD_TYPES = ("string", "text", "number", "boolean", "datetime",
+                  "select", "checkbox", "radio", "link", "plataformas")
+
+
 MAPPING_TARGETS = {
     "projetos": {
         "label": "Projetos",
@@ -68,6 +85,8 @@ _NAO_CARREGADO = object()
 
 class KanbanService:
     MAPPING_TARGETS = MAPPING_TARGETS
+    COLLECTION_TARGETS = COLLECTION_TARGETS
+    PLATAFORMAS_KANBAN = PLATAFORMAS_KANBAN
 
     def __init__(self, db: Session):
         self.db = db
@@ -214,6 +233,51 @@ class KanbanService:
             key=lambda c: (not bool(c.principal), not bool(c.ativo), c.id or 0),
         )[0]
 
+    def _format_incremental(self, campo: Dict[str, Any], dados: Dict[str, Any], contas) -> Dict[str, Any]:
+        """Formata um campo incremental; para contas, a fonte é o banco."""
+        target = (campo.get('subtabela') or '').strip()
+        subcampos = campo.get('subcampos') or []
+
+        if target == 'projetos_contas':
+            ordem = {plataforma: idx for idx, plataforma in enumerate(PLATAFORMAS_KANBAN)}
+            ativas = [c for c in (contas or []) if c.ativo]
+            ativas.sort(key=lambda c: (
+                ordem.get(c.plataforma, 99),
+                not bool(c.principal),
+                str(c.frente or '').strip().lower(),
+                c.id or 0,
+            ))
+            itens = []
+            for conta in ativas:
+                item = {"_id": conta.id}
+                for subcampo in subcampos:
+                    coluna = (subcampo.get('coluna') or '').strip()
+                    if not coluna:
+                        continue
+                    if coluna == 'plataforma':
+                        valor = conta.plataforma
+                    elif coluna == 'conta_id':
+                        valor = conta.conta_id
+                    elif coluna == 'frente':
+                        valor = conta.frente or ''
+                    elif coluna == 'descricao':
+                        valor = conta.descricao or ''
+                    else:
+                        continue
+                    item[subcampo['id']] = valor
+                itens.append(item)
+            return {"itens": itens, "remover": []}
+
+        atual = dados.get(campo['id'])
+        if isinstance(atual, list):
+            return {"itens": atual, "remover": []}
+        if isinstance(atual, dict):
+            return {
+                "itens": atual.get("itens") or [],
+                "remover": atual.get("remover") or [],
+            }
+        return {"itens": [], "remover": []}
+
     def _format_card(self, p: Projeto, config: Dict[str, Any],
                      contas=_NAO_CARREGADO, contexto=_NAO_CARREGADO) -> Dict[str, Any]:
         """Formata um projeto como card, aplicando os mapeamentos inversos."""
@@ -228,6 +292,9 @@ class KanbanService:
 
         for fase in config.get('fases', []):
             for campo in fase.get('campos', []):
+                if (campo.get('tipo') or '') == 'incremental':
+                    dados[campo['id']] = self._format_incremental(campo, dados, contas)
+                    continue
                 coluna = campo.get('mapeamento_coluna')
                 if not coluna:
                     continue
@@ -276,6 +343,33 @@ class KanbanService:
         """Converte vírgula para ponto e transforma em float para campos do tipo number."""
         for fase in config.get('fases', []):
             for campo in fase.get('campos', []):
+                if campo.get('tipo') == 'incremental':
+                    valor = dados.get(campo['id'])
+                    itens = valor.get('itens') if isinstance(valor, dict) else valor
+                    if not isinstance(itens, list):
+                        continue
+                    numericos = {
+                        sub['id'] for sub in (campo.get('subcampos') or [])
+                        if sub.get('tipo') == 'number'
+                    }
+                    if not numericos:
+                        continue
+                    for item in itens:
+                        if not isinstance(item, dict):
+                            continue
+                        for sub_id in numericos:
+                            if sub_id not in item:
+                                continue
+                            val = item[sub_id]
+                            if val is None or val == '':
+                                continue
+                            try:
+                                if isinstance(val, str):
+                                    val = val.replace(',', '.')
+                                item[sub_id] = float(val)
+                            except (ValueError, TypeError):
+                                pass
+                    continue
                 if campo['tipo'] == 'number' and campo['id'] in dados:
                     val = dados[campo['id']]
                     if val is not None and val != '':
@@ -534,6 +628,12 @@ class KanbanService:
 
         for fase in config.get('fases', []):
             for campo in fase.get('campos', []):
+                if (campo.get('tipo') or '') == 'incremental':
+                    if campo['id'] in dados_salvos:
+                        self._apply_incremental(
+                            projeto, campo, dados_salvos.get(campo['id']), usuario_email
+                        )
+                    continue
                 coluna = campo.get('mapeamento_coluna')
                 if not coluna:
                     continue
@@ -613,10 +713,78 @@ class KanbanService:
         from sqlalchemy.orm.attributes import flag_modified
         flag_modified(projeto, "kanban_dados")
 
+    def _apply_incremental(self, projeto: Projeto, campo: Dict[str, Any],
+                           valor: Any, usuario_email: Optional[str]):
+        target = (campo.get('subtabela') or '').strip()
+        if not target:
+            return
+        if target == 'projetos_contas':
+            projetos_contas_service.aplicar_incremental_kanban(
+                self.db, projeto, valor, campo.get('subcampos') or [], usuario_email
+            )
+            return
+        raise ValueError(f"Tabela de destino inválida para o incremental: '{target}'.")
+
+    @staticmethod
+    def _validar_incremental(campo: Dict[str, Any]):
+        target = (campo.get('subtabela') or '').strip()
+        subcampos = campo.get('subcampos')
+        if not isinstance(subcampos, list) or not subcampos:
+            raise ValueError("O campo incremental precisa ter pelo menos um subcampo.")
+
+        ids = set()
+        colunas = []
+        for sub in subcampos:
+            if not isinstance(sub, dict):
+                raise ValueError("Subcampo incremental inválido.")
+            sub_id = str(sub.get('id') or '').strip()
+            if not sub_id or sub_id in ids:
+                raise ValueError("Os subcampos do incremental precisam ter IDs únicos.")
+            ids.add(sub_id)
+
+            tipo = sub.get('tipo')
+            if tipo not in SUBFIELD_TYPES:
+                raise ValueError(f"Tipo de subcampo incremental inválido: '{tipo}'.")
+            if tipo in ('select', 'checkbox', 'radio') and not sub.get('opcoes'):
+                raise ValueError("Subcampos de escolha precisam ter opções.")
+
+            coluna = (sub.get('coluna') or '').strip()
+            if coluna:
+                colunas.append(coluna)
+            if not target and coluna:
+                raise ValueError("Só é possível mapear colunas quando há uma tabela de destino.")
+
+        if not target:
+            return
+
+        dest = COLLECTION_TARGETS.get(target)
+        if not dest:
+            raise ValueError(f"Tabela de destino inválida para o incremental: '{target}'.")
+        if len(colunas) != len(set(colunas)):
+            raise ValueError("Há mais de um subcampo mapeado para a mesma coluna.")
+        for coluna in colunas:
+            if coluna not in dest['columns']:
+                raise ValueError(f"Coluna '{coluna}' inválida para a tabela '{target}'.")
+
+        for coluna in dest.get('required_columns', []):
+            if coluna not in colunas:
+                raise ValueError(f"A coluna '{coluna}' é obrigatória para o incremental em '{target}'.")
+
+        if target == 'projetos_contas':
+            for sub in subcampos:
+                coluna = (sub.get('coluna') or '').strip()
+                if coluna == 'plataforma' and sub.get('tipo') != 'plataformas':
+                    raise ValueError("A coluna plataforma exige um subcampo do tipo Plataformas.")
+                if coluna == 'conta_id' and sub.get('tipo') not in ('string', 'text'):
+                    raise ValueError("A coluna conta_id exige um subcampo de texto.")
+
     @staticmethod
     def _validar_mapeamentos(fases):
         for fase in fases or []:
             for campo in fase.get('campos', []):
+                if (campo.get('tipo') or '') == 'incremental':
+                    KanbanService._validar_incremental(campo)
+                    continue
                 coluna = (campo.get('mapeamento_coluna') or '').strip()
                 if not coluna:
                     continue
