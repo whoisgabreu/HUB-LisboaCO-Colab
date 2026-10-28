@@ -375,6 +375,144 @@ def aplicar_mapeamentos_kanban(db, projeto: Projeto,
         raise ValueError(_mensagem_erro(e)) from e
 
 
+def aplicar_incremental_kanban(db, projeto: Projeto, valor: Any,
+                               subcampos: List[Dict[str, Any]],
+                               usuario: Optional[str] = None) -> None:
+    """Sincroniza um campo incremental com a tabela projetos_contas.
+
+    O valor esperado é ``{"itens": [...], "remover": [ids]}``. Cada item usa
+    os IDs dos subcampos; ``_id`` identifica uma linha existente. Não commita.
+    """
+    if isinstance(valor, list):
+        itens, remover = valor, []
+    elif isinstance(valor, dict):
+        itens = valor.get("itens") or []
+        remover = valor.get("remover") or []
+    else:
+        return
+
+    colunas = {
+        str(sub.get("coluna") or "").strip(): sub.get("id")
+        for sub in (subcampos or [])
+        if sub.get("coluna")
+    }
+    if not colunas:
+        return
+
+    usuario = (usuario or "kanban")[:100]
+    _MISSING = object()
+    campos_conhecidos = ("plataforma", "conta_id", "frente", "descricao")
+
+    def _valor(item, coluna):
+        sub_id = colunas.get(coluna)
+        if not sub_id:
+            return _MISSING
+        return item.get(sub_id, _MISSING)
+
+    def _vazio(v):
+        return v is _MISSING or v is None or (isinstance(v, str) and not v.strip())
+
+    try:
+        for raw_id in remover:
+            try:
+                row_id = int(raw_id)
+            except (TypeError, ValueError):
+                continue
+            conta = db.query(ProjetoConta).filter_by(
+                id=row_id, projeto_pipefy_id=projeto.pipefy_id
+            ).first()
+            if conta:
+                conta.ativo = False
+                conta.principal = False
+                conta.updated_by = usuario
+                db.flush()
+
+        for item in itens:
+            if not isinstance(item, dict):
+                continue
+
+            valores = {
+                coluna: _valor(item, coluna)
+                for coluna in campos_conhecidos
+                if coluna in colunas
+            }
+            if not valores:
+                continue
+            if all(_vazio(v) for v in valores.values()) and _vazio(item.get("_id")):
+                continue
+
+            plataforma = str(valores.get("plataforma") or "").strip()
+            if plataforma not in PLATAFORMAS:
+                raise ValueError("Selecione uma plataforma válida para a conta.")
+
+            if _vazio(valores.get("conta_id")):
+                raise ValueError("Informe o ID da conta.")
+            conta_id = _conta_id_valor(valores.get("conta_id"))
+
+            frente = _MISSING
+            if "frente" in valores:
+                frente = _frente_norm(valores.get("frente"))
+                if len(frente) > 100:
+                    raise ValueError("A frente deve ter no máximo 100 caracteres.")
+
+            descricao = _MISSING
+            if "descricao" in valores:
+                descricao = _texto(valores.get("descricao"))
+
+            conta = None
+            raw_row_id = item.get("_id")
+            if not _vazio(raw_row_id):
+                try:
+                    row_id = int(raw_row_id)
+                except (TypeError, ValueError):
+                    raise ValueError("Linha do incremental inválida.")
+                conta = db.query(ProjetoConta).filter_by(
+                    id=row_id, projeto_pipefy_id=projeto.pipefy_id
+                ).first()
+                if not conta:
+                    raise ValueError("Conta não encontrada para esta linha.")
+                if not conta.ativo:
+                    raise ValueError("Esta conta está inativa. Reative-a na aba Contas do Hub.")
+
+            if conta is None:
+                conta = db.query(ProjetoConta).filter_by(
+                    projeto_pipefy_id=projeto.pipefy_id,
+                    plataforma=plataforma,
+                    conta_id=conta_id,
+                ).first()
+                if conta is None:
+                    conta = ProjetoConta(
+                        projeto_pipefy_id=projeto.pipefy_id,
+                        plataforma=plataforma,
+                        conta_id=conta_id,
+                        frente=(None if frente is _MISSING else (frente or None)),
+                        descricao=(None if descricao is _MISSING else descricao),
+                        principal=False,
+                        ativo=True,
+                        updated_by=usuario,
+                    )
+                    db.add(conta)
+                    db.flush()
+                elif not conta.ativo:
+                    raise ValueError("Esta conta está inativa. Reative-a na aba Contas do Hub.")
+
+            if "plataforma" in valores:
+                conta.plataforma = plataforma
+            if "conta_id" in valores:
+                conta.conta_id = conta_id
+            if frente is not _MISSING:
+                conta.frente = frente or None
+            if descricao is not _MISSING:
+                conta.descricao = descricao
+            conta.updated_by = usuario
+            db.flush()
+
+        _espelhar_legado(db, projeto)
+        db.flush()
+    except IntegrityError as e:
+        raise ValueError(_mensagem_erro(e)) from e
+
+
 def definir_ativo(db, pipefy_id: int, conta_id: int, ativo: bool, usuario: str) -> Dict[str, Any]:
     projeto = _projeto(db, pipefy_id)
     conta = _conta(db, pipefy_id, conta_id)

@@ -149,6 +149,9 @@
             podeEditarKanban: {{ 'true' if session.pode_editar_kanban else 'false' }},
             userToken: "{{session.token}}"
         };
+        window.KANBAN_MAPPING_TARGETS = {{ (mapping_targets or {})|tojson }};
+        window.KANBAN_COLLECTION_TARGETS = {{ (collection_targets or {})|tojson }};
+        window.KANBAN_PLATAFORMAS = {{ (kanban_platforms or [])|tojson }};
     </script>
     
     <script src="static/js/kanban_api.js"></script>

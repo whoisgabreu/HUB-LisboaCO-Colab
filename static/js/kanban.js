@@ -521,9 +521,29 @@ const board = {
         const addVal = (key, val) => {
             const label = labelsMap[key] || key;
             searchable.push(label);
-            
+
             if (Array.isArray(val)) {
-                searchable.push(...val.map(String));
+                val.forEach(item => {
+                    if (item && typeof item === 'object') {
+                        Object.entries(item).forEach(([k, v]) => {
+                            if (k !== '_id') addVal(k, v);
+                        });
+                    } else {
+                        searchable.push(String(item));
+                    }
+                });
+            } else if (val && typeof val === 'object') {
+                if (Array.isArray(val.itens)) {
+                    val.itens.forEach(item => {
+                        if (item && typeof item === 'object') {
+                            Object.entries(item).forEach(([k, v]) => {
+                                if (k !== '_id') addVal(k, v);
+                            });
+                        }
+                    });
+                } else {
+                    Object.entries(val).forEach(([k, v]) => addVal(k, v));
+                }
             } else if (val === true) {
                 searchable.push('Sim');
             } else if (val === false) {

@@ -158,7 +158,7 @@ const modal = {
         currentPhase.campos.forEach(campo => {
             const group = document.createElement('div');
             group.className = 'form-group';
-            if (campo.tipo === 'text') group.classList.add('full-width');
+            if (['text', 'incremental'].includes(campo.tipo)) group.classList.add('full-width');
             group.innerHTML = `<label>${campo.label}${campo.obrigatorio ? ' *' : ''}</label>${campo.descricao ? `<p class="field-description">${campo.descricao}</p>` : ''}`;
             const val = card.dados[campo.id];
             group.appendChild(this.createFieldInput(campo, val));
@@ -447,6 +447,17 @@ const modal = {
                 if (val === true) return '<span class="badge-success">Sim</span>';
                 if (val === false) return '<span class="badge-danger">Não</span>';
                 if (!val && val !== 0) return '<span style="opacity:0.5;">-</span>';
+                if (val && typeof val === 'object') {
+                    if (Array.isArray(val.itens)) {
+                        return val.itens.map(item => Object.entries(item)
+                            .filter(([k]) => k !== '_id')
+                            .map(([, v]) => v)
+                            .filter(v => v !== null && v !== undefined && v !== '')
+                            .join(' / ')).filter(Boolean).join('<br>');
+                    }
+                    if (Array.isArray(val)) return val.map(String).join(', ');
+                    return String(val);
+                }
                 return val;
             };
 
@@ -466,6 +477,9 @@ const modal = {
     },
 
     createFieldInput(campo, val) {
+        if (campo.tipo === 'incremental') {
+            return this.createIncrementalInput(campo, val);
+        }
         if (campo.tipo === 'select') {
             const input = document.createElement('select');
             input.id = `field_${campo.id}`;
@@ -582,6 +596,299 @@ const modal = {
         return input;
     },
 
+
+    createIncrementalInput(campo, val) {
+        const container = document.createElement('div');
+        container.className = 'incremental-card-field';
+        container.id = `field_${campo.id}`;
+        container.dataset.remover = '[]';
+
+        const rows = document.createElement('div');
+        rows.className = 'incremental-card-rows';
+        container.appendChild(rows);
+
+        const empty = document.createElement('p');
+        empty.className = 'incremental-empty';
+        empty.textContent = 'Nenhuma linha adicionada.';
+        container.appendChild(empty);
+
+        const addBtn = document.createElement('button');
+        addBtn.type = 'button';
+        addBtn.className = 'btn-add-incremental';
+        addBtn.innerHTML = '<i class="fas fa-plus"></i> Adicionar linha';
+        addBtn.onclick = () => this.appendIncrementalRow(container, campo, {});
+        container.appendChild(addBtn);
+
+        const itens = (val && Array.isArray(val.itens)) ? val.itens : (Array.isArray(val) ? val : []);
+        itens.forEach(item => this.appendIncrementalRow(container, campo, item || {}));
+        this.refreshIncrementalEmpty(container);
+        return container;
+    },
+
+    appendIncrementalRow(container, campo, item) {
+        const rows = container.querySelector('.incremental-card-rows');
+        rows.appendChild(this.createIncrementalRow(container, campo, item));
+        this.refreshIncrementalEmpty(container);
+        this.refreshIncrementalIndexes(container);
+    },
+
+    refreshIncrementalEmpty(container) {
+        const has = container.querySelectorAll('.incremental-card-row').length > 0;
+        const empty = container.querySelector('.incremental-empty');
+        if (empty) empty.style.display = has ? 'none' : 'block';
+    },
+
+    refreshIncrementalIndexes(container) {
+        container.querySelectorAll('.incremental-card-row').forEach((row, idx) => {
+            const badge = row.querySelector('.incremental-row-index');
+            if (badge) badge.textContent = `#${idx + 1}`;
+        });
+    },
+
+    createIncrementalRow(container, campo, item) {
+        const row = document.createElement('div');
+        row.className = 'incremental-card-row';
+        if (item._id !== undefined && item._id !== null && item._id !== '') {
+            row.dataset.rowId = String(item._id);
+        }
+
+        const head = document.createElement('div');
+        head.className = 'incremental-card-row-head';
+        const index = document.createElement('span');
+        index.className = 'incremental-row-index';
+        head.appendChild(index);
+
+        const removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.className = 'incremental-row-remove';
+        removeBtn.title = 'Remover linha';
+        removeBtn.innerHTML = '<i class="fas fa-trash"></i>';
+        removeBtn.onclick = () => {
+            const rid = row.dataset.rowId;
+            if (rid) {
+                let remover = [];
+                try { remover = JSON.parse(container.dataset.remover || '[]'); } catch (e) { remover = []; }
+                const numeric = Number(rid);
+                if (!remover.includes(numeric)) remover.push(numeric);
+                container.dataset.remover = JSON.stringify(remover);
+            }
+            row.remove();
+            this.refreshIncrementalEmpty(container);
+            this.refreshIncrementalIndexes(container);
+        };
+        head.appendChild(removeBtn);
+        row.appendChild(head);
+
+        const grid = document.createElement('div');
+        grid.className = 'incremental-card-grid';
+        (campo.subcampos || []).forEach(sub => {
+            const cell = document.createElement('div');
+            cell.className = 'incremental-card-cell';
+            const label = document.createElement('label');
+            label.textContent = `${sub.label || ''}${sub.obrigatorio ? ' *' : ''}`;
+            cell.appendChild(label);
+            cell.appendChild(this.createSubfieldInput(sub, item[sub.id]));
+            grid.appendChild(cell);
+        });
+        row.appendChild(grid);
+        return row;
+    },
+
+    createSubfieldInput(sub, val) {
+        const tipo = sub.tipo || 'string';
+        if (tipo === 'select' || tipo === 'radio' || tipo === 'plataformas') {
+            const select = document.createElement('select');
+            select.className = 'modern-select incremental-subinput';
+            select.dataset.subId = sub.id;
+            const empty = document.createElement('option');
+            empty.value = '';
+            empty.text = '-- Selecione --';
+            select.appendChild(empty);
+            let options = [];
+            if (tipo === 'plataformas') {
+                const ordered = Array.isArray(window.KANBAN_PLATAFORMAS) ? window.KANBAN_PLATAFORMAS : [];
+                const platforms = ((window.KANBAN_MAPPING_TARGETS || {})['projetos_contas'] || {}).platforms || {};
+                options = ordered.length
+                    ? ordered.map(p => [p.codigo, p.nome])
+                    : Object.entries(platforms).map(([code, label]) => [code, label]);
+            } else {
+                options = (sub.opcoes || []).map(opt => [opt, opt]);
+            }
+            options.forEach(([code, label]) => {
+                const option = document.createElement('option');
+                option.value = code;
+                option.text = label;
+                if (String(val || '') === String(code)) option.selected = true;
+                select.appendChild(option);
+            });
+            return select;
+        }
+
+        if (tipo === 'checkbox') {
+            const box = document.createElement('div');
+            box.className = 'selection-chips-group incremental-subinput';
+            box.dataset.subId = sub.id;
+            const selected = Array.isArray(val) ? val : (val ? [val] : []);
+            (sub.opcoes || []).forEach(opt => {
+                const label = document.createElement('label');
+                label.className = 'chip-item';
+                const input = document.createElement('input');
+                input.type = 'checkbox';
+                input.value = opt;
+                input.style.display = 'none';
+                input.checked = selected.includes(opt);
+                const content = document.createElement('span');
+                content.className = 'chip-content';
+                content.textContent = opt;
+                label.appendChild(input);
+                label.appendChild(content);
+                box.appendChild(label);
+            });
+            return box;
+        }
+
+        if (tipo === 'boolean') {
+            const wrap = document.createElement('label');
+            wrap.className = 'incremental-boolean';
+            const input = document.createElement('input');
+            input.type = 'checkbox';
+            input.dataset.subId = sub.id;
+            input.checked = !!val;
+            const text = document.createElement('span');
+            text.textContent = val ? 'Sim' : 'Não';
+            input.onchange = (e) => { text.textContent = e.target.checked ? 'Sim' : 'Não'; };
+            wrap.appendChild(input);
+            wrap.appendChild(text);
+            return wrap;
+        }
+
+        if (tipo === 'text') {
+            const textarea = document.createElement('textarea');
+            textarea.className = 'modern-input incremental-subinput';
+            textarea.dataset.subId = sub.id;
+            textarea.rows = 2;
+            textarea.value = val || '';
+            return textarea;
+        }
+
+        const input = document.createElement('input');
+        input.className = 'modern-input incremental-subinput';
+        input.dataset.subId = sub.id;
+        input.type = tipo === 'datetime' ? 'datetime-local' : (tipo === 'link' ? 'url' : 'text');
+        if (tipo === 'number') input.inputMode = 'decimal';
+        input.value = val || '';
+        return input;
+    },
+
+    readSubfieldValue(sub, el) {
+        if (!el) return '';
+        const tipo = sub.tipo || 'string';
+        if (tipo === 'checkbox') {
+            return Array.from(el.querySelectorAll('input:checked')).map(input => input.value);
+        }
+        if (tipo === 'boolean') {
+            const input = el.matches('input') ? el : el.querySelector('input');
+            return !!(input && input.checked);
+        }
+        if (tipo === 'select' || tipo === 'radio' || tipo === 'plataformas') {
+            return el.value || '';
+        }
+        return el.value || '';
+    },
+
+    readIncrementalValue(campo, container) {
+        const itens = [];
+        container.querySelectorAll('.incremental-card-row').forEach(row => {
+            const item = {};
+            if (row.dataset.rowId) item._id = Number(row.dataset.rowId);
+            let hasValue = false;
+            (campo.subcampos || []).forEach(sub => {
+                const el = row.querySelector(`[data-sub-id="${sub.id}"]`);
+                const value = this.readSubfieldValue(sub, el);
+                item[sub.id] = value;
+                if (Array.isArray(value) ? value.length > 0 : (value !== '' && value !== false && value !== null && value !== undefined)) {
+                    hasValue = true;
+                }
+            });
+            if (hasValue || item._id) itens.push(item);
+        });
+        let remover = [];
+        try { remover = JSON.parse(container.dataset.remover || '[]'); } catch (e) { remover = []; }
+        return { itens, remover };
+    },
+
+    validateIncremental(campo, container) {
+        let valid = true;
+        let withData = 0;
+        container.querySelectorAll('.incremental-card-row').forEach(row => {
+            const rowId = row.dataset.rowId;
+            let hasValue = false;
+            (campo.subcampos || []).forEach(sub => {
+                const el = row.querySelector(`[data-sub-id="${sub.id}"]`);
+                const value = this.readSubfieldValue(sub, el);
+                const filled = Array.isArray(value)
+                    ? value.length > 0
+                    : (value !== '' && value !== false && value !== null && value !== undefined);
+                if (filled) hasValue = true;
+                const cell = el ? el.closest('.incremental-card-cell') : null;
+                if (sub.obrigatorio && !filled) {
+                    valid = false;
+                    if (cell) cell.classList.add('incremental-cell-invalid');
+                } else if (cell) {
+                    cell.classList.remove('incremental-cell-invalid');
+                }
+            });
+            if (hasValue || rowId) withData++;
+        });
+        if (campo.obrigatorio && withData === 0) valid = false;
+        container.classList.toggle('incremental-invalid', !valid);
+        return valid;
+    },
+
+    createIncrementalReadonly(campo, val) {
+        const itens = (val && Array.isArray(val.itens)) ? val.itens : (Array.isArray(val) ? val : []);
+        const box = document.createElement('div');
+        box.className = 'incremental-card-field incremental-readonly';
+        if (!itens.length) {
+            box.innerHTML = '<p class="incremental-empty">Nenhuma linha registrada.</p>';
+            return box;
+        }
+        const ordered = Array.isArray(window.KANBAN_PLATAFORMAS) ? window.KANBAN_PLATAFORMAS : [];
+        const platforms = ordered.length
+            ? Object.fromEntries(ordered.map(p => [p.codigo, p.nome]))
+            : (((window.KANBAN_MAPPING_TARGETS || {})['projetos_contas'] || {}).platforms || {});
+        itens.forEach((item, idx) => {
+            const row = document.createElement('div');
+            row.className = 'incremental-readonly-row';
+            const title = document.createElement('div');
+            title.className = 'incremental-readonly-title';
+            title.textContent = `#${idx + 1}`;
+            row.appendChild(title);
+            (campo.subcampos || []).forEach(sub => {
+                const cell = document.createElement('div');
+                cell.className = 'incremental-readonly-cell';
+                const label = document.createElement('span');
+                label.className = 'incremental-readonly-label';
+                label.textContent = sub.label || '';
+                const value = document.createElement('span');
+                let raw = item[sub.id];
+                if (sub.tipo === 'plataformas') {
+                    raw = platforms[raw] || raw || '';
+                } else if (sub.tipo === 'boolean') {
+                    raw = raw ? 'Sim' : 'Não';
+                } else if (Array.isArray(raw)) {
+                    raw = raw.join(', ');
+                }
+                value.textContent = (raw === null || raw === undefined || raw === '') ? '—' : String(raw);
+                cell.appendChild(label);
+                cell.appendChild(value);
+                row.appendChild(cell);
+            });
+            box.appendChild(row);
+        });
+        return box;
+    },
+
     async handleSave(cardId) {
         const dados = {};
         const nome = document.getElementById('field_projeto_nome').value;
@@ -594,6 +901,11 @@ const modal = {
 
         this.currentPhaseConfig.campos.forEach(campo => {
             const el = document.getElementById(`field_${campo.id}`);
+            if (campo.tipo === 'incremental') {
+                if (!this.validateIncremental(campo, el)) valid = false;
+                dados[campo.id] = this.readIncrementalValue(campo, el);
+                return;
+            }
             let val;
             if (campo.tipo === 'radio') {
                 val = (el.querySelector('input:checked') || {}).value || '';
@@ -630,6 +942,10 @@ const modal = {
         const dados_fase = {};
         this.currentPhaseConfig.campos.forEach(campo => {
             const el = document.getElementById(`field_${campo.id}`);
+            if (campo.tipo === 'incremental') {
+                dados_fase[campo.id] = this.readIncrementalValue(campo, el);
+                return;
+            }
             if (campo.tipo === 'radio') dados_fase[campo.id] = (el.querySelector('input:checked') || {}).value || '';
             else if (campo.tipo === 'checkbox') dados_fase[campo.id] = Array.from(el.querySelectorAll('input:checked')).map(i => i.value);
             else if (campo.tipo === 'boolean') dados_fase[campo.id] = el.querySelector('input').checked;
@@ -682,7 +998,7 @@ const modal = {
         phase.campos.forEach(campo => {
             const group = document.createElement('div');
             group.className = 'form-group';
-            if (campo.tipo === 'text') group.classList.add('full-width');
+            if (['text', 'incremental'].includes(campo.tipo)) group.classList.add('full-width');
             group.innerHTML = `<label>${campo.label}${campo.obrigatorio ? ' *' : ''}</label>${campo.descricao ? `<p class="field-description">${campo.descricao}</p>` : ''}`;
             group.appendChild(this.createFieldInput(campo, cardData[campo.id]));
             formContainer.appendChild(group);
@@ -700,6 +1016,11 @@ const modal = {
 
             phase.campos.forEach(c => {
                 const el = document.getElementById(`field_${c.id}`);
+                if (c.tipo === 'incremental') {
+                    if (!this.validateIncremental(c, el)) valid = false;
+                    dados[c.id] = this.readIncrementalValue(c, el);
+                    return;
+                }
                 let val;
                 if (c.tipo === 'radio') val = (el.querySelector('input:checked') || {}).value || '';
                 else if (c.tipo === 'checkbox') val = Array.from(el.querySelectorAll('input:checked')).map(i => i.value);
@@ -785,9 +1106,15 @@ const modal = {
         phaseConfig.campos.forEach(campo => {
             const group = document.createElement('div');
             group.className = 'form-group';
-            if (campo.tipo === 'text') group.classList.add('full-width');
+            if (['text', 'incremental'].includes(campo.tipo)) group.classList.add('full-width');
             group.innerHTML = `<label>${campo.label}${campo.obrigatorio ? ' *' : ''}</label>${campo.descricao ? `<p class="field-description">${campo.descricao}</p>` : ''}`;
-            
+
+            if (campo.tipo === 'incremental') {
+                group.appendChild(this.createIncrementalReadonly(campo, dados[campo.id]));
+                formContainer.appendChild(group);
+                return;
+            }
+
             const input = this.createFieldInput(campo, dados[campo.id]);
             input.id = `hist_field_${campo.id}`;
             group.appendChild(input);
@@ -813,6 +1140,7 @@ const modal = {
             let valid = true;
 
             phaseConfig.campos.forEach(campo => {
+                if (campo.tipo === 'incremental') return;
                 const el = editModal.querySelector(`#hist_field_${campo.id}`);
                 let val;
                 if (campo.tipo === 'radio') {

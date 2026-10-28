@@ -3,24 +3,95 @@ from datetime import datetime, date, timedelta
 from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
 from sqlalchemy import select, update, insert, text
-from models import Projeto, KanbanConfig, KanbanHistorico, InvestidorProjeto
+from models import Projeto, KanbanConfig, KanbanHistorico, InvestidorProjeto, ProjetoConta, ProjetoContexto
+from services import projetos_contas_service, projetos_contexto_service
 
 class PhaseTransitionError(Exception):
     """Erro lançado quando uma transição de fase viola as regras de negócio."""
     pass
 
+
+PLATAFORMAS_KANBAN = {
+    "meta_ads": projetos_contas_service.PLATAFORMAS["meta_ads"],
+    "google_ads": projetos_contas_service.PLATAFORMAS["google_ads"],
+    "facebook_page": projetos_contas_service.PLATAFORMAS["facebook_page"],
+    "instagram": projetos_contas_service.PLATAFORMAS["instagram"],
+    "ga4": projetos_contas_service.PLATAFORMAS["ga4"],
+}
+
+
+COLLECTION_TARGETS = {
+    "projetos_contas": {
+        "label": "Contas de Mídia",
+        "columns": {
+            "plataforma": {"label": "Plataforma", "tipo": "plataformas", "obrigatorio": True},
+            "conta_id": {"label": "ID da conta", "tipo": "string", "obrigatorio": True},
+            "frente": {"label": "Frente", "tipo": "string"},
+            "descricao": {"label": "Descrição", "tipo": "text"},
+        },
+        "required_columns": ["plataforma", "conta_id"],
+    },
+}
+
+SUBFIELD_TYPES = ("string", "text", "number", "boolean", "datetime",
+                  "select", "checkbox", "radio", "link", "plataformas")
+
+
+MAPPING_TARGETS = {
+    "projetos": {
+        "label": "Projetos",
+        "columns": {
+            "nome": {"label": "Nome"},
+            "documento": {"label": "Documento"},
+            "fee": {"label": "Fee"},
+            "moeda": {"label": "Moeda"},
+            "squad_atribuida": {"label": "Squad"},
+            "produto_contratado": {"label": "Produto Contratado"},
+            "data_de_inicio": {"label": "Data de Início"},
+            "cohort": {"label": "Cohort"},
+            "meta_account_id": {"label": "Meta Account ID (legado)", "legacy": True},
+            "google_account_id": {"label": "Google Account ID (legado)", "legacy": True},
+            "url_webhook_gchat": {"label": "Webhook GChat"},
+            "step": {"label": "Step"},
+            "informacoes_gerais": {"label": "Informações Gerais"},
+            "orcamento_midia_meta": {"label": "Orçamento de Mídia - Meta"},
+            "orcamento_midia_google": {"label": "Orçamento de Mídia - Google"},
+            "data_fim": {"label": "Data Fim"},
+            "ekyte_workspace": {"label": "Ekyte Workspace"},
+            "responsavel_projeto": {"label": "Responsável pelo Projeto"},
+        },
+    },
+    "projetos_contas": {
+        "label": "Contas de Mídia",
+        "columns": {
+            "conta_id": {"label": "ID da conta"},
+            "descricao": {"label": "Descrição"},
+        },
+        "platforms": PLATAFORMAS_KANBAN,
+        "requires": ["plataforma"],
+    },
+    "projetos_contexto": {
+        "label": "Contexto do Projeto",
+        "columns": {
+            campo: {"label": projetos_contexto_service.LABELS.get(campo, campo)}
+            for campo in projetos_contexto_service.CAMPOS_MAPEAVEIS
+        },
+        "versioned": True,
+    },
+}
+
+
+_NAO_CARREGADO = object()
+
 class KanbanService:
+    MAPPING_TARGETS = MAPPING_TARGETS
+    COLLECTION_TARGETS = COLLECTION_TARGETS
+    PLATAFORMAS_KANBAN = PLATAFORMAS_KANBAN
+
     def __init__(self, db: Session):
         self.db = db
         # Whitelist de colunas que podem ser mapeadas
-        self.mappable_columns = [
-            "nome", "documento", "fee", "moeda", "squad_atribuida", 
-            "produto_contratado", "data_de_inicio", "cohort", 
-            "meta_account_id", "google_account_id", "url_webhook_gchat",
-            "step", "informacoes_gerais", "orcamento_midia_meta", 
-            "orcamento_midia_google", "data_fim", "ekyte_workspace",
-            "responsavel_projeto"
-        ]
+        self.mappable_columns = list(MAPPING_TARGETS["projetos"]["columns"].keys())
 
     def get_board_config(self, slug: str = "fluxo-projetos") -> Optional[Dict[str, Any]]:
         """Retorna a configuração de um board Kanban pelo slug."""
@@ -95,10 +166,37 @@ class KanbanService:
     def list_cards(self, slug: str = "fluxo-projetos") -> List[Dict[str, Any]]:
         """Lista todos os projetos formatados como cards de Kanban, filtrados pelo board slug."""
         config = self.get_board_config(slug)
-        projetos = self.db.query(Projeto).all()
-        return [
-            self._format_card(p, config) for p in projetos
+        projetos = [
+            p for p in self.db.query(Projeto).all()
             if (p.kanban_dados or {}).get('_board_slug', 'fluxo-projetos') == slug
+        ]
+        if not projetos:
+            return []
+
+        ids = [p.pipefy_id for p in projetos]
+        contas_map: Dict[int, List[ProjetoConta]] = {}
+        for conta in self.db.query(ProjetoConta).filter(
+            ProjetoConta.projeto_pipefy_id.in_(ids)
+        ).all():
+            contas_map.setdefault(conta.projeto_pipefy_id, []).append(conta)
+
+        contextos_map: Dict[int, ProjetoContexto] = {}
+        for ctx in self.db.query(ProjetoContexto).filter(
+            ProjetoContexto.projeto_pipefy_id.in_(ids)
+        ).order_by(
+            ProjetoContexto.projeto_pipefy_id,
+            ProjetoContexto.data_contexto.desc(),
+            ProjetoContexto.id.desc(),
+        ).all():
+            contextos_map.setdefault(ctx.projeto_pipefy_id, ctx)
+
+        return [
+            self._format_card(
+                p, config,
+                contas_map.get(p.pipefy_id, []),
+                contextos_map.get(p.pipefy_id),
+            )
+            for p in projetos
         ]
 
     def get_card(self, card_id: int) -> Optional[Dict[str, Any]]:
@@ -106,28 +204,130 @@ class KanbanService:
         projeto = self.db.query(Projeto).filter_by(pipefy_id=card_id).first()
         if not projeto:
             return None
-        config = self.get_board_config()
-        return self._format_card(projeto, config)
+        slug = (projeto.kanban_dados or {}).get('_board_slug', 'fluxo-projetos')
+        config = self.get_board_config(slug)
+        contas = self.db.query(ProjetoConta).filter_by(
+            projeto_pipefy_id=card_id
+        ).all()
+        contexto = projetos_contexto_service.ultimo(self.db, card_id)
+        return self._format_card(projeto, config, contas, contexto)
 
-    def _format_card(self, p: Projeto, config: Dict[str, Any]) -> Dict[str, Any]:
-        """Formata um objeto Projeto para o formato de card do Kanban, aplicando mapeamentos inversos."""
-        mappings = {}
-        for fase in config.get('fases', []):
-            for campo in fase.get('campos', []):
-                if campo.get('mapeamento_coluna'):
-                    mappings[campo['id']] = campo['mapeamento_coluna']
+    @staticmethod
+    def _conta_do_slot(contas, plataforma: Optional[str], frente: Optional[str]):
+        if not plataforma:
+            return None
+        base = [c for c in (contas or []) if c.plataforma == plataforma]
+        if not base:
+            return None
+        alvo = str(frente or "").strip()
+        if alvo:
+            candidatas = [c for c in base if str(c.frente or "").strip() == alvo]
+            if not candidatas:
+                return None
+        else:
+            candidatas = [c for c in base if not str(c.frente or "").strip()]
+            if not candidatas:
+                candidatas = base
+        return sorted(
+            candidatas,
+            key=lambda c: (not bool(c.principal), not bool(c.ativo), c.id or 0),
+        )[0]
+
+    def _format_incremental(self, campo: Dict[str, Any], dados: Dict[str, Any], contas) -> Dict[str, Any]:
+        """Formata um campo incremental; para contas, a fonte é o banco."""
+        target = (campo.get('subtabela') or '').strip()
+        subcampos = campo.get('subcampos') or []
+
+        if target == 'projetos_contas':
+            ordem = {plataforma: idx for idx, plataforma in enumerate(PLATAFORMAS_KANBAN)}
+            ativas = [c for c in (contas or []) if c.ativo]
+            ativas.sort(key=lambda c: (
+                ordem.get(c.plataforma, 99),
+                not bool(c.principal),
+                str(c.frente or '').strip().lower(),
+                c.id or 0,
+            ))
+            itens = []
+            for conta in ativas:
+                item = {"_id": conta.id}
+                for subcampo in subcampos:
+                    coluna = (subcampo.get('coluna') or '').strip()
+                    if not coluna:
+                        continue
+                    if coluna == 'plataforma':
+                        valor = conta.plataforma
+                    elif coluna == 'conta_id':
+                        valor = conta.conta_id
+                    elif coluna == 'frente':
+                        valor = conta.frente or ''
+                    elif coluna == 'descricao':
+                        valor = conta.descricao or ''
+                    else:
+                        continue
+                    item[subcampo['id']] = valor
+                itens.append(item)
+            return {"itens": itens, "remover": []}
+
+        atual = dados.get(campo['id'])
+        if isinstance(atual, list):
+            return {"itens": atual, "remover": []}
+        if isinstance(atual, dict):
+            return {
+                "itens": atual.get("itens") or [],
+                "remover": atual.get("remover") or [],
+            }
+        return {"itens": [], "remover": []}
+
+    def _format_card(self, p: Projeto, config: Dict[str, Any],
+                     contas=_NAO_CARREGADO, contexto=_NAO_CARREGADO) -> Dict[str, Any]:
+        """Formata um projeto como card, aplicando os mapeamentos inversos."""
+        if contas is _NAO_CARREGADO:
+            contas = self.db.query(ProjetoConta).filter_by(
+                projeto_pipefy_id=p.pipefy_id
+            ).all()
+        if contexto is _NAO_CARREGADO:
+            contexto = projetos_contexto_service.ultimo(self.db, p.pipefy_id)
 
         dados = p.kanban_dados or {}
-        # Sincronização Inversa: O valor da coluna real do banco prevalece
-        for campo_id, coluna in mappings.items():
-            val = getattr(p, coluna, None)
-            if val is not None:
-                if isinstance(val, (datetime, date)):
-                    dados[campo_id] = val.isoformat()
-                elif hasattr(val, '__float__'):
-                    dados[campo_id] = float(val)
+
+        for fase in config.get('fases', []):
+            for campo in fase.get('campos', []):
+                if (campo.get('tipo') or '') == 'incremental':
+                    dados[campo['id']] = self._format_incremental(campo, dados, contas)
+                    continue
+                coluna = campo.get('mapeamento_coluna')
+                if not coluna:
+                    continue
+                tabela = campo.get('mapeamento_tabela') or 'projetos'
+
+                if tabela == 'projetos':
+                    if coluna not in self.mappable_columns:
+                        continue
+                    val = getattr(p, coluna, None)
+                elif tabela == 'projetos_contas':
+                    if coluna not in ('conta_id', 'descricao'):
+                        continue
+                    conta = self._conta_do_slot(
+                        contas, campo.get('mapeamento_plataforma'),
+                        campo.get('mapeamento_frente'),
+                    )
+                    if not conta:
+                        continue
+                    val = getattr(conta, coluna, None)
+                elif tabela == 'projetos_contexto':
+                    if not contexto or coluna not in projetos_contexto_service.CAMPOS_MAPEAVEIS:
+                        continue
+                    val = getattr(contexto, coluna, None)
                 else:
-                    dados[campo_id] = val
+                    continue
+
+                if val is not None:
+                    if isinstance(val, (datetime, date)):
+                        dados[campo['id']] = val.isoformat()
+                    elif hasattr(val, '__float__'):
+                        dados[campo['id']] = float(val)
+                    else:
+                        dados[campo['id']] = val
 
         return {
             "card_id": p.pipefy_id,
@@ -143,6 +343,33 @@ class KanbanService:
         """Converte vírgula para ponto e transforma em float para campos do tipo number."""
         for fase in config.get('fases', []):
             for campo in fase.get('campos', []):
+                if campo.get('tipo') == 'incremental':
+                    valor = dados.get(campo['id'])
+                    itens = valor.get('itens') if isinstance(valor, dict) else valor
+                    if not isinstance(itens, list):
+                        continue
+                    numericos = {
+                        sub['id'] for sub in (campo.get('subcampos') or [])
+                        if sub.get('tipo') == 'number'
+                    }
+                    if not numericos:
+                        continue
+                    for item in itens:
+                        if not isinstance(item, dict):
+                            continue
+                        for sub_id in numericos:
+                            if sub_id not in item:
+                                continue
+                            val = item[sub_id]
+                            if val is None or val == '':
+                                continue
+                            try:
+                                if isinstance(val, str):
+                                    val = val.replace(',', '.')
+                                item[sub_id] = float(val)
+                            except (ValueError, TypeError):
+                                pass
+                    continue
                 if campo['tipo'] == 'number' and campo['id'] in dados:
                     val = dados[campo['id']]
                     if val is not None and val != '':
@@ -180,11 +407,14 @@ class KanbanService:
             data_de_inicio=now.date()
         )
         
-        # Aplicar mapeamentos iniciais
-        self._apply_column_mappings(projeto, config, dados_iniciais)
-        
         self.db.add(projeto)
         self.db.flush()
+
+        # Aplicar mapeamentos iniciais (projeto já existe para FKs)
+        self._apply_column_mappings(
+            projeto, config, dados_iniciais,
+            dados_salvos=dados_iniciais, usuario_email=usuario_email,
+        )
 
         # Auditoria Imutável (com Labels para o Histórico)
         labels = {c['id']: c['label'] for c in primeira_fase.get('campos', [])}
@@ -213,7 +443,8 @@ class KanbanService:
         if not projeto:
             raise ValueError("Projeto não encontrado.")
 
-        config = self.get_board_config()
+        slug = (projeto.kanban_dados or {}).get('_board_slug', 'fluxo-projetos')
+        config = self.get_board_config(slug)
         fases = config['fases']
         fase_atual_nome = projeto.fase_do_pipefy
         
@@ -260,7 +491,10 @@ class KanbanService:
         projeto.kanban_dados = current_dados
         
         # Aplicar mapeamentos de colunas (Sincronização Direta)
-        self._apply_column_mappings(projeto, config, current_dados)
+        self._apply_column_mappings(
+            projeto, config, current_dados,
+            dados_salvos=dados_fase, usuario_email=usuario_email,
+        )
         
         # Atualiza Fase e Status
         projeto.fase_do_pipefy = target_fase['nome']
@@ -313,13 +547,17 @@ class KanbanService:
 
         current_dados = projeto.kanban_dados or {}
 
-        config = self.get_board_config()
+        slug = current_dados.get('_board_slug', 'fluxo-projetos')
+        config = self.get_board_config(slug)
         self._process_number_fields(config, novos_dados)
 
         current_dados.update(novos_dados)
         projeto.kanban_dados = current_dados
 
-        self._apply_column_mappings(projeto, config, current_dados)
+        self._apply_column_mappings(
+            projeto, config, current_dados,
+            dados_salvos=novos_dados, usuario_email=usuario_email,
+        )
         
         # Identificar o que mudou para o log técnico
         changes = {}
@@ -363,6 +601,8 @@ class KanbanService:
             if status not in ['Ativo', 'Onetime', 'Inativo', 'Onboarding']:
                 raise ValueError(f"A fase '{fase.get('nome')}' possui um status de projeto inválido: '{status}'. Os valores permitidos são: Ativo, Onetime, Inativo, Onboarding.")
 
+        self._validar_mapeamentos(fases)
+
         stmt = select(KanbanConfig).where(KanbanConfig.slug == slug)
         result = self.db.execute(stmt).scalar_one_or_none()
         
@@ -374,41 +614,90 @@ class KanbanService:
         self.db.commit()
         return nova_config
 
-    def _apply_column_mappings(self, projeto: Projeto, config: Dict[str, Any], dados: Dict[str, Any]):
-        """Aplica os valores do Kanban às colunas reais da tabela projetos baseado no config."""
+    def _apply_column_mappings(self, projeto: Projeto, config: Dict[str, Any],
+                               dados: Dict[str, Any], dados_salvos: Optional[Dict[str, Any]] = None,
+                               usuario_email: Optional[str] = None):
+        """Aplica os valores do Kanban às tabelas reais conforme o mapeamento."""
+        if dados_salvos is None:
+            dados_salvos = dados
+
         squad_tocada = False
+        mapeamentos_contas = []
+        contexto_valores: Dict[str, Any] = {}
+        contexto_ids = set()
+
         for fase in config.get('fases', []):
             for campo in fase.get('campos', []):
+                if (campo.get('tipo') or '') == 'incremental':
+                    if campo['id'] in dados_salvos:
+                        self._apply_incremental(
+                            projeto, campo, dados_salvos.get(campo['id']), usuario_email
+                        )
+                    continue
                 coluna = campo.get('mapeamento_coluna')
-                if coluna and coluna in self.mappable_columns:
-                    val = dados.get(campo['id'])
-                    if val is not None:
-                        try:
-                            # Conversão de tipos básica
-                            if 'data' in coluna or 'date' in coluna:
-                                if isinstance(val, str) and val:
-                                    # Handle ISO strings for dates
-                                    try:
-                                        setattr(projeto, coluna, datetime.fromisoformat(val).date())
-                                    except:
-                                        setattr(projeto, coluna, datetime.strptime(val.split('T')[0], '%Y-%m-%d').date())
-                            elif coluna == 'fee' or 'orcamento' in coluna:
-                                if val == "":
-                                    setattr(projeto, coluna, 0)
-                                else:
-                                    # Limpa possíveis formatações brasileiras se vier como string
-                                    if isinstance(val, str):
-                                        val = val.replace('.', '').replace(',', '.')
-                                    setattr(projeto, coluna, float(val))
-                            else:
-                                setattr(projeto, coluna, val)
-                                if coluna == 'squad_atribuida':
-                                    squad_tocada = True
+                if not coluna:
+                    continue
+                tabela = campo.get('mapeamento_tabela') or 'projetos'
 
-                            # Mantém o JSONB sincronizado com o valor real para evitar divergência
-                            projeto.kanban_dados[campo['id']] = val
-                        except Exception as e:
-                            print(f"Erro ao mapear coluna {coluna}: {e}")
+                if tabela == 'projetos':
+                    if coluna not in self.mappable_columns:
+                        continue
+                    val = dados.get(campo['id'])
+                    if val is None:
+                        continue
+                    try:
+                        if 'data' in coluna or 'date' in coluna:
+                            if isinstance(val, str) and val:
+                                try:
+                                    setattr(projeto, coluna, datetime.fromisoformat(val).date())
+                                except Exception:
+                                    setattr(projeto, coluna, datetime.strptime(val.split('T')[0], '%Y-%m-%d').date())
+                        elif coluna == 'fee' or 'orcamento' in coluna:
+                            if val == "":
+                                setattr(projeto, coluna, 0)
+                            else:
+                                if isinstance(val, str):
+                                    val = val.replace('.', '').replace(',', '.')
+                                setattr(projeto, coluna, float(val))
+                        else:
+                            setattr(projeto, coluna, val)
+                            if coluna == 'squad_atribuida':
+                                squad_tocada = True
+                        projeto.kanban_dados[campo['id']] = val
+                    except Exception as e:
+                        print(f"Erro ao mapear coluna {coluna}: {e}")
+
+                elif tabela == 'projetos_contas':
+                    if coluna not in ('conta_id', 'descricao'):
+                        continue
+                    if campo['id'] not in dados or campo['id'] not in dados_salvos:
+                        continue
+                    mapeamentos_contas.append({
+                        'plataforma': campo.get('mapeamento_plataforma'),
+                        'frente': campo.get('mapeamento_frente'),
+                        'coluna': coluna,
+                        'valor': dados.get(campo['id']),
+                    })
+
+                elif tabela == 'projetos_contexto':
+                    if coluna not in projetos_contexto_service.CAMPOS_MAPEAVEIS:
+                        continue
+                    contexto_ids.add(campo['id'])
+                    if campo['id'] in dados and campo['id'] in dados_salvos:
+                        contexto_valores[coluna] = dados.get(campo['id'])
+
+        # Contas: upsert transacional (sem commit)
+        if mapeamentos_contas:
+            projetos_contas_service.aplicar_mapeamentos_kanban(
+                self.db, projeto, mapeamentos_contas, usuario_email
+            )
+
+        # Contexto: nova versão quando o save inclui algum campo mapeado para contexto
+        if contexto_ids and (set(dados_salvos.keys()) & contexto_ids) and contexto_valores:
+            projetos_contexto_service.aplicar_mapeamentos_kanban(
+                self.db, projeto, contexto_valores
+            )
+
         # v2_: espelha squad_atribuida -> v2_projeto_squads (por id)
         if squad_tocada:
             try:
@@ -420,9 +709,99 @@ class KanbanService:
                 permissions.definir_squads_do_projeto(self.db, projeto.pipefy_id, [sid] if sid else [])
             except Exception as e:
                 print(f"[kanban] erro ao espelhar squad v2: {e}")
-        # Importante: Marcar como modificado para o SQLAlchemy detectar mudança profunda no dict JSONB
+
         from sqlalchemy.orm.attributes import flag_modified
         flag_modified(projeto, "kanban_dados")
+
+    def _apply_incremental(self, projeto: Projeto, campo: Dict[str, Any],
+                           valor: Any, usuario_email: Optional[str]):
+        target = (campo.get('subtabela') or '').strip()
+        if not target:
+            return
+        if target == 'projetos_contas':
+            projetos_contas_service.aplicar_incremental_kanban(
+                self.db, projeto, valor, campo.get('subcampos') or [], usuario_email
+            )
+            return
+        raise ValueError(f"Tabela de destino inválida para o incremental: '{target}'.")
+
+    @staticmethod
+    def _validar_incremental(campo: Dict[str, Any]):
+        target = (campo.get('subtabela') or '').strip()
+        subcampos = campo.get('subcampos')
+        if not isinstance(subcampos, list) or not subcampos:
+            raise ValueError("O campo incremental precisa ter pelo menos um subcampo.")
+
+        ids = set()
+        colunas = []
+        for sub in subcampos:
+            if not isinstance(sub, dict):
+                raise ValueError("Subcampo incremental inválido.")
+            sub_id = str(sub.get('id') or '').strip()
+            if not sub_id or sub_id in ids:
+                raise ValueError("Os subcampos do incremental precisam ter IDs únicos.")
+            ids.add(sub_id)
+
+            tipo = sub.get('tipo')
+            if tipo not in SUBFIELD_TYPES:
+                raise ValueError(f"Tipo de subcampo incremental inválido: '{tipo}'.")
+            if tipo in ('select', 'checkbox', 'radio') and not sub.get('opcoes'):
+                raise ValueError("Subcampos de escolha precisam ter opções.")
+
+            coluna = (sub.get('coluna') or '').strip()
+            if coluna:
+                colunas.append(coluna)
+            if not target and coluna:
+                raise ValueError("Só é possível mapear colunas quando há uma tabela de destino.")
+
+        if not target:
+            return
+
+        dest = COLLECTION_TARGETS.get(target)
+        if not dest:
+            raise ValueError(f"Tabela de destino inválida para o incremental: '{target}'.")
+        if len(colunas) != len(set(colunas)):
+            raise ValueError("Há mais de um subcampo mapeado para a mesma coluna.")
+        for coluna in colunas:
+            if coluna not in dest['columns']:
+                raise ValueError(f"Coluna '{coluna}' inválida para a tabela '{target}'.")
+
+        for coluna in dest.get('required_columns', []):
+            if coluna not in colunas:
+                raise ValueError(f"A coluna '{coluna}' é obrigatória para o incremental em '{target}'.")
+
+        if target == 'projetos_contas':
+            for sub in subcampos:
+                coluna = (sub.get('coluna') or '').strip()
+                if coluna == 'plataforma' and sub.get('tipo') != 'plataformas':
+                    raise ValueError("A coluna plataforma exige um subcampo do tipo Plataformas.")
+                if coluna == 'conta_id' and sub.get('tipo') not in ('string', 'text'):
+                    raise ValueError("A coluna conta_id exige um subcampo de texto.")
+
+    @staticmethod
+    def _validar_mapeamentos(fases):
+        for fase in fases or []:
+            for campo in fase.get('campos', []):
+                if (campo.get('tipo') or '') == 'incremental':
+                    KanbanService._validar_incremental(campo)
+                    continue
+                coluna = (campo.get('mapeamento_coluna') or '').strip()
+                if not coluna:
+                    continue
+                tabela = campo.get('mapeamento_tabela') or 'projetos'
+                target = MAPPING_TARGETS.get(tabela)
+                if not target:
+                    raise ValueError(f"Tabela de mapeamento inválida: '{tabela}'.")
+                if coluna not in target['columns']:
+                    raise ValueError(f"Coluna '{coluna}' inválida para a tabela '{tabela}'.")
+
+                tipo = campo.get('tipo')
+                if tabela == 'projetos_contas':
+                    plataforma = campo.get('mapeamento_plataforma')
+                    if plataforma not in target['platforms']:
+                        raise ValueError("Selecione uma plataforma válida para a conta.")
+                    if coluna == 'conta_id' and tipo not in ('string', 'text'):
+                        raise ValueError("O mapeamento de conta_id exige um campo de texto.")
 
     def _sync_investidor_projeto_status(self, projeto: Projeto):
         """Sincroniza o status do projeto com a tabela investidores_projetos.
@@ -501,9 +880,12 @@ class KanbanService:
             data_de_inicio=now_date.date()
         )
 
-        self._apply_column_mappings(projeto, config, dados_iniciais)
         self.db.add(projeto)
         self.db.flush()
+        self._apply_column_mappings(
+            projeto, config, dados_iniciais,
+            dados_salvos=dados_iniciais, usuario_email=usuario_email,
+        )
 
         now_ts = datetime.utcnow() - timedelta(hours=3)
         clone_historico = KanbanHistorico(
@@ -674,9 +1056,12 @@ class KanbanService:
             data_de_inicio=now_date.date()
         )
 
-        self._apply_column_mappings(projeto, config, dados)
         self.db.add(projeto)
         self.db.flush()
+        self._apply_column_mappings(
+            projeto, config, dados,
+            dados_salvos=dados, usuario_email=usuario_email,
+        )
 
         now_ts = datetime.utcnow() - timedelta(hours=3)
         historico = KanbanHistorico(

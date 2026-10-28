@@ -3,7 +3,7 @@
  * stale-while-revalidate para assets estáticos. Nunca cacheia API,
  * login ou imagens de usuário/feed.
  */
-const CACHE_VERSION = "hub-pwa-v7";
+const CACHE_VERSION = "hub-pwa-v9";
 const CACHE_NAME = `${CACHE_VERSION}-static`;
 const OFFLINE_URL = "/offline";
 

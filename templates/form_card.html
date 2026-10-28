@@ -296,6 +296,7 @@
                         <input type="text" name="nome_projeto" class="form-input" required placeholder="Ex: Cliente XYZ">
                     </div>
                     {% for campo in fase.get('campos', []) %}
+                        {% if campo.tipo != 'incremental' %}
                         <div class="form-group">
                             <label>{{ campo.label }}{% if campo.obrigatorio %} <span class="required">*</span>{% endif %}</label>
                             {% if campo.descricao %}<div class="field-desc">{{ campo.descricao }}</div>{% endif %}
@@ -336,6 +337,7 @@
                                 <input type="text" name="{{ field_id }}" class="form-input" {% if campo.obrigatorio %}required{% endif %}>
                             {% endif %}
                         </div>
+                        {% endif %}
                     {% endfor %}
                     <button type="submit" class="btn-submit"><i class="fas fa-paper-plane"></i> Criar Card</button>
                 </form>
