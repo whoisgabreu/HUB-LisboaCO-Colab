@@ -78,6 +78,49 @@ class Projeto(Base):
     kanban_dados = Column(JSONB) # Dados dinâmicos do Kanban
 
 
+class ProjetoConta(Base):
+    """Tabela: plataforma_geral.projetos_contas
+
+    Contas de mídia/rastreamento por projeto (1 linha por conta).
+    """
+    __tablename__ = "projetos_contas"
+    __table_args__ = (
+        UniqueConstraint("projeto_pipefy_id", "plataforma", "conta_id", name="uq_projetos_contas"),
+        {"schema": "plataforma_geral"},
+    )
+
+    id = Column(Integer, primary_key=True)
+    projeto_pipefy_id = Column(
+        Integer,
+        ForeignKey("plataforma_geral.projetos.pipefy_id", onupdate="CASCADE", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    plataforma = Column(String(20), nullable=False)
+    conta_id = Column(String(100), nullable=False)
+    frente = Column(String(100))
+    descricao = Column(Text)
+    principal = Column(Boolean, nullable=False, default=False)
+    ativo = Column(Boolean, nullable=False, default=True)
+    created_at = Column(DateTime, server_default=FetchedValue())
+    updated_at = Column(DateTime, server_default=FetchedValue())
+    updated_by = Column(String(100))
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "projeto_pipefy_id": self.projeto_pipefy_id,
+            "plataforma": self.plataforma,
+            "conta_id": self.conta_id,
+            "frente": self.frente,
+            "descricao": self.descricao,
+            "principal": bool(self.principal),
+            "ativo": bool(self.ativo),
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+            "updated_by": self.updated_by,
+        }
+
+
 class ProjetoContexto(Base):
     """Tabela: plataforma_geral.projetos_contexto
 
@@ -97,8 +140,6 @@ class ProjetoContexto(Base):
     outros_contatos_chave = Column(Text)
     equipe_responsavel = Column(Text)
     canais_midia_ativos = Column(Text)
-    id_google = Column(Text)
-    act_meta = Column(Text)
     ids_rastreamento = Column(Text)
     orcamento_midia_mensal = Column(Text)
     objetivo_meta_principal = Column(Text)
@@ -126,7 +167,7 @@ class ProjetoContexto(Base):
     CAMPOS = [
         "cliente", "segmento_nicho", "localizacao_regiao_atuacao",
         "contato_principal_decisor", "outros_contatos_chave", "equipe_responsavel",
-        "canais_midia_ativos", "id_google", "act_meta", "ids_rastreamento",
+        "canais_midia_ativos", "ids_rastreamento",
         "orcamento_midia_mensal", "objetivo_meta_principal", "ticket_medio_financeiro",
         "publico_alvo", "estrategia_campanha_atual", "tom_voz_posicionamento",
         "must_donts_restricoes", "benchmark_cpl_referencia", "tracking_crm",

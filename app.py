@@ -36,6 +36,7 @@ from services.kanban_service import KanbanService, PhaseTransitionError
 from services.automacao_service import AutomacaoService
 from services.ekyte_service import listar_tarefas_do_email, refresh_agora
 from services.agenda_service import listar_itens, resumo
+from services import projetos_contas_service as contas_service
 
 from dashboard_grupos.hub_integration import register as register_dashboard_grupos
 from feed.hub_integration import register as register_feed
@@ -5068,8 +5069,6 @@ def update_projeto_local(pipefy_id):
                 "squad_atribuida": "Squad",
                 "produto_contratado": "Produto",
                 "cohort": "Cohort",
-                "meta_account_id": "Meta Account ID",
-                "google_account_id": "Google Account ID",
                 "fase_do_pipefy": "Fase Pipefy",
                 "url_webhook_gchat": "Webhook GChat",
                 "ekyte_workspace": "Ekyte Workspace",
@@ -5113,8 +5112,6 @@ def update_projeto_local(pipefy_id):
                 permissions.definir_squads_do_projeto(db, projeto.pipefy_id, [_sid] if _sid else [])
             if "produto_contratado" in data: projeto.produto_contratado = data["produto_contratado"]
             if "cohort" in data: projeto.cohort = data["cohort"]
-            if "meta_account_id" in data: projeto.meta_account_id = data["meta_account_id"]
-            if "google_account_id" in data: projeto.google_account_id = data["google_account_id"]
             if "fase_do_pipefy" in data: projeto.fase_do_pipefy = data["fase_do_pipefy"]
             if "url_webhook_gchat" in data: projeto.url_webhook_gchat = data["url_webhook_gchat"]
             if "step" in data: projeto.step = data["step"]
@@ -5456,6 +5453,124 @@ def update_projeto_documento_geral(pipefy_id):
             return jsonify({"status": "success", "id": ctx.id, "contexto": ctx.to_dict()})
     except SQLAlchemyError as e:
         return jsonify({"error": str(e)}), 500
+
+
+# ─── CONTAS DE MÍDIA DO PROJETO ──────────────────────────────────────────────
+
+def _erro_contas(e):
+    if isinstance(e, PermissionError):
+        return jsonify({"error": str(e)}), 403
+    if isinstance(e, ValueError):
+        msg = str(e)
+        return jsonify({"error": msg}), (404 if "não encontrado" in msg else 400)
+    import traceback
+    traceback.print_exc()
+    return jsonify({"error": "Erro ao processar as contas do projeto."}), 500
+
+
+def _projeto_contas_edicao(db, pipefy_id):
+    projeto = db.query(Projeto).filter_by(pipefy_id=pipefy_id).first()
+    if not projeto:
+        raise ValueError("Projeto não encontrado.")
+    if not _pode_editar_projeto(projeto):
+        raise PermissionError("Sem permissão para editar as contas deste projeto.")
+    return projeto
+
+
+@app.route("/api/projetos/<int:pipefy_id>/contas", methods=["GET"])
+@check_session
+def listar_projeto_contas(pipefy_id):
+    try:
+        with Session() as db:
+            projeto = db.query(Projeto).filter_by(pipefy_id=pipefy_id).first()
+            if not projeto:
+                return jsonify({"error": "Projeto não encontrado."}), 404
+            incluir = request.args.get("incluir_inativas", "").lower() in ("1", "true", "sim")
+            return jsonify({
+                "contas": contas_service.listar(db, pipefy_id, incluir),
+                "pode_editar": _pode_editar_projeto(projeto),
+                "plataformas": [
+                    {"codigo": codigo, "nome": nome}
+                    for codigo, nome in contas_service.PLATAFORMAS.items()
+                ],
+            })
+    except Exception as e:  # noqa: BLE001
+        return _erro_contas(e)
+
+
+@app.route("/api/projetos/<int:pipefy_id>/contas", methods=["POST"])
+@check_session
+def criar_projeto_conta(pipefy_id):
+    data = request.get_json(silent=True) or {}
+    try:
+        with Session() as db:
+            _projeto_contas_edicao(db, pipefy_id)
+            conta = contas_service.criar(
+                db, pipefy_id, data, (session.get("email") or "hub")[:100]
+            )
+            return jsonify({"status": "success", "conta": conta}), 201
+    except Exception as e:  # noqa: BLE001
+        return _erro_contas(e)
+
+
+@app.route("/api/projetos/<int:pipefy_id>/contas/<int:conta_id>", methods=["PUT"])
+@check_session
+def atualizar_projeto_conta(pipefy_id, conta_id):
+    data = request.get_json(silent=True) or {}
+    try:
+        with Session() as db:
+            _projeto_contas_edicao(db, pipefy_id)
+            conta = contas_service.atualizar(
+                db, pipefy_id, conta_id, data, (session.get("email") or "hub")[:100]
+            )
+            return jsonify({"status": "success", "conta": conta})
+    except Exception as e:  # noqa: BLE001
+        return _erro_contas(e)
+
+
+@app.route("/api/projetos/<int:pipefy_id>/contas/<int:conta_id>/principal", methods=["POST"])
+@check_session
+def principal_projeto_conta(pipefy_id, conta_id):
+    data = request.get_json(silent=True) or {}
+    try:
+        with Session() as db:
+            _projeto_contas_edicao(db, pipefy_id)
+            conta = contas_service.definir_principal(
+                db, pipefy_id, conta_id,
+                data.get("principal", True),
+                (session.get("email") or "hub")[:100],
+            )
+            return jsonify({"status": "success", "conta": conta})
+    except Exception as e:  # noqa: BLE001
+        return _erro_contas(e)
+
+
+@app.route("/api/projetos/<int:pipefy_id>/contas/<int:conta_id>/desativar", methods=["POST"])
+@check_session
+def desativar_projeto_conta(pipefy_id, conta_id):
+    try:
+        with Session() as db:
+            _projeto_contas_edicao(db, pipefy_id)
+            conta = contas_service.definir_ativo(
+                db, pipefy_id, conta_id, False, (session.get("email") or "hub")[:100]
+            )
+            return jsonify({"status": "success", "conta": conta})
+    except Exception as e:  # noqa: BLE001
+        return _erro_contas(e)
+
+
+@app.route("/api/projetos/<int:pipefy_id>/contas/<int:conta_id>/reativar", methods=["POST"])
+@check_session
+def reativar_projeto_conta(pipefy_id, conta_id):
+    try:
+        with Session() as db:
+            _projeto_contas_edicao(db, pipefy_id)
+            conta = contas_service.definir_ativo(
+                db, pipefy_id, conta_id, True, (session.get("email") or "hub")[:100]
+            )
+            return jsonify({"status": "success", "conta": conta})
+    except Exception as e:  # noqa: BLE001
+        return _erro_contas(e)
 
 
 @app.route("/api/projetos/listar", methods=["GET"])

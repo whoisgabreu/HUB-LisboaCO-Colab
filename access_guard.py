@@ -66,15 +66,15 @@ def tela_do_path(path: str):
 
 
 def _escrita_projeto_responsavel(path: str) -> bool:
-    """PUTs do modal do projeto que o responsável pode executar mesmo com 'ver'."""
+    """Escritas do modal do projeto que o responsável pode executar mesmo com 'ver'."""
     partes = path.strip("/").split("/")
-    if len(partes) not in (3, 4) or partes[:2] != ["api", "projetos"]:
+    if len(partes) < 3 or partes[:2] != ["api", "projetos"]:
         return False
     if not partes[2].isdigit():
         return False
     if len(partes) == 3:
         return True
-    return partes[3] in ("contexto", "contexto-geral")
+    return partes[3] in ("contexto", "contexto-geral", "contas")
 
 
 def init_app(app):

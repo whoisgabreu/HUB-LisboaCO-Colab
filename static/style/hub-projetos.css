@@ -2302,3 +2302,173 @@ body.tema-claro #projectModal .ctx-md th { background: rgba(0, 0, 0, 0.04); }
     #projectModal #ctxDocTexto { min-height: 220px; max-height: 60vh; }
     #projectModal .ctx-doc-status { margin-left: 0; width: 100%; }
 }
+/* ═══ Contas de Mídia — aba do modal do projeto ═══ */
+#projectModal .contas-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+    box-shadow: none;
+}
+
+#projectModal .contas-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+#projectModal .contas-head h4 {
+    margin: 0 0 0.25rem;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+#projectModal .contas-head h4 i { color: var(--accent-red, #d61616); }
+#projectModal .contas-head p { margin: 0; color: var(--text-muted); font-size: 0.8rem; }
+
+#projectModal .contas-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+#projectModal .contas-toggle,
+#projectModal .contas-check {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    cursor: pointer;
+}
+
+#projectModal .contas-status {
+    min-height: 1.1rem;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+#projectModal .contas-status.erro { color: #e74c3c; }
+#projectModal .contas-status.ok { color: #2ecc71; }
+
+#projectModal .contas-form {
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: var(--bg-main);
+    padding: 1rem;
+}
+
+#projectModal .contas-form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.8rem 1rem;
+    align-items: start;
+}
+
+#projectModal .contas-form-grid .full-width { grid-column: 1 / -1; }
+#projectModal .contas-checks { display: flex; gap: 1.25rem; flex-wrap: wrap; }
+
+#projectModal .contas-form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+    margin-top: 0.9rem;
+}
+
+#projectModal .contas-lista {
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+}
+
+#projectModal .conta-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background: var(--card-bg);
+    padding: 0.7rem 0.85rem;
+}
+#projectModal .conta-row.inativa { opacity: 0.62; }
+
+#projectModal .conta-info { min-width: 0; flex: 1; }
+#projectModal .conta-top {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+#projectModal .conta-plataforma {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--accent-red, #d61616);
+}
+#projectModal .conta-id {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.82rem;
+    color: var(--text-main);
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 5px;
+    padding: 0.1rem 0.35rem;
+}
+#projectModal .conta-frente { font-size: 0.78rem; color: var(--text-muted); }
+
+#projectModal .conta-badge {
+    font-size: 0.66rem;
+    font-weight: 700;
+    border-radius: 999px;
+    padding: 0.15rem 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+#projectModal .conta-badge.principal { background: rgba(46, 204, 113, 0.16); color: #2ecc71; }
+#projectModal .conta-badge.inativa { background: rgba(231, 76, 60, 0.16); color: #e74c3c; }
+
+#projectModal .conta-desc {
+    margin-top: 0.25rem;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    word-break: break-word;
+    white-space: pre-line;
+}
+
+#projectModal .conta-actions { display: flex; gap: 0.3rem; flex-shrink: 0; }
+#projectModal .conta-acao {
+    width: 32px;
+    height: 32px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+#projectModal .conta-acao:hover { color: var(--accent-red); border-color: var(--accent-red); }
+#projectModal .conta-acao.perigo:hover { color: #e74c3c; border-color: #e74c3c; }
+
+#projectModal .contas-vazio {
+    margin: 0;
+    padding: 1.2rem;
+    border: 1px dashed var(--border-color);
+    border-radius: 10px;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    text-align: center;
+}
+
+body.tema-claro #projectModal .conta-id { background: rgba(0, 0, 0, 0.06); }
+
+@media (max-width: 700px) {
+    #projectModal .contas-form-grid { grid-template-columns: 1fr; }
+    #projectModal .conta-row { align-items: flex-start; flex-direction: column; }
+    #projectModal .conta-actions { align-self: flex-end; }
+}

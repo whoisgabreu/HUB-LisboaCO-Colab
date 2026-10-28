@@ -9,6 +9,9 @@ let ctxDocPodeEditar = false;
 let ctxDocEditando = false;
 let ctxDocOriginal = '';
 let ctxDocCarregado = false;
+let contasProjeto = [];
+let contasPodeEditar = false;
+let contaEditandoId = null;
 const PROJETOS_CACHE = {}; // cache cliente→projetos (chave: `${tipo}::${nomeLower}`)
 const TIPO_STATUS = { ativo: 'Ativo', onetime: 'Onetime', onboarding: 'Onboarding', inativo: 'Inativo' };
 
@@ -321,6 +324,7 @@ function openProjectModal(projectData, tipoProjeto) {
 
     switchProjectTab('dados');
     carregarContextoProjeto(projectData.pipefy_id);
+    carregarContasProjeto(projectData.pipefy_id);
 
     isEditMode = false;
     setEditMode(false);
@@ -342,8 +346,6 @@ function openProjectModal(projectData, tipoProjeto) {
     document.getElementById('modal_step').value = projectData.step || '';
     document.getElementById('modal_informacoes').value = projectData.informacoes_gerais || '';
     document.getElementById('modal_cohort').value = projectData.cohort || '';
-    document.getElementById('modal_meta_account').value = projectData.meta_account_id || '';
-    document.getElementById('modal_google_account').value = projectData.google_account_id || '';
     document.getElementById('modal_orcamento_midia_meta').value = projectData.orcamento_midia_meta || '';
     document.getElementById('modal_orcamento_midia_google').value = projectData.orcamento_midia_google || '';
     document.getElementById('modal_fase_pipefy').value = projectData.fase_do_pipefy || '';
@@ -446,6 +448,9 @@ function closeProjectModal() {
     isEditMode = false;
     podeEditarProjetoAtual = false;
     ctxDocEditando = false;
+    contasProjeto = [];
+    contasPodeEditar = false;
+    contaEditandoId = null;
     setEditMode(false);
 }
 
@@ -526,8 +531,8 @@ function toggleEditMode() {
 function setEditMode(enable) {
     const inputs = document.querySelectorAll('#projectForm input, #projectForm select, #projectForm textarea');
     inputs.forEach(input => {
-        // O documento do projeto tem edição própria (aba .md), independente do Editar global.
-        if (input.closest && input.closest('#ctxDocEditor')) return;
+        // Documento e contas têm edição própria, independente do Editar global.
+        if (input.closest && (input.closest('#ctxDocEditor') || input.closest('.contas-panel'))) return;
         // PERMITIR EDIÇÃO DE NOME E FEE NO HUB LOCAL
         if (input.id !== 'modal_projeto_id' && input.id !== 'modal_tipo_projeto' && input.id !== 'modal_pipefy_id' && input.id !== 'modal_fase_pipefy') {
             if (input.id === 'modal_contrato_variavel') {
@@ -897,6 +902,9 @@ function switchProjectTab(tab) {
         b.classList.toggle('active', b.dataset.ptab === tab));
     document.querySelectorAll('#projectModal .project-panel').forEach(p =>
         p.classList.toggle('active', p.dataset.ppanel === tab));
+    // O motivo é de contexto (fora do modo de escrita do MCP); não exibir em Contas.
+    const motivo = document.getElementById('contextoMotivoWrap');
+    if (motivo) motivo.style.display = tab === 'ctx-contas' ? 'none' : '';
 }
 
 async function carregarContextoProjeto(pipefyId) {
@@ -1131,6 +1139,198 @@ function baixarDocumentoProjeto() {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+
+/* ==============================
+CONTAS DE MÍDIA DO PROJETO
+============================== */
+
+const CONTAS_PLATAFORMAS = {
+    meta_ads: 'Meta Ads',
+    facebook_page: 'Facebook Page',
+    instagram: 'Instagram',
+    google_ads: 'Google Ads',
+    ga4: 'GA4',
+};
+
+async function contasApi(url, options) {
+    const resp = await fetch(url, Object.assign({
+        headers: { 'Content-Type': 'application/json' },
+    }, options));
+    let data = null;
+    try { data = await resp.json(); } catch (e) { data = null; }
+    if (!resp.ok) throw new Error((data && (data.error || data.erro)) || 'Falha na requisição.');
+    return data;
+}
+
+function contasStatus(msg, tipo) {
+    const el = document.getElementById('contasStatus');
+    if (!el) return;
+    el.textContent = msg || '';
+    el.className = 'contas-status' + (tipo ? ` ${tipo}` : '');
+}
+
+async function carregarContasProjeto(pipefyId) {
+    if (!pipefyId) return;
+    contasProjeto = [];
+    contasPodeEditar = false;
+    contaEditandoId = null;
+    contasStatus('', '');
+
+    const addBtn = document.getElementById('contasAddBtn');
+    if (addBtn) addBtn.style.display = 'none';
+    const form = document.getElementById('contasForm');
+    if (form) form.style.display = 'none';
+    const lista = document.getElementById('contasLista');
+    if (lista) lista.innerHTML = '<p class="contas-vazio">Carregando...</p>';
+
+    try {
+        const data = await contasApi(`/api/projetos/${pipefyId}/contas?incluir_inativas=1`);
+        if (!currentProjectData || String(currentProjectData.pipefy_id) !== String(pipefyId)) return;
+        contasProjeto = data.contas || [];
+        contasPodeEditar = !!data.pode_editar;
+        if (addBtn) addBtn.style.display = contasPodeEditar ? 'inline-flex' : 'none';
+        contasRender();
+    } catch (e) {
+        if (lista) lista.innerHTML = `<p class="contas-vazio">${escHtml(e.message)}</p>`;
+    }
+}
+
+function contasRender() {
+    const box = document.getElementById('contasLista');
+    if (!box) return;
+    const mostrarInativas = !!(document.getElementById('contasMostrarInativas') || {}).checked;
+    const lista = (contasProjeto || []).filter(c => mostrarInativas || c.ativo);
+
+    if (!lista.length) {
+        box.innerHTML = '<p class="contas-vazio">Nenhuma conta cadastrada.</p>';
+        return;
+    }
+
+    box.innerHTML = lista.map(c => {
+        const plataforma = CONTAS_PLATAFORMAS[c.plataforma] || c.plataforma;
+        const acoes = contasPodeEditar ? `
+            <div class="conta-actions">
+                <button type="button" class="conta-acao" title="Editar" onclick="ContasProjeto.editar(${c.id})"><i class="fa-solid fa-pen"></i></button>
+                <button type="button" class="conta-acao" title="${c.principal ? 'Remover principal' : 'Tornar principal'}" onclick="ContasProjeto.principal(${c.id}, ${c.principal ? 'false' : 'true'})"><i class="fa-solid fa-star"></i></button>
+                <button type="button" class="conta-acao ${c.ativo ? 'perigo' : ''}" title="${c.ativo ? 'Desativar' : 'Reativar'}" onclick="ContasProjeto.ativo(${c.id}, ${c.ativo ? 'false' : 'true'})"><i class="fa-solid ${c.ativo ? 'fa-ban' : 'fa-rotate-left'}"></i></button>
+            </div>` : '';
+
+        return `<div class="conta-row ${c.ativo ? '' : 'inativa'}">
+            <div class="conta-info">
+                <div class="conta-top">
+                    <span class="conta-plataforma">${escHtml(plataforma)}</span>
+                    <code class="conta-id">${escHtml(c.conta_id)}</code>
+                    ${c.frente ? `<span class="conta-frente">${escHtml(c.frente)}</span>` : ''}
+                    ${c.principal ? '<span class="conta-badge principal">Principal</span>' : ''}
+                    ${!c.ativo ? '<span class="conta-badge inativa">Inativa</span>' : ''}
+                </div>
+                ${c.descricao ? `<div class="conta-desc">${escHtml(c.descricao)}</div>` : ''}
+            </div>
+            ${acoes}
+        </div>`;
+    }).join('');
+}
+
+function contasAbrirForm(conta) {
+    if (!contasPodeEditar) return;
+    contaEditandoId = conta ? conta.id : null;
+    document.getElementById('contaPlataforma').value = (conta && conta.plataforma) || 'meta_ads';
+    document.getElementById('contaId').value = (conta && conta.conta_id) || '';
+    document.getElementById('contaFrente').value = (conta && conta.frente) || '';
+    document.getElementById('contaDescricao').value = (conta && conta.descricao) || '';
+    document.getElementById('contaPrincipal').checked = !!(conta && conta.principal);
+    const ativo = document.getElementById('contaAtivo');
+    if (ativo) ativo.checked = conta ? !!conta.ativo : true;
+    const ativoWrap = document.getElementById('contaAtivoWrap');
+    if (ativoWrap) ativoWrap.style.display = conta ? 'block' : 'none';
+    contasStatus('', '');
+    const form = document.getElementById('contasForm');
+    if (form) form.style.display = 'block';
+    const input = document.getElementById('contaId');
+    if (input) input.focus();
+}
+
+function contasCancelar() {
+    contaEditandoId = null;
+    const form = document.getElementById('contasForm');
+    if (form) form.style.display = 'none';
+    contasStatus('', '');
+}
+
+async function contasSalvar() {
+    const pipefyId = currentProjectData && currentProjectData.pipefy_id;
+    if (!pipefyId) return;
+
+    const payload = {
+        plataforma: document.getElementById('contaPlataforma').value,
+        conta_id: document.getElementById('contaId').value,
+        frente: document.getElementById('contaFrente').value,
+        descricao: document.getElementById('contaDescricao').value,
+        principal: document.getElementById('contaPrincipal').checked,
+        ativo: document.getElementById('contaAtivo').checked,
+    };
+    if (!payload.conta_id.trim()) {
+        contasStatus('Informe o ID da conta.', 'erro');
+        return;
+    }
+
+    try {
+        const url = contaEditandoId
+            ? `/api/projetos/${pipefyId}/contas/${contaEditandoId}`
+            : `/api/projetos/${pipefyId}/contas`;
+        await contasApi(url, {
+            method: contaEditandoId ? 'PUT' : 'POST',
+            body: JSON.stringify(payload),
+        });
+        contasCancelar();
+        await carregarContasProjeto(pipefyId);
+        if (typeof window.showToast === 'function') {
+            window.showToast('Conta salva com sucesso!', 'success');
+        }
+    } catch (e) {
+        contasStatus(e.message, 'erro');
+    }
+}
+
+async function contasPrincipal(id, principal) {
+    const pipefyId = currentProjectData && currentProjectData.pipefy_id;
+    if (!pipefyId) return;
+    try {
+        await contasApi(`/api/projetos/${pipefyId}/contas/${id}/principal`, {
+            method: 'POST',
+            body: JSON.stringify({ principal: !!principal }),
+        });
+        await carregarContasProjeto(pipefyId);
+    } catch (e) {
+        contasStatus(e.message, 'erro');
+    }
+}
+
+async function contasAtivo(id, ativo) {
+    const pipefyId = currentProjectData && currentProjectData.pipefy_id;
+    if (!pipefyId) return;
+    try {
+        await contasApi(`/api/projetos/${pipefyId}/contas/${id}/${ativo ? 'reativar' : 'desativar'}`, {
+            method: 'POST',
+        });
+        await carregarContasProjeto(pipefyId);
+    } catch (e) {
+        contasStatus(e.message, 'erro');
+    }
+}
+
+window.ContasProjeto = {
+    render: contasRender,
+    abrirForm: () => contasAbrirForm(null),
+    editar: (id) => {
+        const conta = (contasProjeto || []).find(c => Number(c.id) === Number(id));
+        if (conta) contasAbrirForm(conta);
+    },
+    salvar: contasSalvar,
+    cancelar: contasCancelar,
+    principal: contasPrincipal,
+    ativo: contasAtivo,
+};
 
 /* ==============================
 EVENT LISTENERS GLOBAIS
