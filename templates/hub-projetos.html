@@ -297,6 +297,7 @@
                         <div class="modal-body">
                             <div class="project-tabs">
                                 <button type="button" class="project-tab active" data-ptab="dados" onclick="switchProjectTab('dados')"><i class="fa-solid fa-circle-info"></i> Dados do Projeto</button>
+                                <button type="button" class="project-tab" data-ptab="ctx-contas" onclick="switchProjectTab('ctx-contas')"><i class="fa-solid fa-rectangle-ad"></i> Contas de Mídia</button>
                                 <button type="button" class="project-tab" data-ptab="ctx-geral" onclick="switchProjectTab('ctx-geral')">Visão Geral</button>
                                 <button type="button" class="project-tab" data-ptab="ctx-contatos" onclick="switchProjectTab('ctx-contatos')">Equipe &amp; Contatos</button>
                                 <button type="button" class="project-tab" data-ptab="ctx-midia" onclick="switchProjectTab('ctx-midia')">Mídia &amp; Performance</button>
@@ -423,14 +424,6 @@
                                     <div class="proj-section-title">Tracking & Mídia</div>
 
                                     <div class="form-group">
-                                        <label>Meta Account ID</label>
-                                        <input type="text" name="meta_account_id" id="modal_meta_account" disabled>
-                                    </div>
-                                    <div class="form-group">
-                                        <label>Google Account ID</label>
-                                        <input type="text" name="google_account_id" id="modal_google_account" disabled>
-                                    </div>
-                                    <div class="form-group">
                                         <label>Orçamento de Mídia - Meta</label>
                                         <input type="text" name="orcamento_midia_meta" id="modal_orcamento_midia_meta"
                                             disabled>
@@ -514,14 +507,6 @@
                                         <label>Canais de mídia ativos</label>
                                         <textarea rows="2" data-ctx-field="canais_midia_ativos" disabled></textarea>
                                     </div>
-                                    <div class="form-group">
-                                        <label>ID da conta Google (Ads)</label>
-                                        <input type="text" data-ctx-field="id_google" disabled>
-                                    </div>
-                                    <div class="form-group">
-                                        <label>ID da conta Meta (act)</label>
-                                        <input type="text" data-ctx-field="act_meta" disabled>
-                                    </div>
                                     <div class="form-group full-width">
                                         <label>IDs de rastreamento (GA4/Meta/etc.)</label>
                                         <textarea rows="2" data-ctx-field="ids_rastreamento" disabled></textarea>
@@ -537,6 +522,80 @@
                                     <div class="form-group full-width">
                                         <label>Benchmark / CPL (custo por lead) de referência</label>
                                         <input type="text" data-ctx-field="benchmark_cpl_referencia" disabled>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- PAINEL: CONTAS DE MÍDIA -->
+                            <div class="project-panel" data-ppanel="ctx-contas">
+                                <div class="contas-panel">
+                                    <div class="contas-head">
+                                        <div>
+                                            <h4><i class="fa-solid fa-rectangle-ad"></i> Contas de Mídia</h4>
+                                            <p>Contas de Meta, página, Instagram, Google Ads e GA4. O “principal” é opcional; o MCP escolhe pela solicitação.</p>
+                                        </div>
+                                        <div class="contas-toolbar">
+                                            <label class="contas-toggle">
+                                                <input type="checkbox" id="contasMostrarInativas"
+                                                    onchange="ContasProjeto.render()"> Mostrar inativas
+                                            </label>
+                                            <button type="button" class="btn-primary" id="contasAddBtn"
+                                                onclick="ContasProjeto.abrirForm()" style="display:none;">
+                                                <i class="fa-solid fa-plus"></i> Adicionar conta
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div id="contasStatus" class="contas-status"></div>
+
+                                    <div id="contasForm" class="contas-form" style="display:none;"
+                                        onkeydown="if (event.key === 'Enter' && event.target.tagName === 'INPUT') event.preventDefault();">
+                                        <div class="contas-form-grid">
+                                            <div class="form-group">
+                                                <label>Plataforma *</label>
+                                                <select id="contaPlataforma">
+                                                    <option value="meta_ads">Meta Ads</option>
+                                                    <option value="facebook_page">Facebook Page</option>
+                                                    <option value="instagram">Instagram</option>
+                                                    <option value="google_ads">Google Ads</option>
+                                                    <option value="ga4">GA4</option>
+                                                </select>
+                                            </div>
+                                            <div class="form-group">
+                                                <label>ID da conta *</label>
+                                                <input type="text" id="contaId" placeholder="Somente números">
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Frente</label>
+                                                <input type="text" id="contaFrente" maxlength="100"
+                                                    placeholder="Assessoria, Franchising, Marvin...">
+                                            </div>
+                                            <div class="form-group full-width">
+                                                <label>Descrição / quando usar</label>
+                                                <textarea id="contaDescricao" rows="2"
+                                                    placeholder="A IA usa este texto para escolher a conta."></textarea>
+                                            </div>
+                                            <div class="form-group full-width contas-checks">
+                                                <label class="contas-check">
+                                                    <input type="checkbox" id="contaPrincipal"> Principal (opcional)
+                                                </label>
+                                                <label class="contas-check" id="contaAtivoWrap" style="display:none;">
+                                                    <input type="checkbox" id="contaAtivo" checked> Ativa
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="contas-form-actions">
+                                            <button type="button" class="btn-secondary"
+                                                onclick="ContasProjeto.cancelar()">Cancelar</button>
+                                            <button type="button" class="btn-primary"
+                                                onclick="ContasProjeto.salvar()">
+                                                <i class="fa-solid fa-floppy-disk"></i> Salvar conta
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div id="contasLista" class="contas-lista">
+                                        <p class="contas-vazio">Carregando...</p>
                                     </div>
                                 </div>
                             </div>
@@ -643,7 +702,7 @@
                                 </div>
                             </div>
 
-                            <div class="form-group full-width" style="margin-top: 10px;">
+                            <div class="form-group full-width" id="contextoMotivoWrap" style="margin-top: 10px;">
                                 <label>Motivo da atualização (opcional)</label>
                                 <input type="text" data-ctx-field="motivo_atualizacao" disabled
                                     placeholder="Ex: Reunião de kickoff ajustou o público-alvo">
