@@ -2935,3 +2935,40 @@ body.tema-claro .var-chip {
     border-color: rgba(214, 22, 22, 0.35);
     color: #b91c1c;
 }
+/* Mapeamento de tabelas do Kanban (projetos_contas / projetos_contexto) */
+.field-sync-select-wrap {
+    flex-wrap: wrap;
+}
+
+.field-sync-table,
+.field-sync-platform {
+    flex: 1;
+    min-width: 150px;
+    font-size: 0.8rem !important;
+    height: 32px !important;
+    padding: 4px 10px !important;
+}
+
+.field-sync-slot {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    width: 100%;
+}
+
+.field-sync-frente {
+    flex: 1;
+    min-width: 160px;
+    font-size: 0.8rem !important;
+    height: 32px !important;
+}
+
+@media (max-width: 700px) {
+    .field-sync-table,
+    .field-sync-platform,
+    .field-sync-frente {
+        width: 100%;
+        min-width: 0;
+    }
+}

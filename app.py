@@ -37,6 +37,7 @@ from services.automacao_service import AutomacaoService
 from services.ekyte_service import listar_tarefas_do_email, refresh_agora
 from services.agenda_service import listar_itens, resumo
 from services import projetos_contas_service as contas_service
+from services.projetos_contexto_service import novo_snapshot_contexto
 
 from dashboard_grupos.hub_integration import register as register_dashboard_grupos
 from feed.hub_integration import register as register_feed
@@ -5337,28 +5338,6 @@ def _pode_editar_projeto(projeto) -> bool:
     return True
 
 
-def _novo_snapshot_contexto(projeto, anterior, origem, motivo=None):
-    """Cria um snapshot do contexto copiando os campos da versão anterior."""
-    cliente = None
-    if anterior is not None:
-        cliente = getattr(anterior, "cliente", None)
-    cliente = (cliente or projeto.nome or "").strip() or "—"
-
-    ctx = ProjetoContexto(
-        projeto_pipefy_id=projeto.pipefy_id,
-        cliente=cliente,
-        origem_contexto=origem,
-        motivo_atualizacao=(motivo or None),
-        contexto_anterior_id=(anterior.id if anterior else None),
-    )
-    if anterior is not None:
-        for campo in ProjetoContexto.CAMPOS:
-            if campo == "cliente":
-                continue
-            setattr(ctx, campo, getattr(anterior, campo, None))
-    return ctx
-
-
 @app.route("/api/projetos/<int:pipefy_id>/contexto", methods=["GET"])
 @check_session
 def get_projeto_contexto(pipefy_id):
@@ -5396,7 +5375,7 @@ def update_projeto_contexto(pipefy_id):
                 projeto_pipefy_id=pipefy_id
             ).order_by(ProjetoContexto.id.desc()).first()
 
-            ctx = _novo_snapshot_contexto(
+            ctx = novo_snapshot_contexto(
                 projeto, anterior, "hub", data.get("motivo_atualizacao")
             )
             cliente = (data.get("cliente") or ctx.cliente or projeto.nome or "").strip()
@@ -5441,7 +5420,7 @@ def update_projeto_documento_geral(pipefy_id):
                 projeto_pipefy_id=pipefy_id
             ).order_by(ProjetoContexto.id.desc()).first()
 
-            ctx = _novo_snapshot_contexto(
+            ctx = novo_snapshot_contexto(
                 projeto, anterior, "hub-documento",
                 data.get("motivo_atualizacao") or "Atualização do documento do projeto",
             )
@@ -5787,7 +5766,11 @@ def delete_faturamento_variavel(pipefy_id, mes, ano):
 @check_session
 def view_kanban():
     """Renderiza a dashboard de Kanban."""
-    return render_template("kanban.html", user_name=session.get("nome"))
+    return render_template(
+        "kanban.html",
+        user_name=session.get("nome"),
+        mapping_targets=KanbanService.MAPPING_TARGETS,
+    )
 
 @app.route("/api/kanban/config", methods=["GET"])
 @check_session
@@ -5818,6 +5801,8 @@ def api_kanban_save_config():
         try:
             service.update_config(slug, configuracao)
             return jsonify({"status": "success"})
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 400
         except Exception as e:
             import traceback; traceback.print_exc()
             return jsonify({"error": str(e)}), 500
@@ -5909,6 +5894,8 @@ def api_kanban_update_card(card_id):
             nome = data.get("nome")
             service.update_card(card_id, nome, dados, session.get('email', 'Sistema'))
             return jsonify({"status": "success"})
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 400
         except Exception as e:
             return jsonify({"error": str(e)}), 500
 
@@ -5933,7 +5920,8 @@ def api_kanban_update_history(history_id):
                 return jsonify({"error": "Projeto associado ao histórico não encontrado."}), 404
 
             service = KanbanService(db)
-            config = service.get_board_config()
+            board_slug = (projeto.kanban_dados or {}).get("_board_slug", "fluxo-projetos")
+            config = service.get_board_config(board_slug)
             
             snapshot = dict(h.snapshot)
             
@@ -5997,10 +5985,17 @@ def api_kanban_update_history(history_id):
             projeto.kanban_dados = projeto_dados
             flag_modified(projeto, "kanban_dados")
             
-            service._apply_column_mappings(projeto, config, projeto_dados)
+            service._apply_column_mappings(
+                projeto, config, projeto_dados,
+                dados_salvos=novos_dados,
+                usuario_email=session.get("email", "Sistema"),
+            )
             
             db.commit()
             return jsonify({"status": "success", "message": "Histórico e projeto atualizados com sucesso."})
+        except ValueError as e:
+            db.rollback()
+            return jsonify({"error": str(e)}), 400
         except Exception as e:
             db.rollback()
             return jsonify({"error": str(e)}), 500
@@ -6069,7 +6064,8 @@ def api_kanban_move():
         try:
             projeto = db.query(Projeto).filter_by(pipefy_id=int(card_id)).first()
             old_phase_name = projeto.fase_do_pipefy if projeto else ""
-            config = service.get_board_config()
+            board_slug = (projeto.kanban_dados or {}).get("_board_slug", "fluxo-projetos") if projeto else "fluxo-projetos"
+            config = service.get_board_config(board_slug)
             old_phase = next((f for f in config.get("fases", []) if f["nome"] == old_phase_name), {})
             new_phase = next((f for f in config.get("fases", []) if f["id"] == nova_fase_id), {})
 
@@ -6088,6 +6084,8 @@ def api_kanban_move():
             return jsonify({"status": "success"})
         except PhaseTransitionError as e:
             return jsonify({"error": str(e)}), 422
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 400
         except Exception as e:
             import traceback; traceback.print_exc()
             return jsonify({"error": str(e)}), 500
@@ -6119,6 +6117,8 @@ def api_kanban_create_card():
             )
             _publicar_kanban_feed(db, projeto, primeira_fase, {}, usuario_email)
             return jsonify({"status": "success", "card_id": projeto.pipefy_id})
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 400
         except Exception as e:
             import traceback; traceback.print_exc()
             return jsonify({"error": str(e)}), 500
@@ -6145,6 +6145,8 @@ def api_kanban_clone_from_history():
         try:
             projeto = service.clone_card_from_history(history_id, nome, usuario_email, slug=board_slug)
             return jsonify({"status": "success", "card_id": projeto.pipefy_id})
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 400
         except Exception as e:
             import traceback; traceback.print_exc()
             return jsonify({"error": str(e)}), 500

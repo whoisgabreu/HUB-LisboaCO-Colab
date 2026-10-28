@@ -421,12 +421,22 @@ const kanbanConfig = {
                                         </label>
                                         <div class="field-sync-select-wrap" style="display:${campo.mapeamento_coluna ? 'flex' : 'none'};">
                                             <span class="field-sync-arrow"><i class="fas fa-arrow-right-long"></i></span>
-                                            <select class="modern-select field-mapping-select field-mapping-compact" data-findex="${fIndex}" data-cindex="${cIndex}">
-                                                <option value="">Selecione a coluna...</option>
-                                                ${["nome", "documento", "fee", "moeda", "squad_atribuida", "produto_contratado", "data_de_inicio", "cohort", "meta_account_id", "google_account_id", "url_webhook_gchat", "step", "informacoes_gerais", "orcamento_midia_meta", "orcamento_midia_google", "data_fim", "ekyte_workspace", "responsavel_projeto"].map(col => `
-                                                    <option value="${col}" ${col === campo.mapeamento_coluna ? 'selected' : ''}>${col}</option>
-                                                `).join('')}
+                                            <select class="modern-select field-sync-table" data-findex="${fIndex}" data-cindex="${cIndex}">
+                                                <option value="">Tabela...</option>
+                                                ${this._tableOptions(campo.mapeamento_tabela || 'projetos')}
                                             </select>
+                                            <select class="modern-select field-mapping-select field-mapping-compact" data-findex="${fIndex}" data-cindex="${cIndex}">
+                                                <option value="">Coluna...</option>
+                                                ${this._columnOptions(campo.mapeamento_tabela || 'projetos', campo.mapeamento_coluna)}
+                                            </select>
+                                            <div class="field-sync-slot" style="display:${(campo.mapeamento_tabela || 'projetos') === 'projetos_contas' ? 'flex' : 'none'};">
+                                                <select class="modern-select field-sync-platform" data-findex="${fIndex}" data-cindex="${cIndex}">
+                                                    <option value="">Plataforma...</option>
+                                                    ${this._platformOptions(campo.mapeamento_plataforma)}
+                                                </select>
+                                                <input type="text" class="modern-input field-sync-frente" data-findex="${fIndex}" data-cindex="${cIndex}"
+                                                    value="${campo.mapeamento_frente || ''}" placeholder="Frente (opcional)">
+                                            </div>
                                         </div>
                                     </div>
                                     ${['select', 'checkbox', 'radio'].includes(campo.tipo) ? `
@@ -726,17 +736,63 @@ const kanbanConfig = {
             };
         });
 
+        this.body.querySelectorAll('.field-sync-table').forEach(sel => {
+            sel.onchange = (e) => {
+                const { findex, cindex } = e.target.dataset;
+                const campo = this.currentConfig.fases[findex].campos[cindex];
+                campo.mapeamento_tabela = e.target.value || 'projetos';
+                e.target.value = campo.mapeamento_tabela;
+                campo.mapeamento_coluna = '';
+                if (campo.mapeamento_tabela === 'projetos_contas') {
+                    campo.mapeamento_plataforma = campo.mapeamento_plataforma || 'meta_ads';
+                    campo.mapeamento_frente = campo.mapeamento_frente || '';
+                } else {
+                    campo.mapeamento_plataforma = '';
+                    campo.mapeamento_frente = '';
+                }
+
+                const wrap = e.target.closest('.field-sync-select-wrap');
+                const colSel = wrap.querySelector('.field-mapping-select');
+                colSel.innerHTML = `<option value="">Coluna...</option>${this._columnOptions(campo.mapeamento_tabela, '')}`;
+
+                const slot = wrap.querySelector('.field-sync-slot');
+                slot.style.display = campo.mapeamento_tabela === 'projetos_contas' ? 'flex' : 'none';
+                const platformSel = wrap.querySelector('.field-sync-platform');
+                if (platformSel) platformSel.value = campo.mapeamento_plataforma || '';
+                const frenteInp = wrap.querySelector('.field-sync-frente');
+                if (frenteInp) frenteInp.value = campo.mapeamento_frente || '';
+
+                wrap.style.display = 'flex';
+            };
+        });
+
+        this.body.querySelectorAll('.field-sync-platform').forEach(sel => {
+            sel.onchange = (e) => {
+                const { findex, cindex } = e.target.dataset;
+                this.currentConfig.fases[findex].campos[cindex].mapeamento_plataforma = e.target.value;
+            };
+        });
+
+        this.body.querySelectorAll('.field-sync-frente').forEach(inp => {
+            inp.onchange = (e) => {
+                const { findex, cindex } = e.target.dataset;
+                this.currentConfig.fases[findex].campos[cindex].mapeamento_frente = e.target.value;
+            };
+        });
+
         this.body.querySelectorAll('.field-sync-toggle').forEach(chk => {
             chk.onchange = (e) => {
                 const { findex, cindex } = e.target.dataset;
                 const wrap = e.target.closest('.field-sync-row').querySelector('.field-sync-select-wrap');
                 const select = wrap.querySelector('.field-mapping-select');
+                const campo = this.currentConfig.fases[findex].campos[cindex];
                 if (e.target.checked) {
+                    campo.mapeamento_tabela = campo.mapeamento_tabela || 'projetos';
                     wrap.style.display = 'flex';
                 } else {
                     wrap.style.display = 'none';
                     select.value = '';
-                    this.currentConfig.fases[findex].campos[cindex].mapeamento_coluna = '';
+                    campo.mapeamento_coluna = '';
                 }
             };
         });
@@ -766,6 +822,39 @@ const kanbanConfig = {
         } catch (err) {
             toast.error("Erro ao salvar: " + err.message);
         }
+    },
+
+    _mappingTargets() {
+        return window.KANBAN_MAPPING_TARGETS || {};
+    },
+
+    _columnLabel(target, code) {
+        const col = (target.columns || {})[code];
+        if (!col) return code;
+        return typeof col === 'string' ? col : (col.label || code);
+    },
+
+    _tableOptions(selected) {
+        return Object.entries(this._mappingTargets()).map(([code, target]) =>
+            `<option value="${code}" ${code === selected ? 'selected' : ''}>${target.label || code}</option>`
+        ).join('');
+    },
+
+    _columnOptions(tabela, selected) {
+        const target = this._mappingTargets()[tabela] || {};
+        return Object.keys(target.columns || {}).map(code => {
+            const col = target.columns[code];
+            const legacy = typeof col === 'object' && col && col.legacy;
+            const label = this._columnLabel(target, code);
+            return `<option value="${code}" ${code === selected ? 'selected' : ''}>${label}${legacy ? ' (legado)' : ''}</option>`;
+        }).join('');
+    },
+
+    _platformOptions(selected) {
+        const target = this._mappingTargets()['projetos_contas'] || {};
+        return Object.entries(target.platforms || {}).map(([code, label]) =>
+            `<option value="${code}" ${code === selected ? 'selected' : ''}>${label}</option>`
+        ).join('');
     },
 
     _fieldTypes() {
