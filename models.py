@@ -505,42 +505,6 @@ class AutomacaoLog(Base):
     executed_at = Column(DateTime, server_default=text("(now() AT TIME ZONE 'America/Sao_Paulo')"))
 
 
-class UserFace(Base):
-    """Tabela: plataforma_geral.user_faces
-    Armazena embeddings faciais para autenticação biométrica.
-    """
-    __tablename__ = "user_faces"
-    __table_args__ = {"schema": "plataforma_geral"}
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, ForeignKey("plataforma_geral.investidores.id", ondelete="CASCADE"), nullable=False)
-    embedding = Column(JSONB, nullable=False)
-    is_active = Column(Boolean, default=True)
-    samples = Column(Integer, default=0)
-    created_at = Column(DateTime, default=datetime.now)
-    updated_at = Column(DateTime, onupdate=datetime.now)
-
-
-class FaceAuthLog(Base):
-    """Tabela: plataforma_geral.face_auth_log
-    Registra todas as tentativas de autenticação facial.
-    """
-    __tablename__ = "face_auth_log"
-    __table_args__ = {"schema": "plataforma_geral"}
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, nullable=True)
-    email = Column(String(100), nullable=True)
-    event_type = Column(String(50), nullable=False)
-    status = Column(String(20), nullable=False)
-    similarity = Column(String(20), nullable=True)
-    samples = Column(Integer, nullable=True)
-    ip_address = Column(String(50), nullable=True)
-    user_agent = Column(String(500), nullable=True)
-    error_message = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.now)
-
-
 class ProjetoMrrHistorico(Base):
     """Tabela: plataforma_geral.projeto_mrr_historico
 

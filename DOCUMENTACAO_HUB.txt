@@ -29,11 +29,10 @@ Linguagem: Python 3 + Flask + SQLAlchemy + PostgreSQL
 14.  Faturamento variável
 15.  Kanban de projetos
 16.  Automações (motor de webhooks por gatilho)
-17.  Biometria facial (login por reconhecimento facial)
-18.  Cotação de moeda (USD→BRL)
-19.  Jobs agendados (APScheduler)
-20.  Referência completa da API REST (rotas)
-21.  Telas / Templates
+17.  Cotação de moeda (USD→BRL)
+18.  Jobs agendados (APScheduler)
+19.  Referência completa da API REST (rotas)
+20.  Telas / Templates
 22.  Scripts, migrations e utilitários
 23.  Integrações externas (n8n, Pipefy, AwesomeAPI, Google OAuth)
 24.  Observações, regras especiais e dívidas técnicas
@@ -58,7 +57,7 @@ O HUB é uma plataforma web interna que centraliza:
  • AUTOMAÇÕES disparadas por eventos do Kanban ou por datas do projeto
    (ação = webhook, ex.: Google Chat).
  • RANKING de performance dos colaboradores.
- • Login por e-mail/senha, Google OAuth e BIOMETRIA FACIAL.
+ • Login por e-mail/senha e Google OAuth.
 
 Público: colaboradores da agência, organizados por SQUAD, com CARGOS (funcao)
 e POSIÇÕES hierárquicas (Sócio, Gerência, Coordenador, etc.).
@@ -77,13 +76,6 @@ Backend:
  • python-dotenv                   — carregamento do .env
  • gunicorn                        — WSGI server de produção
  • ProxyFix (Werkzeug middleware)  — atrás de proxy reverso (X-Forwarded-*)
-
-Biometria facial (visão computacional):
- • insightface (buffalo_l)         — detecção e embedding facial (512 dims)
- • onnx / onnxruntime              — inferência do modelo
- • opencv-python-headless          — decode/processamento de frames
- • numpy, scikit-learn             — cosine similarity / média de embeddings
- • pillow                          — manipulação de imagem
 
 Frontend:
  • Jinja2 templates (server-side rendering) em templates/
@@ -116,10 +108,6 @@ HUB-LisboaCO-Colab/
 │   ├── automacao_service.py       # Automações (gatilhos + webhooks + logs)
 │   └── currency.py                # Cotação USD→BRL (AwesomeAPI, cache 1h)
 │
-├── face_auth/                # Reconhecimento facial
-│   ├── __init__.py
-│   └── face_service.py            # decode/extract/match de embeddings + liveness
-│
 ├── templates/                # Telas (Jinja2)
 │   ├── index.html, login.html, operacao.html, criativa.html, kanban.html,
 │   │   automacoes.html, vendas.html, cockpit.html, gerenciar-usuarios.html,
@@ -142,7 +130,7 @@ HUB-LisboaCO-Colab/
 ├── Kanban MVP/               # Protótipo standalone (FastAPI + JSON store) — legado
 ├── N8N Fluxo/                # Exports de fluxos n8n (Autenticação, CRUD, Remuneração)
 ├── chip_input/               # Componente HTML auxiliar
-├── scripts/                  # Migrations "oficiais" (face_auth, kanban, automações)
+├── scripts/                  # Migrations "oficiais" (kanban, automações, acessos)
 ├── scratch/                  # Scripts de investigação/diagnóstico/testes ad-hoc
 │
 ├── logica_entregas.md        # Doc da lógica de entregas/MRR (referência)
@@ -174,9 +162,6 @@ O arquivo .env (carregado por python-dotenv) deve conter:
   GOOGLE_CLIENT_ID=...
   GOOGLE_CLIENT_SECRET=...
   REDIRECT_URI=...          # ex.: https://seu-dominio/login/callback
-
-  # Biometria facial (opcional)
-  FACE_MATCH_THRESHOLD=0.75 # similaridade mínima para aceitar o rosto
 
 A connection string é montada em database.py:
   postgresql+psycopg2://{DB_USERNAME}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_DATABASE}
@@ -391,16 +376,6 @@ Todas as tabelas vivem no schema "plataforma_geral". Modelos em models.py.
                   project_id, url_chamada, http_status, status('success'|'failure'),
                   error_message, executed_at
 
-------------------------------------------------------------------------------
-6.18 user_faces / face_auth_log  (biometria facial)
-------------------------------------------------------------------------------
-  user_faces:    id, user_id (FK investidores.id, ON DELETE CASCADE),
-                 embedding(JSONB, 512 dims), is_active, samples,
-                 created_at, updated_at
-  face_auth_log: id, user_id, email, event_type, status, similarity, samples,
-                 ip_address, user_agent, error_message, created_at
-
-
 ================================================================================
 7. AUTENTICAÇÃO E CONTROLE DE ACESSO
 ================================================================================
@@ -412,7 +387,6 @@ Todas as tabelas vivem no schema "plataforma_geral". Modelos em models.py.
  b) Google OAuth (/login/google → /login/callback): autentica via Google,
     busca o e-mail em investidores (precisa existir e estar ativo), cria token
     e sessão. Usa requests-oauthlib (scopes: email, profile).
- c) Biometria facial (/api/face/login/*): ver seção 17.
  d) /dev-login: atalho de desenvolvimento (usuário fixo).
 
 7.2 Decorators de proteção
@@ -715,35 +689,7 @@ APIs:
 
 
 ================================================================================
-17. BIOMETRIA FACIAL — face_auth/face_service.py
-================================================================================
-Login e cadastro por reconhecimento facial usando insightface (modelo buffalo_l,
-embeddings de 512 dimensões), carregado lazily (CPUExecutionProvider).
-
-Pipeline:
- • decode_frame(base64) → OpenCV frame.
- • detect_and_extract(frame) → embedding normalizado + bbox + (opcional)
-   landmarks/head_pose/det_score.
- • process_frames_for_biometric_registration(frames) → média de embeddings
-   (mín. 3 rostos detectados) → vetor de 512 salvo em user_faces.embedding.
- • compare_embeddings / match_face → cosine similarity ≥ FACE_MATCH_THRESHOLD
-   (default 0.75) determina o match.
-
-Liveness (anti-spoofing, helpers disponíveis):
- • validate_blink (EAR — eye aspect ratio < 0.18)
- • check_liveness_movement (deslocamento médio do bbox)
- • check_liveness_head_pose (variação de yaw)
-
-APIs Face:
-  GET  /api/face/biometry/status      POST /api/face/biometry/register
-  POST /api/face/biometry/update      POST /api/face/biometry/delete
-  POST /api/face/login/check          POST /api/face/login/authenticate
-  POST /api/face/login/capture-and-auth
-Todas as tentativas são auditadas em face_auth_log (status, similarity, IP, UA).
-
-
-================================================================================
-18. COTAÇÃO DE MOEDA — services/currency.py
+17. COTAÇÃO DE MOEDA — services/currency.py
 ================================================================================
 CurrencyService.get_usd_to_brl_rate():
  • Fonte: AwesomeAPI (https://economia.awesomeapi.com.br/last/USD-BRL), valor "bid".
@@ -754,7 +700,7 @@ CurrencyService.get_usd_to_brl_rate():
 
 
 ================================================================================
-19. JOBS AGENDADOS — APScheduler (app.py)
+18. JOBS AGENDADOS — APScheduler (app.py)
 ================================================================================
 O scheduler inicia junto com o app (scheduler.init_app + scheduler.start()).
 
@@ -769,7 +715,7 @@ O scheduler inicia junto com o app (scheduler.init_app + scheduler.start()).
 
 
 ================================================================================
-20. REFERÊNCIA COMPLETA DA API REST
+19. REFERÊNCIA COMPLETA DA API REST
 ================================================================================
 Legenda: [GET] [POST] [PUT] [DELETE]
 
@@ -882,23 +828,13 @@ Legenda: [GET] [POST] [PUT] [DELETE]
 — RANKING —
   [GET] /api/ranking
 
-— BIOMETRIA FACIAL —
-  [GET]  /api/face/biometry/status
-  [POST] /api/face/biometry/register
-  [POST] /api/face/biometry/update
-  [POST] /api/face/biometry/delete
-  [POST] /api/face/login/check
-  [POST] /api/face/login/authenticate
-  [POST] /api/face/login/capture-and-auth
-
-
 ================================================================================
-21. TELAS / TEMPLATES (Jinja2)
+20. TELAS / TEMPLATES (Jinja2)
 ================================================================================
   index.html ............. Home/Dashboard: MRR global, contagem de clientes/
                            investidores/squads e card "minha remuneração"
                            (faixa min/max, flag, streaks, projetos vinculados).
-  login.html ............. Login (senha, Google, facial).
+  login.html ............. Login (senha e Google).
   operacao.html .......... Painel de operação por cliente.
   criativa.html .......... Entregas criativas/operação por colaborador/mês.
   kanban.html ............ Board Kanban de projetos.
@@ -922,7 +858,7 @@ Legenda: [GET] [POST] [PUT] [DELETE]
 22. SCRIPTS, MIGRATIONS E UTILITÁRIOS
 ================================================================================
 Migrations "oficiais" (scripts/):
-  migrate_to_kanban.py, migrate_automacoes.py, migrate_face_auth.py,
+  migrate_to_kanban.py, migrate_automacoes.py,
   populate_kanban_placeholders.py
 
 Migrations soltas na raiz (executar 1x cada, conforme histórico):

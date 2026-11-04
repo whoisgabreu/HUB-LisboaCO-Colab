@@ -511,3 +511,26 @@ body {
 .btn-google-login:active {
   transform: translateY(0);
 }
+/* ── Alternativa de login (Google) ── */
+.login-alt-options {
+  margin-top: 18px;
+}
+
+.login-alt-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+  color: #94a3b8;
+  font-family: 'Inter', 'Poppins', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.login-alt-divider::before,
+.login-alt-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: #e2e8f0;
+}
