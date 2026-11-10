@@ -56,33 +56,25 @@ UTILITÁRIOS DE MOEDA
 ================================ */
 
 function formatCurrency(value, currency) {
-    if (value === null || value === undefined || value === '') return '';
-
-    const number = Number(value);
-    if (isNaN(number)) return '';
-
-    return new Intl.NumberFormat('pt-BR', {
-        style: 'currency',
-        currency: currency || 'BRL'
-    }).format(number); // centavos → reais
+    return window.ValorMonetario.formatCurrency(value, currency);
 }
 
-function parseCurrencyToCents(value) {
-    if (!value) return 0;
+function parseValorMonetario(value) {
+    return window.ValorMonetario.parse(value);
+}
 
-    let clean = value.replace(/[^\d.,]/g, '');
+function formatarValorInteiro(value) {
+    return window.ValorMonetario.formatInteger(value);
+}
 
-    const lastComma = clean.lastIndexOf(',');
-    const lastDot = clean.lastIndexOf('.');
-
-    if (lastComma > lastDot) {
-        clean = clean.replace(/\./g, '').replace(',', '.');
+function formatarValorInput(input, tipo) {
+    if (!input) return;
+    if (tipo === 'moeda') {
+        const moeda = (document.getElementById('modal_moeda') || {}).value || 'BRL';
+        window.ValorMonetario.formatInput(input, moeda);
     } else {
-        clean = clean.replace(/,/g, '');
+        window.ValorMonetario.formatIntegerInput(input);
     }
-
-    const number = parseFloat(clean);
-    return isNaN(number) ? 0 : Math.round(number * 100);
 }
 
 /* ==============================
@@ -208,6 +200,18 @@ function populateSquadFilter() {
 }
 
 document.addEventListener('DOMContentLoaded', populateSquadFilter);
+
+document.addEventListener('DOMContentLoaded', function () {
+    const feeInput = document.getElementById('modal_fee');
+    if (feeInput) {
+        feeInput.addEventListener('blur', () => formatarValorInput(feeInput, 'moeda'));
+    }
+
+    ['modal_orcamento_midia_meta', 'modal_orcamento_midia_google'].forEach(id => {
+        const input = document.getElementById(id);
+        if (input) input.addEventListener('blur', () => formatarValorInput(input, 'inteiro'));
+    });
+});
 
 
 /* ==============================
@@ -346,8 +350,8 @@ function openProjectModal(projectData, tipoProjeto) {
     document.getElementById('modal_step').value = projectData.step || '';
     document.getElementById('modal_informacoes').value = projectData.informacoes_gerais || '';
     document.getElementById('modal_cohort').value = projectData.cohort || '';
-    document.getElementById('modal_orcamento_midia_meta').value = projectData.orcamento_midia_meta || '';
-    document.getElementById('modal_orcamento_midia_google').value = projectData.orcamento_midia_google || '';
+    document.getElementById('modal_orcamento_midia_meta').value = formatarValorInteiro(projectData.orcamento_midia_meta);
+    document.getElementById('modal_orcamento_midia_google').value = formatarValorInteiro(projectData.orcamento_midia_google);
     document.getElementById('modal_fase_pipefy').value = projectData.fase_do_pipefy || '';
     document.getElementById('modal_webhook_url').value = projectData.url_webhook_gchat || '';
     document.getElementById('modal_ekyte_workspace').value = projectData.ekyte_workspace || '';
@@ -768,8 +772,29 @@ async function updateProject(event) {
         }
     });
 
-    // Converte fee para número puro (Decimal no backend)
-    data.fee = parseCurrencyToCents(data.fee) / 100;
+    // Converte valores monetários para número, bloqueando entradas inválidas
+    const valoresNormalizados = {
+        fee: parseValorMonetario(data.fee),
+        orcamento_midia_meta: parseValorMonetario(data.orcamento_midia_meta),
+        orcamento_midia_google: parseValorMonetario(data.orcamento_midia_google),
+    };
+    const rotulosValor = {
+        fee: 'Fee',
+        orcamento_midia_meta: 'Orçamento de Mídia - Meta',
+        orcamento_midia_google: 'Orçamento de Mídia - Google',
+    };
+    const camposInvalidos = Object.keys(valoresNormalizados).filter(
+        campo => valoresNormalizados[campo] === null || valoresNormalizados[campo] < 0
+    );
+    if (camposInvalidos.length) {
+        const msg = `Valor inválido em: ${camposInvalidos.map(c => rotulosValor[c]).join(', ')}. Use o formato 6.006,88.`;
+        if (window.HubModal) HubModal.alert(msg); else alert(msg);
+        return;
+    }
+
+    data.fee = Math.round(valoresNormalizados.fee * 100) / 100;
+    data.orcamento_midia_meta = Math.round(valoresNormalizados.orcamento_midia_meta);
+    data.orcamento_midia_google = Math.round(valoresNormalizados.orcamento_midia_google);
     data.usuario = window.APP_CONFIG.userEmail;
     data.userToken = window.APP_CONFIG.userToken;
 

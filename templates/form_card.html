@@ -329,6 +329,8 @@
                                 </div>
                             {% elif campo.tipo == 'number' %}
                                 <input type="text" inputmode="decimal" name="{{ field_id }}" class="form-input" {% if campo.obrigatorio %}required{% endif %}>
+                            {% elif campo.tipo == 'currency' %}
+                                <input type="text" inputmode="decimal" autocomplete="off" data-currency="true" name="{{ field_id }}" class="form-input" {% if campo.obrigatorio %}required{% endif %}>
                             {% elif campo.tipo == 'datetime' %}
                                 <input type="datetime-local" name="{{ field_id }}" class="form-input" {% if campo.obrigatorio %}required{% endif %}>
                             {% elif campo.tipo == 'link' %}
@@ -355,5 +357,13 @@
             </div>
         {% endif %}
     </div>
+    <script src="/static/js/valor-monetario.js"></script>
+    <script>
+        document.querySelectorAll('input[data-currency="true"]').forEach(function (input) {
+            input.addEventListener('blur', function () {
+                window.ValorMonetario.formatInput(input, 'BRL');
+            });
+        });
+    </script>
 </body>
 </html>

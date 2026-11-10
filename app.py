@@ -5051,6 +5051,11 @@ def vincular_investidor():
         return jsonify({"error": str(e)}), 500
 
 
+def _parse_valor_monetario(valor, casas=2):
+    from services.valor_monetario import parse_valor_monetario
+    return parse_valor_monetario(valor, casas)
+
+
 @app.route("/api/projetos/<int:pipefy_id>", methods=["PUT"])
 @check_session
 @check_access(["Gerência", "Sócio", "Coordenador"])
@@ -5059,7 +5064,6 @@ def update_projeto_local(pipefy_id):
     data = request.json
 
     try:
-        from decimal import Decimal
         with Session() as db:
             projeto = db.query(Projeto).filter_by(pipefy_id=pipefy_id).first()
             is_onetime = (projeto.status == 'Onetime') if projeto else False
@@ -5095,10 +5099,12 @@ def update_projeto_local(pipefy_id):
             for field, label in fields_to_track.items():
                 if field in data:
                     new_val = data[field]
-                    if field == "fee": 
-                        new_val = int(new_val)
-                    
                     old_val = getattr(projeto, field)
+                    if field == "fee":
+                        new_val = _parse_valor_monetario(new_val, 2)
+                        if old_val is not None:
+                            old_val = _parse_valor_monetario(old_val, 2)
+
                     old_norm = str(old_val) if old_val not in (None, "", "None") else ""
                     new_norm = str(new_val) if new_val not in (None, "", "None") else ""
                     if isinstance(old_val, (int, float)):
@@ -5113,7 +5119,7 @@ def update_projeto_local(pipefy_id):
             # Atualiza campos básicos do projeto
             if "nome" in data: projeto.nome = data["nome"]
             if "documento" in data: projeto.documento = data["documento"]
-            if "fee" in data: projeto.fee = int(float(data["fee"] or 0))
+            if "fee" in data: projeto.fee = _parse_valor_monetario(data["fee"], 2)
             if "moeda" in data: projeto.moeda = data["moeda"]
             if "squad_atribuida" in data:
                 projeto.squad_atribuida = data["squad_atribuida"]
@@ -5138,9 +5144,9 @@ def update_projeto_local(pipefy_id):
                 projeto.orcamento_midia_google = 0
             else:
                 if "orcamento_midia_meta" in data:
-                    projeto.orcamento_midia_meta = int(float(data["orcamento_midia_meta"] or 0))
+                    projeto.orcamento_midia_meta = int(_parse_valor_monetario(data["orcamento_midia_meta"], 0))
                 if "orcamento_midia_google" in data:
-                    projeto.orcamento_midia_google = int(float(data["orcamento_midia_google"] or 0))
+                    projeto.orcamento_midia_google = int(_parse_valor_monetario(data["orcamento_midia_google"], 0))
 
             # Datas: Seguir o padrão 2900-01-01 se vazio (conforme n8n)
             from datetime import date as date_type
@@ -5247,7 +5253,7 @@ def update_projeto_local(pipefy_id):
                 if v:
                     # Atualiza existente
                     v.nome_projeto = data.get("nome", v.nome_projeto)
-                    v.fee_projeto = Decimal(str(data.get("fee", v.fee_projeto) or 0))
+                    v.fee_projeto = _parse_valor_monetario(data.get("fee", v.fee_projeto), 2)
                     v.cientista = cientista
                     v.active = active
                     v.inactivated_at = data_fim_obj
@@ -5287,7 +5293,7 @@ def update_projeto_local(pipefy_id):
                         pipefy_id_projeto=pipefy_id,
                         email_investidor=email,
                         nome_projeto=data.get("nome", projeto.nome),
-                        fee_projeto=Decimal(str(data.get("fee", projeto.fee) or 0)),
+                        fee_projeto=_parse_valor_monetario(data.get("fee", projeto.fee), 2),
                         cientista=cientista,
                         active=active,
                         created_at=created,
@@ -5331,6 +5337,8 @@ def update_projeto_local(pipefy_id):
 
             return jsonify({"status": "success", "message": "Projeto e vínculos sincronizados com sucesso."})
 
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
     except SQLAlchemyError as e:
         return jsonify({"error": str(e)}), 500
 
@@ -6856,6 +6864,20 @@ def public_form_submit(token):
                 dados[campo['id']] = vals
             elif campo['tipo'] == 'boolean':
                 dados[campo['id']] = raw == "true"
+            elif campo['tipo'] == 'currency':
+                if raw and str(raw).strip():
+                    try:
+                        dados[campo['id']] = float(_parse_valor_monetario(raw, 2))
+                    except ValueError:
+                        config = service.get_board_config(slug)
+                        board_nome = config.get("nome", slug)
+                        return render_template(
+                            "form_card.html",
+                            erro=f"Valor monetário inválido no campo '{campo['label']}'.",
+                            fase=fase, board_nome=board_nome, token=token,
+                        )
+                else:
+                    dados[campo['id']] = None
             elif campo['tipo'] == 'number':
                 try:
                     if raw:

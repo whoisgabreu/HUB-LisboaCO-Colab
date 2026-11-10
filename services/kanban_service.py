@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select, update, insert, text
 from models import Projeto, KanbanConfig, KanbanHistorico, InvestidorProjeto, ProjetoConta, ProjetoContexto
 from services import projetos_contas_service, projetos_contexto_service
+from services.valor_monetario import parse_valor_monetario
 
 class PhaseTransitionError(Exception):
     """Erro lançado quando uma transição de fase viola as regras de negócio."""
@@ -33,7 +34,7 @@ COLLECTION_TARGETS = {
     },
 }
 
-SUBFIELD_TYPES = ("string", "text", "number", "boolean", "datetime",
+SUBFIELD_TYPES = ("string", "text", "number", "currency", "boolean", "datetime",
                   "select", "checkbox", "radio", "link", "plataformas")
 
 
@@ -340,7 +341,8 @@ class KanbanService:
         }
 
     def _process_number_fields(self, config: Dict[str, Any], dados: Dict[str, Any]):
-        """Converte vírgula para ponto e transforma em float para campos do tipo number."""
+        """Normaliza campos numéricos e monetários para float."""
+        tipos_numericos = ('number', 'currency')
         for fase in config.get('fases', []):
             for campo in fase.get('campos', []):
                 if campo.get('tipo') == 'incremental':
@@ -349,36 +351,55 @@ class KanbanService:
                     if not isinstance(itens, list):
                         continue
                     numericos = {
-                        sub['id'] for sub in (campo.get('subcampos') or [])
-                        if sub.get('tipo') == 'number'
+                        sub['id']: sub.get('tipo')
+                        for sub in (campo.get('subcampos') or [])
+                        if sub.get('tipo') in tipos_numericos
                     }
                     if not numericos:
                         continue
                     for item in itens:
                         if not isinstance(item, dict):
                             continue
-                        for sub_id in numericos:
+                        for sub_id, sub_tipo in numericos.items():
                             if sub_id not in item:
                                 continue
                             val = item[sub_id]
                             if val is None or val == '':
                                 continue
+                            if sub_tipo == 'currency':
+                                try:
+                                    item[sub_id] = float(parse_valor_monetario(val, 2))
+                                except ValueError:
+                                    sub_label = next(
+                                        (s.get('label') or s.get('id') for s in (campo.get('subcampos') or []) if s.get('id') == sub_id),
+                                        sub_id,
+                                    )
+                                    raise ValueError(f"Valor monetário inválido no subcampo '{sub_label}'.")
+                            else:
+                                try:
+                                    if isinstance(val, str):
+                                        val = val.replace(',', '.')
+                                    item[sub_id] = float(val)
+                                except (ValueError, TypeError):
+                                    pass
+                    continue
+                tipo = campo.get('tipo')
+                if tipo in tipos_numericos and campo.get('id') in dados:
+                    val = dados[campo['id']]
+                    if val is not None and val != '':
+                        if tipo == 'currency':
+                            try:
+                                dados[campo['id']] = float(parse_valor_monetario(val, 2))
+                            except ValueError:
+                                label = campo.get('label') or campo.get('id')
+                                raise ValueError(f"Valor monetário inválido no campo '{label}'.")
+                        else:
                             try:
                                 if isinstance(val, str):
                                     val = val.replace(',', '.')
-                                item[sub_id] = float(val)
+                                dados[campo['id']] = float(val)
                             except (ValueError, TypeError):
                                 pass
-                    continue
-                if campo['tipo'] == 'number' and campo['id'] in dados:
-                    val = dados[campo['id']]
-                    if val is not None and val != '':
-                        try:
-                            if isinstance(val, str):
-                                val = val.replace(',', '.')
-                            dados[campo['id']] = float(val)
-                        except (ValueError, TypeError):
-                            pass
 
     def create_card(self, slug: str, nome: str, dados_iniciais: Dict[str, Any], usuario_email: str) -> Projeto:
         """Cria um novo projeto/card no Kanban."""

@@ -476,6 +476,20 @@ const modal = {
         return html;
     },
 
+    _moedaAtual() {
+        return (this.currentCard && this.currentCard.moeda) || 'BRL';
+    },
+
+    _currencyValue(el) {
+        const raw = el ? String(el.value || '').trim() : '';
+        if (!raw) return { empty: true, invalid: false, value: null };
+        const numero = window.ValorMonetario.parse(raw);
+        if (numero === null || numero < 0) {
+            return { empty: false, invalid: true, value: null };
+        }
+        return { empty: false, invalid: false, value: numero };
+    },
+
     createFieldInput(campo, val) {
         if (campo.tipo === 'incremental') {
             return this.createIncrementalInput(campo, val);
@@ -584,6 +598,29 @@ const modal = {
             };
             container.appendChild(input); container.appendChild(btn);
             return container;
+        }
+
+        if (campo.tipo === 'currency') {
+            const input = document.createElement('input');
+            input.id = `field_${campo.id}`;
+            input.className = 'modern-input';
+            input.type = 'text';
+            input.inputMode = 'decimal';
+            input.autocomplete = 'off';
+            const moeda = this._moedaAtual();
+            if (val !== null && val !== undefined && val !== '') {
+                const numero = window.ValorMonetario.parse(val);
+                if (numero !== null) {
+                    input.value = window.ValorMonetario.formatCurrency(numero, moeda);
+                }
+            }
+            input.addEventListener('blur', () => {
+                const numero = window.ValorMonetario.parse(input.value);
+                if (numero !== null && numero >= 0) {
+                    input.value = window.ValorMonetario.formatCurrency(numero, moeda);
+                }
+            });
+            return input;
         }
 
         const input = document.createElement('input');
@@ -771,6 +808,29 @@ const modal = {
             return textarea;
         }
 
+        if (tipo === 'currency') {
+            const input = document.createElement('input');
+            input.className = 'modern-input incremental-subinput';
+            input.dataset.subId = sub.id;
+            input.type = 'text';
+            input.inputMode = 'decimal';
+            input.autocomplete = 'off';
+            const moeda = this._moedaAtual();
+            if (val !== null && val !== undefined && val !== '') {
+                const numero = window.ValorMonetario.parse(val);
+                if (numero !== null) {
+                    input.value = window.ValorMonetario.formatCurrency(numero, moeda);
+                }
+            }
+            input.addEventListener('blur', () => {
+                const numero = window.ValorMonetario.parse(input.value);
+                if (numero !== null && numero >= 0) {
+                    input.value = window.ValorMonetario.formatCurrency(numero, moeda);
+                }
+            });
+            return input;
+        }
+
         const input = document.createElement('input');
         input.className = 'modern-input incremental-subinput';
         input.dataset.subId = sub.id;
@@ -792,6 +852,10 @@ const modal = {
         }
         if (tipo === 'select' || tipo === 'radio' || tipo === 'plataformas') {
             return el.value || '';
+        }
+        if (tipo === 'currency') {
+            const estado = this._currencyValue(el);
+            return estado.invalid || estado.empty ? null : estado.value;
         }
         return el.value || '';
     },
@@ -825,12 +889,20 @@ const modal = {
             let hasValue = false;
             (campo.subcampos || []).forEach(sub => {
                 const el = row.querySelector(`[data-sub-id="${sub.id}"]`);
+                const cell = el ? el.closest('.incremental-card-cell') : null;
+                if (sub.tipo === 'currency') {
+                    const estado = this._currencyValue(el);
+                    if (estado.invalid) {
+                        valid = false;
+                        if (cell) cell.classList.add('incremental-cell-invalid');
+                        return;
+                    }
+                }
                 const value = this.readSubfieldValue(sub, el);
                 const filled = Array.isArray(value)
                     ? value.length > 0
                     : (value !== '' && value !== false && value !== null && value !== undefined);
                 if (filled) hasValue = true;
-                const cell = el ? el.closest('.incremental-card-cell') : null;
                 if (sub.obrigatorio && !filled) {
                     valid = false;
                     if (cell) cell.classList.add('incremental-cell-invalid');
@@ -874,6 +946,8 @@ const modal = {
                 let raw = item[sub.id];
                 if (sub.tipo === 'plataformas') {
                     raw = platforms[raw] || raw || '';
+                } else if (sub.tipo === 'currency') {
+                    raw = (raw === null || raw === undefined || raw === '') ? '' : window.ValorMonetario.formatCurrency(raw, this._moedaAtual());
                 } else if (sub.tipo === 'boolean') {
                     raw = raw ? 'Sim' : 'Não';
                 } else if (Array.isArray(raw)) {
@@ -893,6 +967,7 @@ const modal = {
         const dados = {};
         const nome = document.getElementById('field_projeto_nome').value;
         let valid = true;
+        let valorInvalido = false;
 
         if (!nome) {
             document.getElementById('field_projeto_nome').style.borderColor = 'red';
@@ -907,7 +982,11 @@ const modal = {
                 return;
             }
             let val;
-            if (campo.tipo === 'radio') {
+            let currencyState = null;
+            if (campo.tipo === 'currency') {
+                currencyState = this._currencyValue(el);
+                val = currencyState.value;
+            } else if (campo.tipo === 'radio') {
                 val = (el.querySelector('input:checked') || {}).value || '';
             } else if (campo.tipo === 'checkbox') {
                 val = Array.from(el.querySelectorAll('input:checked')).map(i => i.value);
@@ -916,8 +995,12 @@ const modal = {
             } else {
                 val = el.value;
             }
-            
-            if (campo.obrigatorio && (!val || (Array.isArray(val) && val.length === 0)) && val !== 0 && val !== false) {
+
+            if (currencyState && currencyState.invalid) {
+                el.style.borderColor = 'red';
+                valid = false;
+                valorInvalido = true;
+            } else if (campo.obrigatorio && (!val || (Array.isArray(val) && val.length === 0)) && val !== 0 && val !== false) {
                 el.style.borderColor = 'red';
                 valid = false;
             } else {
@@ -926,7 +1009,9 @@ const modal = {
             dados[campo.id] = val;
         });
         
-        if (!valid) return toast.error("Preencha todos os campos obrigatórios.");
+        if (!valid) {
+            return toast.error(valorInvalido ? "Corrija os valores monetários inválidos." : "Preencha todos os campos obrigatórios.");
+        }
 
         try {
             await api.post(`/api/kanban/cards/${cardId}/update`, { nome, dados });
@@ -940,17 +1025,28 @@ const modal = {
 
     async handleTransition(card, targetFase) {
         const dados_fase = {};
+        let valorInvalido = false;
         this.currentPhaseConfig.campos.forEach(campo => {
             const el = document.getElementById(`field_${campo.id}`);
             if (campo.tipo === 'incremental') {
                 dados_fase[campo.id] = this.readIncrementalValue(campo, el);
                 return;
             }
-            if (campo.tipo === 'radio') dados_fase[campo.id] = (el.querySelector('input:checked') || {}).value || '';
+            if (campo.tipo === 'currency') {
+                const estado = this._currencyValue(el);
+                if (estado.invalid) {
+                    el.style.borderColor = 'red';
+                    valorInvalido = true;
+                }
+                dados_fase[campo.id] = estado.value;
+            }
+            else if (campo.tipo === 'radio') dados_fase[campo.id] = (el.querySelector('input:checked') || {}).value || '';
             else if (campo.tipo === 'checkbox') dados_fase[campo.id] = Array.from(el.querySelectorAll('input:checked')).map(i => i.value);
             else if (campo.tipo === 'boolean') dados_fase[campo.id] = el.querySelector('input').checked;
             else dados_fase[campo.id] = el.value;
         });
+
+        if (valorInvalido) return toast.error("Corrija os valores monetários inválidos.");
 
         try {
             await api.moveCard(card.card_id, targetFase.id, dados_fase);
@@ -971,6 +1067,7 @@ const modal = {
         const btnArchive = document.getElementById('btnArchive');
         if (btnArchive) btnArchive.style.display = 'none';
 
+        this.currentCard = null;
         this.title.innerText = title;
         this.currentPhaseConfig = phase;
         this.footer.style.display = 'flex';
@@ -1008,6 +1105,7 @@ const modal = {
             const dados = {};
             const nome = document.getElementById('field_projeto_nome_new').value;
             let valid = true;
+            let valorInvalido = false;
 
             if (!nome) {
                 document.getElementById('field_projeto_nome_new').style.borderColor = 'red';
@@ -1022,12 +1120,19 @@ const modal = {
                     return;
                 }
                 let val;
-                if (c.tipo === 'radio') val = (el.querySelector('input:checked') || {}).value || '';
+                let currencyState = null;
+                if (c.tipo === 'currency') {
+                    currencyState = this._currencyValue(el);
+                    val = currencyState.value;
+                }
+                else if (c.tipo === 'radio') val = (el.querySelector('input:checked') || {}).value || '';
                 else if (c.tipo === 'checkbox') val = Array.from(el.querySelectorAll('input:checked')).map(i => i.value);
                 else if (c.tipo === 'boolean') val = el.querySelector('input').checked;
                 else val = el.value;
 
-                if (c.obrigatorio && !val && val !== 0 && val !== false) {
+                if (currencyState && currencyState.invalid) {
+                    valid = false; valorInvalido = true; el.style.borderColor = 'red';
+                } else if (c.obrigatorio && !val && val !== 0 && val !== false) {
                     valid = false; el.style.borderColor = 'red';
                 }
                 dados[c.id] = val;
@@ -1037,7 +1142,7 @@ const modal = {
                 onSave({ nome, dados });
                 this.hide();
             } else {
-                toast.error("Preencha o nome do projeto e campos obrigatórios.");
+                toast.error(valorInvalido ? "Corrija os valores monetários inválidos." : "Preencha o nome do projeto e campos obrigatórios.");
             }
         };
 
@@ -1138,12 +1243,17 @@ const modal = {
         saveBtn.onclick = async () => {
             const novosDados = {};
             let valid = true;
+            let valorInvalido = false;
 
             phaseConfig.campos.forEach(campo => {
                 if (campo.tipo === 'incremental') return;
                 const el = editModal.querySelector(`#hist_field_${campo.id}`);
                 let val;
-                if (campo.tipo === 'radio') {
+                let currencyState = null;
+                if (campo.tipo === 'currency') {
+                    currencyState = this._currencyValue(el);
+                    val = currencyState.value;
+                } else if (campo.tipo === 'radio') {
                     val = (el.querySelector('input:checked') || {}).value || '';
                 } else if (campo.tipo === 'checkbox') {
                     val = Array.from(el.querySelectorAll('input:checked')).map(i => i.value);
@@ -1154,8 +1264,12 @@ const modal = {
                 } else {
                     val = el.value;
                 }
-                
-                if (campo.obrigatorio && (!val || (Array.isArray(val) && val.length === 0)) && val !== 0 && val !== false) {
+
+                if (currencyState && currencyState.invalid) {
+                    el.style.borderColor = 'red';
+                    valid = false;
+                    valorInvalido = true;
+                } else if (campo.obrigatorio && (!val || (Array.isArray(val) && val.length === 0)) && val !== 0 && val !== false) {
                     el.style.borderColor = 'red';
                     valid = false;
                 } else {
@@ -1164,7 +1278,7 @@ const modal = {
                 novosDados[campo.id] = val;
             });
 
-            if (!valid) return toast.error("Preencha todos os campos obrigatórios.");
+            if (!valid) return toast.error(valorInvalido ? "Corrija os valores monetários inválidos." : "Preencha todos os campos obrigatórios.");
 
             try {
                 if (!(await HubModal.confirm("Tem certeza de que deseja atualizar as informações históricas desta fase?"))) {

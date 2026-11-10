@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="static/style/tema-claro.css">
     <script src="/static/vendor/marked/marked.min.js" defer></script>
     <script src="/static/vendor/dompurify/purify.min.js" defer></script>
+    <script src="static/js/valor-monetario.js" defer></script>
     <script src="static/js/hub-projetos.js" defer></script>
     <script>
         window.APP_CONFIG = {
@@ -384,7 +385,7 @@
 
                                     <div class="form-group">
                                         <label>Fee</label>
-                                        <input type="text" name="fee" id="modal_fee" disabled>
+                                        <input type="text" name="fee" id="modal_fee" inputmode="decimal" autocomplete="off" disabled>
                                     </div>
                                     <div class="form-group">
                                         <label>Moeda</label>
@@ -426,12 +427,12 @@
                                     <div class="form-group">
                                         <label>Orçamento de Mídia - Meta</label>
                                         <input type="text" name="orcamento_midia_meta" id="modal_orcamento_midia_meta"
-                                            disabled>
+                                            inputmode="decimal" autocomplete="off" disabled>
                                     </div>
                                     <div class="form-group">
                                         <label>Orçamento de Mídia - Google</label>
                                         <input type="text" name="orcamento_midia_google" id="modal_orcamento_midia_google"
-                                            disabled>
+                                            inputmode="decimal" autocomplete="off" disabled>
                                     </div>
                                     <div class="form-group full-width">
                                         <label>Fase do Pipefy</label>
