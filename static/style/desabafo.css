@@ -166,3 +166,13 @@
 
 body.tema-claro .desabafo-composer,
 body.tema-claro .desabafo-post { background: #fff; }
+
+.desabafo-audit-ref {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.62rem;
+    color: var(--text-muted);
+    opacity: 0.72;
+}

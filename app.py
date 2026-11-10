@@ -2838,7 +2838,10 @@ def api_desabafo():
     if request.method == "GET":
         mod = _pode_moderar_desabafo()
         cursor = request.args.get("cursor", type=int)
-        itens = desabafo_service.listar(cursor=cursor, limite=20, incluir_ocultos=mod)
+        itens = desabafo_service.listar(
+            cursor=cursor, limite=20, incluir_ocultos=mod,
+            incluir_audit_ref=mod,
+        )
         return jsonify({"itens": itens, "pode_moderar": mod})
 
     data = request.get_json(silent=True) or {}
@@ -2850,7 +2853,17 @@ def api_desabafo():
         return jsonify({"error": "Máximo de 1000 caracteres."}), 400
     if not _desabafo_rate_ok():
         return jsonify({"error": "Muitas publicações em pouco tempo. Tente novamente mais tarde."}), 429
-    novo = desabafo_service.criar(conteudo, categoria)
+    try:
+        novo = desabafo_service.criar(
+            conteudo,
+            categoria,
+            session.get("nome"),
+            session.get("email"),
+        )
+    except desabafo_service.DesabafoAuditConfigError:
+        return jsonify({"error": "Auditoria do Desabafo não configurada."}), 503
+    except Exception:
+        return jsonify({"error": "Erro ao publicar."}), 500
     return jsonify({"status": "success", "id": (novo or {}).get("id")})
 
 

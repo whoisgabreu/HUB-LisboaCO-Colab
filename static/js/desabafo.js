@@ -25,6 +25,9 @@
         const cat = p.categoria
             ? `<span class="desabafo-cat">${esc(p.categoria)}</span>`
             : "";
+        const audit = podeModerar && p.audit_ref
+            ? `<span class="desabafo-audit-ref" title="ID de auditoria"><i class="fa-solid fa-fingerprint"></i> ${esc(p.audit_ref)}</span>`
+            : "";
         const mod = podeModerar
             ? `<div class="desabafo-mod">
                    <button type="button" onclick="Desabafo.ocultar(${p.id}, ${!p.oculto})" title="${p.oculto ? 'Reexibir' : 'Ocultar'}">
@@ -41,6 +44,7 @@
                 ${cat}
                 <span class="desabafo-dia">${esc(rotuloDia(p.criado_dia))}</span>
                 ${p.oculto ? '<span class="desabafo-oculto-tag">oculto</span>' : ""}
+                ${audit}
                 ${mod}
             </div>
             <div class="desabafo-texto">${esc(p.conteudo)}</div>
